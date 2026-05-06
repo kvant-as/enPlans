@@ -13,6 +13,7 @@
   <body>
     {% import 'macros/svg_icons.html' as icons %}
     {% import 'macros/affects.html' as affects %}
+    {% import 'macros/components.html' as component %}
     {% if not hide_header %}
         <header>
             <nav>
@@ -63,7 +64,7 @@
                             <span class="btn-text">{{ _('Помощь') }}</span>
                         </button>
                         <div class="divider"></div>
-                        <div class="user-container" id="user-info-trigger">
+                        <div class="user-container" id="user-profile-panel-trigger">
                             <div class="avatar-wrapper">
                                 <div class="avatar-circle">
                                     {{ current_user.first_name[:1] | upper if current_user.first_name else '' }}{{ current_user.last_name[:1] | upper if current_user.last_name else '' }}
@@ -72,68 +73,35 @@
                             <span class="chevron-icon">›</span>
                         </div>
                         {% if current_user and current_user.is_authenticated %}
-                            <div class="user-sidebar" id="user-sidebar">
-                                <div class="sidebar-content">
-                                    <div class="short-acc-info">
-                                        <div class="circle-fi">
-                                            {{ current_user.first_name[:1] | upper if current_user.first_name else '' }}{{ current_user.last_name[:1] | upper if current_user.last_name else '' }}
-                                        </div>
-                                        <div class="employee-card">
-                                            <a class="employee-name">
-                                                {{ current_user.first_name if current_user.first_name else '' }} 
-                                                {{ current_user.last_name if current_user.last_name else '' }}
-                                            </a>
-                                            {% if current_user.post %}
-                                            <a class="employee-position">{{ current_user.post }}</a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    {% if current_user.email %}
-                                    <div class="input-with-icon">
-                                        {{ icons.icon_email() }}
-                                        <input type="text" value="{{ current_user.email }}" class="app-input" readonly>
-                                    </div>
-                                    {% endif %}
+                            <div class="user-profile-panel" id="user-profile-panel">
+                                <div class="nav-menu-list">
                                     
-                                    {% if current_user.organization or current_user.ministry or current_user.region %}
-                                    <div class="input-with-icon">
-                                        {{ icons.icon_org() }}
-                                        <input type="text" value="{% if current_user.organization %}{{ current_user.organization.name }}{% elif current_user.ministry %}{{ current_user.ministry.name }}{% elif current_user.region %}{{ current_user.region.name }}{% endif %}" 
-                                            class="app-input" readonly>
-                                    </div>
-                                    {% endif %}
-                                    
-                                    <hr>
-                                    <button type="button" class="dop-menu-btn" onclick="window.location.href='/'">
-                                        {{ icons.icon_main() }}
-                                        <span class="btn-text">Главная</span>
-                                    </button>
-                                    <button type="button" class="dop-menu-btn" onclick="window.location.href='/profile'">
+                                    <button type="button" class="nav-menu-item" onclick="window.location.href='/profile'">
                                         {{ icons.icon_profile() }}
-                                        <span class="btn-text">Профиль</span>
+                                        <span>Мой профиль</span>
                                     </button>
-                                    <button type="button" class="dop-menu-btn" onclick="window.location.href='/plans'">
+                                    <hr>
+                                    <button type="button" class="nav-menu-item" onclick="window.location.href='/'">
+                                        {{ icons.icon_main() }}
+                                        <span>Главная</span>
+                                    </button>
+                                    <button type="button" class="nav-menu-item" onclick="window.location.href='/plans'">
                                         {{ icons.icon_plans() }}
-                                        <span class="btn-text">Планы</span>
+                                        <span>Планы</span>
                                     </button>
-                                    <button type="button" class="dop-menu-btn" onclick="window.location.href='/#contacts-cont'">
+                                    <button type="button" class="nav-menu-item" onclick="window.location.href='/#contacts-cont'">
                                         {{ icons.icon_contacts() }}
-                                        <span class="btn-text">Контакты</span>
+                                        <span>Контакты</span>
                                     </button>
-                                    <button type="button" class="dop-menu-btn" onclick="window.location.href='/FAQ'">
+                                    <button type="button" class="nav-menu-item" onclick="window.location.href='/FAQ'">
                                         {{ icons.icon_help() }}
-                                        <span class="btn-text">Помощь</span>
+                                        <span>Помощь</span>
                                     </button>
-                                    
-                                    <div class="user-sidebar-buttons-area">
-                                        <form id="logout_form" action="{{ url_for('auth.logout') }}" method="POST">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="main-btn main-btn-delete" id="logoutButton">
-                                                {{ icons.icon_logout() }}
-                                                <span class="btn-text">{{ _('Выйти из аккаунта') }}</span>
-                                            </button>
-                                        </form>
-                                    </div>
+                                    <hr>
+                                    <button class="nav-menu-item" onclick="window.location.href='/logout'">
+                                        {{ icons.icon_logout() }}
+                                        <span>{{ _('Выйти из аккаунта') }}</span>
+                                    </button>
                                 </div>
                             </div>
                         {% endif %}
@@ -1439,44 +1407,63 @@
     </div>
     
     <footer class="footer">
-      <div class="footer-container">
-          <div class="footer-row">
-              <div class="footer-col">
-                  <h4 onclick="window.location.href='/'">enPlans</h4>
-                  <ul>
-                      <li onclick="window.location.href='/#contacts-cont'"><a>Контакты</a></li>
-                      <li onclick="window.location.href='/FAQ'"><a>Помощь</a></li>
-                  </ul>
-              </div>
-              <div class="footer-col">
-                <h4>Сеть</h4>
-                <div class="social-links">
-                  <a href="https://energoeffect.gov.by/" target="_blank"><i class="fas fa-bolt"></i></a>
-                  <a href="https://t.me/energoeffectgovby" target="_blank"><i class="fab fa-telegram"></i></a>
-                  <a href="https://rutube.ru/channel/77397470/" target="_blank"><i class="fab fa-youtube"></i></a>
+        <div class="footer-container">
+            <div class="footer-row">
+                <div class="footer-col">
+                    <h4 onclick="window.location.href='/'">enPlans</h4>
+                    <ul>
+                    <li onclick="window.location.href='/#contacts-cont'">
+                        <a>Контакты</a>
+                    </li>
+                    <li onclick="window.location.href='/FAQ'">
+                        <a>Помощь</a>
+                    </li>
+                    <li onclick="window.location.href='/about'">
+                        <a>О проекте</a>
+                    </li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Контакты</h4>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            {{ icons.icon_email() }}
+                            <a href="mailto:energoeffect@gosstandart.gov.by">energoeffect@gosstandart.gov.by</a>
+                        </div>
+                        <div class="contact-item">
+                            {{ icons.icon_location() }}
+                            <span>пл. Свободы 17, г. Минск</span>
+                        </div>
+                        <div class="contact-item">
+                            {{ icons.icon_phone() }}
+                            <a href="tel:+375173270000">+375 (17) 338-50-51</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Сеть</h4>
+                    <div class="social-links">
+                        <a href="https://energoeffect.gov.by/" target="_blank" title="Официальный сайт">
+                            <i class="fas fa-bolt"></i>
+                        </a>
+                        <a href="https://t.me/energoeffectgovby" target="_blank" title="Telegram">
+                            <i class="fab fa-telegram"></i>
+                        </a>
+                        <a href="https://rutube.ru/channel/77397470/" target="_blank" title="Rutube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
-              <div class="footer-col">
-                <h4 onclick="window.location.href='/'"></h4>
-                <ul>
-                    <li>
-                        {{ icons.icon_email() }}
-                        <a href="mailto:energoeffect@gosstandart.gov.by">energoeffect@gosstandart.gov.by</a>
-                    </li>
-
-                    <li>
-                        {{ icons.icon_location() }}
-                      <a>пл. Свободы 17, Минск, Минская область</a>
-                    </li>
-                </ul>
+            <div class="footer-org">
+                <a href="https://energoeffect.gov.by">
+                    © 2026 "Департамент по энергоэффективности"
+                </a>
             </div>
-          </div>
-          <div class="footer-row" style = "text-align: center; margin-top: 30px; justify-content: center;">
-            <div class="footer-col">
-              <a class = "footer_org" href="https://energoeffect.gov.by">© 2025 "Департамент по энергоэффективности"</a>
-            </div>
-          </div>
-      </div>
-  </footer>
+        </div>
+    </footer>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
   </body> 
 </html>

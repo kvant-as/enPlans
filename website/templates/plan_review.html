@@ -378,13 +378,8 @@
           {% endfor %} {% else %}
           <div class="no-info-conteiner">
             <div class="empty-state">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
-                  fill="#E6E6E6"
-                />
-              </svg>
-              <a>{{ _('Нет сообщений') }}</a>
+              {{ icons.icon_no_info() }}
+              <h1>{{ _('Нет сообщений') }}</h1>
             </div>
           </div>
           {% endif %}

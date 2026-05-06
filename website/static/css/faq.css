@@ -299,6 +299,7 @@
   background: #fafafa;
   border-radius: 16px;
   transition: all 0.3s ease;
+  border: 1px solid var(--faq-border);
 }
 
 .step-item:hover {

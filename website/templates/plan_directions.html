@@ -1,151 +1,90 @@
 {% extends "base.html" %} {% block title %}{{ _('Направления') }} - enPlans{%
 endblock %} {% block content %}
 
-<div class="pers-page">
+<div class="pers-page-with-table">
   <div class="personal-plan-conteiner">
-    {% set is_disabled = plan.is_sent or plan.is_approved or
-    current_user.is_auditor %}
-    <div class = "plan-menu">
-      <div class="menu-conteiner">
-        <div class = "menu-conteiner-btns">
-          <div
-            class="element add {% if is_disabled %}non{% endif %}"
-            id="AddDirectionModalButton"
-          >
-            <img src="{{ url_for('static', filename='img/icon-add.svg') }}">
-            <span class="element-text">Добавить</span>
-          </div>
-          <div
-            class="element del {% if is_disabled %}non{% endif %}"
-            id="tableDeleteButton"
-          >
-            <img src="{{ url_for('static', filename='img/icon-del.svg') }}">
-            <span class="element-text">Удалить</span>
-          </div>
-          <div
-            class="element edit {% if is_disabled %}non{% endif %}"
-            id="tableEditButton"
-          >
-            <img src="{{ url_for('static', filename='img/icon-edit.svg') }}">
-            <span class="element-text">Редактировать</span>
-          </div>
-        </div>
-        <div class = "menu-conteiner-title">
-          <span>Направления</span>
-        </div>
+    {{ component.plan_menu(plan, current_user, 'directions') }}
+    {% if econ_measures %}
+      <div class="table-container">
+        <table class="main-table" id="directionTable">
+          <thead class="main-table-titels">
+            <tr>
+              <th class="resizable" style="min-width: 50px; border-left: none">
+                <a>№</a>
+                <div class="resizer"></div>
+              </th>
+              <th class="resizable" style="">
+                <a
+                  >{{ _('Код основных направлений энергосбережения в соостветствии
+                  с формой 4-энергосбережения (Госстандарт)') }}</a
+                >
+                <div class="resizer"></div>
+              </th>
+              <th class="resizable" style="">
+                <a
+                  >{{ _('Наименование направлений в соответствии с формой
+                  4-энергосбережение (Госстандарт)') }}</a
+                >
+                <div class="resizer"></div>
+              </th>
+              <th class="resizable" style="">
+                <a>{{ _('Условно-годовой экономический эффект, т у.т.') }}</a>
+                <div class="resizer"></div>
+              </th>
+              <th class="resizable" style="">
+                <a
+                  >{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }}
+                  {{plan.year}} г., {{ _('т у. т.') }}</a
+                >
+                <div class="resizer"></div>
+              </th>
+              <th class="resizable" style="border-right: none;">
+                <a>{{ _('Местные ТЭР') }}</a>
+                <div class="resizer"></div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="rows">
+            {% if econ_measures %} {% for row in econ_measures %}
+            <tr class="menu-row" data-id="{{ row.id }}">
+              <td>{{ loop.index }}</td>
+              <td>{{ row.direction.code }}</td>
+              <td>{{ row.direction.name }}</td>
+              <td>{{ row.year_econ }}</td>
+              <td>{{ row.estim_econ }}</td>
+              <td style="text-align: center">
+                <input
+                  type="checkbox"
+                  {%
+                  if
+                  row.direction.is_local
+                  %}
+                  checked
+                  {%
+                  endif
+                  %}
+                  onclick="return false;"
+                />
+              </td>
+            </tr>
+            {% endfor %} {% else %}
+            <tr class="no-results-row">
+              <td colspan="6">{{ _('Нет активных направлений') }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
       </div>
-      <div class="menu-conteiner">
-        <div class = "menu-conteiner-btns">
-          <div class="element btn-disabled" id="">
-            <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
-            <span class="element-text">Экспорт</span>
+      {% else %}
+        <div class="no-info-conteiner">
+          <div class="empty-state">
+            {{ icons.icon_no_info1() }}
+            <h1>{{ _('Нет направлений') }}</h1>
+            <p>У вас пока что нет направлений. Чтобы начать работу, создайте новое направление.</p>
           </div>
-          <a href="/plans/plan-review/{{ plan.token }}#tickets_link" class="element" id="">
-            <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
-            <span class="element-text">Квитанции</span>
-          </a>
-        </div>
-        <div class = "menu-conteiner-title">
-          <span>План</span>
-        </div>
-      </div>
-      {% if plan.is_draft or plan.is_control %}
-      <div class="menu-conteiner">
-        <div class="menu-conteiner-btns">
-          {% if plan.is_draft %}
-          <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="/api/change-plan-status/{{ plan.token }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="control" />
-            <button id="controlPlanButton" data-plan-type="{{ plan.plan_type }}" type="submit" class="element">
-              <img src="{{ url_for('static', filename='img/icon-control.svg') }}">
-              <span class="element-text">Контроль</span>
-            </button>
-          </form>
-          {% endif %}
-          {% if plan.is_control %}
-          <div class="element" id="sentPlanButton">
-            <img src="{{ url_for('static', filename='img/icon-send.svg') }}">
-            <span class="element-text">Отправить</span>
-          </div>
-          {% endif %}
-        </div>
-        <div class="menu-conteiner-title">
-          <span>Статус</span>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-   
-    <div class="table-container">
-      <table class="main-table" id="directionTable">
-        <thead class="main-table-titels">
-          <tr>
-            <th class="resizable" style="min-width: 50px; border-left: none">
-              <a>№</a>
-              <div class="resizer"></div>
-            </th>
-            <th class="resizable" style="">
-              <a
-                >{{ _('Код основных направлений энергосбережения в соостветствии
-                с формой 4-энергосбережения (Госстандарт)') }}</a
-              >
-              <div class="resizer"></div>
-            </th>
-            <th class="resizable" style="">
-              <a
-                >{{ _('Наименование направлений в соответствии с формой
-                4-энергосбережение (Госстандарт)') }}</a
-              >
-              <div class="resizer"></div>
-            </th>
-            <th class="resizable" style="">
-              <a>{{ _('Условно-годовой экономический эффект, т у.т.') }}</a>
-              <div class="resizer"></div>
-            </th>
-            <th class="resizable" style="">
-              <a
-                >{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }}
-                {{plan.year}} г., {{ _('т у. т.') }}</a
-              >
-              <div class="resizer"></div>
-            </th>
-            <th class="resizable" style="border-right: none;">
-              <a>{{ _('Местные ТЭР') }}</a>
-              <div class="resizer"></div>
-            </th>
-          </tr>
-        </thead>
-        <tbody class="rows">
-          {% if econ_measures %} {% for row in econ_measures %}
-          <tr class="menu-row" data-id="{{ row.id }}">
-            <td>{{ loop.index }}</td>
-            <td>{{ row.direction.code }}</td>
-            <td>{{ row.direction.name }}</td>
-            <td>{{ row.year_econ }}</td>
-            <td>{{ row.estim_econ }}</td>
-            <td style="text-align: center">
-              <input
-                type="checkbox"
-                {%
-                if
-                row.direction.is_local
-                %}
-                checked
-                {%
-                endif
-                %}
-                onclick="return false;"
-              />
-            </td>
-          </tr>
-          {% endfor %} {% else %}
-          <tr class="no-results-row">
-            <td colspan="6">{{ _('Нет активных направлений') }}</td>
-          </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
+        </div> 
+    {% endif %}
   </div>
 </div>
 {% endblock %}

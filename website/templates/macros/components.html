@@ -1,0 +1,98 @@
+{% macro plan_menu(plan, current_user, section, non_local_econ_execes=None, local_econ_execes=None, indicators=None) %}
+    {% set section_config = {
+        'directions': {
+            'title': 'Направления',
+            'add_button_id': 'AddDirectionModalButton',
+            'has_data': plan.econ_measures is defined and plan.econ_measures,
+            'is_empty': not (plan.econ_measures is defined and plan.econ_measures)
+        },
+        'events': {
+            'title': 'Мероприятия',
+            'add_button_id': 'AddEventModalButton',
+            'has_data': (non_local_econ_execes is defined and non_local_econ_execes) or 
+                       (local_econ_execes is defined and local_econ_execes),
+            'is_empty': not ((non_local_econ_execes is defined and non_local_econ_execes) or 
+                           (local_econ_execes is defined and local_econ_execes))
+        },
+        'indicators': {
+            'title': 'Показатели',
+            'add_button_id': 'AddIndicatorModalButton',
+            'has_data': True,
+            'is_empty': False
+        }
+    } %}
+    
+    {% set config = section_config[section] %}
+    {% set is_disabled = plan.is_sent or plan.is_approved or current_user.is_auditor %}
+    
+    <div class="plan-menu">
+        <div class="menu-conteiner">
+            <div class="menu-conteiner-btns">
+                <div class="element add 
+                    {% if is_disabled %}non{% endif %} 
+                    {% if config.is_empty and not is_disabled %}highlight{% endif %}" 
+                     id="{{ config.add_button_id }}">
+                    <img src="{{ url_for('static', filename='img/icon-add.svg') }}">
+                    <span class="element-text">Добавить</span>
+                </div>
+                {% if config.has_data %}
+                <div class="element del {% if is_disabled %}non{% endif %}" id="tableDeleteButton">
+                    <img src="{{ url_for('static', filename='img/icon-del.svg') }}">
+                    <span class="element-text">Удалить</span>
+                </div>
+                <div class="element edit {% if is_disabled %}non{% endif %}" id="tableEditButton">
+                    <img src="{{ url_for('static', filename='img/icon-edit.svg') }}">
+                    <span class="element-text">Редактировать</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="menu-conteiner-title">
+                <span>{{ config.title }}</span>
+            </div>
+        </div>
+        
+        <div class="menu-conteiner">
+            <div class="menu-conteiner-btns">
+                <div class="element btn-disabled" id="">
+                    <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
+                    <span class="element-text">Экспорт</span>
+                </div>
+                <a href="/plans/plan-review/{{ plan.token }}#tickets_link" class="element" id="">
+                    <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
+                    <span class="element-text">Квитанции</span>
+                </a>
+            </div>
+            <div class="menu-conteiner-title">
+                <span>План</span>
+            </div>
+        </div>
+        
+        {% if plan.is_draft or plan.is_control %}
+        <div class="menu-conteiner">
+            <div class="menu-conteiner-btns">
+                {% if plan.is_draft %}
+                <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" 
+                      action="/api/change-plan-status/{{ plan.token }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="status" value="control" />
+                    <button id="controlPlanButton" data-plan-type="{{ plan.plan_type }}" 
+                            type="submit" class="element">
+                        <img src="{{ url_for('static', filename='img/icon-control.svg') }}">
+                        <span class="element-text">Контроль</span>
+                    </button>
+                </form>
+                {% endif %}
+                {% if plan.is_control %}
+                <div class="element" id="sentPlanButton">
+                    <img src="{{ url_for('static', filename='img/icon-send.svg') }}">
+                    <span class="element-text">Отправить</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="menu-conteiner-title">
+                <span>Статус</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endmacro %}

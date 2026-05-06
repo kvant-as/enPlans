@@ -195,7 +195,7 @@ def edit_param():
     flash('Изменения внесены!', 'success')
     return redirect(request.referrer or url_for('views.profile'))
 
-@auth.route('/logout', methods=['POST'])
+@auth.route('/logout')
 @login_required
 def logout():
     logout_user()

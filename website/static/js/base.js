@@ -4432,15 +4432,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
    
-    const triggerSideBar = document.getElementById("user-info-trigger");
-    const sidebarUser = document.getElementById("user-sidebar");
+    const triggerSideBar = document.getElementById("user-profile-panel-trigger");
+    const sidebarUser = document.getElementById("user-profile-panel");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+    function closeSidebar() {
+        if (sidebarUser) {
+            sidebarUser.classList.remove("show");
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.remove("show");
+        }
+    }
+
+    function openSidebar() {
+        if (sidebarUser) {
+            sidebarUser.classList.add("show");
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.add("show");
+        }
+    }
 
     if (triggerSideBar && sidebarUser) {
         triggerSideBar.addEventListener("click", (e) => {
             e.stopPropagation();
-            sidebarUser.classList.add("show");
+            openSidebar();
         });
     }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener("click", closeSidebar);
+    }
+
+    document.addEventListener("click", (e) => {
+        if (sidebarUser && sidebarUser.classList.contains("show") && 
+            !sidebarUser.contains(e.target) && 
+            !triggerSideBar.contains(e.target)) {
+            closeSidebar();
+        }
+    });
 
     document.addEventListener("click", (e) => {
         if (!sidebarUser.contains(e.target) && !triggerSideBar.contains(e.target)) {
