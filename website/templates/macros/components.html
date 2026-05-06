@@ -1,3 +1,5 @@
+{% import 'macros/svg_icons.html' as icons %}
+
 {% macro plan_menu(plan, current_user, section, non_local_econ_execes=None, local_econ_execes=None, indicators=None) %}
     {% set section_config = {
         'directions': {
@@ -9,10 +11,8 @@
         'events': {
             'title': 'Мероприятия',
             'add_button_id': 'AddEventModalButton',
-            'has_data': (non_local_econ_execes is defined and non_local_econ_execes) or 
-                       (local_econ_execes is defined and local_econ_execes),
-            'is_empty': not ((non_local_econ_execes is defined and non_local_econ_execes) or 
-                           (local_econ_execes is defined and local_econ_execes))
+            'has_data': plan.econ_execes is defined and plan.econ_execes,
+            'is_empty': not (plan.econ_execes is defined and plan.econ_execes)
         },
         'indicators': {
             'title': 'Показатели',
@@ -95,4 +95,42 @@
         </div>
         {% endif %}
     </div>
+{% endmacro %}
+
+{% macro no_data() %}
+{% endmacro %}
+
+
+{% macro status_plan(plan, current_user=None) %}
+    <a class="status-plan 
+        {% if plan.is_draft %}status-draft
+        {% elif plan.is_error %}status-warning
+        {% elif plan.is_control %}status-control
+        {% elif plan.is_sent %}status-pending
+        {% elif plan.is_approved %}status-approved
+        {% endif %}">
+        
+        {% if plan.is_draft %}
+            {{ icons.draft_icon() }}
+            <span>{{ _('В редакции') }}</span>
+        {% elif plan.is_error %}
+            {{ icons.error_icon() }}
+            <span>{{ _('Есть ошибки') }}</span>
+        {% elif plan.is_control %}
+            {{ icons.control_icon() }}
+            <span>{{ _('Контроль пройден') }}</span>
+        {% elif plan.is_sent %}
+            {{ icons.pending_icon() }}
+            <span>
+                {% if current_user and current_user.is_auditor != true %}
+                    {{ _('На рассмотрении') }}
+                {% else %}
+                    {{ _('Не просмотрен') }}
+                {% endif %}
+            </span>
+        {% elif plan.is_approved %}
+            {{ icons.approved_icon() }}
+            <span>{{ _('Одобрен') }}</span>
+        {% endif %}
+    </a>
 {% endmacro %}

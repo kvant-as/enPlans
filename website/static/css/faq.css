@@ -153,17 +153,11 @@
   padding: 80px 40px;
 }
 
-.answer-placeholder h2 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--faq-text-primary);
+.answer-placeholder svg {
+  width: 70px !important;
+  height: 70px !important;
 }
 
-.answer-placeholder p {
-  color: var(--faq-text-muted);
-  font-size: 15px;
-}
 
 .answer-active-modern {
   display: none;

@@ -18,8 +18,10 @@
     <div class="error-content">
         <div class="error-card">
             <div class="error-description">
-                <p>{{ _('Запрашиваемая страница не существует или была перемещена.') }}</p>
-                <p>{{ _('Возможно, она находится в редакции, на контроле или была отправлена на доработку.') }}</p>
+                <p>
+                    {{ _('Запрашиваемая страница не существует или была перемещена.') }}
+                    <br>{{ _('Возможно, она находится в редакции, на контроле или была отправлена на доработку.') }}
+                </p>
             </div>
 
             <div class="error-stats">
@@ -33,25 +35,20 @@
                 </div>
             </div>
 
-            <div class="error-actions">          
+            <div class="error-actions">    
+                <button onclick="history.back()" class="btn btn-outline">
+                    {{ _('Назад') }}
+                </button>     
                 <a href="{{ url_for('views.begin_page') }}" class="btn btn-secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12H15M9 16H15M9 20H15M5 4H19C20.1046 4 21 4.89543 21 6V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V6C3 4.89543 3.89543 4 5 4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                    {{ icons.icon_plans() }}
                     {{ _('К планам') }}
                 </a>
 
-                <button onclick="history.back()" class="btn btn-outline">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    {{ _('Назад') }}
-                </button>
+                
             </div>
 
             <div class="error-help">
                 <p><strong>{{ _('Статус:') }}</strong> {{ _('Страница не найдена в системе') }}</p>
-                <p>{{ _('Если проблема повторяется, обратитесь к эксперту или проверьте раздел статистики.') }}</p>
             </div>
         </div>
     </div>
@@ -66,7 +63,7 @@
 
 .error-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     padding: 2rem;
     
     background: white;
@@ -114,8 +111,9 @@
 
 .error-description p {
     color: #6c757d;
-    line-height: 1.6;
+    line-height: 1.4;
     margin: 0 0 1rem 0;
+    font-size: 0.9rem;
 }
 
 .error-stats {
@@ -154,6 +152,12 @@
     justify-content: center;
     margin-bottom: 2rem;
     flex-wrap: wrap;
+}
+
+.error-actions svg{
+    width: 22px;
+    height: 22px;
+    color: white;
 }
 
 .btn {

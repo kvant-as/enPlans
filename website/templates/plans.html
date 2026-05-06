@@ -116,7 +116,7 @@
               />
             </svg>
           </button>
-          <div class="dropdown-menu">
+          <div class="dropdown-menu-filter">
             <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
             <div class="dropdown-item" data-value="draft">
               {{ _('В редакции') }}
@@ -173,7 +173,7 @@
               />
             </svg>
           </button>
-          <div class="dropdown-menu">
+          <div class="dropdown-menu-filter">
             <div class="dropdown-item" data-value="all">
               {{ _('Все года') }}
             </div>
@@ -317,10 +317,11 @@
           <div class="buttons-row">
             <button
               type="button"
-              class="white-svg-btn"
+              class="svg-btn tooltip-btn"
               onclick="window.location.href='{{ url_for('views.plan_review', token=plan.token) }}'"
             >
               {{ icons.icon_view() }}
+              <span class="tooltip-text">{{ _('Просмотр') }}</span>
               <span class="btn-text">{{ _('Просмотр') }}</span>
             </button>
             {% if not (plan.is_sent or plan.is_approved or
@@ -339,21 +340,28 @@
                 data-modal-trigger="deletePlan"
                 data-plan-id="{{ plan.id }}"
                 type="submit"
-                class="white-svg-btn delete-button"
+                class="svg-btn delete-button tooltip-btn"
               >
                 {{ icons.icon_delete() }}
-                <span class="btn-text">{{ _('Удалить') }}</span>
+                <span class="tooltip-text">{{ _('Удалить') }}</span>
+                
               </button>
             </form>
             {% endif %}
           </div>
         </div>
       </div>
-      {% endfor %} {% else %}
-      <div class="choose-plan no-data">
-        <p>По вашему запросу ничего не найдено</p>
-        <small>Попробуйте изменить параметры поиска</small>
-      </div>
+      {% endfor %} 
+      {% else %}
+        <div class="choose-plan">
+            <div class="no-info-conteiner">
+              <div class="empty-state">
+                {{ icons.icon_no_info() }}
+                <h1>{{ _('По вашему запросу планов не найдено') }}</h1>
+                <p>Попробуйте изменить параметры поиска.</p>
+              </div>
+            </div> 
+          </div>
       {% endif %}
     </div>
   </div>

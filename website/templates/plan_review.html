@@ -5,110 +5,67 @@
   <div class="personal-acc-conteiner" style="margin-top: 0">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0"
-          >{{ _('План энергосбережения на') }} {{ plan.year }} {{ _('год') }}</a
-        >
-
-        <a
-          class="status-plan {% if plan.is_draft %}status-draft {% elif plan.is_error %}status-warning {% elif plan.is_control %}status-control {% elif plan.is_sent %}status-pending {% elif plan.is_approved %}status-approved {% endif %}"
-        >
-          {% if plan.is_draft %} {{ icons.draft_icon() }}
-          <span>В редакции</span>
-
-          {% elif plan.is_error %} {{ icons.error_icon() }}
-          <span>Есть ошибки</span>
-
-          {% elif plan.is_control %} {{ icons.control_icon() }}
-          <span>Контроль пройден</span>
-
-          {% elif plan.is_sent %} {{ icons.pending_icon() }}
-          <span
-            >{% if current_user.is_auditor != true %}На рассмотрении{% else %}Не
-            просмотрен{% endif %}</span
-          >
-
-          {% elif plan.is_approved %} {{ icons.approved_icon() }}
-          <span>Одобрен</span>
-
-          {% endif %}
-        </a>
+        <a class="name" style="padding-bottom: 0">{{ _('План энергосбережения') }}</a>
+        {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
-        {% if current_user.is_auditor != true %} {% if plan.is_sent == true %}
-        <form
-          id="cancelsentPlanForm"
-          action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
-          method="POST"
-          class="button-area"
-          style="text-align: left"
-        >
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <input type="hidden" name="status" value="draft" />
-          <button
-            id="cancelsentPlanButton"
-            type="submit"
-            class="white-svg-btn delete-button"
-          >
-            {{ icons.icon_send() }}
-            <span class="btn-text">{{ _('Отменить отправку') }}</span>
-          </button>
-        </form>
+        {% if current_user.is_auditor != true %}
+            <div class="dropdown-menu-container">
+                <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Действия с планом">
+                    {{ icons.icon_dots() }}
+                </button>
+                
+                <div class="dropdown-menu" id="planActionsMenu">
+                    <div class="nav-menu-list">
+                      <button id="sentPlanButton" class="nav-menu-item" 
+                          {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error %}disabled{% endif %}>
+                          {{ icons.icon_send() }}
+                          <span>{{ _('Отправить') }}</span>
+                      </button>
+                      
+                      <form id="cancelsentPlanForm" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                          <input type="hidden" name="status" value="draft" />
+                          <button type="submit" class="nav-menu-item" {% if plan.is_sent != true %}disabled{% endif %}>
+                              {{ icons.icon_cancel() }}
+                              <span>{{ _('Отменить отправку') }}</span>
+                          </button>
+                      </form>
+
+                      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="/api/change-plan-status/{{ plan.token }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <input type="hidden" name="status" value="control" />
+                          <button id="controlPlanButton" class="nav-menu-item" 
+                              {% if not plan.is_draft %}disabled{% endif %}>
+                              {{ icons.control_icon() }}
+                              <span>{{ _('Пройти контроль') }}</span>
+                          </button>
+                      </form>
+
+          
+                
+
+                      <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+                          {% if plan.is_sent or plan.is_approved or plan.is_error %}disabled{% endif %}>
+                          {{ icons.icon_edit() }}
+                          <span>{{ _('Редактировать') }}</span>
+                      </button>
+
+                      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                          <button type="submit" data-modal-trigger="deletePlan" class="nav-menu-item delete-item"
+                              {% if plan.is_sent or plan.is_approved %}disabled{% endif %}>
+                              {{ icons.icon_delete() }}
+                              <span>{{ _('Удалить') }}</span>
+                          </button>
+                      </form>
+                    </div>
+                </div>
+            </div>
         {% endif %}
-        <button
-          id="sentPlanButton"
-          type="submit"
-          class="white-svg-btn send-button"
-          {%
-          if
-          plan.is_sent
-          or
-          plan.is_approved
-          or
-          plan.is_draft
-          or
-          plan.is_error%}disabled{%
-          endif
-          %}
-        >
-          {{ icons.icon_send() }}
-          <span class="btn-text">{{ _('Отправить') }}</span>
-        </button>
-        <form
-          data-modal-form="deletePlan"
-          action="{{ url_for('views.delete_plan', token=plan.token) }}"
-          method="POST"
-          class="button-area"
-          style="text-align: left"
-        >
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button
-            type="submit"
-            data-modal-trigger="deletePlan"
-            class="white-svg-btn delete-button"
-            {%
-            if
-            plan.is_sent
-            or
-            plan.is_approved
-            %}disabled{%
-            endif
-            %}
-          >
-            {{ icons.icon_delete() }}
-            <span class="btn-text">{{ _('Удалить') }}</span>
-          </button>
-        </form>
-        {% else %} {% endif %}
       </div>
     </div>
 
-    <form
-      id="editPlanForm"
-      class="main-form"
-      action="{{ url_for('views.edit_plan', token=plan.token) }}"
-      method="POST"
-    >
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('Год') }}</label>
@@ -117,14 +74,10 @@
             <input
               type="number"
               id="year"
-              name="year"
-              min="2024"
-              max="2030"
               value="{{ plan.year }}"
               placeholder=""
               class="app-input"
-              required
-              onchange="checkExistingPlan(this.value)"
+              readonly
               data-current-year="{{ plan.year }}"
             />
           </div>
@@ -145,14 +98,11 @@
             {{ icons.icon_eco() }}
             <input
               type="text"
-              name="energy_saving"
-              maxlength="15"
               value="{{ plan.energy_saving }}"
-              required
               placeholder="0.000"
               class="app-numeric-input-negative"
               pattern="-?[0-9]+([\.,][0-9]+)?"
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
+              readonly
             />
           </div>
         </div>
@@ -162,15 +112,11 @@
             {{ icons.icon_half() }}
             <input
               type="text"
-              name="share_fuel"
-              maxlength="15"
               value="{{ plan.share_fuel }}"
-              required
               placeholder="0.000"
               class="app-numeric-input"
-              required
               pattern="[0-9]+([\.,][0-9]+)?"
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
+              readonly
             />
           </div>
         </div>
@@ -179,17 +125,14 @@
         <div class="app-group">
           <label>{{ _('Задания по экономии ТЭР (т. у. т.)') }}</label>
           <div class="input-with-icon">
-            {{ icons.icon_eco() }}
+            {{ icons.icon_saving() }}
             <input
               type="text"
-              name="saving_fuel"
-              maxlength="15"
               value="{{ plan.saving_fuel }}"
               placeholder="0.000"
               class="app-numeric-input"
-              required
+              readonly
               pattern="[0-9]+([\.,][0-9]+)?"
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
         </div>
@@ -199,42 +142,19 @@
             {{ icons.icon_half() }}
             <input
               type="text"
-              name="share_energy"
-              maxlength="15"
               value="{{ plan.share_energy }}"
               placeholder="0.000"
               class="app-numeric-input"
-              required
+              readonly
               pattern="[0-9]+([\.,][0-9]+)?"
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
         </div>
       </div>
-      {% if current_user.is_auditor != true %}
-      <div class="button-area">
-        <button
-          id="editPlanButton"
-          type="submit"
-          class="main-btn main-btn-primary"
-          {%
-          if
-          plan.is_sent
-          or
-          plan.is_approved
-          %}disabled{%
-          endif
-          %}
-        >
-          {{ icons.icon_edit() }}
-          <span class="btn-text">{{ _('Применить изменения') }}</span>
-        </button>
-      </div>
-      {% endif %}
-    </form>
+
     {% if current_user.is_auditor == true or current_user.is_admin == true%}
     <hr />
-    <a class="sername">{{ _('Респондент и организация') }}</a>
+    <h1 class="name">{{ _('Респондент и организация') }}</h1>
 
     {% set org = none %} {% set ministry = none %} {% set region = none %} {% if
     plan.organization %} {% set org = plan.organization.name %} {% endif %} {%
@@ -318,8 +238,8 @@
           </div>
         </div>
         {%endif%} {% if current_user.is_auditor != true %}
-        <hr />
-        <a class="sername" id = "tickets_link">{{ _('Результаты проверки') }}</a>
+        <hr/>
+        <h1 class="name" id = "tickets_link">{{ _('Результаты проверки') }}</h1>
         <div class="tickets-conteiner">
           {% if plan.tickets %} {% for ticket in plan.tickets %}
           <div
@@ -387,7 +307,7 @@
         {% endif %}
 
         <hr />
-        <a class="sername">{{ _('Прочая информация') }}</a>
+        <h1 class="name">{{ _('Прочая информация') }}</h1>
         {#
         <div class="no-input">
           <a>{{ _('Тип') }}: {{ plan.plan_type if plan.plan_type else '--'}}</a>
@@ -418,10 +338,7 @@
       </div>
     </div>
 
-    <div
-      id="planTypeModal"
-      class="modal {% if show_plan_type_modal %}active-delay{% endif %}"
-    >
+    <div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
       <div class="modal-content" style="width: fit-content">
         <div class="modal-header">
           <a id="modal-title">{{ _('Выберите тип плана') }}</a>
@@ -432,10 +349,7 @@
           <p>Экспорт плана, <strong>зависит от данного парамметра</strong></p>
         </div>
         #}
-        <form
-          action="{{ url_for('views.edit_plan_type', token=plan.token) }}"
-          method="POST"
-        >
+        <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <div class="radio-org-container">
             <label>
@@ -477,50 +391,15 @@
         </form>
       </div>
     </div>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        window.ticketInfoInstance = new window.TicketInfo();
-      });
-
-      function toggleTicketInfo(ticketId) {
-        window.ticketInfoInstance.show(ticketId, event.currentTarget);
-      }
-
-      function checkExistingPlan(year) {
-        if (!year) return;
-
-        const inputElement = document.getElementById("year");
-        const currentPlanYear = inputElement.dataset.currentYear;
-
-        let url = "/check-plan-year?year=" + year;
-        if (currentPlanYear) {
-          url += "&current_plan_year=" + currentPlanYear;
-        }
-
-        fetch(url)
-          .then((response) => response.json())
-          .then((data) => {
-            const errorElement = document.getElementById("year-error");
-            const submitBtn = document.getElementById("edit_btn");
-
-            if (data.exists) {
-              errorElement.style.display = "block";
-              submitBtn.disabled = true;
-              submitBtn.style.opacity = "0.5";
-              submitBtn.style.cursor = "not-allowed";
-            } else {
-              errorElement.style.display = "none";
-              submitBtn.disabled = false;
-              submitBtn.style.opacity = "1";
-              submitBtn.style.cursor = "pointer";
-            }
-          })
-          .catch((error) => {
-            console.error("Ошибка при проверке плана:", error);
-          });
-      }
-    </script>
-    {% endblock %}
   </div>
 </div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    window.ticketInfoInstance = new window.TicketInfo();
+  });
+
+  function toggleTicketInfo(ticketId) {
+    window.ticketInfoInstance.show(ticketId, event.currentTarget);
+  }
+</script>
+{% endblock %}

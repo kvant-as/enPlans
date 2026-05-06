@@ -1,19 +1,18 @@
-{% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Обзор') }} - enPlans{% endblock
+%} {% block content %}
 
 <div class="pers-page">
-  <div class="personal-acc-conteiner">
-    <a class="name">{{ _('Создание нового плана') }}</a>
-    {#
-    <div class="answer-highlight">
-      <div class="highlight-icon">💡</div>
-      <p>
-        Выберите <strong>доступный</strong> год и заполните необходимые
-        парамметры
-      </p>
+  <div class="personal-acc-conteiner" style="margin-top: 15px;">
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Редактирование плана') }}</a>
+      </div>
+      <div class="header-content-right">
+      </div>
     </div>
-    #}
-    <form class="main-form" action="/create-plan" method="POST" id="plan-form">
+
+    <form id="editPlanForm" class="main-form" action="{{ url_for('views.edit_plan', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('Год') }}</label>
@@ -25,15 +24,16 @@ endblock %} {% block content %}
               name="year"
               min="2024"
               max="2030"
-              value="2026"
-              placeholder="2026"
+              value="{{ plan.year }}"
+              placeholder=""
               class="app-input"
               required
               onchange="checkExistingPlan(this.value)"
+              data-current-year="{{ plan.year }}"
             />
           </div>
           <small id="year-error" class="error-message-small">
-            {{ _('У вас уже есть план на этот год!') }}
+            {{ _('У вас уже есть план c таким годом!') }}
           </small>
         </div>
         <div class="app-group">
@@ -51,7 +51,7 @@ endblock %} {% block content %}
               type="text"
               name="energy_saving"
               maxlength="15"
-              value="0.000"
+              value="{{ plan.energy_saving }}"
               required
               placeholder="0.000"
               class="app-numeric-input-negative"
@@ -68,10 +68,11 @@ endblock %} {% block content %}
               type="text"
               name="share_fuel"
               maxlength="15"
-              value="0.000"
+              value="{{ plan.share_fuel }}"
               required
               placeholder="0.000"
               class="app-numeric-input"
+              required
               pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
@@ -87,10 +88,10 @@ endblock %} {% block content %}
               type="text"
               name="saving_fuel"
               maxlength="15"
-              value="0.000"
-              required
+              value="{{ plan.saving_fuel }}"
               placeholder="0.000"
               class="app-numeric-input"
+              required
               pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
@@ -104,7 +105,7 @@ endblock %} {% block content %}
               type="text"
               name="share_energy"
               maxlength="15"
-              value="0.000"
+              value="{{ plan.share_energy }}"
               placeholder="0.000"
               class="app-numeric-input"
               required
@@ -115,10 +116,9 @@ endblock %} {% block content %}
         </div>
       </div>
       <div class="button-area">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit" id="submit-btn" class="main-btn main-btn-primary">
-          {{ icons.icon_add() }}
-          <span class="btn-text">{{ _('Создать план') }}</span>
+        <button id="editPlanButton" type="submit" class="main-btn main-btn-primary">
+          {{ icons.icon_edit() }}
+          <span class="btn-text">{{ _('Применить изменения') }}</span>
         </button>
       </div>
     </form>
@@ -129,11 +129,19 @@ endblock %} {% block content %}
   function checkExistingPlan(year) {
     if (!year) return;
 
-    fetch("/check-plan-year?year=" + year)
+    const inputElement = document.getElementById("year");
+    const currentPlanYear = inputElement.dataset.currentYear;
+
+    let url = "/check-plan-year?year=" + year;
+    if (currentPlanYear) {
+      url += "&current_plan_year=" + currentPlanYear;
+    }
+
+    fetch(url)
       .then((response) => response.json())
       .then((data) => {
         const errorElement = document.getElementById("year-error");
-        const submitBtn = document.getElementById("submit-btn");
+        const submitBtn = document.getElementById("editPlanButton");
 
         if (data.exists) {
           errorElement.style.display = "block";
@@ -151,41 +159,6 @@ endblock %} {% block content %}
         console.error("Ошибка при проверке плана:", error);
       });
   }
-
-  document
-    .getElementById("plan-form")
-    .addEventListener("submit", function (event) {
-      const yearInput = document.getElementById("year");
-      const errorElement = document.getElementById("year-error");
-
-      if (errorElement.style.display === "block") {
-        event.preventDefault();
-        alert(
-          '{{ _("У вас уже есть план на этот год! Пожалуйста, выберите другой год.") }}',
-        );
-      }
-    });
-
-  document.querySelectorAll(".app-numeric-input").forEach((input) => {
-    input.addEventListener("input", function (e) {
-      this.value = this.value.replace(",", ".");
-
-      if (this.value && isNaN(parseFloat(this.value))) {
-        this.setCustomValidity(
-          '{{ _("Пожалуйста, введите числовое значение") }}',
-        );
-      } else {
-        this.setCustomValidity("");
-      }
-    });
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const yearInput = document.getElementById("year");
-    if (yearInput.value) {
-      checkExistingPlan(yearInput.value);
-    }
-  });
 </script>
 
 {% endblock %}

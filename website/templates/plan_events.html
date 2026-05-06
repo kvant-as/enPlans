@@ -4,7 +4,7 @@ endblock %} {% block content %}
 <div class="pers-page-with-table">
   <div class="personal-plan-conteiner">
     {{ component.plan_menu(plan, current_user, 'events') }}
-    {% if non_local_econ_execes and local_econ_execes %}
+    {% if non_local_econ_execes or local_econ_execes %}
       <div class="table-container">
         <table class="main-table" id="eventsTable">
           <thead class="main-table-titels">

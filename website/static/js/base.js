@@ -595,7 +595,7 @@ const customDropdown = {
     setupDropdowns: function() {
         this.dropdowns.forEach(dropdown => {
             const toggle = dropdown.querySelector('.dropdown-toggle');
-            const menu = dropdown.querySelector('.dropdown-menu');
+            const menu = dropdown.querySelector('.dropdown-menu-filter');
             const items = dropdown.querySelectorAll('.dropdown-item');
             const selectedOption = dropdown.querySelector('.selected-option');
             
@@ -1310,7 +1310,7 @@ class TableContextMenu {
     showMenu(x, y) {
         this.menu.style.top = `${y}px`;
         this.menu.style.left = `${x}px`;
-        this.menu.style.display = 'block';
+        this.menu.style.display = 'flex';
     }
 
     hideMenu() {
@@ -2474,9 +2474,14 @@ function initConfirmModal(config) {
             noResultsContainer.id = noResultsSelector.replace("#", "");
             noResultsContainer.className = "no-results";
             noResultsContainer.innerHTML = `
-                <div class="choose-plan no-data">
-                    <p>По вашему запросу ничего не найдено</p>
-                    <small>Попробуйте изменить параметры поиска</small>
+                <div class="choose-plan">
+                    <div class="no-info-conteiner">
+                        <div class="empty-state">
+                        {{ icons.icon_no_info() }}
+                        <h1>{{ _('По вашему запросу ничего не найдено') }}</h1>
+                        <p>Попробуйте изменить параметры поиска.</p>
+                        </div>
+                    </div>
                 </div>
             `;
             noResultsContainer.style.display = "none";
@@ -4431,7 +4436,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-   
     const triggerSideBar = document.getElementById("user-profile-panel-trigger");
     const sidebarUser = document.getElementById("user-profile-panel");
     const sidebarOverlay = document.getElementById("sidebar-overlay");
@@ -4457,7 +4461,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (triggerSideBar && sidebarUser) {
         triggerSideBar.addEventListener("click", (e) => {
             e.stopPropagation();
-            openSidebar();
+            if (sidebarUser.classList.contains("show")) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
         });
     }
 
@@ -4466,19 +4474,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener("click", (e) => {
-        if (sidebarUser && sidebarUser.classList.contains("show") && 
-            !sidebarUser.contains(e.target) && 
-            !triggerSideBar.contains(e.target)) {
-            closeSidebar();
+        if (sidebarUser && sidebarUser.classList.contains("show")) {
+            if (!sidebarUser.contains(e.target) && !triggerSideBar.contains(e.target)) {
+                closeSidebar();
+            }
         }
     });
-
-    document.addEventListener("click", (e) => {
-        if (!sidebarUser.contains(e.target) && !triggerSideBar.contains(e.target)) {
-        sidebarUser.classList.remove("show");
-        }
-    });
-    
+        
     if (document.getElementById('exportForm')) {
         initExportPage();
     }
@@ -4537,7 +4539,7 @@ function validateAndEnableButton() {
             });
             
             addButton.disabled = !allFilled;
-            console.log('AddModal validation:', allFilled);
+            // console.log('AddModal validation:', allFilled);
         }
     }
     
@@ -4557,7 +4559,7 @@ function validateAndEnableButton() {
             });
             
             editButton.disabled = !allFilled;
-            console.log('EditModal validation:', allFilled);
+            // console.log('EditModal validation:', allFilled);
         }
     }
 }
@@ -4636,3 +4638,83 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+const menuDotsBtn = document.getElementById('menuDotsBtn');
+const planActionsMenu = document.getElementById('planActionsMenu');
+
+// Функция для закрытия меню
+function closeMenu() {
+    if (planActionsMenu) {
+        planActionsMenu.classList.remove('show');
+    }
+}
+
+// Функция для открытия меню
+function openMenu() {
+    if (planActionsMenu) {
+        // Закрываем все другие меню
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            if (menu !== planActionsMenu) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        planActionsMenu.classList.add('show');
+    }
+}
+
+// Клик по кнопке с точками
+if (menuDotsBtn && planActionsMenu) {
+    menuDotsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        if (planActionsMenu.classList.contains('show')) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    });
+    
+    // Закрытие при клике вне меню
+    document.addEventListener('click', (e) => {
+        if (!menuDotsBtn.contains(e.target) && !planActionsMenu.contains(e.target)) {
+            closeMenu();
+        }
+    });
+    
+    // Закрытие при нажатии Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && planActionsMenu.classList.contains('show')) {
+            closeMenu();
+        }
+    });
+    
+    // Закрытие при скролле (опционально)
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+        if (planActionsMenu.classList.contains('show')) {
+            // Не закрываем сразу, а с небольшой задержкой
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                closeMenu();
+            }, 100);
+        }
+    });
+    
+    // Обработка отправки форм внутри меню
+    const forms = planActionsMenu.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', () => {
+            closeMenu();
+        });
+    });
+    
+    // Обработка кликов по кнопкам внутри меню
+    const buttons = planActionsMenu.querySelectorAll('button:not([type="submit"])');
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            closeMenu();
+        });
+    });
+}

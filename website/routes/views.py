@@ -27,7 +27,6 @@ views = Blueprint('views', __name__)
 def owner_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Получаем token из kwargs (не token!)
         token = kwargs.get('token')
         
         if not token:
@@ -496,45 +495,55 @@ def create_plan():
                     second_header=True,
                     active_tab='create')
     
-@views.route('/edit-plan/<token>', methods=['POST'])
+@views.route('/plans/plan-edit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @owner_only
 @login_required
 @session_required
 def edit_plan(token):
-    current_plan = g.current_plan
+    if request.method == 'POST':
+        current_plan = g.current_plan
 
-    if not current_plan:
-        flash('План не найден или у вас нет прав для его редактирования', 'error')
-        return redirect(url_for('views.plans'))
-    
-    year = request.form.get('year')
-    
-    existing_plan = Plan.query.filter(
-        Plan.user_id == current_user.id,
-        Plan.year == year,
-        Plan.token != token 
-    ).first()
-    
-    if existing_plan:
-        flash(f'У вас уже есть другой план на {year} год!', 'error')
-        return redirect(url_for('views.plans'))
-    
-    energy_saving = to_decimal_3(request.form.get('energy_saving'))
-    share_fuel = to_decimal_3(request.form.get('share_fuel'))
-    saving_fuel = to_decimal_3(request.form.get('saving_fuel'))
-    share_energy = to_decimal_3(request.form.get('share_energy'))
+        if not current_plan:
+            flash('План не найден или у вас нет прав для его редактирования', 'error')
+            return redirect(url_for('views.plans'))
+        
+        year = request.form.get('year')
+        
+        existing_plan = Plan.query.filter(
+            Plan.user_id == current_user.id,
+            Plan.year == year,
+            Plan.token != token 
+        ).first()
+        
+        if existing_plan:
+            flash(f'У вас уже есть другой план на {year} год!', 'error')
+            return redirect(url_for('views.plans'))
+        
+        energy_saving = to_decimal_3(request.form.get('energy_saving'))
+        share_fuel = to_decimal_3(request.form.get('share_fuel'))
+        saving_fuel = to_decimal_3(request.form.get('saving_fuel'))
+        share_energy = to_decimal_3(request.form.get('share_energy'))
 
-    current_plan.year = year
-    current_plan.energy_saving = energy_saving
-    current_plan.share_fuel = share_fuel
-    current_plan.saving_fuel = saving_fuel
-    current_plan.share_energy = share_energy
-    db.session.commit()
-    
-    flash('Изменения приняты', 'success')
-    update_ChangeTimePlan(current_plan.id)
-    return redirect(url_for('views.plan_review', token=current_plan.token))  
+        current_plan.year = year
+        current_plan.energy_saving = energy_saving
+        current_plan.share_fuel = share_fuel
+        current_plan.saving_fuel = saving_fuel
+        current_plan.share_energy = share_energy
+        db.session.commit()
+        
+        flash('Изменения приняты', 'success')
+        update_ChangeTimePlan(current_plan.id)
+        return redirect(url_for('views.plan_review', token=current_plan.token))  
+    else:
+        plan = g.current_plan
+        
+        return render_template(
+            'plan_edit.html',
+            plan_back_header = True,
+            current_user=current_user,
+            plan=plan
+        )   
     
 @views.route('/delete-plan/<token>', methods=['POST'])
 @user_with_all_params()

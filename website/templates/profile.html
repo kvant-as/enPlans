@@ -1,18 +1,15 @@
-{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%endblock %} 
+{% block content %}
 
 <div class="pers-page">
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Личный кабинет') }}</a>
     <div class="short-acc-info">
       <div class="circle-fi">
-        {{ current_user.first_name[:1] | upper }}{{ current_user.last_name[:1] |
-        upper }}
+        {{ current_user.first_name[:1] | upper }}{{ current_user.last_name[:1] | upper }}
       </div>
       <div class="employee-card">
-        <a class="employee-name"
-          >{{ current_user.first_name}} {{ current_user.last_name}}</a
-        >
+        <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
         <a class="employee-position">{{ current_user.post}}</a>
         <a class="employee-company">
           {% if current_user.organization %} {{ current_user.organization.name
@@ -26,18 +23,36 @@ endblock %} {% block content %}
     <div class="answer-highlight" style="margin-bottom: 0">
       <div class="highlight-icon">💡</div>
       <p>
-        <strong>Отредактировать</strong> персональные данные и отчитывающийся
-        субъект - можно только в случае <strong>отсутствия</strong> планов
+        <strong>Отредактировать</strong> персональные данные и отчитывающийся субъект - можно только в случае <strong>отсутствия</strong> планов
       </p>
     </div>
     {% endif %}
     <hr />
-    <a class="sername">{{ _('Данные пользователя') }}</a>
-    <form
-      id="editprofileForm"
-      method="POST"
-      action="{{ url_for('auth.edit_param') }}"
-    >
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Данные пользователя') }}</a>
+      </div>
+      <div class="header-content-right">
+          <div class="dropdown-menu-container">
+              <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Аккаунт">
+                  {{ icons.icon_dots() }}
+              </button>
+              
+              <div class="dropdown-menu" id="planActionsMenu">
+                  <div class="nav-menu-list">
+                    <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/'">
+                        {{ icons.icon_edit() }}
+                        <span>{{ _('Редактировать') }}</span>
+                    </button>
+
+                    
+                  </div>
+              </div>
+          </div>
+
+      </div>
+    </div>
+    <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="row-app-group">
         <div class="app-group">
@@ -98,9 +113,9 @@ endblock %} {% block content %}
             class="app-input"
             readonly
           />
-          <div class="input-mes" title="{{ _('Не изм.') }}">
+          {#<div class="input-mes" title="{{ _('Не изм.') }}">
             {{ icons.icon_edit_off()}}
-          </div>
+          </div>#}
         </div>
       </div>
       <div class="app-group">
@@ -144,11 +159,32 @@ endblock %} {% block content %}
         </button>
       </div>
     </form>
-    <hr />
-    <a class="sername"
-      >{% if current_user.is_auditor %}{{ _('Региональное управление') }}{% else
-      %}{{ _('Данные отчитывающегося субъекта') }}{% endif %}</a
-    >
+    <hr/>
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{% if current_user.is_auditor %}{{ _('Региональное управление') }}{% else
+      %}{{ _('Данные отчитывающегося субъекта') }}{% endif %}</a>
+      </div>
+      <div class="header-content-right">
+          <div class="dropdown-menu-container">
+              <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="ыыфваф">
+                  {{ icons.icon_dots() }}
+              </button>
+              
+              <div class="dropdown-menu" id="planActionsMenu">
+                  <div class="nav-menu-list">
+                    <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/'">
+                        {{ icons.icon_edit() }}
+                        <span>{{ _('Редактировать') }}</span>
+                    </button>
+
+                    
+                  </div>
+              </div>
+          </div>
+
+      </div>
+    </div>
     {% if current_user.organization %}
     <div class="profile-org">
       <div class="row-app-group">
@@ -225,7 +261,7 @@ endblock %} {% block content %}
       </button>
     </div>
     <hr />
-    <a class="sername">{{ _('Прочая информация') }}</a>
+    <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="support-txt-cont">
       <p class="row">
         <strong>Наименование *</strong> — обязательные поля для
