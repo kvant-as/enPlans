@@ -1393,9 +1393,9 @@ function initExportPage() {
         form.action = formatSelected ? `/export-to/${formatInput.value}` : "";
     }
 
-    document.querySelectorAll(".choose-conteiner").forEach(item => {
+    document.querySelectorAll(".export-choose").forEach(item => {
         item.addEventListener("click", () => {
-            document.querySelectorAll(".choose-conteiner").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".export-choose").forEach(el => el.classList.remove("active"));
             item.classList.add("active");
             formatInput.value = item.dataset.format;
             updateButtonState();
@@ -4639,62 +4639,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
-const menuDotsBtn = document.getElementById('menuDotsBtn');
-const planActionsMenu = document.getElementById('planActionsMenu');
-
-// Функция для закрытия меню
-function closeMenu() {
-    if (planActionsMenu) {
-        planActionsMenu.classList.remove('show');
+function initDropdownMenu(buttonId, menuId) {
+    const button = document.getElementById(buttonId);
+    const menu = document.getElementById(menuId);
+    
+    if (!button || !menu) {
+        console.warn(`Dropdown menu not initialized: button with id "${buttonId}" or menu with id "${menuId}" not found`);
+        return;
     }
-}
-
-// Функция для открытия меню
-function openMenu() {
-    if (planActionsMenu) {
-        // Закрываем все другие меню
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-            if (menu !== planActionsMenu) {
-                menu.classList.remove('show');
+    
+    function closeMenu() {
+        menu.classList.remove('show');
+    }
+    
+    function openMenu() {
+        document.querySelectorAll('.dropdown-menu.show').forEach(otherMenu => {
+            if (otherMenu !== menu) {
+                otherMenu.classList.remove('show');
             }
         });
-        
-        planActionsMenu.classList.add('show');
+        menu.classList.add('show');
     }
-}
-
-// Клик по кнопке с точками
-if (menuDotsBtn && planActionsMenu) {
-    menuDotsBtn.addEventListener('click', (e) => {
+    
+    button.addEventListener('click', (e) => {
         e.stopPropagation();
         
-        if (planActionsMenu.classList.contains('show')) {
+        if (menu.classList.contains('show')) {
             closeMenu();
         } else {
             openMenu();
         }
     });
     
-    // Закрытие при клике вне меню
     document.addEventListener('click', (e) => {
-        if (!menuDotsBtn.contains(e.target) && !planActionsMenu.contains(e.target)) {
+        if (!button.contains(e.target) && !menu.contains(e.target)) {
             closeMenu();
         }
     });
     
-    // Закрытие при нажатии Escape
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && planActionsMenu.classList.contains('show')) {
+        if (e.key === 'Escape' && menu.classList.contains('show')) {
             closeMenu();
         }
     });
     
-    // Закрытие при скролле (опционально)
     let scrollTimeout;
     window.addEventListener('scroll', () => {
-        if (planActionsMenu.classList.contains('show')) {
-            // Не закрываем сразу, а с небольшой задержкой
+        if (menu.classList.contains('show')) {
             if (scrollTimeout) clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 closeMenu();
@@ -4702,19 +4693,29 @@ if (menuDotsBtn && planActionsMenu) {
         }
     });
     
-    // Обработка отправки форм внутри меню
-    const forms = planActionsMenu.querySelectorAll('form');
+    const forms = menu.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', () => {
             closeMenu();
         });
     });
     
-    // Обработка кликов по кнопкам внутри меню
-    const buttons = planActionsMenu.querySelectorAll('button:not([type="submit"])');
-    buttons.forEach(button => {
-        button.addEventListener('click', () => {
+    const buttons = menu.querySelectorAll('button:not([type="submit"])');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
             closeMenu();
         });
     });
+}
+
+if (document.getElementById('dots-profile-org')) {
+    initDropdownMenu('dots-profile-org', 'menu-profile-org');
+}
+
+if (document.getElementById('dots-profile-user')) {
+    initDropdownMenu('dots-profile-user', 'menu-profile-user');
+}
+
+if (document.getElementById('menuDotsBtn')) {
+    initDropdownMenu('menuDotsBtn', 'planActionsMenu');
 }

@@ -1,6 +1,8 @@
 {% extends "base.html" %} {% block title %}{{ _('Обзор') }} - enPlans{% endblock
 %} {% block content %}
 
+{{ component.back_header(plan, current_user) }}
+
 <div class="pers-page">
   <div class="personal-acc-conteiner" style="margin-top: 15px;">
     <div class="header-content">

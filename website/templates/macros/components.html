@@ -100,7 +100,6 @@
 {% macro no_data() %}
 {% endmacro %}
 
-
 {% macro status_plan(plan, current_user=None) %}
     <a class="status-plan 
         {% if plan.is_draft %}status-draft
@@ -134,3 +133,153 @@
         {% endif %}
     </a>
 {% endmacro %}
+
+{% macro back_header(plan=None, current_user=None, show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
+<div class="header-cont-for-back">
+    <div class="plan-back-header">
+        <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ back_url }}'">
+            {{ icons.back_icon() }}
+            <span class="tooltip-text">{{ _('Вернуться назад') }}</span>
+            <span class="btn-text">{{ back_text if back_text else _('Назад') }}</span>
+        </button>
+
+        <a class="plan-info">
+            <span class="plan-text">{{ plan_text if plan_text else _('План энергосбережения на') }}</span>
+            {% if show_plan_info and plan %}
+            <span class="plan-year">{{ plan.year }} {{ _('год') }}</span>
+            {% endif %}
+        </a>
+        
+        {% if show_plan_info and plan %}
+        {{ status_plan(plan, current_user) }}
+        {% endif %}
+    </div> 
+</div>
+{% endmacro %}
+
+{% macro navigation_header(active_tab='plans', current_user=None) %}
+<div class="header-cont">
+    <nav class="navigation-container">
+        <div class="nav-item {% if active_tab == 'plans' %} active{% endif %}" onclick="window.location.href='/plans'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_plans() }}
+                {% if active_tab == 'plans' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Планы') }}</span>
+            <span class="nav-text-mobile">{{ _('Планы') }}</span>
+        </div>
+        
+        {% if current_user and current_user.is_auditor == false %}
+        <div class="nav-item {% if active_tab == 'create' %} active{% endif %}" onclick="window.location.href='/create-plan'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_add() }}
+                {% if active_tab == 'create' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Создать') }}</span>
+            <span class="nav-text-mobile">{{ _('Создать') }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="nav-item disabled-tab">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_stats() }}
+            </div>
+            <span class="nav-text">{{ _('Статистика') }}</span>
+            <span class="nav-text-mobile">{{ _('Статистика') }}</span>
+        </div>
+        
+        <div class="nav-item {% if active_tab == 'export' %} active{% endif %}" onclick="window.location.href='/export'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_export() }}
+                {% if active_tab == 'export' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Экспорт') }}</span>
+            <span class="nav-text-mobile">{{ _('Экспорт') }}</span>
+        </div>
+        
+        <div class="nav-item {% if active_tab == 'account' %} active{% endif %}" onclick="window.location.href='/profile'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_profile() }}
+                {% if active_tab == 'account' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Кабинет') }}</span>
+            <span class="nav-text-mobile">{{ _('Кабинет') }}</span>
+        </div>
+        
+        {% if current_user and current_user.is_admin == true %}
+        <div class="nav-item {% if active_tab == 'admin' %} active{% endif %}" onclick="window.location.href='/admin'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_admin() }}
+                {% if active_tab == 'admin' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('А-панель') }}</span>
+            <span class="nav-text-mobile">{{ _('А-панель') }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="active-drop"></div>
+    </nav>
+</div>
+{% endmacro %}
+
+{% macro plan_navigation_header(active_plan_tab='review', plan=None, current_user=None) %}
+<div class="header-cont">
+    <nav class="navigation-container">
+        <div class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}" 
+             onclick="window.location.href='/plans/plan-review/{{plan.token}}'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_view() }}
+                {% if active_plan_tab == 'review' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Обзор') }}</span>
+            <span class="nav-text-mobile">{{ _('Обзор') }}</span>
+        </div>
+        
+        {% if current_user and current_user.is_auditor == True %}
+        <div class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}" 
+             onclick="window.location.href='/plans/plan-audit/{{plan.token}}'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_audit() }}
+                {% if active_plan_tab == 'audit' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Аудит') }}</span>
+            <span class="nav-text-mobile">{{ _('Аудит') }}</span>
+        </div>
+        {% endif %}
+        
+        <div class="nav-item {% if active_plan_tab == 'directions' %} active{% endif %}" 
+             onclick="window.location.href='/plans/plan-directions/{{plan.token}}'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_directions() }}
+                {% if active_plan_tab == 'directions' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Направления') }}</span>
+            <span class="nav-text-mobile">{{ _('Напр.') }}</span>
+        </div>
+        
+        <div class="nav-item {% if active_plan_tab == 'events' %} active{% endif %}" 
+             onclick="window.location.href='/plans/plan-events/{{plan.token}}'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_events() }}
+                {% if active_plan_tab == 'events' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Мероприятия') }}</span>
+            <span class="nav-text-mobile">{{ _('Меропр.') }}</span>
+        </div>
+        
+        <div class="nav-item {% if active_plan_tab == 'indicators' %} active{% endif %}" 
+             onclick="window.location.href='/plans/plan-indicators/{{plan.token}}'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_indicators() }}
+                {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Показатели') }}</span>
+            <span class="nav-text-mobile">{{ _('Показ.') }}</span>
+        </div>
+        
+        <div class="active-drop"></div>
+    </nav>
+</div>
+{% endmacro %}
+
+

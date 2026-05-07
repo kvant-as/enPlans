@@ -23,8 +23,8 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String())
     is_admin = db.Column(db.Boolean, default=False)
     is_auditor = db.Column(db.Boolean, default=False)
-    last_active = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
-    begin_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
+    last_active = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    begin_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     reset_password_token = db.Column(db.String(255), nullable=True)
     reset_password_expires = db.Column(db.DateTime, nullable=True)
     organization = db.relationship('Organization',
@@ -92,8 +92,8 @@ class Plan(db.Model):
         index=True
     )
     year = db.Column(db.Integer, nullable=False)
-    begin_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
-    change_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
+    begin_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    change_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     sent_time = db.Column(db.DateTime)
     audit_time = db.Column(db.DateTime)
     energy_saving = db.Column(Numeric(scale=3))
@@ -128,7 +128,7 @@ class Plan(db.Model):
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)
-    begin_time = db.Column(db.DateTime, default=TimeByMinsk)
+    begin_time = db.Column(db.DateTime, default=TimeByMinsk())
     luck = db.Column(db.Boolean, default=False)
     is_owner = db.Column(db.Boolean, default=False)
     note = db.Column(db.String(500), nullable=False)
@@ -270,7 +270,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     message = db.Column(db.String(140), nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=TimeByMinsk)
+    created_at = db.Column(db.DateTime, default=TimeByMinsk())
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
@@ -278,11 +278,10 @@ class ChatMessage(db.Model):
     chat_id = db.Column(db.Integer, db.ForeignKey('chats.id', ondelete='CASCADE'), nullable=False)
     is_user = db.Column(db.Boolean, nullable=False, default=True)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
+    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     chat = db.relationship('Chat', foreign_keys=[chat_id], back_populates='messages')
     def __repr__(self):
         return f'<Message {self.id} in chat {self.chat_id}>'
-
 
 class Chat(db.Model):
     __tablename__ = 'chats'
@@ -295,5 +294,5 @@ class Chat(db.Model):
                               cascade='all, delete-orphan',
                               passive_deletes=True,
                               lazy='dynamic')
-    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk)
-    updated_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk, onupdate=TimeByMinsk)
+    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    updated_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk(), onupdate=TimeByMinsk())

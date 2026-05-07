@@ -193,7 +193,7 @@ def edit_param():
     db.session.commit()
 
     flash('Изменения внесены!', 'success')
-    return redirect(request.referrer or url_for('views.profile'))
+    return redirect(url_for('views.profile'))  #request.referrer or 
 
 @auth.route('/logout')
 @login_required

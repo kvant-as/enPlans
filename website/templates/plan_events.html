@@ -1,5 +1,9 @@
-{% extends "base.html" %} {% block title %}{{ _('Мероприятия') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Мероприятия') }} - enPlans{%endblock %}
+{% block content %}
+
+{{ component.back_header(plan, current_user) }}
+
+{{ component.plan_navigation_header('events', plan, current_user) }}
 
 <div class="pers-page-with-table">
   <div class="personal-plan-conteiner">
@@ -484,7 +488,8 @@ endblock %} {% block content %}
           <h1>{{ _('Нет мероприятий') }}</h1>
           <p>У вас пока что нет мероприятий. Чтобы начать работу, добавьте новое мероприятие.</p>
         </div>
-      </div> 
+      </div>
+      {{ affects.bg_effect() }}  
     {% endif %}
   </div>
 </div>

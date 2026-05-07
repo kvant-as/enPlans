@@ -1,6 +1,8 @@
 {% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%endblock %} 
 {% block content %}
 
+{{ component.navigation_header('account', current_user) }}
+
 <div class="pers-page">
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Личный кабинет') }}</a>
@@ -23,7 +25,7 @@
     <div class="answer-highlight" style="margin-bottom: 0">
       <div class="highlight-icon">💡</div>
       <p>
-        <strong>Отредактировать</strong> персональные данные и отчитывающийся субъект - можно только в случае <strong>отсутствия</strong> планов
+        <strong>Отредактировать</strong> отчитывающийся субъект - можно только в случае <strong>отсутствия</strong> планов
       </p>
     </div>
     {% endif %}
@@ -33,132 +35,110 @@
         <a class="name" style="padding-bottom: 0">{{ _('Данные пользователя') }}</a>
       </div>
       <div class="header-content-right">
-          <div class="dropdown-menu-container">
-              <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Аккаунт">
-                  {{ icons.icon_dots() }}
-              </button>
-              
-              <div class="dropdown-menu" id="planActionsMenu">
-                  <div class="nav-menu-list">
-                    <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/'">
-                        {{ icons.icon_edit() }}
-                        <span>{{ _('Редактировать') }}</span>
-                    </button>
-
-                    
-                  </div>
+        <div class="dropdown-menu-container">
+          <button type="button" class="svg-btn dots-btn" id="dots-profile-user" data-tooltip="Действия с профилем">
+              {{ icons.icon_dots() }}
+          </button>
+          
+          <div class="dropdown-menu" id="menu-profile-user">
+              <div class="nav-menu-list">
+                <button class="nav-menu-item" onclick="window.location.href='/profile/edit'">
+                    {{ icons.icon_edit() }}
+                    <span>{{ _('Редактировать профиль') }}</span>
+                </button>
+                <button class="nav-menu-item" disabled>
+                    {{ icons.icon_password() }}
+                    <span>{{ _('Изменить пароль') }}</span>
+                </button>
+                <button class="nav-menu-item" disabled>
+                    {{ icons.icon_email() }}
+                    <span>{{ _('Изменить эл. адрес') }}</span>
+                </button>
               </div>
           </div>
-
+        </div>
       </div>
     </div>
-    <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Фамилия *') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input
-              type="text"
-              name="last_name"
-              maxlength="30"
-              value="{{current_user.last_name}}"
-              placeholder="{{ _('Введите фамилию') }}"
-              class="app-input"
-              required
-            />
-          </div>
-        </div>
-        <div class="app-group">
-          <label>{{ _('Имя *') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input
-              type="text"
-              name="first_name"
-              maxlength="30"
-              value="{{current_user.first_name}}"
-              class="app-input"
-              placeholder="{{ _('Введите Имя') }}"
-              required
-            />
-          </div>
-        </div>
-      </div>
+    <div class="row-app-group">
       <div class="app-group">
-        <label>{{ _('Отчество') }}</label>
+        <label>{{ _('Фамилия') }} <span class="required-star">*</span></label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
             type="text"
-            maxlength="30"
-            name="patronymic_name"
-            value="{{current_user.patronymic_name}}"
-            placeholder="{{ _('Введите отчество') }}"
-            class="app-input"
-            required
-          />
-        </div>
-      </div>
-      <div class="app-group">
-        <label>{{ _('Email *') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_email() }}
-          <input
-            type="text"
-            maxlength=""
-            value="{{current_user.email}}"
-            placeholder="{{ _('Введите email') }}"
+            value="{{current_user.last_name}}"
+            placeholder="{{ _('Фамилия пользователя') }}"
             class="app-input"
             readonly
           />
-          {#<div class="input-mes" title="{{ _('Не изм.') }}">
-            {{ icons.icon_edit_off()}}
-          </div>#}
         </div>
       </div>
       <div class="app-group">
-        <label>{{ _('Телефон *') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_contacts() }}
-          <input
-            type="text"
-            maxlength="13"
-            name="phone"
-            value="{{current_user.phone}}"
-            placeholder="Введите номер телефона"
-            class="app-input"
-            required
-          />
-        </div>
-      </div>
-      <div class="app-group">
-        <label>{{ _('Должность') }}</label>
+        <label>{{ _('Имя') }} <span class="required-star">*</span></label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
             type="text"
-            maxlength="25"
-            name="post"
-            value="{{ current_user.post }}"
-            placeholder="{{ _('Введите должность') }}"
+            value="{{current_user.first_name}}"
             class="app-input"
+            placeholder="{{ _('Имя пользователя') }}"
+            readonly
           />
         </div>
       </div>
-      <div class="button-area">
-        <button
-          type="button"
-          class="main-btn main-btn-primary"
-          id="editprofileButton"
-          style="{% if not can_change_modal or current_user.is_auditor %}display:none;{% endif %}"
-        >
-          {{ icons.icon_confirm() }}
-          <span class="btn-text">{{ _('Применить изменения') }}</span>
-        </button>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Отчество') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_profile() }}
+        <input
+          type="text"
+          value="{{current_user.patronymic_name}}"
+          placeholder="{{ _('Отчество пользователя') }}"
+          class="app-input"
+          readonly
+        />
       </div>
-    </form>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Email') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_email() }}
+        <input
+          type="text"
+          value="{{current_user.email}}"
+          placeholder="{{ _('Email пользователя') }}"
+          class="app-input"
+          readonly
+        />
+      </div>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+      <div class="input-with-icon">
+        {{ icons.icon_contacts() }}
+        <input
+          type="text"
+          value="{{current_user.phone}}"
+          placeholder="Номер телефона пользователя"
+          class="app-input"
+          readonly
+        />
+      </div>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Должность') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_profile() }}
+        <input
+          type="text"
+          value="{{ current_user.post }}"
+          placeholder="{{ _('Должность пользователя') }}"
+          class="app-input"
+          readonly
+        />
+      </div>
+    </div>
     <hr/>
     <div class="header-content">
       <div class="header-content-left">
@@ -167,40 +147,47 @@
       </div>
       <div class="header-content-right">
           <div class="dropdown-menu-container">
-              <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="ыыфваф">
+              <button type="button" class="svg-btn dots-btn" id="dots-profile-org" data-tooltip="Действия с организацией">
                   {{ icons.icon_dots() }}
               </button>
               
-              <div class="dropdown-menu" id="planActionsMenu">
+              <div class="dropdown-menu" id="menu-profile-org">
                   <div class="nav-menu-list">
-                    <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/'">
-                        {{ icons.icon_edit() }}
-                        <span>{{ _('Редактировать') }}</span>
+                    <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal or current_user.is_auditor %}disabled{% endif %}>
+                        {{ icons.icon_org() }}
+                        <span>{{ _('Сменить организацию') }}</span>
                     </button>
-
+                    <button class="nav-menu-item" disabled>
+                        {{ icons.icon_edit() }}
+                        <span>{{ _('Запросить изменение данных') }}</span>
+                    </button>
+                    <button class="nav-menu-item" disabled>
+                        {{ icons.icon_add() }}
+                        <span>{{ _('Выбрать ещё одну') }}</span>
+                    </button>
                     
                   </div>
               </div>
           </div>
-
       </div>
     </div>
     {% if current_user.organization %}
     <div class="profile-org">
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Организация *') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_org() }}
-            <input
-              type="text"
-              value="{{ current_user.organization.name }}"
-              readonly
-              class="app-input"
-            />
-          </div>
+      <div class="app-group">
+        <label>{{ _('Организация') }} <span class="required-star">*</span></label>
+        <div class="input-with-icon">
+          {{ icons.icon_org() }}
+          <input
+            type="text"
+            value="{{ current_user.organization.name }}"
+            readonly
+            class="app-input"
+          />
         </div>
-        {% if current_user.is_auditor %} {% else %}
+      </div>
+      
+    {% if current_user.is_auditor %} {% else %}
+      <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('ОКПО') }}</label>
           <div class="input-with-icon">
@@ -215,9 +202,20 @@
             />
           </div>
         </div>
-        {% endif %}
+        <div class="app-group">
+          <label>{{ _('УНП') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_org() }}
+            <input
+              type="text"
+              value="{{ current_user.organization.ynp|default('Пусто', true) }}"
+              readonly
+              class="app-input"
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    {% endif %}
     {% elif current_user.ministry %}
     <div class="profile-min">
       <div class="app-group">
@@ -249,18 +247,7 @@
       </div>
     </div>
     {%endif%}
-    <div class="button-area">
-      <button
-        id="orgUserbutton"
-        type="button"
-        class="main-btn main-btn-primary"
-        style="{% if not can_change_modal or current_user.is_auditor %}display:none;{% endif %}"
-      >
-        {{ icons.icon_edit() }}
-        <span class="btn-text">{{ _('Изменить субъект') }}</span>
-      </button>
-    </div>
-    <hr />
+    <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="support-txt-cont">
       <p class="row">
@@ -291,5 +278,5 @@
     </div>
   </div>
 </div>
-
+{{ affects.bg_effect() }} 
 {% endblock %}

@@ -1,6 +1,8 @@
 {% extends "base.html" %} {% block title %}{{ _('Планы') }} - enPlans{% endblock
 %} {% block content %}
 
+{{ component.navigation_header('plans', current_user) }}
+
 <div class="pers-page">
   <div class="personal-acc-conteiner">
     <div class="header-content">
@@ -9,14 +11,13 @@
       </div>
       <div class="header-content-right">
         {% if current_user.is_auditor != true %}
-        <button
-          type="button"
-          class="main-btn main-btn-primary"
-          onclick="window.location.href = '/create-plan'"
-        >
-          {{ icons.icon_add() }}
-          <span class="btn-text">{{ _('Создать новый') }}</span>
-        </button>
+          <button
+            type="button"
+            class="main-btn main-btn-primary"
+            onclick="window.location.href = '/create-plan'">
+            {{ icons.icon_add() }}
+            <span class="btn-text">{{ _('Создать новый') }}</span>
+          </button>
         {%endif%}
       </div>
     </div>
@@ -367,6 +368,5 @@
   </div>
 </div>
 
-<script></script>
-
+{{ affects.bg_effect() }} 
 {% endblock %}

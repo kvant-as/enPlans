@@ -61,7 +61,7 @@ def change_language(lang_code):
         session['language'] = lang_code
     return redirect(request.referrer or url_for('views.login'))
 
-@views.route('/profile')
+@views.route('/profile', methods = ['GET'])
 @user_with_all_params()
 @login_required
 @session_required
@@ -73,11 +73,25 @@ def profile():
     return render_template('profile.html', 
                         can_change_modal=can_change_modal,
                         hide_header=False,
-                        second_header = True,
-                        active_tab='account',
                         current_user=current_user,
                         change_orgUser_modal = True
                            )
+
+@views.route('/profile/edit', methods = ['POST', 'GET'])
+@user_with_all_params()
+@login_required
+@session_required
+def profile_edit():
+    if request.method == 'POST':
+        pass
+    else:
+
+        return render_template('profile_edit.html', 
+                            hide_header=False,
+                            current_user=current_user)
+
+
+
 
 @views.route('/api/organizations')
 @login_required
@@ -329,9 +343,7 @@ def plans():
         'plans.html',
         **context,
         current_user=current_user,
-        hide_header=False,
-        second_header=True,
-        active_tab='plans'
+        hide_header=False
     )
 
 @views.route('/export', methods=['GET'])
@@ -356,9 +368,7 @@ def export():
         'export.html',
         **context,
         current_user=current_user,
-        hide_header=False,
-        second_header=True,
-        active_tab='export'
+        hide_header=False
     )
     
 @views.route('/export-to/<string:format>', methods=['POST'])
@@ -429,9 +439,7 @@ def create_plan():
         if existing_plan:
             flash(f'У вас уже есть план на {year} год!', 'error')
             return render_template('create_plan.html', 
-                        hide_header=False,
-                        second_header=True,
-                        active_tab='create')
+                        hide_header=False)
 
         energy_saving = to_decimal_3(request.form.get('energy_saving'))
         share_fuel = to_decimal_3(request.form.get('share_fuel'))
@@ -491,9 +499,7 @@ def create_plan():
         return redirect(url_for('views.plans'))
 
     return render_template('create_plan.html', 
-                    hide_header=False,
-                    second_header=True,
-                    active_tab='create')
+                    hide_header=False)
     
 @views.route('/plans/plan-edit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -540,7 +546,6 @@ def edit_plan(token):
         
         return render_template(
             'plan_edit.html',
-            plan_back_header = True,
             current_user=current_user,
             plan=plan
         )   
@@ -592,9 +597,7 @@ def stats():
     if request.method == 'POST':
         pass
     return render_template('stats.html', 
-                        hide_header=False,
-                        second_header = True,
-                        active_tab='stats')
+                        hide_header=False)
 
 @views.route('/plans/plan-review/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -618,10 +621,7 @@ def plan_review(token):
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
                         hide_header=False,
-                        plan_header=True,
-                        plan_back_header=True,
-                        sentmodal=current_plan.is_control,
-                        active_plan_tab='review')
+                        sentmodal=current_plan.is_control)
     
 # @views.route('/plans/plan-review/<int:id>', methods=['GET'])
 # @login_required
@@ -648,10 +648,7 @@ def plan_audit(token):
     
     return render_template('plan_audit.html', 
                         plan=current_plan,     
-                        hide_header=False,
-                        plan_header=True,
-                        plan_back_header=True,
-                        active_plan_tab='audit')
+                        hide_header=False)
 
 @views.route('/plans/plan-directions/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -678,9 +675,6 @@ def plan_directions(token):
                         directions=directions,
                         plan=current_plan,  
                         hide_header=False,
-                        plan_header=True,
-                        plan_back_header=True,
-                        active_plan_tab='directions',
                         add_direction_modal=True,
                         confirmModal=True,
                         sentmodal=current_plan.is_control,
@@ -830,9 +824,6 @@ def plan_events(token):
                         total_metrics=total_metrics,
                         plan=current_plan, 
                         hide_header=False,
-                        plan_header=True,
-                        plan_back_header=True,
-                        active_plan_tab='events',
                         add_event_modal=True,
                         confirmModal=True,
                         edit_event_modal=True,
@@ -1025,15 +1016,11 @@ def plan_indicators(token):
                         indicators_non_madatory=indicators_non_mandatory,
                         indicators=indicators,
                         hide_header=False,
-                        plan_header=True,
-                        plan_back_header=True,
-                        active_plan_tab='indicators',
                         add_indicator_modal=True,
                         edit_indicator_modal=True,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,
-                        context_menu = True
-                         )
+                        context_menu = True)
 
 @views.route('/get-indicator/<int:id>', methods=['GET'])
 @user_with_all_params()

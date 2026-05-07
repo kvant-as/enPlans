@@ -1,6 +1,10 @@
 {% extends "base.html" %} {% block title %}{{ _('Обзор') }} - enPlans{% endblock
 %} {% block content %}
 
+{{ component.back_header(plan, current_user) }}
+
+{{ component.plan_navigation_header('review', plan, current_user) }}
+
 <div class="pers-page">
   <div class="personal-acc-conteiner" style="margin-top: 0">
     <div class="header-content">
@@ -41,9 +45,6 @@
                               <span>{{ _('Пройти контроль') }}</span>
                           </button>
                       </form>
-
-          
-                
 
                       <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
                           {% if plan.is_sent or plan.is_approved or plan.is_error %}disabled{% endif %}>
@@ -393,6 +394,9 @@
     </div>
   </div>
 </div>
+
+{{ affects.bg_effect() }} 
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     window.ticketInfoInstance = new window.TicketInfo();

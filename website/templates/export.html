@@ -1,5 +1,6 @@
-{% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - enPlans {%endblock %} 
+{% block content %}
+{{ component.navigation_header('export', current_user) }}
 <div class="pers-page">
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Экспорт данных') }}</a>
@@ -13,30 +14,30 @@ endblock %} {% block content %}
     </div>
     #}
 
-    <div class="choose-conteiner-area">
-      <div class="choose-conteiner" data-format="xlsx">
+    <div class="export-choose-area">
+      <div class="export-choose" data-format="xlsx">
         {{ icons.icon_xlsx() }}
-        <div class="choose-conteiner-text">
-          <a class="choose-conteiner-text-title">Формат (.xlsx)</a>
-          <a class="choose-conteiner-text-dis"
+        <div class="export-choose-text">
+          <a class="export-choose-text-title">Формат (.xlsx)</a>
+          <a class="export-choose-text-dis"
             >Таблица с данными планов и мероприятий</a
           >
         </div>
       </div>
-      <div class="choose-conteiner disabled" data-format="pdf">
+      <div class="export-choose disabled" data-format="pdf">
         {{ icons.icon_pdf() }}
-        <div class="choose-conteiner-text">
-          <a class="choose-conteiner-text-title">Формат (.pdf)</a>
-          <a class="choose-conteiner-text-dis"
+        <div class="export-choose-text">
+          <a class="export-choose-text-title">Формат (.pdf)</a>
+          <a class="export-choose-text-dis"
             >Форматированный план для печати</a
           >
         </div>
       </div>
-      <div class="choose-conteiner disabled" data-format="xml">
+      <div class="export-choose disabled" data-format="xml">
         {{ icons.icon_xml() }}
-        <div class="choose-conteiner-text">
-          <a class="choose-conteiner-text-title">Формат (.xml)</a>
-          <a class="choose-conteiner-text-dis"
+        <div class="export-choose-text">
+          <a class="export-choose-text-title">Формат (.xml)</a>
+          <a class="export-choose-text-dis"
             >Структурированные данные для программ</a
           >
         </div>
@@ -339,4 +340,5 @@ endblock %} {% block content %}
     </form>
   </div>
 </div>
+{{ affects.bg_effect() }} 
 {% endblock %}

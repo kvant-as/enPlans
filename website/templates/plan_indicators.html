@@ -1,5 +1,9 @@
-{% extends "base.html" %} {% block title %}{{ _('Показатели') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Показатели') }} - enPlans{%endblock %}
+{% block content %}
+
+{{ component.back_header(plan, current_user) }}
+
+{{ component.plan_navigation_header('indicators', plan, current_user) }}
 
 <div class="pers-page-with-table">
   <div class="personal-plan-conteiner">

@@ -1,0 +1,101 @@
+{% extends "base.html" %} {% block title %}{{ _('Редактирование профиля') }} - enPlans{%endblock %} 
+{% block content %}
+
+{{ component.back_header(plan, current_user, show_plan_info=False, back_url='/profile', plan_text = ('Редактирование профиля')) }}
+
+<div class="pers-page" style="margin-top: 15px;">
+  <div class="personal-acc-conteiner">
+    <a class="name">{{ _('Редактирование профиля') }}</a>
+    <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Фамилия') }} <span class="required-star">*</span></label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              name="last_name"
+              maxlength="30"
+              value="{{current_user.last_name}}"
+              placeholder="{{ _('Введите фамилию') }}"
+              class="app-input"
+              required
+            />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Имя') }} <span class="required-star">*</span></label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              name="first_name"
+              maxlength="30"
+              value="{{current_user.first_name}}"
+              class="app-input"
+              placeholder="{{ _('Введите Имя') }}"
+              required
+            />
+          </div>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Отчество') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            maxlength="30"
+            name="patronymic_name"
+            value="{{current_user.patronymic_name}}"
+            placeholder="{{ _('Введите отчество') }}"
+            class="app-input"
+            required
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+        <div class="input-with-icon">
+          {{ icons.icon_contacts() }}
+          <input
+            type="text"
+            maxlength="13"
+            name="phone"
+            value="{{current_user.phone}}"
+            placeholder="Введите номер телефона"
+            class="app-input"
+            required
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Должность') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            maxlength="25"
+            name="post"
+            value="{{ current_user.post }}"
+            placeholder="{{ _('Введите должность') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="button-area">
+        <button
+          type="button"
+          class="main-btn main-btn-primary"
+          id="editprofileButton"
+        >
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Применить изменения') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{{ affects.bg_effect() }} 
+{% endblock %}

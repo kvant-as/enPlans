@@ -1,5 +1,7 @@
-{% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - enPlans{%endblock %} 
+{% block content %}
+
+{{ component.navigation_header('create', current_user) }}
 
 <div class="pers-page">
   <div class="personal-acc-conteiner">
@@ -124,6 +126,7 @@ endblock %} {% block content %}
     </form>
   </div>
 </div>
+{{ affects.bg_effect() }} 
 
 <script>
   function checkExistingPlan(year) {
@@ -187,5 +190,4 @@ endblock %} {% block content %}
     }
   });
 </script>
-
 {% endblock %}

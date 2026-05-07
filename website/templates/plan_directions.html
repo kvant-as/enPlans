@@ -1,5 +1,9 @@
-{% extends "base.html" %} {% block title %}{{ _('Направления') }} - enPlans{%
-endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}{{ _('Направления') }} - enPlans{%endblock %}
+{% block content %}
+
+{{ component.back_header(plan, current_user) }}
+
+{{ component.plan_navigation_header('directions', plan, current_user) }}
 
 <div class="pers-page-with-table">
   <div class="personal-plan-conteiner">
@@ -84,7 +88,11 @@ endblock %} {% block content %}
             <p>У вас пока что нет направлений. Чтобы начать работу, создайте новое направление.</p>
           </div>
         </div> 
+        {{ affects.bg_effect() }} 
     {% endif %}
   </div>
 </div>
+
+
+
 {% endblock %}

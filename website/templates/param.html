@@ -328,8 +328,6 @@ endblock %} {% block content %}
           {{ icons.back_icon() }}
           <span class="btn-text">{{ _('Назад') }}</span>
         </button>
-      </div>
-      <div class="button-auth-area">
         <button
           type="submit"
           class="main-btn main-btn-primary"
@@ -340,6 +338,7 @@ endblock %} {% block content %}
           <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
         </button>
       </div>
+
     </div>
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -351,4 +350,7 @@ endblock %} {% block content %}
     />
   </form>
 </div>
-{{ affects.bg_effect() }} {% endblock %}
+
+{{ affects.bg_effect() }} 
+
+{% endblock %}
