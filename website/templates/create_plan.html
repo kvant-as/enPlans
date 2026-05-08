@@ -1,20 +1,10 @@
 {% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - enPlans{%endblock %} 
 {% block content %}
 
-{{ component.navigation_header('create', current_user) }}
-
 <div class="pers-page">
+  {{ component.navigation_header('create', current_user) }}
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Создание нового плана') }}</a>
-    {#
-    <div class="answer-highlight">
-      <div class="highlight-icon">💡</div>
-      <p>
-        Выберите <strong>доступный</strong> год и заполните необходимые
-        парамметры
-      </p>
-    </div>
-    #}
     <form class="main-form" action="/create-plan" method="POST" id="plan-form">
       <div class="row-app-group">
         <div class="app-group">

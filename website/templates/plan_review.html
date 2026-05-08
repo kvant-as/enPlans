@@ -1,11 +1,10 @@
-{% extends "base.html" %} {% block title %}{{ _('Обзор') }} - enPlans{% endblock
-%} {% block content %}
-
-{{ component.back_header(plan, current_user) }}
-
-{{ component.plan_navigation_header('review', plan, current_user) }}
+{% extends "base.html" %} 
+{% block title %}{{ _('Обзор') }} - enPlans{% endblock%}
+{% block content %}
 
 <div class="pers-page">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('review', plan, current_user) }}
   <div class="personal-acc-conteiner" style="margin-top: 0">
     <div class="header-content">
       <div class="header-content-left">
@@ -36,7 +35,7 @@
                           </button>
                       </form>
 
-                      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="/api/change-plan-status/{{ plan.token }}" method="POST">
+                      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <input type="hidden" name="status" value="control" />
                           <button id="controlPlanButton" class="nav-menu-item" 
@@ -153,245 +152,250 @@
         </div>
       </div>
 
-    {% if current_user.is_auditor == true or current_user.is_admin == true%}
-    <hr />
-    <h1 class="name">{{ _('Респондент и организация') }}</h1>
+    {% if current_user.is_auditor == true or current_user.is_admin == true %}
+      <hr>
+      <h1 class="name">{{ _('Респондент и организация') }}</h1>
 
-    {% set org = none %} {% set ministry = none %} {% set region = none %} {% if
-    plan.organization %} {% set org = plan.organization.name %} {% endif %} {%
-    if plan.ministry %} {% set ministry = plan.ministry.name %} {% endif %} {%
-    if plan.region %} {% set region = plan.region.name %} {% endif %} {% if org
-    or ministry or region %}
-    <div class="app-group">
-      {% if org %}
-      <label>{{ _('Организация') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_org() }}
-        <input type="text" value="{{ org }}" readonly class="app-input" />
+      {% set org = none %}
+      {% set ministry = none %}
+      {% set region = none %}
+      
+      {% if plan.organization %}
+        {% set org = plan.organization.name %}
+      {% endif %}
+      {% if plan.ministry %}
+        {% set ministry = plan.ministry.name %}
+      {% endif %}
+      {% if plan.region %}
+        {% set region = plan.region.name %}
+      {% endif %}
+      
+      {% if org or ministry or region %}
+        {% if org %}
+          <div class="app-group">
+            <label>{{ _('Организация') }}</label>
+            <div class="input-with-icon">
+              {{ icons.icon_org() }}
+              <input type="text" value="{{ org }}" readonly class="app-input" />
+            </div>
+          </div>
+          <div class="row-app-group">
+            <div class="app-group">
+              <label>{{ _('ОКПО') }}</label>
+              <div class="input-with-icon">
+                {{ icons.icon_org() }}
+                <input
+                  type="text"
+                  value="{{ plan.user.organization.okpo }}"
+                  placeholder="{{ _('demo@example.com') }}"
+                  class="app-input"
+                  readonly
+                />
+              </div>
+            </div>
+            <div class="app-group">
+              <label>{{ _('УНП') }}</label>
+              <div class="input-with-icon">
+                {{ icons.icon_org() }}
+                <input
+                  type="text"
+                  value="{{ plan.user.organization.ynp }}"
+                  placeholder="Унп организации"
+                  readonly
+                  class="app-input"
+                />
+              </div>
+            </div>
+          </div>
         {% elif ministry %}
-        <label>{{ _('Министерство') }}</label>
+          <div class="app-group">
+            <label>{{ _('Министерство') }}</label>
+            <div class="input-with-icon">
+              {{ icons.icon_org() }}
+              <input
+                type="text"
+                value="{{ ministry }}"
+                readonly
+                class="app-input"
+              />
+            </div>
+          </div>
+        {% elif region %}
+          <div class="app-group">
+            <label>{{ _('Регион') }}</label>
+            <div class="input-with-icon">
+              {{ icons.icon_org() }}
+              <input
+                type="text"
+                value="{{ region }}"
+                readonly
+                class="app-input"
+              />
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+      
+      <div class="app-group">
+        <label>{{ _('ФИО') }}</label>
         <div class="input-with-icon">
-          {{ icons.icon_org() }}
+          {{ icons.icon_profile() }}
           <input
             type="text"
-            value="{{ ministry }}"
-            readonly
+            id="secondname"
+            maxlength="15"
+            value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
+            placeholder="{{ _('ФИО') }}"
             class="app-input"
+            readonly
           />
-          {% elif region %}
-          <label>{{ _('Регион') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_org() }}
-            <input
-              type="text"
-              value="{{ region }}"
-              readonly
-              class="app-input"
-            />
-            {% endif %}
-          </div>
         </div>
-        {% endif %}
+      </div>
+      <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('ФИО') }}</label>
+          <label>{{ _('Email') }}</label>
           <div class="input-with-icon">
-            {{ icons.icon_profile() }}
+            {{ icons.icon_email() }}
             <input
               type="text"
-              id="secondname"
               maxlength="15"
-              value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
-              placeholder="{{ _('ФИО') }}"
-              class="app-input"
+              value="{{ plan.user.email }}"
+              placeholder="{{ _('demo@example.com') }}"
               readonly
+              class="app-input"
             />
           </div>
         </div>
-
-        <div class="row-app-group">
-          <div class="app-group">
-            <label>{{ _('Email') }}</label>
-            <div class="input-with-icon">
-              {{ icons.icon_email() }}
-              <input
-                type="text"
-                maxlength="15"
-                value="{{ plan.user.email }}"
-                placeholder="{{ _('demo@example.com') }}"
-                readonly
-                class="app-input"
-              />
-            </div>
-          </div>
-          <div class="app-group">
-            <label>{{ _('Телефон') }}</label>
-            <div class="input-with-icon">
-              {{ icons.icon_contacts() }}
-              <input
-                type="text"
-                maxlength="15"
-                value="{{ plan.user.phone }}"
-                placeholder="+375.."
-                readonly
-                class="app-input"
-              />
-            </div>
+        <div class="app-group">
+          <label>{{ _('Телефон') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_contacts() }}
+            <input
+              type="text"
+              maxlength="15"
+              value="{{ plan.user.phone }}"
+              placeholder="+375.."
+              readonly
+              class="app-input"
+            />
           </div>
         </div>
-        {%endif%} {% if current_user.is_auditor != true %}
-        <hr/>
-        <h1 class="name" id = "tickets_link">{{ _('Результаты проверки') }}</h1>
-        <div class="tickets-conteiner">
-          {% if plan.tickets %} {% for ticket in plan.tickets %}
-          <div
-            class="tickets-message {% if ticket.is_owner %}tickets-message-left{% else %}tickets-message-right{% endif %}"
-          >
-            <div class="tickets-message-content">
-              <div class="message-header">
-                <span class="message-sender">
-                  {% if ticket.is_owner %} {{ _('Система') }} {% else %} {{
-                  _('Аудитор') }} {% endif %}
-                </span>
-                <span class="message-time"
-                  >{{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time
-                  else '--:--' }}</span
-                >
-                <button
-                  class="btn-sender-info"
-                  onclick="toggleTicketInfo({{ ticket.id }})"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div class="message-bubble">
-                <p class="text-ticket">{{ ticket.note }}</p>
+      </div>
+    {% endif %}
 
-                <div class="bubble-status">
-                  {% if ticket.luck %}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
-                      fill="#34B7F1"
-                    />
-                  </svg>
-                  {% else %}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                      fill="#FF5252"
-                    />
-                  </svg>
-                  {% endif %}
-                </div>
-              </div>
+    {% if current_user.is_auditor != true %}
+      <hr>
+      <h1 class="name" id="tickets_link">{{ _('Результаты проверки') }}</h1>
+      {{ component.tickets_container(plan, current_user) }}
+    {% endif %}
 
-              <div class="message-date">
-                {{ ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time
-                else '' }}
-              </div>
+    <hr>
+    <h1 class="name">{{ _('Прочая информация') }}</h1>
+    <div class="dates-card">
+      <div class="dates-list">
+        <div class="date-item" data-type="created">
+          <div class="date-icon">
+            {{ icons.icon_calendar() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Создан') }}</span>
+              {% if plan.begin_time %}
+                <span class="date-day">{{ plan.begin_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.begin_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
             </div>
           </div>
-          {% endfor %} {% else %}
-          <div class="no-info-conteiner">
-            <div class="empty-state">
-              {{ icons.icon_no_info() }}
-              <h1>{{ _('Нет сообщений') }}</h1>
+        </div>
+
+        <div class="date-item" data-type="edited">
+          <div class="date-icon">
+            {{ icons.icon_edit() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Редакция') }}</span>
+              {% if plan.change_time %}
+                <span class="date-day">{{ plan.change_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.change_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
             </div>
           </div>
-          {% endif %}
         </div>
-        {% endif %}
 
-        <hr />
-        <h1 class="name">{{ _('Прочая информация') }}</h1>
-        {#
-        <div class="no-input">
-          <a>{{ _('Тип') }}: {{ plan.plan_type if plan.plan_type else '--'}}</a>
-        </div>
-        #}
-        <div class="no-input">
-          {{ icons.icon_calendar() }}
-          <a
-            >{{ _('Создан') }}: {{ plan.begin_time.strftime('%d-%m-%Y %H:%M') if
-            plan.begin_time else '-- -- --' }}</a
-          >
-        </div>
-        <div class="no-input">
-          {{ icons.icon_calendar() }}
-          <a>
-            {{ _('Последняя редакция') }}: {{
-            plan.change_time.strftime('%d-%m-%Y %H:%M') if plan.change_time else
-            '-- -- --' }}
-          </a>
-        </div>
-        <div class="no-input">
-          {{ icons.icon_calendar() }}
-          <a>
-            {{ _('Отправлен') }}: {{ plan.sent_time.strftime('%d-%m-%Y %H:%M')
-            if plan.sent_time else '-- -- --' }}
-          </a>
+        <div class="date-item" data-type="sent">
+          <div class="date-icon">
+            {{ icons.icon_send() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Отправлен') }}</span>
+              {% if plan.sent_time %}
+                <span class="date-day">{{ plan.sent_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.sent_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">{{ _('Не отправлен') }}</span>
+              {% endif %}
+            </div>
+            <div class="date-status">
+              {{ component.status_plan(plan, current_user) }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
-      <div class="modal-content" style="width: fit-content">
-        <div class="modal-header">
-          <a id="modal-title">{{ _('Выберите тип плана') }}</a>
-        </div>
-        {#
-        <div class="answer-highlight">
-          <div class="highlight-icon">💡</div>
-          <p>Экспорт плана, <strong>зависит от данного парамметра</strong></p>
-        </div>
-        #}
-        <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <div class="radio-org-container">
-            <label>
-              <input
-                type="radio"
-                name="entity_type"
-                value="organization_org_small"
-                class="radio-org-input"
-                checked
-              />
-              <div class="radio-org-card" data-type="organization">
-                <span class="radio-org-icon"></span>
-                <div class="radio-org-subtitle">Организация с потреблением</div>
-                <div class="radio-org-title">До 25 тыс. т.</div>
-              </div>
-            </label>
-
-            <label>
-              <input
-                type="radio"
-                name="entity_type"
-                value="organization_org_large"
-                class="radio-org-input"
-              />
-              <div class="radio-org-card" data-type="organization">
-                <span class="radio-org-icon"></span>
-                <div class="radio-org-subtitle">Организация с потреблением</div>
-                <div class="radio-org-title">Более 25 тыс. т.</div>
-              </div>
-            </label>
-          </div>
-          <div class="button-auth-area">
-            <a></a>
-            <button type="submit" class="no-submit-button blue">
-              {{ icons.icon_confirm() }}
-              <span class="btn-text">{{ _('Подтвердить') }}</span>
-            </button>
-          </div>
-        </form>
-      </div>
+<div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
+  <div class="modal-content" style="width: fit-content">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Выберите тип плана') }}</a>
     </div>
+    <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="radio-org-container">
+        <label>
+          <input
+            type="radio"
+            name="entity_type"
+            value="organization_org_small"
+            class="radio-org-input"
+            checked
+          />
+          <div class="radio-org-card" data-type="organization">
+            <span class="radio-org-icon"></span>
+            <div class="radio-org-subtitle">Организация с потреблением</div>
+            <div class="radio-org-title">До 25 тыс. т.</div>
+          </div>
+        </label>
+
+        <label>
+          <input
+            type="radio"
+            name="entity_type"
+            value="organization_org_large"
+            class="radio-org-input"
+          />
+          <div class="radio-org-card" data-type="organization">
+            <span class="radio-org-icon"></span>
+            <div class="radio-org-subtitle">Организация с потреблением</div>
+            <div class="radio-org-title">Более 25 тыс. т.</div>
+          </div>
+        </label>
+      </div>
+      <div class="button-auth-area">
+        <a></a>
+        <button type="submit" class="no-submit-button blue">
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Подтвердить') }}</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 

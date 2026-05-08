@@ -1,12 +1,14 @@
-{% extends "base.html" %} {% block title %}{{ _('Показатели') }} - enPlans{%endblock %}
+{% extends "base.html" %}
+{% block title %}{{ _('Показатели') }} - enPlans{%endblock %}
 {% block content %}
 
-{{ component.back_header(plan, current_user) }}
-
-{{ component.plan_navigation_header('indicators', plan, current_user) }}
-
 <div class="pers-page-with-table">
+
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('indicators', plan, current_user) }}
+
   <div class="personal-plan-conteiner">
+    
     {{ component.plan_menu(plan, current_user, 'indicators') }}
 
     <div class="table-container">
@@ -45,7 +47,7 @@
               <a>{{ plan.year + 1}} г. прогноз</a>
               <div class="resizer"></div>
             </th>
-            <th rowspan="2" class="resizable" style="border-right: none">
+            <th rowspan="2" class="resizable">
               <a>Изменение ТЭР прогнозного года к предыдущему</a>
               <div class="resizer"></div>
             </th>
@@ -117,7 +119,7 @@
               9
               <div class="resizer"></div>
             </th>
-            <th class="resizable" style="border-right: none">
+            <th class="resizable">
               10
               <div class="resizer"></div>
             </th>

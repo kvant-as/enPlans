@@ -243,8 +243,8 @@
                         </div>
                     </div>
                     <div class="modal-table-conteiner">
-                        <table class="directions-table" data-action="directions-table">
-                            <thead class="directions-table-titles">
+                        <table class="modal-table-main" data-action="modal-table-main">
+                            <thead class="modal-table-main-titles">
                                 <tr>
                                     <th style="display: none;">id</th>
                                     <th>{{ _('Код') }}</th>
@@ -401,8 +401,8 @@
                         </div>
                     </div>
                     <div class="modal-table-conteiner"> 
-                    <table class="directions-table" data-action="directions-table">
-                        <thead class="directions-table-titles">
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
                             <tr>
                                 <th style="display: none;">id</th>
                                 <th>{{ _('Код') }}</th>
@@ -857,8 +857,8 @@
                         </div>
                     </div>
                     <div class="modal-table-conteiner"> 
-                    <table class="directions-table" data-action="directions-table">
-                        <thead class="directions-table-titles">
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
                             <tr>
                                 <th style="display: none;">id</th>
                                 <th>Код</th>
@@ -1010,12 +1010,12 @@
     {% if context_menu %}
         {% set is_disabled = plan.is_sent or plan.is_approved or current_user.is_auditor %}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
-            <button class="{% if is_disabled %}non{% endif %}" id="contextEditButton">
+            <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}
                 <span>{{ _('Редактировать') }}</span>
             </button>
             <form id="removeForm" method="POST" action="">
-                <button type="button" class="{% if is_disabled %}non{% endif %}" id="contextDeleteButton">
+                <button type="button" {% if is_disabled %}disabled{% endif %} id="contextDeleteButton">
                     {{ icons.icon_delete() }}
                     <span>{{ _('Удалить') }}</span>
                 </button> 

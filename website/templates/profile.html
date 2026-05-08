@@ -1,9 +1,8 @@
 {% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%endblock %} 
 {% block content %}
 
-{{ component.navigation_header('account', current_user) }}
-
 <div class="pers-page">
+  {{ component.navigation_header('account', current_user) }}
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Личный кабинет') }}</a>
     <div class="short-acc-info">
@@ -12,7 +11,7 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        <a class="employee-position">{{ current_user.post}}</a>
+        {#<a class="employee-position">{{ current_user.post}}</a>#}
         <a class="employee-company">
           {% if current_user.organization %} {{ current_user.organization.name
           }} {% elif current_user.ministry %} {{ current_user.ministry.name }}
@@ -21,15 +20,7 @@
         </a>
       </div>
     </div>
-    {% if current_user.is_auditor %} {% else %}
-    <div class="answer-highlight" style="margin-bottom: 0">
-      <div class="highlight-icon">💡</div>
-      <p>
-        <strong>Отредактировать</strong> отчитывающийся субъект - можно только в случае <strong>отсутствия</strong> планов
-      </p>
-    </div>
-    {% endif %}
-    <hr />
+    <hr>
     <div class="header-content">
       <div class="header-content-left">
         <a class="name" style="padding-bottom: 0">{{ _('Данные пользователя') }}</a>
@@ -249,31 +240,34 @@
     {%endif%}
     <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
-    <div class="support-txt-cont">
-      <p class="row">
-        <strong>Наименование *</strong> — обязательные поля для
-        заполнения/выбора
-      </p>
-      <div class="row" style="display: flex">
-        <div class="input-mes-test" title="Не изм.">
-          {{ icons.icon_edit_off() }}
+    <div class="dates-card">
+      <div class="dates-list">
+        <div class="date-item">
+          <div class="date-icon">
+            {{ icons.icon_calendar() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Дата регистрации') }}</span>
+              {% if current_user.begin_time %}
+                <span class="date-day">{{ current_user.begin_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ current_user.begin_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
-        <p>
-          &nbsp; — <strong>&nbsp;не</strong> подлежащие для редактирования поля
-        </p>
-      </div>
-    </div>
-    <div>
-      <div class="no-input">
-        {{ icons.icon_calendar() }}
-        <a
-          >{{ _('Дата регистрации') }}: {{
-          current_user.begin_time.strftime('%d-%m-%Y') }}</a
-        >
-      </div>
-      <div class="no-input">
-        {{ icons.icon_profile() }}
-        <a>{{ _('Id пользователя') }}: demo{{ current_user.id }}</a>
+        <div class="date-item">
+          <div class="date-icon">
+            {{ icons.icon_profile() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Id пользователя') }}: demo-{{ current_user.id }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

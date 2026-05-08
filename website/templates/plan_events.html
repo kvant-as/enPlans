@@ -1,11 +1,10 @@
-{% extends "base.html" %} {% block title %}{{ _('Мероприятия') }} - enPlans{%endblock %}
+{% extends "base.html" %}
+{% block title %}{{ _('Мероприятия') }} - enPlans{%endblock %}
 {% block content %}
 
-{{ component.back_header(plan, current_user) }}
-
-{{ component.plan_navigation_header('events', plan, current_user) }}
-
 <div class="pers-page-with-table">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('events', plan, current_user) }}
   <div class="personal-plan-conteiner">
     {{ component.plan_menu(plan, current_user, 'events') }}
     {% if non_local_econ_execes or local_econ_execes %}
@@ -13,59 +12,49 @@
         <table class="main-table" id="eventsTable">
           <thead class="main-table-titels">
             <tr>
-              <th rowspan="3" class="resizable" style="white-space: nowrap; border-left: none">
-                <a>№ п/п</a>
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable">
-                <a
-                  >Код основных направлений энергосбережения в соответствии с
-                  формой 4-энерго-сбережение</a
-                >
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable">
-                <a>Наименование мероприятий, работ</a>
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable vertical-text">
-                <a>Единицы измерения</a>
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable vertical-text">
-                <a>Объем внедрения, ед.</a>
-                <div class="resizer"></div>
-              </th>
-              <th colspan="2" class="resizable">
-                <a>Условно-годовой экономический эффект</a>
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable vertical-text">
-                <a>Ожидаемый срок внедрения мероприятия, квартал</a>
-                <div class="resizer"></div>
-              </th>
-              <th
-                rowspan="3"
-                class="resizable vertical-text"
-                style="min-width: 125px"
-              >
-                <a
-                  >Ожидаемый экономический эффект от внедрения мероприятия в
-                  текущем году, т у.т.</a
-                >
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable vertical-text">
-                <a>Срок окупаемости, лет</a>
-                <div class="resizer"></div>
-              </th>
-              <th rowspan="3" class="resizable vertical-text">
-                <a>Объем финансирования, руб.</a>
-                <div class="resizer"></div>
-              </th>
-              <th colspan="7" class="resizable" style="border-right: none">
-                <a>в том числе по источникам финансирования, руб.</a>
-              </th>
+                  <th rowspan="3" class="resizable" style="white-space: nowrap; min-width: 50px;">
+                    <a>№ п/п {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable">
+                    <a>Код основных направлений энергосбережения в соответствии с формой 4-энерго-сбережение {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable">
+                    <a>Наименование мероприятий, работ {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text">
+                    <a>Единицы измерения {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text">
+                    <a>Объем внедрения, ед. {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th colspan="2" class="resizable">
+                    <a>Условно-годовой экономический эффект {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text">
+                    <a>Ожидаемый срок внедрения мероприятия, квартал {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text" style="min-width: 125px">
+                    <a>Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т. {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text">
+                    <a>Срок окупаемости, лет {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th rowspan="3" class="resizable vertical-text">
+                    <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
+                    <div class="resizer"></div>
+                  </th>
+                  <th colspan="7" class="resizable">
+                    <a>в том числе по источникам финансирования, руб. {{ icons.icon_sort() }}</a>
+                  </th>
             </tr>
             <tr>
               <th rowspan="2" class="resizable vertical-text">
@@ -88,18 +77,14 @@
                 кредиты банков, займы
                 <div class="resizer"></div>
               </th>
-              <th
-                rowspan="2"
-                class="resizable vertical-text"
-                style="border-right: none"
-              >
+              <th rowspan="2" class="resizable vertical-text">
                 Иные
                 <div class="resizer"></div>
               </th>
             </tr>
             <tr>
               <th class="resizable vertical-text">
-                республиканский бюджет на финасирование госпрограммы
+                республиканский бюджет на финансирование госпрограммы
                 <div class="resizer"></div>
               </th>
               <th class="resizable vertical-text">
@@ -184,7 +169,7 @@
                 17
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="border-right: none">18</th>
+              <th class="resizable">18</th>
             </tr>
           </thead>
           <tr class="group-header" data-target="non-local-content">

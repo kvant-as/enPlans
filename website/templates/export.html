@@ -1,19 +1,10 @@
 {% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - enPlans {%endblock %} 
 {% block content %}
-{{ component.navigation_header('export', current_user) }}
+
 <div class="pers-page">
+  {{ component.navigation_header('export', current_user) }}
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Экспорт данных') }}</a>
-    {#
-    <div class="answer-highlight">
-      <div class="highlight-icon">💡</div>
-      <p>
-        Выберите формат файла и план/ы для экспорта. Часть 2 и Часть 3 могут
-        отсутствовать в файле, все зависит от наличия заполненных мероприятий.
-      </p>
-    </div>
-    #}
-
     <div class="export-choose-area">
       <div class="export-choose" data-format="xlsx">
         {{ icons.icon_xlsx() }}
@@ -187,142 +178,8 @@
       </div>
     </div>
     <form method="POST" id="exportForm">
-      <div class="plans-area">
-        {% if plans %} {% for plan in plans %}
-        <label
-          for="plan-{{ plan.id }}"
-          style="color: black; margin: 0; cursor: pointer"
-        >
-          <div
-            class="plan-cont {% if plan.is_draft %}plan-cont-redac {% elif plan.is_error %}plan-cont-eror {% elif plan.is_control %}plan-cont-control {% elif plan.is_sent %}plan-cont-sent {% elif plan.is_approved %}plan-cont-sub {% endif %}"
-            data-plan="choose"
-            data-name="{{ (plan.organization.name if plan.organization else plan.ministry.name if plan.ministry else plan.region.name if plan.region else '') | lower | e }}"
-            data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}"
-          >
-            <div class="plan-cont-column">
-              <div class="plan-cont-column-header">
-                <a class="plan-info">
-                  {% if current_user.is_auditor %} {% if plan.organization.name
-                  %}
-                  <span class="structure-plan">Организация</span>{{
-                  plan.organization.name | truncate(35, True, '...') }} {% elif
-                  plan.ministry.name %}
-                  <span class="structure-plan">Министерство</span>{{
-                  plan.ministry.name | truncate(35, True, '...') }} {% elif
-                  plan.region.name %}
-                  <span class="structure-plan">Регион</span>{{ plan.region.name|
-                  truncate(35, True, '...') }} {% endif %} {% else %} {{ _('План
-                  энергосбережения') }} {% endif %}
-                  <span class="plan-info" style="font-weight: 600"
-                    >{{ plan.year }} {{ _('год') }}</span
-                  >
-                </a>
-                <a
-                  class="status-plan {% if plan.is_draft %}status-draft {% elif plan.is_error %}status-warning {% elif plan.is_control %}status-control {% elif plan.is_sent %}status-pending {% elif plan.is_approved %}status-approved {% endif %}"
-                >
-                  {% if plan.is_draft %} {{ icons.draft_icon() }}
-                  <span>В редакции</span>
 
-                  {% elif plan.is_error %} {{ icons.error_icon() }}
-                  <span>Есть ошибки</span>
-
-                  {% elif plan.is_control %} {{ icons.control_icon() }}
-                  <span>Контроль пройден</span>
-
-                  {% elif plan.is_sent %} {{ icons.pending_icon() }}
-                  <span
-                    >{% if current_user.is_auditor != true %}На рассмотрении{%
-                    else %}Не просмотрен{% endif %}</span
-                  >
-
-                  {% elif plan.is_approved %} {{ icons.approved_icon() }}
-                  <span>Одобрен</span>
-
-                  {% endif %}
-                </a>
-              </div>
-              <div class="plan-cont-column-footer">
-                {% if current_user.is_auditor %} {% if plan.organization.okpo %}
-                <div class="plan-cont-column-footer-element">
-                  <img
-                    src="/static/img/Organization.svg"
-                    alt=""
-                    class="btn-icon"
-                  />
-                  <a class="plan-info">{{ plan.organization.okpo }}</a>
-                </div>
-                {% endif %} {% else %}
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_eco() }}
-                  <a class="data-plan" title="Энергосбережение"
-                    >{{ plan.energy_saving or '0.000' }}</a
-                  >
-                </div>
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_half() }}
-                  <a class="data-plan" title="Доля ТЭР"
-                    >{{ plan.share_fuel or '0.000' }}</a
-                  >
-                </div>
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_saving() }}
-                  <a class="data-plan" title="Экономия топлива"
-                    >{{ plan.saving_fuel or '0.000' }}</a
-                  >
-                </div>
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_half() }}
-                  <a class="data-plan" title="Доля энергии"
-                    >{{ plan.share_energy or '0.000' }}</a
-                  >
-                </div>
-                {% endif %}
-              </div>
-            </div>
-            <div class="plan-cont-column">
-              <div class="plan-cont-column-header">
-                {% if not current_user.is_auditor %}
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_calendar() }}
-                  <a class="plan-info"
-                    >{{ _('Создан') }}: {{ plan.begin_time.strftime('%d-%m-%Y')
-                    if plan.begin_time else '-- -- --'}}</a
-                  >
-                </div>
-                {% endif %}
-                <div class="plan-cont-column-footer-element">
-                  {{ icons.icon_calendar() }}
-                  <a class="plan-info"
-                    >{{ _('Подан') }}: {{ plan.sent_time.strftime('%d-%m-%Y') if
-                    plan.sent_time else '-- -- --' }}</a
-                  >
-                </div>
-              </div>
-            </div>
-            <div class="plan-cont-column">
-              <input
-                type="checkbox"
-                class="black"
-                name="ids"
-                value="{{ plan.id }}"
-                id="plan-{{ plan.id }}"
-              />
-            </div>
-          </div>
-        </label>
-        {% endfor %} 
-        {% else %}
-        <div class="choose-plan">
-          <div class="no-info-conteiner">
-            <div class="empty-state">
-              {{ icons.icon_no_info() }}
-              <h1>{{ _('По вашему запросу планов не найдено') }}</h1>
-              <p>Попробуйте изменить параметры поиска.</p>
-            </div>
-          </div> 
-        </div>
-        {% endif %}
-      </div>
+      {{ component.plans_list(plans, current_user, show_checkboxes=true, show_actions=false) }}
       <input type="hidden" name="format" id="selectedFormat" />
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 

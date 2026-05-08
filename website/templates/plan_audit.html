@@ -1,9 +1,42 @@
-{% extends "base.html" %} {% block title %}{{ _('Общее') }} - enPlans{% endblock
-%} {% block content %}
+{% extends "base.html" %}
+{% block title %}{{ _('Общее') }} - enPlans{% endblock%}
+{% block content %}
 
 <div class="pers-page">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('audit', plan, current_user) }}
   <div class="personal-acc-conteiner">
-    <a class="name">Проверка плана</a>
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Проверка плана энергосбережения') }}</a>
+        {{ component.status_plan(plan, current_user) }}
+      </div>
+      <div class="header-content-right">
+        <div class="dropdown-menu-container">
+            <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Действия с планом">
+                {{ icons.icon_dots() }}
+            </button>
+            
+            <div class="dropdown-menu" id="planActionsMenu">
+                <div class="nav-menu-list">
+                  <form id="cancel_auditPlanForm" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="status" value="sent_without_check" />
+                    <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_sent or plan.is_approved %}{%else%}disabled{% endif %}>
+                        {{ icons.icon_cancel() }}
+                        <span>{{ _('Отменить изменения') }}</span>
+                    </button>
+                  </form>
+                  <button type="submit" class="nav-menu-item delete-item" disabled>
+                      {{ icons.icon_delete() }}
+                      <span>{{ _('Удалить') }}</span>
+                  </button>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+    {#
     <div class="answer-highlight">
       <div class="highlight-icon">💡</div>
       <p>
@@ -11,11 +44,11 @@
         <strong>укажите</strong> их, в противном случае просто
         <strong>одобрите</strong> план.
       </p>
-    </div>
+    </div>#}
     
     {% set is_disabled = plan.is_sent or plan.is_approved or
     current_user.is_auditor %}
-    <div class = "plan-menu" style = "margin-bottom: 25px;">
+    <div class = "plan-menu">
       <div class="menu-conteiner">
         <div class="menu-conteiner-btns">
           <form
@@ -51,104 +84,19 @@
             </button>
           </form>
 
-          {% if plan.is_approved or plan.is_error %}
-          <form
-            id="cancel_auditPlanForm"
-            action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="sent_without_check" />
-            <button id="cancel_auditPlanButton" type="submit" class="element">
-              <img src="/static/img/clock.svg" alt="" class="btn-icon" />
-              <span class="btn-text">{{ _('Отменить') }}</span>
-            </button>
-          </form>
-          {% endif %}
         </div>
         <div class="menu-conteiner-title">
-          <span>Статус</span>
+          <span>Сменить статус</span>
         </div>
       </div>
     </div>
 
-    <div class="tickets-conteiner">
-      {% if plan.tickets %} {% for ticket in plan.tickets %}
-      <div
-        class="tickets-message {% if ticket.is_owner %}tickets-message-left{% else %}tickets-message-right{% endif %}"
-      >
-        <div class="tickets-message-content">
-          <div class="message-header">
-            <span class="message-sender">
-              {% if ticket.is_owner %} {{ _('Система') }} {% else %} {{
-              _('Аудитор') }} {% endif %}
-            </span>
-            <span class="message-time"
-              >{{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time else
-              '--:--' }}</span
-            >
-
-            <button
-              class="btn-sender-info"
-              onclick="toggleTicketInfo({{ ticket.id }})"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
-                  fill="currentColor"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div class="message-bubble">
-            <p class="text-ticket">{{ ticket.note }}</p>
-
-            <div class="bubble-status">
-              {% if ticket.luck %}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
-                  fill="#34B7F1"
-                />
-              </svg>
-              {% else %}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                  fill="#FF5252"
-                />
-              </svg>
-              {% endif %}
-            </div>
-          </div>
-
-          <div class="message-date">
-            {{ ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time else
-            '' }}
-          </div>
-        </div>
-      </div>
-      {% endfor %} {% else %}
-      <div class="no-info-conteiner">
-        <div class="empty-state">
-          {{ icons.icon_no_info() }}
-          <h1>{{ _('Нет сообщений') }}</h1>
-          <p class="empty-subtitle">{{ _('Начните обсуждение плана') }}</p>
-        </div>
-      </div>
-      {% endif %}
-    </div>
+    {{ component.tickets_container(plan, current_user) }}
 
     {% if plan.is_approved or plan.is_error %}
     <hr />
     {% else %}
-    <form
-      id="sent_mesPlanForm"
-      class="main-form"
-      action="{{ url_for('views.create_ticket', token=plan.token) }}"
-      method="POST"
-    >
+    <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('views.create_ticket', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="bottom_tickets_arrea">
         <textarea
@@ -169,19 +117,70 @@
         </button>
       </div>
     </form>
+    <hr>
     {% endif %}
 
     <h1 class="name">{{ _('Прочая информация') }}</h1>
-    <div class="no-input">
-      {{ icons.icon_calendar() }}
-      <a>
-        {{ _('Ваша последняя редакция') }}: {{
-        plan.audit_time.strftime('%d-%m-%Y %H:%M') if plan.audit_time else '--
-        -- --' }}
-      </a>
+    <div class="dates-card">
+      <div class="dates-list">
+        <div class="date-item" data-type="created">
+          <div class="date-icon">
+            {{ icons.icon_calendar() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Создан') }}</span>
+              {% if plan.begin_time %}
+                <span class="date-day">{{ plan.begin_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.begin_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="date-item" data-type="sent">
+          <div class="date-icon">
+            {{ icons.icon_send() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Отправлен') }}</span>
+              {% if plan.sent_time %}
+                <span class="date-day">{{ plan.sent_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.sent_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">{{ _('Не отправлен') }}</span>
+              {% endif %}
+            </div>
+            <div class="date-status">
+              {{ component.status_plan(plan, current_user) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="date-item" data-type="sent">
+          <div class="date-icon">
+            {{ icons.icon_eye() }}
+          </div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Просмотрен') }}</span>
+              {% if plan.audit_time %}
+                <span class="date-day">{{ plan.audit_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.audit_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">{{ _('Не просмотрен') }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+{{ affects.bg_effect() }} 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     window.ticketInfoInstance = new window.TicketInfo();

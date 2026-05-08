@@ -1,11 +1,10 @@
-{% extends "base.html" %} {% block title %}{{ _('Направления') }} - enPlans{%endblock %}
+{% extends "base.html" %}
+{% block title %}{{ _('Направления') }} - enPlans{%endblock %}
 {% block content %}
 
-{{ component.back_header(plan, current_user) }}
-
-{{ component.plan_navigation_header('directions', plan, current_user) }}
-
 <div class="pers-page-with-table">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('directions', plan, current_user) }}
   <div class="personal-plan-conteiner">
     {{ component.plan_menu(plan, current_user, 'directions') }}
     {% if econ_measures %}
@@ -13,37 +12,28 @@
         <table class="main-table" id="directionTable">
           <thead class="main-table-titels">
             <tr>
-              <th class="resizable" style="min-width: 50px; border-left: none">
-                <a>№</a>
+              <th class="resizable" style="min-width: 50px;">
+                <a>№ {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="">
-                <a
-                  >{{ _('Код основных направлений энергосбережения в соостветствии
-                  с формой 4-энергосбережения (Госстандарт)') }}</a
-                >
+              <th class="resizable" style="max-width: 300px;">
+                <a>{{ _('Код основных направлений энергосбережения в соответствии с формой 4-энергосбережения (Госстандарт)') }} {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="">
-                <a
-                  >{{ _('Наименование направлений в соответствии с формой
-                  4-энергосбережение (Госстандарт)') }}</a
-                >
+              <th class="resizable" style="max-width: 300px;">
+                <a>{{ _('Наименование направлений в соответствии с формой 4-энергосбережение (Госстандарт)') }} {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="">
-                <a>{{ _('Условно-годовой экономический эффект, т у.т.') }}</a>
+              <th class="resizable"  style="max-width: 150px;">
+                <a>{{ _('Условно-годовой экономический эффект, т у.т.') }} {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="">
-                <a
-                  >{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }}
-                  {{plan.year}} г., {{ _('т у. т.') }}</a
-                >
+              <th class="resizable" style="max-width: 160px;">
+                <a>{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }} {{plan.year}} г., {{ _('т у. т.') }} {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
-              <th class="resizable" style="border-right: none;">
-                <a>{{ _('Местные ТЭР') }}</a>
+              <th class="resizable">
+                <a>{{ _('Местные ТЭР') }} {{ icons.icon_sort() }}</a>
                 <div class="resizer"></div>
               </th>
             </tr>

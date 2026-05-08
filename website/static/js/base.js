@@ -4027,7 +4027,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   new DirectionsTable({
       searchSelector: "search-directions",
-      tableSelector: "directions-table",
+      tableSelector: "modal-table-main",
       hiddenInputSelector: "selected-direction",
       nextButtonSelector: "directions-next"
   });
@@ -4400,11 +4400,11 @@ document.addEventListener('DOMContentLoaded', () => {
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 1-го часа.'
+            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 30-ти дней.'
         });
     }
 
-    if (tickets_conteiner = document.querySelector('.tickets-conteiner')) {
+    if (tickets_conteiner = document.querySelector('.tickets-container')) {
         function customSmoothScroll(element, targetPosition, duration = 800) {
             if (!element) return;
             
@@ -4514,7 +4514,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     new DropNavigation();
 
-    if (document.querySelectorAll('.tickets-conteiner')) {
+    if (document.querySelectorAll('.tickets-container')) {
         window.TicketInfo = TicketInfo;
     }
     
