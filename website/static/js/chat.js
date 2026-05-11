@@ -238,114 +238,125 @@ const ChatModule = (function () {
     }
   }
 
-    async function _sendMessage() {
-        const input = document.getElementById("messageInput");
-        const content = input.value.trim();
+  async function _sendMessage() {
+      const input = document.getElementById("messageInput");
+      const content = input.value.trim();
 
-        if (!content) {
-            input.classList.add('error');
-            input.focus();
-            return;
-        }
+      if (!content) {
+          input.classList.add('error');
+          input.focus();
+          return;
+      }
 
-        if (_state.isSending) return;
+      if (_state.isSending) return;
 
-        _state.isSending = true;
-        _showSendingIndicator();
+      _state.isSending = true;
+      _showSendingIndicator();
 
-        _removeBackButton();
+      _removeBackButton();
 
-        const welcomeMessage = document.querySelector(
-        "#pageActiveChat .welcome-message .message-text",
-        );
-        const welcomeContainer = document.querySelector(
-        "#pageActiveChat .welcome-message",
-        );
+      const tempId = "temp_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-        if (welcomeMessage && welcomeContainer) {
-        welcomeMessage.innerHTML = `Добрый день! <br>Вы выбрали <strong>${_state.selectedTypeText}</strong>, какой вопрос у вас возник?`;
-        }
+      const userMessage = {
+          id: tempId,
+          content: content,
+          sender_id: _state.currentUserId,
+          is_user: true,
+          created_at: new Date().toISOString(),
+          temp: true,
+      };
 
-        const tempId =
-        "temp_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+      _addMessageToUI(userMessage, true);
+      _state.pendingMessages.push(tempId);
 
-        const userMessage = {
-        id: tempId,
-        content: content,
-        sender_id: _state.currentUserId,
-        is_user: true,
-        created_at: new Date().toISOString(),
-        temp: true,
-        };
+      input.value = "";
 
-        _addMessageToUI(userMessage, true);
-        _state.pendingMessages.push(tempId);
+      _showTypingIndicator();
 
-        input.value = "";
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-        _showTypingIndicator();
+      try {
+          const response = await fetch("/api/chat/send-message", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json",
+                  ...(csrfToken && { "X-CSRFToken": csrfToken }),
+              },
+              body: JSON.stringify({
+                  content: content,
+                  sender_id: _state.currentUserId,
+                  chat_type: _state.currentChatType,
+              }),
+          });
 
-        const csrfToken = document.querySelector(
-        'meta[name="csrf-token"]',
-        )?.content;
+          const data = await response.json();
 
-        try {
-        const response = await fetch("/api/chat/send-message", {
-            method: "POST",
-            headers: {
-            "Content-Type": "application/json",
-            ...(csrfToken && { "X-CSRFToken": csrfToken }),
-            },
-            body: JSON.stringify({
-            content: content,
-            sender_id: _state.currentUserId,
-            chat_type: _state.currentChatType,
-            }),
-        });
+          if (!response.ok || !data.success) {
+              _removeTypingIndicator();
+              
+              let errorMessage = "Извините, произошла ошибка. Попробуйте позже.";
+              
+              if (response.status === 403) {
+                  errorMessage = "🔒 Чат поддержки доступен только для администраторов. Пожалуйста, войдите в систему как администратор.";
+              } else if (data.error) {
+                  errorMessage = data.error;
+              }
+              
+              // Добавляем сообщение об ошибке как обычное сообщение бота
+              const botMessage = {
+                  id: "error_" + Date.now(),
+                  content: errorMessage,
+                  sender_id: null,
+                  is_user: false,
+                  created_at: new Date().toISOString()
+              };
+              
+              _addMessageToUI(botMessage, false);
+              _scrollToBottom();
+              
+              return;
+          }
 
-        if (response.ok) {
-            const data = await response.json();
+          if (data.success) {
+              _state.currentChatId = data.chat_id;
+              _startMessageCheck();
 
-            if (data.success) {
-            _state.currentChatId = data.chat_id;
+              const tempMessageElement = document.querySelector(`[data-message-id="${tempId}"]`);
+              if (tempMessageElement) {
+                  tempMessageElement.dataset.messageId = data.message_id;
+                  tempMessageElement.classList.remove("temp-message");
+                  _state.processedMessageIds.add(data.message_id);
+              }
 
-            _startMessageCheck();
-
-            const tempMessageElement = document.querySelector(
-                `[data-message-id="${tempId}"]`,
-            );
-            if (tempMessageElement) {
-                tempMessageElement.dataset.messageId = data.message_id;
-                tempMessageElement.classList.remove("temp-message");
-                _state.processedMessageIds.add(data.message_id);
-            }
-
-            _state.pendingMessages = _state.pendingMessages.filter(
-                (id) => id !== tempId,
-            );
-            }
-            _addEndChatButton();
-        }
-        } catch (error) {
-        console.error("Error sending message:", error);
-
-        const errorMessage = document.querySelector(
-            `[data-message-id="${tempId}"]`,
-        );
-        if (errorMessage) {
-            errorMessage.classList.add("message-error");
-            const timeDiv = errorMessage.querySelector(".message-time");
-            if (timeDiv) {
-            timeDiv.innerHTML = "Ошибка отправки";
-            }
-        }
-
-        _removeTypingIndicator();
-        } finally {
-        _hideSendingIndicator();
-        _state.isSending = false;
-        }
-    }
+              _state.pendingMessages = _state.pendingMessages.filter((id) => id !== tempId);
+          }
+          _addEndChatButton();
+      } catch (error) {
+          console.error("Error sending message:", error);
+          _removeTypingIndicator();
+          
+          // Удаляем временное сообщение пользователя при ошибке
+          const tempMessageElement = document.querySelector(`[data-message-id="${tempId}"]`);
+          if (tempMessageElement) {
+              tempMessageElement.remove();
+          }
+          
+          // Добавляем сообщение об ошибке как обычное сообщение бота
+          const botMessage = {
+              id: "error_" + Date.now(),
+              content: "❌ Не удалось отправить сообщение. Проверьте подключение к интернету и попробуйте снова.",
+              sender_id: null,
+              is_user: false,
+              created_at: new Date().toISOString()
+          };
+          
+          _addMessageToUI(botMessage, false);
+          _scrollToBottom();
+      } finally {
+          _hideSendingIndicator();
+          _state.isSending = false;
+      }
+  }
 
   function _addMessageToUI(message, isSent, containerId = "messagesList") {
     const container = document.getElementById(containerId);

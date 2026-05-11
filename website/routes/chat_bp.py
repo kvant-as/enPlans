@@ -73,14 +73,12 @@ def send_message():
         data = request.get_json()
         content = data.get('content').strip()
         
-        if current_user.is_admin:
-            user_id = data.get('user_id')
-            if not user_id:
-                return jsonify({
-                    'success': False,
-                    'error': 'enabled only for admin'
-                }), 400
-        
+        if not current_user.is_admin:
+            return jsonify({
+                'success': False,
+                'error': 'error: enabled only for admin'
+            }), 400
+    
         if not content:
             current_app.logger.debug(f"Send message failed: missing field - content: {content}")
             return jsonify({
