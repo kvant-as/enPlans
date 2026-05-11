@@ -142,6 +142,11 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     try:
         db.session.commit()
         flash('Данные успешно сохранены!', 'success')
+        send_email(
+            recipient_email=current_user.email,
+            message=current_user.first_name or "Пользователь",
+            email_type="registration"
+        )
         return redirect(url_for('views.profile'))
     except Exception as e:
         db.session.rollback()

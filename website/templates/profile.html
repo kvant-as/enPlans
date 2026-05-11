@@ -37,7 +37,7 @@
                     {{ icons.icon_edit() }}
                     <span>{{ _('Редактировать профиль') }}</span>
                 </button>
-                <button class="nav-menu-item" disabled>
+                <button class="nav-menu-item" onclick="window.location.href='/forgot-password'">
                     {{ icons.icon_password() }}
                     <span>{{ _('Изменить пароль') }}</span>
                 </button>
@@ -52,7 +52,7 @@
     </div>
     <div class="row-app-group">
       <div class="app-group">
-        <label>{{ _('Фамилия') }} <span class="required-star">*</span></label>
+        <label>{{ _('Фамилия') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
@@ -65,7 +65,7 @@
         </div>
       </div>
       <div class="app-group">
-        <label>{{ _('Имя') }} <span class="required-star">*</span></label>
+        <label>{{ _('Имя') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
@@ -105,7 +105,7 @@
       </div>
     </div>
     <div class="app-group">
-      <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+      <label>{{ _('Телефон') }}</label>
       <div class="input-with-icon">
         {{ icons.icon_contacts() }}
         <input
@@ -165,7 +165,7 @@
     {% if current_user.organization %}
     <div class="profile-org">
       <div class="app-group">
-        <label>{{ _('Организация') }} <span class="required-star">*</span></label>
+        <label>{{ _('Организация') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_org() }}
           <input
@@ -239,6 +239,41 @@
     </div>
     {%endif%}
     <hr>
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Опасная зона') }}</a>
+      </div>
+      <div class="header-content-right">
+      </div>
+    </div>
+    <div class="danger-zone">
+        <div class="danger-zone-header">
+            <div class="danger-zone-title">
+                <a class="name" style="padding-bottom: 0; margin: 0;">{{ _('Удаление аккаунта') }}</a>
+                <p class="danger-zone-description">{{ _('После удаления аккаунта все ваши планы и данные будут безвозвратно удалены. Это действие невозможно отменить.') }}</p>
+            </div>
+        </div>
+        <div class="danger-zone-actions">
+            <form id="deleteProfile_form" action="{{ url_for('auth.delete_profile') }}" method="POST">
+                <div class="confirm-delete-area">
+                    <div class="app-group">
+                        <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
+                        <div class="input-with-icon">
+                            {{ icons.icon_email() }}
+                            <input type="text" id="confirm-email-field" name="confirm_email" class="app-input" placeholder="{{ current_user.email }}">
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="current_user_email" value="{{ current_user.email }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="button" id="deleteProfileBtn" class="danger-zone-btn">
+                    {{ icons.icon_delete() }}
+                    <span>{{ _('Удалить аккаунт') }}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
       <div class="dates-list">
@@ -273,4 +308,7 @@
   </div>
 </div>
 {{ affects.bg_effect() }} 
+
+
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 {% endblock %}

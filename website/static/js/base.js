@@ -29,7 +29,7 @@ const messageFlash = (function() {
     const containerId = 'flash-container';
     let container;
     let messages = []; 
-    const DISPLAY_TIME = 10000; 
+    const DISPLAY_TIME = 30000; 
 
     function init() {
         container = document.getElementById(containerId);
@@ -217,14 +217,17 @@ const Notifications = {
     updateCounter(count) {
         if (count > 0) {
             this.notifCountEl.innerText = count;
+            this.notifCountEl.style.display = "flex";
             this.notifCountEl.classList.add("active");
         } else {
             this.notifCountEl.classList.remove("active");
+            this.notifCountEl.style.display = "none";
             this.notifCountEl.innerText = "";
         }
     },
 
     hideCounter() {
+        this.notifCountEl.classList.remove("active");
         this.notifCountEl.style.display = "none";
         this.notifCountEl.innerText = "";
     },
@@ -2477,9 +2480,14 @@ function initConfirmModal(config) {
                 <div class="choose-plan">
                     <div class="no-info-conteiner">
                         <div class="empty-state">
-                        {{ icons.icon_no_info() }}
-                        <h1>{{ _('По вашему запросу ничего не найдено') }}</h1>
-                        <p>Попробуйте изменить параметры поиска.</p>
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
+                                    fill="#E6E6E6"
+                                />
+                            </svg>
+                            <h1>По вашему запросу ничего не найдено</h1>
+                            <p>Попробуйте изменить параметры поиска.</p>
                         </div>
                     </div>
                 </div>
@@ -4328,22 +4336,6 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-
-    //cancel sent plan
-    // if (document.getElementById('sentPlanButton')) {
-    //     initConfirmModal({
-    //         triggerId: 'cancelsentPlanButton',
-    //         formId: 'cancelsentPlanForm',
-    //         modalId: 'confirmModal2',
-    //         yesId: 'confirmYes',
-    //         noId: 'confirmNo',
-    //         textId: 'modal-text',
-    //         modalText: 'Вы действительно хотите отменить отправку?',
-    //         textSecondId: 'modal-text-second',
-    //         modalTextSecond: 'План сменит статус обратно на "В редакции".'
-    //     });
-    // }
-
     //sent audit message plan
     if (document.getElementById('sent_mesPlanButton')) {
         initConfirmModal({
@@ -4359,7 +4351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    //to_delete plan
+    //Есть ошибки plan
     if (document.getElementById('to_deletePlanButton')) {
         initConfirmModal({
             triggerId: 'to_deletePlanButton',
@@ -4496,9 +4488,9 @@ document.addEventListener('DOMContentLoaded', () => {
             popup: "#notifPopup"
         });
         Notifications.init();
-        // setInterval(() => {
-        //     Notifications.init();
-        // }, 60000);
+        setInterval(() => {
+            Notifications.init();
+        }, 60000);
 
     }
 

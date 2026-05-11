@@ -17,7 +17,7 @@ from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 
 from .. import db
-from ..models import User
+from ..models import Plan, User
 
 
 auth = Blueprint('auth', __name__)
@@ -202,6 +202,50 @@ def logout():
     flash('Выполнен выход из аккаунта.', 'success')
     return redirect(url_for('auth.login'))
 
+
+@auth.route('/delete-profile', methods=['POST'])
+@login_required
+def delete_profile():
+    user = current_user
+    confirm_email = request.form.get('confirm_email')
+    
+    if not confirm_email or confirm_email != user.email:
+        flash('Неверный email для подтверждения', 'error')
+        return redirect(url_for('views.profile'))
+    
+    if user.is_admin or user.is_auditor:
+        flash('Администраторы и аудиторы не могут удалить аккаунт', 'error')
+        return redirect(url_for('views.profile'))
+    
+    has_active_plans = Plan.query.filter(
+        Plan.user_id == user.id,
+        (Plan.is_sent == True) | (Plan.is_approved == True) | (Plan.is_error == True)
+    ).first()
+    
+    if has_active_plans:
+        flash('Невозможно удалить аккаунт. У вас есть отправленные, одобренные планы или планы с ошибками.', 'error')
+        return redirect(url_for('views.profile'))
+    
+    try:
+        user_email = user.email
+        
+        db.session.delete(user)
+        db.session.commit()
+        
+        send_email(
+            recipient_email=user_email,
+            message='Ваш аккаунт был успешно удален.',
+            email_type="notification"
+        )
+        
+        flash('Ваш аккаунт успешно удален', 'success')
+        return redirect(url_for('auth.logout'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Произошла ошибка при удалении аккаунта', 'error')
+        return redirect(url_for('views.profile'))
+    
 @auth.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'GET':

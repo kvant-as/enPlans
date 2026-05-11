@@ -5,6 +5,7 @@
   {{ component.back_header(plan, current_user, show_plan_info=False, back_url='/profile', plan_text = ('Редактирование профиля')) }}
   <div class="personal-acc-conteiner" style="margin-top: 15px;">
     <a class="name">{{ _('Редактирование профиля') }}</a>
+
     <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="row-app-group">
@@ -84,12 +85,13 @@
         </div>
       </div>
     </form>
+
+    <div class="required-legend">
+      {{ _('Поля, отмеченные <span class="star">*</span> — обязательны для заполнения') }}
+    </div>
+
     <div class="button-area">
-      <button
-        type="button"
-        class="main-btn main-btn-primary"
-        id="editprofileButton"
-      >
+      <button type="button" class="main-btn main-btn-primary" id="editprofileButton">
         {{ icons.icon_confirm() }}
         <span class="btn-text">{{ _('Применить изменения') }}</span>
       </button>

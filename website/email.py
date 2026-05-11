@@ -9,11 +9,12 @@ from threading import Thread, Lock
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
+from .email_html import build_html
 
 SMTP_HOST = os.getenv("SMTP_HOST")
 
-EMAILS_PER_MINUTE = 2
-DAILY_LIMIT = 5000
+EMAILS_PER_MINUTE = 6
+DAILY_LIMIT = 10000
 
 PRIORITY = {
     "activation_code": 3,
@@ -46,7 +47,6 @@ def safe_subject_log(subject, max_len=30):
     if len(subject) > max_len:
         return subject[:max_len] + "..."
     return subject
-
 
 class Worker(Thread):
     def __init__(self, email, password, acc_id, queue):
@@ -333,15 +333,15 @@ def get_email_queue():
 
 def send_email(message, recipient_email, email_type="default"):
     subject_map = {
-        "activation_code": "Код подтверждения",
-        "new_pass": "Новый пароль",
-        "to_admin": "Сообщение администратору",
-        "to_recipient": "Сообщение",
-        "default": "Уведомление"
+        "code": "Код подтверждения enPlans",
+        "plan": "Изменение статуса плана enPlans",
+        "reset_link": "Сброс пароля enPlans",
+        "registration": "Добро пожаловать в enPlans",
+        "notification": "Уведомление от enPlans",
     }
 
     html = build_html(message, email_type)
-    subject = subject_map.get(email_type, "Уведомление")
+    subject = subject_map.get(email_type)
 
     queue = get_email_queue()
     queue.add(
@@ -354,71 +354,6 @@ def send_email(message, recipient_email, email_type="default"):
     masked_to = safe_email_log(recipient_email)
     log.info(f"[SEND] В очередь -> {masked_to} ({email_type})")
 
-
 def get_email_stats():
     queue = get_email_queue()
     return queue.get_stats()
-
-def build_html(message_body, email_type):
-    if email_type == "code":
-        content = f"""
-        <div style='padding:20px 40px; color:#000000; font-size:15px;'>
-            <p style='margin:0 0 10px 0; color:#000000;'>Здравствуйте!</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Кто-то пытается войти в <b>enPlans</b> используя вашу электронную почту.</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Ваш код активации:</p>
-            <div style='text-align:center; font-size:32px; font-weight:bold; padding:15px; margin:20px 0; color:#000000;'>{message_body}</div>
-        </div>
-        """
-    elif email_type == "pass":
-        content = f"""
-        <div style='padding:20px 40px; color:#000000; font-size:15px;'>
-            <p style='margin:0 0 10px 0; color:#000000;'>Здравствуйте!</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Вы запросили новый пароль для входа в <b>enPlans</b>.</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Ваш новый пароль:</p>
-            <div style='text-align:center; font-size:32px; font-weight:bold; padding:15px; margin:20px 0; color:#000000;'>{message_body}</div>
-        </div>
-        """
-    elif email_type == "plan":
-        content = f"""
-        <div style='padding:20px 40px; color:#000000; font-size:15px;'>
-            <p style='margin:0 0 10px 0; color:#000000;'>Здравствуйте!</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Статус вашего плана изменен на:</p>
-            <div style='text-align:center; font-size:20px; font-weight:600; padding:10px; margin:15px 0; color:#000000; border:1px solid #000; border-radius:5px; display:inline-block;'>{message_body}</div>
-        </div>
-        """
-    elif email_type == "reset_link":
-        content = f"""
-        <div style='padding:20px 40px; color:#000000; font-size:15px;'>
-            <p style='margin:0 0 10px 0; color:#000000;'>Здравствуйте!</p>
-            <p style='margin:0 0 10px 0; color:#000000;'>Вы запросили сброс пароля для вашей учетной записи в <b>enPlans</b>.</p>
-            <p style='margin:0 0 15px 0; color:#000000;'>Для сброса пароля перейдите по ссылке ниже:</p>
-            <div style='text-align:center; margin:25px 0;'>
-                <a href='{message_body}' style='background-color:#4CAF50; color:white; padding:12px 30px; text-decoration:none; border-radius:5px; font-size:16px; font-weight:bold; display:inline-block;'>
-                    Сбросить пароль
-                </a>
-            </div>
-            <p style='margin:15px 0 5px 0; color:#666; font-size:13px;'>Ссылка действительна в течение 1 часа.</p>
-            <p style='margin:5px 0 0 0; color:#666; font-size:13px;'>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
-        </div>
-        """
-    else:
-        content = f"<div style='padding:20px 40px; color:#000000; font-size:15px;'>{message_body}</div>"
-
-    html_template = f"""
-    <!DOCTYPE html>
-    <html lang="ru">
-      <body style="font-family:'Montserrat',Arial,sans-serif; background-color:#eeeeee; margin:0; padding:20px;">
-        <div style="max-width:600px; margin:0 auto; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 0 6px rgba(0,0,0,0.1);">
-          <div style="text-align:center; font-size:17px; font-weight:500; padding:20px 50px; color:#000000;">
-            Ваша учетная запись enPlans
-          </div>
-          {content}
-          <div style="padding:10px; background-color:#eeeeee;  text-align:center; font-size:12px; color:#555555;">
-            <p style="margin:5px 0;">Дополнительную информацию можно найти <a href="#" style="color:#6441a5; text-decoration:none;">здесь</a>.</p>
-            <p style="margin:5px 0;">Спасибо,<br>enPlans</p>
-          </div>
-        </div>
-      </body>
-    </html>
-    """
-    return html_template
