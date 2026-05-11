@@ -90,9 +90,6 @@ def profile_edit():
                             hide_header=False,
                             current_user=current_user)
 
-
-
-
 @views.route('/api/organizations')
 @login_required
 def get_organizations_api():
@@ -598,6 +595,17 @@ def stats():
         pass
     return render_template('stats.html', 
                         hide_header=False)
+    
+# @views.route('/news', methods=['GET', 'POST'])
+# @user_with_all_params()
+# @login_required
+# @session_required
+# def news():
+#     if request.method == 'POST':
+#         pass
+#     return render_template('news.html', 
+#                         hide_header=False)
+    
 
 @views.route('/plans/plan-review/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -787,20 +795,34 @@ def plan_events(token):
         .all()
     )
   
+    # local_econ_execes = (EconExec.query
+    #     .join(EconMeasure)
+    #     .join(Plan)
+    #     .filter(Plan.id == current_plan.id, EconExec.is_local == True)
+    #     .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+    #     .all())
+
+    # non_local_econ_execes = (EconExec.query
+    #     .join(EconMeasure)
+    #     .join(Plan)
+    #     .filter(Plan.id == current_plan.id, EconExec.is_local == False)
+    #     .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+    #     .all())
+    
     local_econ_execes = (EconExec.query
-        .join(EconMeasure)
-        .join(Plan)
+        .join(EconMeasure, EconExec.id_measure == EconMeasure.id)
+        .join(Plan, EconMeasure.id_plan == Plan.id)
         .filter(Plan.id == current_plan.id, EconExec.is_local == True)
         .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
         .all())
 
     non_local_econ_execes = (EconExec.query
-        .join(EconMeasure)
-        .join(Plan)
+        .join(EconMeasure, EconExec.id_measure == EconMeasure.id)
+        .join(Plan, EconMeasure.id_plan == Plan.id)
         .filter(Plan.id == current_plan.id, EconExec.is_local == False)
         .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
         .all())
-    
+
 
     local_totals = get_cumulative_econ_metrics(current_plan.id, True)
     non_local_totals = get_cumulative_econ_metrics(current_plan.id, False)

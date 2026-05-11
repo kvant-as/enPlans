@@ -34,151 +34,123 @@
         </div>
       </div>
     </div>
-    <br />
-    <br />
-
-    <div class="filters-area">
-      <form
-        method="GET"
-        action="{{ url_for('views.export') }}"
-        class="filter-form"
-        id="statusFilter"
-      >
-        <input
-          type="hidden"
-          name="status"
-          id="statusInput"
-          value="{{ request.args.get('status', 'all') }}"
-        />
-        <div class="custom-dropdown" data-filter-type="status">
-          <button type="button" class="dropdown-toggle">
-            <span class="selected-option">
-              {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
-              }} {% elif request.args.get('status') == 'control' %}{{
-              _('Контроль пройден') }} {% elif request.args.get('status') ==
-              'sent' %}{% if current_user.is_auditor != true %}{{ _('На
-              рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
-              elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
-              {% elif request.args.get('status') == 'approved' %}{{
-              _('Одобренные') }} {% else %}{{ _('Статус') }}{% endif %}
-            </span>
-            <svg
-              class="dropdown-arrow"
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1L6 6L11 1"
-                stroke="#666"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          </button>
-          <div class="dropdown-menu-filter">
-            <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
-            <div class="dropdown-item" data-value="draft">
-              {{ _('В редакции') }}
-            </div>
-            <div class="dropdown-item" data-value="control">
-              {{ _('Контроль пройден') }}
-            </div>
-            <div class="dropdown-item" data-value="sent">
-              {% if current_user.is_auditor != true %}{{ _('На рассмотрении')
-              }}{%else%}{{ _('Не просмотренные') }}{%endif%}
-            </div>
-            <div class="dropdown-item" data-value="error">
-              {{ _('С ошибками') }}
-            </div>
-            <div class="dropdown-item" data-value="approved">
-              {{ _('Одобренные') }}
-            </div>
-          </div>
-        </div>
-      </form>
-
-      <form
-        method="GET"
-        action="{{ url_for('views.export') }}"
-        class="filter-form"
-        id="yearFilter"
-      >
-        <input
-          type="hidden"
-          name="year"
-          id="yearInput"
-          value="{{ request.args.get('year', 'all') }}"
-        />
-        <div class="custom-dropdown" data-filter-type="year">
-          <button type="button" class="dropdown-toggle">
-            <span class="selected-option">
-              {% if request.args.get('year') and request.args.get('year') !=
-              'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
-              endif %}
-            </span>
-            <svg
-              class="dropdown-arrow"
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1L6 6L11 1"
-                stroke="#666"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          </button>
-          <div class="dropdown-menu-filter">
-            <div class="dropdown-item" data-value="all">
-              {{ _('Все года') }}
-            </div>
-            {% for year in years %}
-            <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
-            {% endfor %}
-          </div>
-        </div>
-      </form>
-
-      {% if current_user.is_auditor %}
-      <div class="input-with-icon">
-        {{ icons.icon_search() }}
-        <input
-          type="text"
-          data-action="search-directions"
-          placeholder="{{ _('Наим. предприятия') }}"
-          class="app-input"
-          id="search-name"
-        />
-      </div>
-      <div class="input-with-icon">
-        {{ icons.icon_search() }}
-        <input
-          type="text"
-          data-action="search-directions"
-          placeholder="{{ _('ОКПО предприятия') }}"
-          class="app-input"
-          id="search-okpo"
-        />
-      </div>
-      {% endif %}
-    </div>
 
     <div class="header-content">
-      <a></a>
-      <div class="check-box-area">
-        <input type="checkbox" id="selectAllBtn" />
-        <a>{{ _('Выбрать все') }}</a>
+      <div class="header-content-left">
+        <div class="filters-area">
+          <form
+            method="GET"
+            action="{{ url_for('views.export') }}"
+            class="filter-form"
+            id="statusFilter"
+          >
+            <input
+              type="hidden"
+              name="status"
+              id="statusInput"
+              value="{{ request.args.get('status', 'all') }}"
+            />
+            <div class="custom-dropdown" data-filter-type="status">
+              <button type="button" class="dropdown-toggle">
+                <span class="selected-option">
+                  {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
+                  }} {% elif request.args.get('status') == 'control' %}{{
+                  _('Контроль пройден') }} {% elif request.args.get('status') ==
+                  'sent' %}{% if current_user.is_auditor != true %}{{ _('На
+                  рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
+                  elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
+                  {% elif request.args.get('status') == 'approved' %}{{
+                  _('Одобренные') }} {% else %}{{ _('Статус') }}{% endif %}
+                </span>
+                {{ icons.dropdown_arrow() }}
+              </button>
+              <div class="dropdown-menu-filter">
+                <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
+                <div class="dropdown-item" data-value="draft">
+                  {{ _('В редакции') }}
+                </div>
+                <div class="dropdown-item" data-value="control">
+                  {{ _('Контроль пройден') }}
+                </div>
+                <div class="dropdown-item" data-value="sent">
+                  {% if current_user.is_auditor != true %}{{ _('На рассмотрении')
+                  }}{%else%}{{ _('Не просмотренные') }}{%endif%}
+                </div>
+                <div class="dropdown-item" data-value="error">
+                  {{ _('С ошибками') }}
+                </div>
+                <div class="dropdown-item" data-value="approved">
+                  {{ _('Одобренные') }}
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <form
+            method="GET"
+            action="{{ url_for('views.export') }}"
+            class="filter-form"
+            id="yearFilter"
+          >
+            <input
+              type="hidden"
+              name="year"
+              id="yearInput"
+              value="{{ request.args.get('year', 'all') }}"
+            />
+            <div class="custom-dropdown" data-filter-type="year">
+              <button type="button" class="dropdown-toggle">
+                <span class="selected-option">
+                  {% if request.args.get('year') and request.args.get('year') !=
+                  'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
+                  endif %}
+                </span>
+                {{ icons.dropdown_arrow() }}
+              </button>
+              <div class="dropdown-menu-filter">
+                <div class="dropdown-item" data-value="all">
+                  {{ _('Все года') }}
+                </div>
+                {% for year in years %}
+                <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
+                {% endfor %}
+              </div>
+            </div>
+          </form>
+
+          {% if current_user.is_auditor %}
+          <div class="input-with-icon">
+            {{ icons.icon_search() }}
+            <input
+              type="text"
+              data-action="search-directions"
+              placeholder="{{ _('Наим. предприятия') }}"
+              class="app-input"
+              id="search-name"
+            />
+          </div>
+          <div class="input-with-icon">
+            {{ icons.icon_search() }}
+            <input
+              type="text"
+              data-action="search-directions"
+              placeholder="{{ _('ОКПО предприятия') }}"
+              class="app-input"
+              id="search-okpo"
+            />
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="header-content-right">
+        <div class="check-box-area">
+          <input type="checkbox" id="selectAllBtn" />
+          <a>{{ _('Выбрать все') }}</a>
+        </div>
       </div>
     </div>
-    <form method="POST" id="exportForm">
 
+    <form method="POST" id="exportForm">
       {{ component.plans_list(plans, current_user, show_checkboxes=true, show_actions=false) }}
       <input type="hidden" name="format" id="selectedFormat" />
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />

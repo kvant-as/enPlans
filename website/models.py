@@ -172,8 +172,21 @@ class EconMeasure(db.Model):
             'id_plan': self.id_plan,
             'id_direction': self.id_direction,
             'year_econ': self.year_econ,
-            'estim_econ': self.estim_econ
-        }
+            'estim_econ': self.estim_econ,
+            'direction': {
+                # 'id': self.direction.id,
+                # 'code': self.direction.code,
+                'name': self.direction.name
+                }
+                # 'is_local': self.direction.is_local,
+                # 'unit': {
+                #     'id': self.direction.unit.id,
+                #     'code': self.direction.unit.code,
+                #     'name': self.direction.unit.name
+                } 
+        #     if self.direction.unit else None
+        #     } if self.direction else None
+        # }
 
 class EconExec(db.Model):
     __tablename__ = 'econ_execes'
@@ -261,7 +274,8 @@ class IndicatorUsage(db.Model):
             'QYearPrev': self.QYearPrev,
             'QYearCurr': self.QYearCurr,
             'QYearNext': self.QYearNext,
-            'CoeffToTut': self.indicator.CoeffToTut
+            'CoeffToTut': self.indicator.CoeffToTut,
+            'name': self.indicator.name
         }
 
 class Notification(db.Model):

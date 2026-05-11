@@ -1450,6 +1450,7 @@ function Edit_econmeasure_modal() {
                 throw new Error(data.error);
             }
 
+            setValueIfExists('name-direction', data.direction.name || '');
             setValueIfExists('change-year-econ', data.year_econ || '');
             setValueIfExists('change-estim-econ', data.estim_econ || '');
             
@@ -1628,18 +1629,18 @@ function Edit_indicator_modal(){
             if (data.error) {
                 throw new Error(data.error);
             }
-
             // Для групп 5 и 6 не заполняем QYearPrev и QYearCurr
             if (!isSpecialGroup) {
                 setValueIfExists('QYearPrev-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(3) : '');
                 setValueIfExists('QYearCurr-edit', data.QYearCurr ? (data.QYearCurr / data.CoeffToTut).toFixed(3) : '');
             } else {
-                // Очищаем значения для групп 5 и 6
+
                 setValueIfExists('QYearPrev-edit', '');
                 setValueIfExists('QYearCurr-edit', '');
             }
             
             // QYearNext заполняем всегда
+            setValueIfExists('indicator-name-nodisplay', data.name);
             setValueIfExists('QYearNext-edit', data.QYearNext ? (data.QYearNext / data.CoeffToTut).toFixed(3) : '');
             
             const predictionElements = document.querySelectorAll('.prediction-value');
@@ -2191,7 +2192,9 @@ class MultiTypeSearchManager {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const searchManager = new MultiTypeSearchManager();
+    if(document.getElementById("paginationArea")){
+        const searchManager = new MultiTypeSearchManager();
+    }
 });
 
 const TableCollapseManager = (function() {
@@ -4504,7 +4507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    new DropNavigation();
+    // new DropNavigation();
 
     if (document.querySelectorAll('.tickets-container')) {
         window.TicketInfo = TicketInfo;

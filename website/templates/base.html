@@ -77,6 +77,11 @@
                         <span class="tooltip-text">{{ _('Помощь') }}</span>
                     </button>
 
+                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0;" onclick="window.location.href='/news'">
+                        {{ icons.icon_news() }} 
+                        <span class="tooltip-text">{{ _('Новости') }}</span>
+                    </button>
+
                     <div class="divider"></div>
 
                     <div class="user-container" id="user-profile-panel-trigger">
@@ -102,6 +107,10 @@
                             <button type="button" class="nav-menu-item" onclick="window.location.href='/plans'">
                                 {{ icons.icon_plans() }}
                                 <span>{{ _('Планы') }}</span>
+                            </button>
+                            <button type="button" class="nav-menu-item" onclick="window.location.href='/news'">
+                                {{ icons.icon_news() }}
+                                <span>{{ _('Новости') }}</span>
                             </button>
                             <button type="button" class="nav-menu-item" onclick="window.location.href='/#contacts-cont'">
                                 {{ icons.icon_contacts() }}
@@ -343,6 +352,17 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div id="step1" class="modal-step">
                         <div class="app-group">
+                            <label>{{ _('Направление') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_directions() }}
+                                <input type="text" id="name-direction" value=""  name = ""
+                                    placeholder="{{ _('Направление') }}" class="app-input mes-input" readonly>
+                                <div class="input-mes" title="Не изм.">
+                                    {{ icons.icon_input_mes() }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="app-group">
                             <label>{{ _('Условно-годовой экономический эффект, т у. т.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
@@ -357,6 +377,11 @@
                                 <input type="text" id="change-estim-econ" value="" name = "estim_econ"
                                     placeholder="{{ _('0.000') }}" class="app-numeric-input" required>
                             </div>  
+                        </div>
+                        <div class="required-legend">
+                            <span class="legend-text">
+                                {{ icons.icon_input_mes() }} — {{ _('только для чтения') }}
+                            </span>
                         </div>
                         <div class="button-auth-area">
                             <div></div>
@@ -444,7 +469,7 @@
                     <div class="app-group">
                         <label>[3] {{ _('Наименование мероприятий, работ') }}</label>
                         <div class="input-with-icon">
-                            {{ icons.text_icon() }}
+                            {{ icons.icon_events() }}
                             <input type="text" maxlength="" value=""  name = "name"
                                 placeholder="{{ _('Наименование') }}" class="app-input" required>
                         </div>
@@ -664,7 +689,7 @@
                     <div class="app-group">
                         <label>[3] {{ _('Наименование мероприятий, работ') }}</label>
                         <div class="input-with-icon">
-                            {{ icons.text_icon() }}
+                            {{ icons.icon_events() }}
                             <input type="text" maxlength="" id="change-name-edit-model" value=""  name = "name"
                                 placeholder="{{ _('Наименование') }}" class="app-input" required>
                         </div>
@@ -957,6 +982,17 @@
                 <form  id="editIndicatorForm" action="" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div id="step1" class="modal-step">
+                        <div class="app-group">
+                            <label>Показатель</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_indicators() }}
+                                <input type="text" id="indicator-name-nodisplay" value=""
+                                    placeholder="" class="app-input mes-input" readonly>
+                                    <div class="input-mes" title="Не изм.">
+                                        {{ icons.icon_input_mes() }}
+                                    </div>
+                            </div>
+                        </div>
                         <div class="app-group" id = "QYearPrev-edit-nodisplay">
                             <label>{{ plan.year - 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
@@ -985,11 +1021,16 @@
                             </div>
                         </div>
                         <div class="app-group" style = "display:none;">
-                        <label>id</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_eco() }}
-                            <input class="app-input" name = "id_indicator" data-action="selected-direction" readonly>
-                        </div>  
+                            <label>id</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_eco() }}
+                                <input class="app-input" name = "id_indicator" data-action="selected-direction" readonly>
+                            </div>  
+                        </div>
+                        <div class="required-legend">
+                            <span class="legend-text">
+                                {{ icons.icon_input_mes() }} — {{ _('только для чтения') }}
+                            </span>
                         </div>
                         <div class="button-auth-area">
                             <div></div>

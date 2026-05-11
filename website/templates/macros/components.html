@@ -473,3 +473,9 @@
     {% endif %}
 </div>
 {% endmacro %}
+
+{% macro required_legend() %}
+    <div class="required-legend">
+    {{ _('Поля, отмеченные <span class="star">*</span> — обязательны для заполнения') }}
+    </div>
+{% endmacro %}

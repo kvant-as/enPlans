@@ -5,84 +5,81 @@
 <div class="pers-page-with-table">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header('directions', plan, current_user) }}
-  <div class="personal-plan-conteiner">
-    {{ component.plan_menu(plan, current_user, 'directions') }}
-    {% if econ_measures %}
-      <div class="table-container">
-        <table class="main-table" id="directionTable">
-          <thead class="main-table-titels">
-            <tr>
-              <th class="resizable" style="min-width: 50px;">
-                <a>№ {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-              <th class="resizable" style="max-width: 300px;">
-                <a>{{ _('Код основных направлений энергосбережения в соответствии с формой 4-энергосбережения (Госстандарт)') }} {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-              <th class="resizable" style="max-width: 300px;">
-                <a>{{ _('Наименование направлений в соответствии с формой 4-энергосбережение (Госстандарт)') }} {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-              <th class="resizable"  style="max-width: 150px;">
-                <a>{{ _('Условно-годовой экономический эффект, т у.т.') }} {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-              <th class="resizable" style="max-width: 160px;">
-                <a>{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }} {{plan.year}} г., {{ _('т у. т.') }} {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-              <th class="resizable">
-                <a>{{ _('Местные ТЭР') }} {{ icons.icon_sort() }}</a>
-                <div class="resizer"></div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="rows">
-            {% if econ_measures %} {% for row in econ_measures %}
-            <tr class="menu-row" data-id="{{ row.id }}">
-              <td>{{ loop.index }}</td>
-              <td>{{ row.direction.code }}</td>
-              <td>{{ row.direction.name }}</td>
-              <td>{{ row.year_econ }}</td>
-              <td>{{ row.estim_econ }}</td>
-              <td style="text-align: center">
-                <input
-                  type="checkbox"
-                  {%
-                  if
-                  row.direction.is_local
-                  %}
-                  checked
-                  {%
-                  endif
-                  %}
-                  onclick="return false;"
-                />
-              </td>
-            </tr>
-            {% endfor %} {% else %}
-            <tr class="no-results-row">
-              <td colspan="6">{{ _('Нет активных направлений') }}</td>
-            </tr>
-            {% endif %}
-          </tbody>
-        </table>
-
-      </div>
-      {% else %}
-        <div class="no-info-conteiner">
-          <div class="empty-state">
-            {{ icons.icon_no_info1() }}
-            <h1>{{ _('Нет направлений') }}</h1>
-            <p>У вас пока что нет направлений. Чтобы начать работу, создайте новое направление.</p>
-          </div>
-        </div> 
-        {{ affects.bg_effect() }} 
-    {% endif %}
-  </div>
 </div>
+<div class="personal-plan-conteiner">
+  {{ component.plan_menu(plan, current_user, 'directions') }}
+  {% if econ_measures %}
+    <div class="table-container">
+      <table class="main-table" id="directionTable">
+        <thead class="main-table-titels">
+          <tr>
+            <th class="resizable" style="min-width: 50px;">
+              <a>№ {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable" style="max-width: 300px;">
+              <a>{{ _('Код основных направлений энергосбережения в соответствии с формой 4-энергосбережения (Госстандарт)') }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable" style="max-width: 300px;">
+              <a>{{ _('Наименование направлений в соответствии с формой 4-энергосбережение (Госстандарт)') }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable"  style="max-width: 150px;">
+              <a>{{ _('Условно-годовой экономический эффект, т у.т.') }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable" style="max-width: 160px;">
+              <a>{{ _('Ожидаемая экономия ТЭР от внедрения мероприятий в') }} {{plan.year}} г., {{ _('т у. т.') }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable">
+              <a>{{ _('Местные ТЭР') }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="rows">
+          {% if econ_measures %} {% for row in econ_measures %}
+          <tr class="menu-row" data-id="{{ row.id }}">
+            <td>{{ loop.index }}</td>
+            <td>{{ row.direction.code }}</td>
+            <td>{{ row.direction.name }}</td>
+            <td>{{ row.year_econ }}</td>
+            <td>{{ row.estim_econ }}</td>
+            <td style="text-align: center">
+              <input
+                type="checkbox"
+                {%
+                if
+                row.direction.is_local
+                %}
+                checked
+                {%
+                endif
+                %}
+                onclick="return false;"
+              />
+            </td>
+          </tr>
+          {% endfor %} {% else %}
+          <tr class="no-results-row">
+            <td colspan="6">{{ _('Нет активных направлений') }}</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
 
-
-
+    </div>
+    {% else %}
+      <div class="no-info-conteiner">
+        <div class="empty-state">
+          {{ icons.icon_no_info1() }}
+          <h1>{{ _('Нет направлений') }}</h1>
+          <p>У вас пока что нет направлений. Чтобы начать работу, создайте новое направление.</p>
+        </div>
+      </div> 
+      {{ affects.bg_effect() }} 
+  {% endif %}
+</div>
 {% endblock %}

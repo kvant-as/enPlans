@@ -30,7 +30,6 @@ class logs(logging.Formatter):
             log_data.update(record.extra)
         return json.dumps(log_data, ensure_ascii=False)
 
-
 class ExcludeInfoFilter(logging.Filter):
     def filter(self, record):
         return record.levelname != 'INFO'
@@ -42,7 +41,7 @@ def setup_logging(app):
 
     log_file = os.path.join(log_dir, "py-app.log")
     
-    exclude_info = app.config.get('EXCLUDE_INFO_LOGS', False)
+    exclude_info = app.config.get('EXCLUDE_INFO_LOGS')
     
     json_formatter = logs()
     console_formatter = logging.Formatter(
