@@ -4,9 +4,7 @@ from flask_login import UserMixin
 import secrets
 import string
 
-def TimeByMinsk():
-    from datetime import datetime, timedelta
-    return datetime.utcnow() + timedelta(hours=3)
+from .time import TimeByMinsk
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
@@ -96,10 +94,10 @@ class Plan(db.Model):
     change_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     sent_time = db.Column(db.DateTime)
     audit_time = db.Column(db.DateTime)
-    energy_saving = db.Column(Numeric(scale=3))
-    share_fuel = db.Column(Numeric(scale=3))
-    saving_fuel = db.Column(Numeric(scale=3))
-    share_energy = db.Column(Numeric(scale=3))
+    energy_saving = db.Column(Numeric(scale=2))
+    share_fuel = db.Column(Numeric(scale=2))
+    saving_fuel = db.Column(Numeric(scale=2))
+    share_energy = db.Column(Numeric(scale=2))
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
@@ -111,10 +109,12 @@ class Plan(db.Model):
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
     afch = db.Column(db.Boolean, default=False)
+    
     tickets = db.relationship('Ticket', back_populates='plan', lazy=True, cascade="all, delete-orphan")
-    econ_measures = db.relationship('EconMeasure', back_populates='plan', lazy=True, cascade="all, delete-orphan")
-    econ_execes = db.relationship('EconExec', back_populates='plan', lazy=True, cascade="all, delete-orphan")
+    
+    events = db.relationship('Event', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     indicators_usage = db.relationship('IndicatorUsage', back_populates='plan', lazy=True, cascade="all, delete-orphan")
+    
     ministry = db.relationship("Ministry",
                               foreign_keys=[ministry_id],
                               back_populates="plans")
@@ -140,7 +140,6 @@ class Ticket(db.Model):
 class Unit(db.Model):
     __tablename__ = 'units'
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(400), unique=True, nullable=False)
     name = db.Column(db.String(400), unique=True, nullable=False)
 
 class Direction(db.Model):
@@ -149,70 +148,39 @@ class Direction(db.Model):
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
     id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
-    is_local = db.Column(db.Boolean)
     DateStart = db.Column(db.DateTime)
     DateEnd = db.Column(db.DateTime)
-    unit = db.relationship('Unit', backref='directions')
+    
+    is_local = db.Column(db.Boolean, default=False)
+    
+    unit = db.relationship('Unit', backref='directions', foreign_keys=[id_unit])
 
-class EconMeasure(db.Model):
-    __tablename__ = 'econ_measures'
+class Event(db.Model):
+    __tablename__ = 'events'
     id = db.Column(db.Integer, primary_key=True)
-    id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     id_direction = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=False)
-    year_econ = db.Column(Numeric(scale=3))
-    estim_econ = db.Column(Numeric(scale=3))
-    order = db.Column(db.Integer, default=None)
-    plan = db.relationship("Plan", back_populates="econ_measures")
-    direction = db.relationship('Direction', backref='econ_measures')
-    econ_execes = db.relationship('EconExec', back_populates='econ_measures', lazy=True, cascade="all, delete-orphan")
-
-    def as_dict(self):
-        return {
-            'id': self.id,
-            'id_plan': self.id_plan,
-            'id_direction': self.id_direction,
-            'year_econ': self.year_econ,
-            'estim_econ': self.estim_econ,
-            'direction': {
-                # 'id': self.direction.id,
-                # 'code': self.direction.code,
-                'name': self.direction.name
-                }
-                # 'is_local': self.direction.is_local,
-                # 'unit': {
-                #     'id': self.direction.unit.id,
-                #     'code': self.direction.unit.code,
-                #     'name': self.direction.unit.name
-                } 
-        #     if self.direction.unit else None
-        #     } if self.direction else None
-        # }
-
-class EconExec(db.Model):
-    __tablename__ = 'econ_execes'
-    id = db.Column(db.Integer, primary_key=True)
-    id_measure = db.Column(db.Integer, db.ForeignKey('econ_measures.id'), nullable=False)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     name = db.Column(db.String(4000), nullable=False)
     Volume = db.Column(db.Integer)
-    EffTut = db.Column(Numeric(scale=3))
-    EffRub = db.Column(Numeric(scale=3))
+    EffTut = db.Column(Numeric(scale=2))
+    EffRub = db.Column(Numeric(scale=2))
     ExpectedQuarter = db.Column(db.Integer)
-    EffCurrYear = db.Column(Numeric(scale=3))
-    Payback = db.Column(Numeric(scale=3))
-    VolumeFin = db.Column(Numeric(scale=3))
-    BudgetState = db.Column(Numeric(scale=3))
-    BudgetRep = db.Column(Numeric(scale=3))
-    BudgetLoc = db.Column(Numeric(scale=3))
-    BudgetOther = db.Column(Numeric(scale=3))
-    MoneyOwn = db.Column(Numeric(scale=3))
-    MoneyLoan = db.Column(Numeric(scale=3))
-    MoneyOther = db.Column(Numeric(scale=3))
+    EffCurrYear = db.Column(Numeric(scale=2))
+    Payback = db.Column(Numeric(scale=2))
+    VolumeFin = db.Column(Numeric(scale=2))
+    BudgetState = db.Column(Numeric(scale=2))
+    BudgetRep = db.Column(Numeric(scale=2))
+    BudgetLoc = db.Column(Numeric(scale=2))
+    BudgetOther = db.Column(Numeric(scale=2))
+    MoneyOwn = db.Column(Numeric(scale=2))
+    MoneyLoan = db.Column(Numeric(scale=2))
+    MoneyOther = db.Column(Numeric(scale=2))
     is_local = db.Column(db.Boolean)
     is_corrected = db.Column(db.Boolean)
     order = db.Column(db.Integer, default=None)
-    plan = db.relationship("Plan", back_populates="econ_execes")
-    econ_measures = db.relationship("EconMeasure", back_populates="econ_execes")
+    plan = db.relationship("Plan", back_populates="events")
+    direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])
+    # econ_measures = db.relationship("EconMeasure", back_populates="econ_execes")
 
     def as_dict(self):
         return {
@@ -240,7 +208,7 @@ class Indicator(db.Model):
     id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
-    CoeffToTut = db.Column(Numeric(scale=3))
+    CoeffToTut = db.Column(Numeric(scale=2))
     IsMandatory = db.Column(db.Boolean)
     Group = db.Column(db.Float)
     RowN = db.Column(db.Integer)
@@ -260,9 +228,9 @@ class IndicatorUsage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_indicator = db.Column(db.Integer, db.ForeignKey('indicators.id'), nullable=False)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
-    QYearPrev = db.Column(Numeric(scale=3))
-    QYearCurr = db.Column(Numeric(scale=3))
-    QYearNext = db.Column(Numeric(scale=3))
+    QYearPrev = db.Column(Numeric(scale=2))
+    QYearCurr = db.Column(Numeric(scale=2))
+    QYearNext = db.Column(Numeric(scale=2))
     indicator = db.relationship("Indicator", back_populates="indicators_usage")
     plan = db.relationship("Plan", back_populates="indicators_usage")
 

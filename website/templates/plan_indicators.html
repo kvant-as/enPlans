@@ -13,35 +13,35 @@
     <table class="main-table" id="indicatorsTable">
       <thead class="main-table-titels">
         <tr>
-          <th rowspan="2" class="resizable" style="white-space: nowrap; border-left: none">
+          <th rowspan="2" class="resizable" style="max-width: 90px;">
             <a>Строка {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-          <th rowspan="2" class="resizable" style="white-space: nowrap">
-            <a>№ п/п {{ icons.icon_sort() }}</a>
+          <th rowspan="2" class="resizable">
+            <a>№ {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="2" class="resizable" style="min-width: 600px">        
             <a>Основные показатели по использованию ТЭР {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-          <th rowspan="2" class="resizable" style="min-width: 90px">
+          <th rowspan="2" class="resizable" style="max-width: 90px">
             <a>Ед. изм.{{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
+          <th colspan="2" class="resizable" style="max-width: 200px">
             <a>{{ plan.year - 1}} г. план</a>
             <div class="resizer"></div>
           </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
+          <th colspan="2" class="resizable" style="max-width: 200px">
             <a>{{ plan.year }} г. план</a>
             <div class="resizer"></div>
           </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
+          <th colspan="2" class="resizable" style="max-width: 200px">
             <a>{{ plan.year + 1}} г. прогноз</a>
             <div class="resizer"></div>
           </th>
-          <th rowspan="2" class="resizable">
+          <th rowspan="2" class="resizable" style="border-right: none; max-width: 100px">
             <a>Изменение ТЭР прогнозного года к предыдущему {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
@@ -113,7 +113,7 @@
             9
             <div class="resizer"></div>
           </th>
-          <th class="resizable">
+          <th class="resizable" style="border-right: none;">
             10
             <div class="resizer"></div>
           </th>
@@ -129,7 +129,7 @@
           class="menu-row {% if is_new_group %}group-header-indicator{% endif %}"
           data-id="{{ row.id }}"
         >
-          <td>{{ loop.index }}</td>
+          <td style="text-align: center;">{{ loop.index }}</td>
           <td style="text-align: center">
             {% if is_new_group %} {{ row.indicator.Group|int if
             row.indicator.Group % 1 == 0 else row.indicator.Group }} {% endif
@@ -145,7 +145,7 @@
           <td>{{ row.QYearNext }}</td>
           <td
             class="difference-cell"
-            style="{% if (row.QYearNext - row.QYearCurr) < 0 %}background-color: rgb(255, 96, 96, 0.705);{% elif (row.QYearNext - row.QYearCurr) > 0 %}background-color: rgb(96, 255, 122, 0.705);{% endif %}"
+            style="border-right: none; {% if (row.QYearNext - row.QYearCurr) < 0 %}background-color: rgb(96, 255, 122, 0.705);{% elif (row.QYearNext - row.QYearCurr) > 0 %}background-color: rgb(255, 96, 96, 0.705);{% endif %}"
           >
             {{ row.QYearNext - row.QYearCurr }}
           </td>

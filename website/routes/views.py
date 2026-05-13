@@ -12,10 +12,10 @@ from flask_login import (
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, asc, or_
 
-from website.plans import get_cumulative_econ_metrics, get_filtered_plans, other_data_indicatorUpdate, to_decimal_3, status_handlers, update_ChangeTimePlan
+from website.plans import get_cumulative_econ_metrics, get_filtered_plans, other_data_indicatorUpdate, to_decimal_2, status_handlers, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import Ministry, Region, User, Organization, Plan, Ticket, Unit, Direction, Indicator, EconMeasure, EconExec, IndicatorUsage, Notification, TimeByMinsk
+from ..models import Ministry, Region, User, Organization, Plan, Ticket, Unit, Direction, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 from .. import db
 
 from functools import wraps
@@ -438,10 +438,10 @@ def create_plan():
             return render_template('create_plan.html', 
                         hide_header=False)
 
-        energy_saving = to_decimal_3(request.form.get('energy_saving'))
-        share_fuel = to_decimal_3(request.form.get('share_fuel'))
-        saving_fuel = to_decimal_3(request.form.get('saving_fuel'))
-        share_energy = to_decimal_3(request.form.get('share_energy'))
+        energy_saving = to_decimal_2(request.form.get('energy_saving'))
+        share_fuel = to_decimal_2(request.form.get('share_fuel'))
+        saving_fuel = to_decimal_2(request.form.get('saving_fuel'))
+        share_energy = to_decimal_2(request.form.get('share_energy'))
 
         org_id = None
         ministry_id = None
@@ -485,9 +485,9 @@ def create_plan():
             indicator_usage = IndicatorUsage(
                 id_indicator=indicator.id,
                 id_plan=new_plan.id,
-                QYearPrev=to_decimal_3(0),
-                QYearCurr=to_decimal_3(0),
-                QYearNext=to_decimal_3(0)
+                QYearPrev=to_decimal_2(0),
+                QYearCurr=to_decimal_2(0),
+                QYearNext=to_decimal_2(0)
             )
             db.session.add(indicator_usage)
         
@@ -523,10 +523,10 @@ def edit_plan(token):
             flash(f'У вас уже есть другой план на {year} год!', 'error')
             return redirect(url_for('views.plans'))
         
-        energy_saving = to_decimal_3(request.form.get('energy_saving'))
-        share_fuel = to_decimal_3(request.form.get('share_fuel'))
-        saving_fuel = to_decimal_3(request.form.get('saving_fuel'))
-        share_energy = to_decimal_3(request.form.get('share_energy'))
+        energy_saving = to_decimal_2(request.form.get('energy_saving'))
+        share_fuel = to_decimal_2(request.form.get('share_fuel'))
+        saving_fuel = to_decimal_2(request.form.get('saving_fuel'))
+        share_energy = to_decimal_2(request.form.get('share_energy'))
 
         current_plan.year = year
         current_plan.energy_saving = energy_saving
@@ -658,169 +658,137 @@ def plan_audit(token):
                         plan=current_plan,     
                         hide_header=False)
 
-@views.route('/plans/plan-directions/<token>', methods=['GET', 'POST'])
+# @views.route('/plans/plan-directions/<token>', methods=['GET', 'POST'])
+# @user_with_all_params()
+# @login_required
+# @owner_only
+# @session_required
+# def plan_directions(token):    
+#     if request.method == 'POST':
+#         pass
+    
+#     current_plan = g.current_plan
+#     directions = Direction.query.all() 
+    
+#     econ_measures = (
+#         EconMeasure.query
+#         .filter_by(id_plan=current_plan.id)
+#         .join(EconMeasure.direction)
+#         .order_by(asc(Direction.code))
+#         .all()
+#     )
+    
+#     return render_template('plan_directions.html', 
+#                         econ_measures=econ_measures,
+#                         directions=directions,
+#                         plan=current_plan,  
+#                         hide_header=False,
+#                         add_direction_modal=True,
+#                         confirmModal=True,
+#                         sentmodal=current_plan.is_control,
+#                         edit_direction_modal=True,
+#                         context_menu=True
+#                          )
+    
+# @views.route('/get-econmeasure/<int:id>', methods=['GET'])
+# @user_with_all_params()
+# @login_required
+# def get_econmeasure(id):
+#     try:
+#         existing_measure = EconMeasure.query.get(id)
+#         if not existing_measure:
+#             return jsonify({'error': 'EconMeasure not found'}), 404
+        
+#         return jsonify(existing_measure.as_dict())
+        
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+
+# @views.route('/create-econmeasure/<token>', methods=['POST'])
+# @user_with_all_params()
+# @login_required
+# @owner_only
+# @session_required
+# def create_econmeasure(token):
+#     current_plan = g.current_plan
+#     id_direction = request.form.get('id_direction')
+#     year_econ = to_decimal_2(request.form.get('year_econ'))
+#     estim_econ = to_decimal_2(request.form.get('estim_econ'))
+
+#     new_econmeasure = EconMeasure(
+#         id_plan=current_plan.id,
+#         id_direction=id_direction,
+#         year_econ=year_econ,
+#         estim_econ=estim_econ
+#     )
+    
+#     db.session.add(new_econmeasure)
+#     db.session.commit()    
+#     flash('Направление добавлено', 'success')
+#     update_ChangeTimePlan(current_plan.id)
+#     return redirect(url_for('views.plan_directions', token=token))
+
+# @views.route('/delete-econmeasure/<int:id>', methods=['POST'])
+# @user_with_all_params()
+# @login_required
+# @session_required
+# def delete_econmeasure(id):
+#     econ_measure = EconMeasure.query.get_or_404(id)
+#     current_plan = Plan.query.get_or_404(econ_measure.id_plan)
+
+#     db.session.delete(econ_measure)
+#     db.session.commit()
+    
+#     other_data_indicatorUpdate(current_plan.id)
+#     update_ChangeTimePlan(current_plan.id)
+
+#     flash('Направление успешно удалено', 'success')
+#     return redirect(url_for('views.plan_directions', token=current_plan.token))
+
+# @views.route('/edit-econmeasure/<int:id>', methods=['POST'])
+# @user_with_all_params()
+# @login_required
+# @session_required
+# def edit_econmeasure(id):
+#     year_econ = to_decimal_2(request.form.get('year_econ'))
+#     estim_econ = to_decimal_2(request.form.get('estim_econ'))
+
+#     econmeasure = EconMeasure.query.get_or_404(id)
+    
+#     if not econmeasure:
+#         flash('Запись не найдена!', 'error')
+#         return redirect(url_for('views.plan_directions'))
+
+#     current_plan = Plan.query.get_or_404(econmeasure.id_plan)
+#     econmeasure.year_econ = year_econ
+#     econmeasure.estim_econ = estim_econ
+#     db.session.commit()
+#     update_ChangeTimePlan(current_plan.id)
+#     flash('Направление обновлено', 'success')
+    
+#     return redirect(url_for('views.plan_directions', token=current_plan.token))
+
+@views.route('/plans/plan-events-saving/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @owner_only
 @session_required
-def plan_directions(token):    
+def plan_event_saving(token):    
     if request.method == 'POST':
         pass
     
     current_plan = g.current_plan
-    directions = Direction.query.all() 
-    
-    econ_measures = (
-        EconMeasure.query
-        .filter_by(id_plan=current_plan.id)
-        .join(EconMeasure.direction)
-        .order_by(asc(Direction.code))
-        .all()
-    )
-    
-    return render_template('plan_directions.html', 
-                        econ_measures=econ_measures,
-                        directions=directions,
-                        plan=current_plan,  
-                        hide_header=False,
-                        add_direction_modal=True,
-                        confirmModal=True,
-                        sentmodal=current_plan.is_control,
-                        edit_direction_modal=True,
-                        context_menu=True
-                         )
-    
-@views.route('/get-econmeasure/<int:id>', methods=['GET'])
-@user_with_all_params()
-@login_required
-def get_econmeasure(id):
-    try:
-        existing_measure = EconMeasure.query.get(id)
-        if not existing_measure:
-            return jsonify({'error': 'EconMeasure not found'}), 404
-        
-        return jsonify(existing_measure.as_dict())
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@views.route('/create-econmeasure/<token>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@session_required
-def create_econmeasure(token):
-    current_plan = g.current_plan
-    id_direction = request.form.get('id_direction')
-    year_econ = to_decimal_3(request.form.get('year_econ'))
-    estim_econ = to_decimal_3(request.form.get('estim_econ'))
-
-    new_econmeasure = EconMeasure(
-        id_plan=current_plan.id,
-        id_direction=id_direction,
-        year_econ=year_econ,
-        estim_econ=estim_econ
-    )
-    
-    db.session.add(new_econmeasure)
-    db.session.commit()    
-    flash('Направление добавлено', 'success')
-    update_ChangeTimePlan(current_plan.id)
-    return redirect(url_for('views.plan_directions', token=token))
-
-@views.route('/delete-econmeasure/<int:id>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def delete_econmeasure(id):
-    econ_measure = EconMeasure.query.get_or_404(id)
-    current_plan = Plan.query.get_or_404(econ_measure.id_plan)
-
-    db.session.delete(econ_measure)
-    db.session.commit()
-    
-    other_data_indicatorUpdate(current_plan.id)
-    update_ChangeTimePlan(current_plan.id)
-
-    flash('Направление успешно удалено', 'success')
-    return redirect(url_for('views.plan_directions', token=current_plan.token))
-
-@views.route('/edit-econmeasure/<int:id>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def edit_econmeasure(id):
-    year_econ = to_decimal_3(request.form.get('year_econ'))
-    estim_econ = to_decimal_3(request.form.get('estim_econ'))
-
-    econmeasure = EconMeasure.query.get_or_404(id)
-    
-    if not econmeasure:
-        flash('Запись не найдена!', 'error')
-        return redirect(url_for('views.plan_directions'))
-
-    current_plan = Plan.query.get_or_404(econmeasure.id_plan)
-    econmeasure.year_econ = year_econ
-    econmeasure.estim_econ = estim_econ
-    db.session.commit()
-    update_ChangeTimePlan(current_plan.id)
-    flash('Направление обновлено', 'success')
-    
-    return redirect(url_for('views.plan_directions', token=current_plan.token))
-
-@views.route('/plans/plan-events/<token>', methods=['GET', 'POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@session_required
-def plan_events(token):    
-    if request.method == 'POST':
-        pass
-    
-    current_plan = g.current_plan
   
-    econ_measures = (
-        EconMeasure.query
-        .filter_by(id_plan=current_plan.id)
-        .join(EconMeasure.direction)
-        .order_by(asc(Direction.code))
-        .all()
-    )
-  
-    econ_exec = (
-        EconExec.query
-        .filter_by(id_plan=current_plan.id)
-        .join(EconMeasure.direction)
-        .order_by(asc(Direction.code))
-        .all()
-    )
-  
-    # local_econ_execes = (EconExec.query
-    #     .join(EconMeasure)
-    #     .join(Plan)
-    #     .filter(Plan.id == current_plan.id, EconExec.is_local == True)
-    #     .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
-    #     .all())
-
-    # non_local_econ_execes = (EconExec.query
-    #     .join(EconMeasure)
-    #     .join(Plan)
-    #     .filter(Plan.id == current_plan.id, EconExec.is_local == False)
-    #     .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
-    #     .all())
+    directions = Direction.query.filter_by().order_by().all()
     
-    local_econ_execes = (EconExec.query
-        .join(EconMeasure, EconExec.id_measure == EconMeasure.id)
-        .join(Plan, EconMeasure.id_plan == Plan.id)
-        .filter(Plan.id == current_plan.id, EconExec.is_local == True)
-        .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+    local_econ_execes = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Plan.id == current_plan.id)
         .all())
 
-    non_local_econ_execes = (EconExec.query
-        .join(EconMeasure, EconExec.id_measure == EconMeasure.id)
-        .join(Plan, EconMeasure.id_plan == Plan.id)
-        .filter(Plan.id == current_plan.id, EconExec.is_local == False)
-        .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+    non_local_econ_execes = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Plan.id == current_plan.id)
         .all())
 
 
@@ -838,9 +806,8 @@ def plan_events(token):
         'jan_dec_vol': local_totals['jan_dec']['volume_fin'] + non_local_totals['jan_dec']['volume_fin']
     }
 
-    return render_template('plan_events.html',  
-                        econ_exec=econ_exec,
-                        econ_measures=econ_measures,
+    return render_template('plan_events_saving.html',  
+                        directions=directions,
                         local_econ_execes=local_econ_execes,
                         non_local_econ_execes=non_local_econ_execes,
                         total_metrics=total_metrics,
@@ -853,47 +820,111 @@ def plan_events(token):
                         context_menu=True
                          )
     
-@views.route('/create-econexeces/<token>', methods=['POST'])
+@views.route('/plans/plan-events-increase/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @owner_only
 @session_required
-def create_econexeces(token):
+def plan_event_increase(token):    
+    if request.method == 'POST':
+        pass
+    
+    current_plan = g.current_plan
+  
+    directions = Direction.query.filter_by().order_by().all()
+    
+    econ_exec = (
+        Event.query
+        .filter_by(id_plan=current_plan.id)
+        .order_by(asc(Direction.code))
+        .all()
+    )
+  
+    local_econ_execes = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .join(Plan, Direction.id_plan == Plan.id)
+        .filter(Plan.id == current_plan.id)
+        .options(joinedload(Event.econ_measures).joinedload(Direction.plan))
+        .all())
+
+    non_local_econ_execes = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .join(Plan, Direction.id_plan == Plan.id)
+        .filter(Plan.id == current_plan.id)
+        .options(joinedload(Event.econ_measures).joinedload(Direction.plan))
+    .all())
+
+
+    local_totals = get_cumulative_econ_metrics(current_plan.id, True)
+    non_local_totals = get_cumulative_econ_metrics(current_plan.id, False)
+    
+    total_metrics = {
+        'jan_mar_eff': local_totals['jan_mar']['eff_curr_year'] + non_local_totals['jan_mar']['eff_curr_year'],
+        'jan_mar_vol': local_totals['jan_mar']['volume_fin'] + non_local_totals['jan_mar']['volume_fin'],
+        'jan_jun_eff': local_totals['jan_jun']['eff_curr_year'] + non_local_totals['jan_jun']['eff_curr_year'],
+        'jan_jun_vol': local_totals['jan_jun']['volume_fin'] + non_local_totals['jan_jun']['volume_fin'],
+        'jan_sep_eff': local_totals['jan_sep']['eff_curr_year'] + non_local_totals['jan_sep']['eff_curr_year'],
+        'jan_sep_vol': local_totals['jan_sep']['volume_fin'] + non_local_totals['jan_sep']['volume_fin'],
+        'jan_dec_eff': local_totals['jan_dec']['eff_curr_year'] + non_local_totals['jan_dec']['eff_curr_year'],
+        'jan_dec_vol': local_totals['jan_dec']['volume_fin'] + non_local_totals['jan_dec']['volume_fin']
+    }
+    return render_template('plan_events_increase.html',  
+                        econ_exec=econ_exec,
+                        econ_measures=econ_measures,
+                        local_econ_execes=local_econ_execes,
+                        non_local_econ_execes=non_local_econ_execes,
+                        total_metrics=total_metrics,
+                        plan=current_plan, 
+                        hide_header=False,
+                        add_event_modal=True,
+                        confirmModal=True,
+                        edit_event_modal=True,
+                        sentmodal=current_plan.is_control,
+                        context_menu=True
+                         ) 
+
+@views.route('/create-events/<token>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+def create_events(token):
     current_plan = g.current_plan
     
-    id_measure = request.form.get('id_measure')
+    id_direction = request.form.get('id_direction')
     name = request.form.get('name') or None
 
     Volume_value = request.form.get('Volume')
     ExpectedQuarter_value = request.form.get('ExpectedQuarter')
 
-    Payback = to_decimal_3(request.form.get('Payback'))
+    Payback = to_decimal_2(request.form.get('Payback'))
 
-    EffTut = to_decimal_3(request.form.get('EffTut'))
-    EffRub = to_decimal_3(request.form.get('EffRub'))
-    EffCurrYear = to_decimal_3(request.form.get('EffCurrYear'))
+    EffTut = to_decimal_2(request.form.get('EffTut'))
+    EffRub = to_decimal_2(request.form.get('EffRub'))
+    EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
 
-    VolumeFin = to_decimal_3(request.form.get('VolumeFin'))
-    BudgetState = to_decimal_3(request.form.get('BudgetState')) 
-    BudgetRep = to_decimal_3(request.form.get('BudgetRep')) 
-    BudgetLoc = to_decimal_3(request.form.get('BudgetLoc')) 
-    BudgetOther = to_decimal_3(request.form.get('BudgetOther'))
-    MoneyOwn = to_decimal_3(request.form.get('MoneyOwn')) 
-    MoneyLoan = to_decimal_3(request.form.get('MoneyLoan')) 
-    MoneyOther = to_decimal_3(request.form.get('MoneyOther'))
+    VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
+    BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+    BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+    BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+    BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+    MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+    MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+    MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
 
     Volume = int(float(Volume_value)) if Volume_value else None
     ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
 
-    measure = EconMeasure.query.get(id_measure)
-    if not measure:
+    direction = Direction.query.get(id_direction)
+    if not direction:
         flash('Направление не найдено', 'error')
-        return redirect(url_for('views.plan_events', token=token))
+        return redirect(url_for('views.plan_event', token=token))
     
-    is_local = measure.direction.is_local if measure.direction else False
+    # is_local = measure.direction.is_local if measure.direction else False
 
-    new_econexec = EconExec(
-        id_measure=id_measure,
+
+    new_Event = Event(
+        id_direction=id_direction,
         id_plan=current_plan.id,
         name=name,
         Volume=Volume,
@@ -910,97 +941,97 @@ def create_econexeces(token):
         MoneyOwn=MoneyOwn,
         MoneyLoan=MoneyLoan,
         MoneyOther=MoneyOther,
-        is_local=is_local 
+        # is_local=is_local 
     )
     
-    db.session.add(new_econexec)
+    db.session.add(new_Event)
     db.session.commit()
     other_data_indicatorUpdate(current_plan.id)
     update_ChangeTimePlan(current_plan.id)
     flash('Мероприятие добавлено', 'success')
-    return redirect(url_for('views.plan_events', token=token))
+    return redirect(url_for('views.plan_event_saving', token=token))
     
-@views.route('/delete-econexeces/<int:id>', methods=['POST'])
+@views.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @session_required
-def delete_econexeces(id):
-    econ_exec = EconExec.query.get_or_404(id)
-    current_plan = Plan.query.get_or_404(econ_exec.econ_measures.id_plan)
+def delete_eventes(id):
+    current_event = Event.query.get_or_404(id)
+    current_plan = Plan.query.get_or_404(current_event.id_plan)
 
-    db.session.delete(econ_exec)
+    db.session.delete(current_event)
     db.session.commit()
 
     other_data_indicatorUpdate(current_plan.id)
     update_ChangeTimePlan(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
-    return redirect(url_for('views.plan_events', token=current_plan.token))
+    return redirect(url_for('views.plan_event_saving', token=current_plan.token))
 
-@views.route('/edit-econexeces/<int:id>', methods=['POST'])
+@views.route('/edit-Eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @session_required
-def edit_econexeces(id):
+def edit_Eventes(id):
     name = request.form.get('name') or None
 
     Volume_value = request.form.get('Volume')
     ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-    Payback = to_decimal_3(request.form.get('Payback'))
+    Payback = to_decimal_2(request.form.get('Payback'))
 
-    EffTut = to_decimal_3(request.form.get('EffTut'))
-    EffRub = to_decimal_3(request.form.get('EffRub'))
-    EffCurrYear = to_decimal_3(request.form.get('EffCurrYear'))
+    EffTut = to_decimal_2(request.form.get('EffTut'))
+    EffRub = to_decimal_2(request.form.get('EffRub'))
+    EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
     
-    VolumeFin = to_decimal_3(request.form.get('VolumeFin'))
-    BudgetState = to_decimal_3(request.form.get('BudgetState')) 
-    BudgetRep = to_decimal_3(request.form.get('BudgetRep')) 
-    BudgetLoc = to_decimal_3(request.form.get('BudgetLoc')) 
-    BudgetOther = to_decimal_3(request.form.get('BudgetOther'))
-    MoneyOwn = to_decimal_3(request.form.get('MoneyOwn')) 
-    MoneyLoan = to_decimal_3(request.form.get('MoneyLoan')) 
-    MoneyOther = to_decimal_3(request.form.get('MoneyOther'))
+    VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
+    BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+    BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+    BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+    BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+    MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+    MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+    MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
 
     Volume = int(float(Volume_value)) if Volume_value else None
     ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
     
-    current_EconExec = EconExec.query.get(id)
-    current_plan = Plan.query.get_or_404(current_EconExec.id_plan)
+    current_Event = Event.query.get(id)
+    current_plan = Plan.query.get_or_404(current_Event.id_plan)
 
-    if not current_EconExec:
+    if not current_Event:
         flash('Мероприятие не найдено', 'error')
-        return redirect(url_for('views.plan_events', token=current_plan.token))
+        return redirect(url_for('views.plan_event_saving', token=current_plan.token))
     
-    current_EconExec.name=name
-    current_EconExec.Volume=Volume
-    current_EconExec.ExpectedQuarter=ExpectedQuarter
-    current_EconExec.EffTut=EffTut
-    current_EconExec.EffRub=EffRub
-    current_EconExec.EffCurrYear=EffCurrYear
-    current_EconExec.Payback=Payback
-    current_EconExec.VolumeFin=VolumeFin
-    current_EconExec.BudgetState=BudgetState
-    current_EconExec.BudgetRep=BudgetRep
-    current_EconExec.BudgetLoc=BudgetLoc
-    current_EconExec.BudgetOther=BudgetOther
-    current_EconExec.MoneyOwn=MoneyOwn
-    current_EconExec.MoneyLoan=MoneyLoan
-    current_EconExec.MoneyOther=MoneyOther
+    current_Event.name=name
+    current_Event.Volume=Volume
+    current_Event.ExpectedQuarter=ExpectedQuarter
+    current_Event.EffTut=EffTut
+    current_Event.EffRub=EffRub
+    current_Event.EffCurrYear=EffCurrYear
+    current_Event.Payback=Payback
+    current_Event.VolumeFin=VolumeFin
+    current_Event.BudgetState=BudgetState
+    current_Event.BudgetRep=BudgetRep
+    current_Event.BudgetLoc=BudgetLoc
+    current_Event.BudgetOther=BudgetOther
+    current_Event.MoneyOwn=MoneyOwn
+    current_Event.MoneyLoan=MoneyLoan
+    current_Event.MoneyOther=MoneyOther
 
     db.session.commit()
     flash('Мероприятие изменено', 'success')
 
     other_data_indicatorUpdate(current_plan.id)
     update_ChangeTimePlan(current_plan.id)
-    return redirect(url_for('views.plan_events', token=current_plan.token))
+    return redirect(url_for('views.plan_event_saving', token=current_plan.token))
 
-@views.route('/get-econexece/<int:id>', methods=['GET'])
+@views.route('/get-Evente/<int:id>', methods=['GET'])
 @user_with_all_params()
 @login_required
-def get_econexece(id):
+def get_Evente(id):
     try:
-        existing_measure = EconExec.query.get(id)
+        existing_measure = Event.query.get(id)
         if not existing_measure:
-            return jsonify({'error': 'EconExec not found'}), 404
+            return jsonify({'error': 'Event not found'}), 404
         
         return jsonify(existing_measure.as_dict())
         
@@ -1067,9 +1098,9 @@ def get_indicator(id):
 def create_indicator(token):
     current_plan = g.current_plan
     
-    QYearPrev_ed = to_decimal_3(request.form.get('QYearPrev'))
-    QYearCurr_ed = to_decimal_3(request.form.get('QYearCurr'))
-    QYearNext_ed = to_decimal_3(request.form.get('QYearNext'))
+    QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
+    QYearCurr_ed = to_decimal_2(request.form.get('QYearCurr'))
+    QYearNext_ed = to_decimal_2(request.form.get('QYearNext'))
     id_indicator = request.form.get('id_indicator')
 
 
@@ -1079,9 +1110,9 @@ def create_indicator(token):
     
     indicator = Indicator.query.filter_by(id=id_indicator).first()
 
-    QYearPrev = to_decimal_3(QYearPrev_ed * indicator.CoeffToTut)
-    QYearCurr = to_decimal_3(QYearCurr_ed * indicator.CoeffToTut)
-    QYearNext = to_decimal_3(QYearNext_ed * indicator.CoeffToTut)
+    QYearPrev = to_decimal_2(QYearPrev_ed * indicator.CoeffToTut)
+    QYearCurr = to_decimal_2(QYearCurr_ed * indicator.CoeffToTut)
+    QYearNext = to_decimal_2(QYearNext_ed * indicator.CoeffToTut)
 
     new_IndicatorUsage = IndicatorUsage(
         id_plan=current_plan.id,
@@ -1103,18 +1134,18 @@ def create_indicator(token):
 @login_required
 @session_required
 def edit_indicator(id):
-    QYearPrev_ed = to_decimal_3(request.form.get('QYearPrev'))
-    QYearCurr_ed = to_decimal_3(request.form.get('QYearCurr'))
-    QYearNext_ed = to_decimal_3(request.form.get('QYearNext'))
+    QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
+    QYearCurr_ed = to_decimal_2(request.form.get('QYearCurr'))
+    QYearNext_ed = to_decimal_2(request.form.get('QYearNext'))
 
     if id == None:
         flash('Пустой id', 'error')
         return redirect(request.url)
     
     indicator_usage = IndicatorUsage.query.filter_by(id=id).first()
-    indicator_usage.QYearPrev = to_decimal_3(QYearPrev_ed * indicator_usage.indicator.CoeffToTut)
-    indicator_usage.QYearCurr = to_decimal_3(QYearCurr_ed * indicator_usage.indicator.CoeffToTut)
-    indicator_usage.QYearNext = to_decimal_3(QYearNext_ed * indicator_usage.indicator.CoeffToTut)
+    indicator_usage.QYearPrev = to_decimal_2(QYearPrev_ed * indicator_usage.indicator.CoeffToTut)
+    indicator_usage.QYearCurr = to_decimal_2(QYearCurr_ed * indicator_usage.indicator.CoeffToTut)
+    indicator_usage.QYearNext = to_decimal_2(QYearNext_ed * indicator_usage.indicator.CoeffToTut)
     db.session.commit()
 
     current_plan = Plan.query.get_or_404(indicator_usage.id_plan)

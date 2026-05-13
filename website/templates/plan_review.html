@@ -99,7 +99,7 @@
             <input
               type="text"
               value="{{ plan.energy_saving }}"
-              placeholder="0.000"
+              placeholder="0.00"
               class="app-numeric-input-negative"
               pattern="-?[0-9]+([\.,][0-9]+)?"
               readonly
@@ -113,7 +113,7 @@
             <input
               type="text"
               value="{{ plan.share_fuel }}"
-              placeholder="0.000"
+              placeholder="0.00"
               class="app-numeric-input"
               pattern="[0-9]+([\.,][0-9]+)?"
               readonly
@@ -129,7 +129,7 @@
             <input
               type="text"
               value="{{ plan.saving_fuel }}"
-              placeholder="0.000"
+              placeholder="0.00"
               class="app-numeric-input"
               readonly
               pattern="[0-9]+([\.,][0-9]+)?"
@@ -143,7 +143,7 @@
             <input
               type="text"
               value="{{ plan.share_energy }}"
-              placeholder="0.000"
+              placeholder="0.00"
               class="app-numeric-input"
               readonly
               pattern="[0-9]+([\.,][0-9]+)?"
@@ -154,7 +154,7 @@
 
     {% if current_user.is_auditor == true or current_user.is_admin == true %}
       <hr>
-      <h1 class="name">{{ _('Респондент и организация') }}</h1>
+      <h1 class="name">{{ _('Организация') }}</h1>
 
       {% set org = none %}
       {% set ministry = none %}
@@ -236,6 +236,10 @@
         {% endif %}
       {% endif %}
       
+      <hr>
+      <h1 class="name">{{ _('Респондент') }}</h1>
+
+
       <div class="app-group">
         <label>{{ _('ФИО') }}</label>
         <div class="input-with-icon">

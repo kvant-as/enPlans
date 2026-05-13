@@ -139,10 +139,10 @@ const NotificationPopup = {
             return;
         }
 
-        this.bindEvents();
+        this.bindmeasure();
     },
 
-    bindEvents: function () {
+    bindmeasure: function () {
         this.button.addEventListener("click", (e) => {
             e.stopPropagation();
             this.toggle();
@@ -908,7 +908,7 @@ numeric_input.forEach(function(input) {
 
     input.addEventListener('focus', function(event) {
         if (this.value === '') {
-            this.value = '0.000';
+            this.value = '0.00';
         }
 
         var dotIndex = this.value.indexOf('.');
@@ -960,7 +960,7 @@ numeric_input_negative.forEach(function(input) {
 
         if (!value.includes('.')) {
             if (value === '' || value === '-') {
-                value += '0.000';
+                value += '0.00';
             } else {
                 value += '.000';
             }
@@ -983,7 +983,7 @@ numeric_input_negative.forEach(function(input) {
 
     input.addEventListener('focus', function(event) {
         if (this.value === '') {
-            this.value = '0.000';
+            this.value = '0.00';
         }
 
         var dotIndex = this.value.indexOf('.');
@@ -1261,7 +1261,7 @@ class TableContextMenu {
         
         const editEventModal = document.getElementById('EditEventModal');
         if (editEventModal) {
-            Edit_econexece_modal();
+            Edit_Evente_modal();
         }
 
         const editIndicatorModal = document.getElementById('EditIndicatorModal');
@@ -1298,7 +1298,7 @@ class TableContextMenu {
         
         const editEventModal = document.getElementById('EditEventModal');
         if (editEventModal) {
-            Edit_econexece_modal();
+            Edit_Evente_modal();
         }
 
         const editIndicatorModal = document.getElementById('EditIndicatorModal');
@@ -1462,7 +1462,7 @@ function Edit_econmeasure_modal() {
             }
         })
         .catch(error => {
-            console.error('Error fetching econexece data:', error);
+            console.error('Error fetching Evente data:', error);
             alert('Ошибка при загрузке данных мероприятия: ' + error.message);
         })
         .finally(() => {
@@ -1470,7 +1470,7 @@ function Edit_econmeasure_modal() {
         });
 }
 
-function Edit_econexece_modal(){
+function Edit_Evente_modal(){
     const EditEventModal = document.getElementById('EditEventModal');
     if (!EditEventModal) {
         console.error('Модальное окно не найдено');
@@ -1491,7 +1491,7 @@ function Edit_econexece_modal(){
 
     showLoadingIndicator(true);
 
-    fetch(`/get-econexece/${idEvent}`)
+    fetch(`/get-Evente/${idEvent}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Ошибка сети: ' + response.status);
@@ -1519,15 +1519,15 @@ function Edit_econexece_modal(){
             setValueIfExists('change-MoneyLoan-edit-model', data.MoneyLoan || '');
             setValueIfExists('change-MoneyOther-edit-model', data.MoneyOther || '');
             
-            var form = document.getElementById('editEconexeceForm');
+            var form = document.getElementById('editEventeForm');
             if (form) {
-                form.action = `/edit-econexeces/${idEvent}`;
+                form.action = `/edit-Eventes/${idEvent}`;
             } else {
-                console.error('Форма editEconexeceForm не найдена');
+                console.error('Форма editEventeForm не найдена');
             }
         })
         .catch(error => {
-            console.error('Error fetching econexece data:', error);
+            console.error('Error fetching Evente data:', error);
             alert('Ошибка при загрузке данных мероприятия: ' + error.message);
         })
         .finally(() => {
@@ -1658,7 +1658,7 @@ function Edit_indicator_modal(){
             }
         })
         .catch(error => {
-            console.error('Error fetching econexece data:', error);
+            console.error('Error fetching Evente data:', error);
             alert('Ошибка при загрузке данных: ' + error.message);
         })
         .finally(() => {
@@ -1776,12 +1776,12 @@ class MultiTypeSearchManager {
         //     return;
         // }
 
-        this.bindEvents();
+        this.bindmeasure();
         this.updateSubmitButtonState();
         this.loadData();
     }
 
-    bindEvents() {
+    bindmeasure() {
         let debounceTimer;
 
         // Обработка поиска
@@ -2541,7 +2541,7 @@ function initConfirmModal(config) {
 //   init() {
 //     this.elements = {};
 //     this.getElementReferences();
-//     this.bindEvents();
+//     this.bindmeasure();
 //   }
 
 //   getElementReferences() {
@@ -2578,7 +2578,7 @@ function initConfirmModal(config) {
 //     // });
 //   }
 
-//   bindEvents() {
+//   bindmeasure() {
 //     // События для шагов формы
 //     if (this.elements.nextBtn) {
 //       this.elements.nextBtn.addEventListener('click', () => this.handleNextStep());
@@ -2865,7 +2865,7 @@ class MultiStepForm {
     init() {
         this.elements = {};
         this.getElementReferences();
-        this.bindEvents();
+        this.bindmeasure();
         // console.log('MultiStepForm initialized');
     }
 
@@ -2927,7 +2927,7 @@ class MultiStepForm {
         };
     }
 
-    bindEvents() {
+    bindmeasure() {
         if (this.elements.nextBtn1) {
             this.elements.nextBtn1.addEventListener('click', () => this.goToStep(2));
         }
@@ -2978,7 +2978,7 @@ class MultiStepForm {
         
         this.setupStep1Validation();
         
-        // console.log('All events bound');
+        // console.log('All measure bound');
     }
 
     handleEntityTypeChange(e) {
@@ -3569,11 +3569,11 @@ class CertificateUploadHandler {
             return;
         }
 
-        this.bindEvents();
+        this.bindmeasure();
         this.updateSubmitButtonState();
     }
 
-    bindEvents() {
+    bindmeasure() {
         this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
         this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
         this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
@@ -4068,16 +4068,16 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  const eventsTable = document.getElementById('eventsTable');
-  const eventsMenu = document.getElementById('MenuMainTable');
-  if (eventsTable && eventsMenu) {
-      const tableMenu = new TableContextMenu('eventsTable', 'MenuMainTable', {
+  const measureTable = document.getElementById('measureTable');
+  const measureMenu = document.getElementById('MenuMainTable');
+  if (measureTable && measureMenu) {
+      const tableMenu = new TableContextMenu('measureTable', 'MenuMainTable', {
           contextEditButtonId: 'contextEditButton',
           contextDeleteButtonId: 'contextDeleteButton',
           
           tableEditButtonId: 'tableEditButton',
           tableDeleteButtonId: 'tableDeleteButton',
-          removeUrlTemplate: '/delete-econexeces/{id}',
+          removeUrlTemplate: '/delete-eventes/{id}',
           
           immutableCodes: [], // Коды, которые нельзя изменять/удалять
           immutableEditCodes: [], // Коды, которые нельзя редактировать (но можно удалять)
@@ -4108,24 +4108,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // Добавление Direction
-  const addDirectionModal = document.getElementById('AddDirectionModal');
-  const DirectionModal = new EventModal('AddDirectionModal');
-  if (addDirectionModal && DirectionModal) {
-    handleModal(
-      addDirectionModal, 
-      document.getElementById('AddDirectionModalButton'), 
-      addDirectionModal.querySelector('.close')
-    );
-  }
-
   // Добавление Event
   const addEventModal = document.getElementById('AddEventModal');
   const addEventModal1 = new EventModal('AddEventModal');
   if (addEventModal && addEventModal1) {
     handleModal(
       addEventModal, 
-      document.getElementById('AddEventModalButton'), 
+      document.getElementById('AddMeasureSavingModalButton'), 
       addEventModal.querySelector('.close')
     );
   }
@@ -4516,7 +4505,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
  
 
-// Кнопка далее в modal plan events add and edit
+// Кнопка далее в modal plan measure add and edit
 function validateAndEnableButton() {
     // Для AddEventModal
     const addModal = document.getElementById('AddEventModal');
@@ -4714,3 +4703,15 @@ if (document.getElementById('dots-profile-user')) {
 if (document.getElementById('menuDotsBtn')) {
     initDropdownMenu('menuDotsBtn', 'planActionsMenu');
 }
+
+document.addEventListener('click', function(event) {
+    const dropdowns = document.querySelectorAll('.has-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (!dropdown.contains(event.target)) {
+            const menu = dropdown.querySelector('.dropdown-menu');
+            if (menu) {
+                // Можно добавить логику закрытия, но с CSS-подходом это необязательно
+            }
+        }
+    });
+});

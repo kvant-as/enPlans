@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask_login import current_user
 
 from . import db
-from .models import Organization, Plan, Ticket, Indicator, EconMeasure, EconExec, IndicatorUsage, Notification, TimeByMinsk
+from .models import Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -13,11 +13,11 @@ from flask import (
 )
 
 
-def to_decimal_3(value):
+def to_decimal_2(value):
     try:
         return Decimal(value).quantize(Decimal('0.001'))
     except (InvalidOperation, TypeError, ValueError):
-        return Decimal('0.000')
+        return Decimal('0.00')
     
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
@@ -113,14 +113,14 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
 
 def get_cumulative_econ_metrics(plan_id, is_local): 
     quarterly_results = (db.session.query(
-            EconExec.ExpectedQuarter,  
-            func.sum(EconExec.EffCurrYear).label('total_eff'), 
-            func.sum(EconExec.VolumeFin).label('total_vol')
+            Event.ExpectedQuarter,  
+            func.sum(Event.EffCurrYear).label('total_eff'), 
+            func.sum(Event.VolumeFin).label('total_vol')
         )
-        .join(EconMeasure) 
+        # .join(EconMeasure) 
         .join(Plan)
-        .filter(Plan.id == plan_id, EconExec.is_local == is_local)
-        .group_by(EconExec.ExpectedQuarter)
+        .filter(Plan.id == plan_id)
+        .group_by(Event.ExpectedQuarter)
         .all())
     
     cumulative_totals = {
@@ -164,10 +164,10 @@ def other_data_indicatorUpdate(id):
     indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
 
     def econom_ter():
-        total_eff_curr_year = db.session.query(func.sum(EconExec.EffCurrYear))\
+        total_eff_curr_year = db.session.query(func.sum(Event.EffCurrYear))\
             .filter(
-                EconExec.id_plan == plan.id,
-                EconExec.EffCurrYear.isnot(None)
+                Event.id_plan == plan.id,
+                Event.EffCurrYear.isnot(None)
             )\
             .scalar() or 0
         
@@ -178,7 +178,7 @@ def other_data_indicatorUpdate(id):
                 usage_with_code_9900 = usage
                 break
         
-        usage_with_code_9900.QYearNext = to_decimal_3(total_eff_curr_year)
+        usage_with_code_9900.QYearNext = to_decimal_2(total_eff_curr_year)
         db.session.commit()
 
     def first_title():
@@ -205,9 +205,9 @@ def other_data_indicatorUpdate(id):
                 break
         
         if usage_with_code_1000:
-            usage_with_code_1000.QYearPrev = to_decimal_3(total_prev)
-            usage_with_code_1000.QYearCurr = to_decimal_3(total_curr)
-            usage_with_code_1000.QYearNext = to_decimal_3(total_next)
+            usage_with_code_1000.QYearPrev = to_decimal_2(total_prev)
+            usage_with_code_1000.QYearCurr = to_decimal_2(total_curr)
+            usage_with_code_1000.QYearNext = to_decimal_2(total_next)
             db.session.commit()
     
     def four_title():
@@ -240,7 +240,7 @@ def other_data_indicatorUpdate(id):
             base = get_value(indicator_1000, period)
             diff1 = get_value(indicator_1105, period) - get_value(indicator_1405, period)
             diff2 = get_value(indicator_1104, period) - get_value(indicator_1404, period)
-            return to_decimal_3(base + (diff1 * Decimal('0.123')) + (diff2 * Decimal('0.143')))
+            return to_decimal_2(base + (diff1 * Decimal('0.123')) + (diff2 * Decimal('0.143')))
         
         indicator_260.QYearPrev = calculate_period('QYearPrev')
         indicator_260.QYearCurr = calculate_period('QYearCurr')

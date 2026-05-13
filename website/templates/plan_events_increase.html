@@ -1,69 +1,69 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Мероприятия') }} - enPlans{%endblock %}
+{% block title %}{{ _('Мероприятия по увеличению использования местных топливно-энергетических ресурсов') }} - enPlans{%endblock %}
 {% block content %}
 
 <div class="pers-page-with-table">
   {{ component.back_header(plan, current_user) }}
-  {{ component.plan_navigation_header('events', plan, current_user) }}
+  {{ component.plan_navigation_header('measure-increase', plan, current_user) }}
 </div>
 <div class="personal-plan-conteiner">
-  {{ component.plan_menu(plan, current_user, 'events') }}
+  {{ component.plan_menu(plan, current_user, 'measure-increase') }}
   {% if non_local_econ_execes or local_econ_execes %}
     <div class="table-container">
-      <table class="main-table" id="eventsTable">
+      <table class="main-table" id="measureTable">
         <thead class="main-table-titels">
           <tr>
-                <th rowspan="3" class="resizable" style="white-space: nowrap; min-width: 50px;">
-                  <a>№ п/п {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable">
-                  <a>Код основных направлений энергосбережения в соответствии с формой 4-энерго-сбережение {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable" style = "min-width: 300px;">
-                  <a>Наименование мероприятий, работ {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text">
-                  <a>Единицы измерения {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text">
-                  <a>Объем внедрения, ед. {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th colspan="2" class="resizable">
-                  <a>Условно-годовой экономический эффект {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text">
-                  <a>Ожидаемый срок внедрения мероприятия, квартал {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text" style="min-width: 125px">
-                  <a>Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т. {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text">
-                  <a>Срок окупаемости, лет {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th rowspan="3" class="resizable vertical-text">
-                  <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
-                  <div class="resizer"></div>
-                </th>
-                <th colspan="7" class="resizable">
-                  <a>в том числе по источникам финансирования, руб. {{ icons.icon_sort() }}</a>
-                </th>
+            <th rowspan="3" class="resizable" >
+              <a>№ {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable">
+              <a>Код основных направлений энергосбережения в соответствии с формой 4-энерго-сбережение {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable">
+              <a>Наименование мероприятий, работ {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Единицы измерения {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Объем внедрения, ед. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th colspan="2" class="resizable">
+              <a>Условно-годовое увеличение использования местных ТЭР {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Ожидаемый срок внедрения мероприятия, квартал {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text" style="min-width: 125px">
+              <a>Ожидаемое увеличение использования местных ТЭР, т у.т. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Срок окупаемости, лет {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th colspan="7" class="resizable" style = "border-right: none;">
+              <a>в том числе по источникам финансирования, руб. {{ icons.icon_sort() }}</a>
+            </th>
           </tr>
           <tr>
             <th rowspan="2" class="resizable vertical-text">
-              т у.т.
+              т.у.т.
               <div class="resizer"></div>
             </th>
             <th rowspan="2" class="resizable vertical-text">
-              руб.
+              тыс. руб.
               <div class="resizer"></div>
             </th>
             <th colspan="4" class="resizable">
@@ -78,7 +78,7 @@
               кредиты банков, займы
               <div class="resizer"></div>
             </th>
-            <th rowspan="2" class="resizable vertical-text">
+            <th rowspan="2" class="resizable vertical-text" style = "border-right: none;">
               Иные
               <div class="resizer"></div>
             </th>
@@ -170,7 +170,7 @@
               17
               <div class="resizer"></div>
             </th>
-            <th class="resizable">18</th>
+            <th class="resizable" style = "border-right: none;">18</th>
           </tr>
         </thead>
         <tr class="group-header" data-target="non-local-content">
@@ -191,7 +191,7 @@
                   stroke-linecap="round"
                 ></path>
               </svg>
-              <span>2.1 Мероприятия по экономии ТЭР (первоначальная ред.)</span>
+              <span>3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)</span>
             </div>
           </td>
         </tr>
@@ -199,9 +199,9 @@
           {% if non_local_econ_execes %} {% for row in non_local_econ_execes %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
-            <td>{{ row.econ_measures.direction.code }}</td>
+            <td>{{ row.direction.code }}</td>
             <td>{{ row.name }}</td>
-            <td>{{ row.econ_measures.direction.unit.name }}</td>
+            <td>{{ row.direction.unit.name }}</td>
             <td>{{ row.Volume }}</td>
             <td>{{ row.EffTut }}</td>
             <td>{{ row.EffRub }}</td>
@@ -276,7 +276,7 @@
           </tr>
           {% else %}
           <tr class="no-results-row">
-            <td colspan="18">Отсутствуют мероприятия по экономии ТЭР</td>
+            <td colspan="18">Отсутствуют мероприятия по увеличению использования местных ТЭР</td>
           </tr>
           {% endif %}
         </tbody>
@@ -298,10 +298,9 @@
                   stroke-linecap="round"
                 ></path>
               </svg>
-              <span
-                >3.1 Мероприятия по увеличению использования местных ТЭР
-                (первоначальная ред.)</span
-              >
+              <span>
+                3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)
+              </span>
             </div>
           </td>
         </tr>
@@ -309,9 +308,9 @@
           {% if local_econ_execes %} {% for row in local_econ_execes %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
-            <td>{{ row.econ_measures.direction.code }}</td>
+            <td>{{ row.direction.code }}</td>
             <td>{{ row.name }}</td>
-            <td>{{ row.econ_measures.direction.unit.name }}</td>
+            <td>{{ row.direction.unit.name }}</td>
             <td>{{ row.Volume }}</td>
             <td>{{ row.EffTut }}</td>
             <td>{{ row.EffRub }}</td>
@@ -458,9 +457,9 @@
             <td></td>
             <td>{{ period_name }}</td>
             <td colspan="6"></td>
-            <td>{{ total_metrics[eff_key]|default('0.000') }}</td>
+            <td>{{ total_metrics[eff_key]|default('0.00') }}</td>
             <td></td>
-            <td>{{ total_metrics[vol_key]|default('0.000') }}</td>
+            <td>{{ total_metrics[vol_key]|default('0.00') }}</td>
             <td colspan="7"></td>
           </tr>
           {% endfor %}
@@ -471,8 +470,8 @@
     <div class="no-info-conteiner">
       <div class="empty-state">
         {{ icons.icon_no_info1() }}
-        <h1>{{ _('Нет мероприятий') }}</h1>
-        <p>У вас пока что нет мероприятий. Чтобы начать работу, добавьте новое мероприятие.</p>
+        <h1>{{ _('Нет мероприятий по увеличению использования местных ТЭР') }}</h1>
+        <p>Чтобы начать работу, добавьте новое мероприятие.</p>
       </div>
     </div>
     {{ affects.bg_effect() }}  

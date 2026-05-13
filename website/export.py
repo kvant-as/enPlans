@@ -1,6 +1,6 @@
 import io
 import xml.etree.ElementTree as ET
-from .models import Plan, EconMeasure, EconExec
+from .models import Plan, EconMeasure, Event
 from sqlalchemy.orm import joinedload
 from .routes.views import get_cumulative_econ_metrics
         
@@ -69,7 +69,7 @@ def export_xml_single(plan: Plan):
         
         return part2
 
-    def build_part3_xml(plan, get_cumulative_econ_metrics, EconExec):
+    def build_part3_xml(plan, get_cumulative_econ_metrics, Event):
         part3 = ET.Element("part3")
         ET.SubElement(part3, "title").text = "Часть 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов"
 
@@ -128,7 +128,7 @@ def export_xml_single(plan: Plan):
     root.append(build_title_xml(plan))
     root.append(build_part1_xml(plan))
     root.append(build_part2_xml(plan))
-    root.append(build_part3_xml(plan, get_cumulative_econ_metrics, EconExec))
+    root.append(build_part3_xml(plan, get_cumulative_econ_metrics, Event))
 
     def prettify(elem, level=0):
         indent = "  "
@@ -1660,19 +1660,19 @@ def export_xlsx_single(plan: Plan):
             cell.alignment = center
             cell.font = regular_font_10
 
-        local_econ_execes = (EconExec.query
+        local_econ_execes = (Event.query
             .join(EconMeasure)
             .join(Plan)
-            .filter(Plan.id == plan.id, EconExec.is_local == True)
-            .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+            .filter(Plan.id == plan.id, Event.is_local == True)
+            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
             .all()
         )
 
-        non_local_econ_execes = (EconExec.query
+        non_local_econ_execes = (Event.query
             .join(EconMeasure)
             .join(Plan)
-            .filter(Plan.id == plan.id, EconExec.is_local == False)
-            .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+            .filter(Plan.id == plan.id, Event.is_local == False)
+            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
             .all()
         )
 
@@ -1717,7 +1717,7 @@ def export_xlsx_single(plan: Plan):
                     cell.alignment = left if col_idx == 3 else center
                     cell.font = regular_font_10
                     if col_idx in [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]:
-                        cell.number_format = '0.000'
+                        cell.number_format = '0.00'
             row_index += 1
             
             ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
@@ -1728,7 +1728,7 @@ def export_xlsx_single(plan: Plan):
                 cell = ws.cell(row=row_index, column=col, value=sums[col])
                 cell.alignment = center
                 cell.font = regular_font_10_italic
-                cell.number_format = '0.000'
+                cell.number_format = '0.00'
             return start_number + len(execs)
 
         next_number = add_section("Раздел 2. Мероприятия по экономии топливно-энергетических ресурсов", non_local_econ_execes, 1)
@@ -1754,7 +1754,7 @@ def export_xlsx_single(plan: Plan):
         #     cell = ws.cell(row=row_index, column=col, value=total_sums[col])
         #     cell.alignment = center
         #     cell.font = regular_font_10_italic
-        #     cell.number_format = '0.000'
+        #     cell.number_format = '0.00'
 
         quarters = [
             ("      январь–март", "jan_mar"),
@@ -1799,11 +1799,11 @@ def export_xlsx_single(plan: Plan):
                 c.alignment = center
             
             eff_cell = ws.cell(row=row_index, column=9, value=total_metrics[f"{q_key}_eff"])
-            eff_cell.number_format = '0.000'
+            eff_cell.number_format = '0.00'
             eff_cell.font = regular_font_10
             
             vol_cell = ws.cell(row=row_index, column=11, value=total_metrics[f"{q_key}_vol"])
-            vol_cell.number_format = '0.000'
+            vol_cell.number_format = '0.00'
             vol_cell.font = regular_font_10 
 
         for row in ws.iter_rows(min_row=3, max_row=row_index, min_col=1, max_col=18):
@@ -2229,19 +2229,19 @@ def export_xlsx_single(plan: Plan):
             cell.alignment = center
             cell.font = regular_font_10
 
-        local_econ_execes = (EconExec.query
+        local_econ_execes = (Event.query
             .join(EconMeasure)
             .join(Plan)
-            .filter(Plan.id == plan.id, EconExec.is_local == True)
-            .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+            .filter(Plan.id == plan.id, Event.is_local == True)
+            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
             .all()
         )
 
-        non_local_econ_execes = (EconExec.query
+        non_local_econ_execes = (Event.query
             .join(EconMeasure)
             .join(Plan)
-            .filter(Plan.id == plan.id, EconExec.is_local == False)
-            .options(joinedload(EconExec.econ_measures).joinedload(EconMeasure.plan))
+            .filter(Plan.id == plan.id, Event.is_local == False)
+            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
             .all()
         )
 
@@ -2286,7 +2286,7 @@ def export_xlsx_single(plan: Plan):
                     cell.alignment = left if col_idx == 3 else center
                     cell.font = regular_font_10
                     if col_idx in [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]:
-                        cell.number_format = '0.000'
+                        cell.number_format = '0.00'
             row_index += 1
             
             ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
@@ -2297,7 +2297,7 @@ def export_xlsx_single(plan: Plan):
                 cell = ws.cell(row=row_index, column=col, value=sums[col])
                 cell.alignment = center
                 cell.font = regular_font_10_italic
-                cell.number_format = '0.000'
+                cell.number_format = '0.00'
             return start_number + len(execs)
 
         add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", local_econ_execes, 1)
@@ -2322,7 +2322,7 @@ def export_xlsx_single(plan: Plan):
         #     cell = ws.cell(row=row_index, column=col, value=total_sums[col])
         #     cell.alignment = center
         #     cell.font = regular_font_10_italic
-        #     cell.number_format = '0.000'
+        #     cell.number_format = '0.00'
 
         quarters = [
             ("      январь–март", "jan_mar"),
@@ -2355,11 +2355,11 @@ def export_xlsx_single(plan: Plan):
                 c.alignment = center
             
             eff_cell = ws.cell(row=row_index, column=9, value=total_metrics[f"{q_key}_eff"])
-            eff_cell.number_format = '0.000'
+            eff_cell.number_format = '0.00'
             eff_cell.font = regular_font_10
             
             vol_cell = ws.cell(row=row_index, column=11, value=total_metrics[f"{q_key}_vol"])
-            vol_cell.number_format = '0.000'
+            vol_cell.number_format = '0.00'
             vol_cell.font = regular_font_10 
 
         for row in ws.iter_rows(min_row=3, max_row=row_index, min_col=1, max_col=18):
