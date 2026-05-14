@@ -1233,11 +1233,6 @@ class TableContextMenu {
             row.classList.add('active-row');
             this.selectedRow = row;
         }
-
-        const editDirectionModal = document.getElementById('EditDirectionModal');
-        if (editDirectionModal) {
-            Edit_econmeasure_modal();
-        }
         
         const editEventModal = document.getElementById('EditEventModal');
         if (editEventModal) {
@@ -1269,11 +1264,6 @@ class TableContextMenu {
             if (removeForm) {
                 removeForm.action = this.removeUrlTemplate.replace('{id}', row.dataset.id);
             }
-        }
-
-        const editDirectionModal = document.getElementById('EditDirectionModal');
-        if (editDirectionModal) {
-            Edit_econmeasure_modal();
         }
         
         const editEventModal = document.getElementById('EditEventModal');
@@ -1397,58 +1387,8 @@ function initExportPage() {
     updateButtonState();
 }
 
-function Edit_econmeasure_modal() {
-    const EditDirectionsModal = document.getElementById('EditDirectionModal');
-    if (!EditDirectionsModal) {
-        console.error('Модальное окно не найдено');
-        return;
-    }
 
-    var activeRow = document.querySelector('.rows .active-row');
-    if (!activeRow) {
-        // console.error('Активная строка не найдена');
-        return;
-    }
 
-    var idEvent = activeRow.getAttribute('data-id');
-    if (!idEvent) {
-        console.error('ID мероприятия не найден');
-        return;
-    }
-
-    showLoadingIndicator(true);
-
-    fetch(`/get-econmeasure/${idEvent}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Ошибка сети: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            setValueIfExists('name-direction', data.direction.name || '');
-            setValueIfExists('change-year-econ', data.year_econ || '');
-            setValueIfExists('change-estim-econ', data.estim_econ || '');
-            
-            var form = document.getElementById('editEconForm');
-            if (form) {
-                form.action = `/edit-econmeasure/${idEvent}`;
-            } else {
-                console.error('Форма editEconForm не найдена');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching Evente data:', error);
-            alert('Ошибка при загрузке данных мероприятия: ' + error.message);
-        })
-        .finally(() => {
-            showLoadingIndicator(false);
-        });
-}
 
 function Edit_Evente_modal(){
     const EditEventModal = document.getElementById('EditEventModal');
@@ -1470,8 +1410,7 @@ function Edit_Evente_modal(){
     }
 
     showLoadingIndicator(true);
-
-    fetch(`/get-Evente/${idEvent}`)
+    fetch(`/api/get-event/${idEvent}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Ошибка сети: ' + response.status);
@@ -1501,7 +1440,7 @@ function Edit_Evente_modal(){
             
             var form = document.getElementById('editEventeForm');
             if (form) {
-                form.action = `/edit-Eventes/${idEvent}`;
+                form.action = `/plans/plan/edit-event/${idEvent}`;
             } else {
                 console.error('Форма editEventeForm не найдена');
             }
@@ -1532,22 +1471,17 @@ function Edit_indicator_modal(){
         console.error('ID не найден');
         return;
     }
-
-    // Получаем значение Group - несколько вариантов поиска для надежности
     let groupValue = '';
     
-    // Вариант 1: Ищем по data-атрибуту (если добавили data-group)
     const groupDataCell = activeRow.querySelector('td[data-group]');
     if (groupDataCell) {
         groupValue = groupDataCell.getAttribute('data-group');
     } 
-    // Вариант 2: Ищем по классу (если добавили class="group-cell")
     else {
         const groupClassCell = activeRow.querySelector('td.group-cell');
         if (groupClassCell) {
             groupValue = groupClassCell.textContent.trim();
         }
-        // Вариант 3: Ищем по стилю display: none (оригинальный способ)
         else {
             const groupStyleCell = activeRow.querySelector('td[style*="display: none"]');
             if (groupStyleCell) {
@@ -1598,7 +1532,7 @@ function Edit_indicator_modal(){
 
     showLoadingIndicator(true);
 
-    fetch(`/get-indicator/${idIndicator}`)
+    fetch(`/api/get-indicator/${idIndicator}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Ошибка сети: ' + response.status);
@@ -1609,10 +1543,13 @@ function Edit_indicator_modal(){
             if (data.error) {
                 throw new Error(data.error);
             }
+            if (data.CoeffToTut) {
+                data.CoeffToTut = parseFloat(data.CoeffToTut).toFixed(2);
+            }
             // Для групп 5 и 6 не заполняем QYearBeforePrev и QYearCurr
             if (!isSpecialGroup) {
-                setValueIfExists('QYearBeforePrev-edit', data.QYearBeforePrev ? (data.QYearBeforePrev / data.CoeffToTut).toFixed(3) : '');
-                setValueIfExists('QYearCurr-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(3) : '');
+                setValueIfExists('QYearBeforePrev-edit', data.QYearBeforePrev ? (data.QYearBeforePrev / data.CoeffToTut).toFixed(2) : '');
+                setValueIfExists('QYearCurr-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(2) : '');
             } else {
                 setValueIfExists('QYearBeforePrev-edit', '');
                 setValueIfExists('QYearCurr-edit', '');
@@ -1620,7 +1557,7 @@ function Edit_indicator_modal(){
             
             // QYearCurrent заполняем всегда
             setValueIfExists('indicator-name-nodisplay', data.name);
-            setValueIfExists('QYearCurrent-edit', data.QYearCurrent ? (data.QYearCurrent / data.CoeffToTut).toFixed(3) : '');
+            setValueIfExists('QYearCurrent-edit', data.QYearCurrent ? (data.QYearCurrent / data.CoeffToTut).toFixed(2) : '');
             
             const predictionElements = document.querySelectorAll('.prediction-value');
             predictionElements.forEach(element => {
@@ -1631,7 +1568,7 @@ function Edit_indicator_modal(){
 
             var form = document.getElementById('editIndicatorForm');
             if (form) {
-                form.action = `/edit-indicator/${idIndicator}`;
+                form.action = `/plans/plan/edit-indicator/${idIndicator}`;
             } else {
                 console.error('Форма не найдена');
             }
@@ -4056,7 +3993,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           tableEditButtonId: 'tableEditButton',
           tableDeleteButtonId: 'tableDeleteButton',
-          removeUrlTemplate: '/delete-eventes/{id}',
+          removeUrlTemplate: '/plans/plan/delete-eventes/{id}',
           
           immutableCodes: [], // Коды, которые нельзя изменять/удалять
           immutableEditCodes: [], // Коды, которые нельзя редактировать (но можно удалять)
@@ -4078,9 +4015,9 @@ document.addEventListener('DOMContentLoaded', () => {
           tableDeleteButtonId: 'tableDeleteButton',
           removeUrlTemplate: '/delete-indicator/{id}',
           
-          immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796'], // Коды, которые нельзя изменять/удалять
+          immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917'], // Коды, которые нельзя изменять/удалять
           immutableEditCodes: [],
-          immutableDeleteCodes: ['9911', '9910', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445', '9915', '9916', '9917'], // Коды, которые нельзя удалять (но можно редактировать)
+          immutableDeleteCodes: ['9911', '9910', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'], // Коды, которые нельзя удалять (но можно редактировать)
 
           codeColumnIndex: 11, 
           hideCodeColumn: true
@@ -4093,7 +4030,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (addEventModal && addEventModal1) {
     handleModal(
       addEventModal, 
-      document.getElementById('AddMeasureSavingModalButton'), 
+      document.getElementById('AddEventsModalBtn'), 
       addEventModal.querySelector('.close')
     );
   }

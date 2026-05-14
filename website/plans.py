@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask_login import current_user
 
 from . import db
-from .models import Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from .models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -15,7 +15,7 @@ from flask import (
 
 def to_decimal_2(value):
     try:
-        return Decimal(value).quantize(Decimal('0.001'))
+        return Decimal(value).quantize(Decimal('0.00'))
     except (InvalidOperation, TypeError, ValueError):
         return Decimal('0.00')
     
@@ -111,35 +111,50 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
     }
     return plans, status_counts
 
-def get_cumulative_econ_metrics(plan_id, is_local): 
-    quarterly_results = (db.session.query(
-            Event.ExpectedQuarter,  
-            func.sum(Event.EffCurrYear).label('total_eff'), 
-            func.sum(Event.VolumeFin).label('total_vol')
-        )
-        # .join(EconMeasure) 
-        .join(Plan)
-        .filter(Plan.id == plan_id)
-        .group_by(Event.ExpectedQuarter)
-        .all())
+def get_event_metrics(plan_id, event_type, is_original=True):
+    """
+    event_type: 'saving' или 'increase'
+    is_original: True - только оригинальные (is_corrected=False)
+                 False - только с изменениями (is_corrected=True)
+    """
+    query = (db.session.query(
+        Event.ExpectedQuarter,
+        func.sum(Event.EffCurrYear).label('total_eff'),
+        func.sum(Event.VolumeFin).label('total_vol')
+    )
+    .join(Direction, Event.id_direction == Direction.id)
+    .filter(Event.id_plan == plan_id)
+    )
+    
+    # Фильтр по типу мероприятия
+    if event_type == 'saving':
+        query = query.filter(Direction.is_econom == True)
+    else:
+        query = query.filter(Direction.is_increase == True)
+    
+    # Фильтр по is_corrected
+    if is_original:
+        query = query.filter(Event.is_corrected == False)
+    else:
+        query = query.filter(Event.is_corrected == True)
+
+    quarterly_results = query.group_by(Event.ExpectedQuarter).all()
     
     cumulative_totals = {
-        'jan_mar': {'eff_curr_year': 0, 'volume_fin': 0},  # Январь-Март
-        'jan_jun': {'eff_curr_year': 0, 'volume_fin': 0},  # Январь-Июнь
-        'jan_sep': {'eff_curr_year': 0, 'volume_fin': 0},  # Январь-Сентябрь
-        'jan_dec': {'eff_curr_year': 0, 'volume_fin': 0}   # Январь-Декабрь
+        'jan_mar': {'eff_curr_year': 0, 'volume_fin': 0},
+        'jan_jun': {'eff_curr_year': 0, 'volume_fin': 0},
+        'jan_sep': {'eff_curr_year': 0, 'volume_fin': 0},
+        'jan_dec': {'eff_curr_year': 0, 'volume_fin': 0}
     }
     
-
     quarter_data = {1: {'eff': 0, 'vol': 0}, 2: {'eff': 0, 'vol': 0}, 
                    3: {'eff': 0, 'vol': 0}, 4: {'eff': 0, 'vol': 0}}
     
     for quarter, eff_sum, vol_sum in quarterly_results:
         if quarter in [1, 2, 3, 4]:
-            quarter_data[quarter]['eff'] = eff_sum or 0
-            quarter_data[quarter]['vol'] = vol_sum or 0
+            quarter_data[quarter]['eff'] = float(eff_sum) if eff_sum else 0
+            quarter_data[quarter]['vol'] = float(vol_sum) if vol_sum else 0
     
-
     cumulative_totals['jan_mar']['eff_curr_year'] = quarter_data[1]['eff']
     cumulative_totals['jan_mar']['volume_fin'] = quarter_data[1]['vol']
     
@@ -155,6 +170,8 @@ def get_cumulative_econ_metrics(plan_id, is_local):
                                                 quarter_data[3]['vol'] + quarter_data[4]['vol'])
     
     return cumulative_totals
+
+
 
 def other_data_indicatorUpdate(id):
     plan = Plan.query.filter_by(id=id).first()

@@ -1,5 +1,3 @@
-from datetime import timedelta
-from datetime import datetime
 import io
 import zipfile
 from flask import (
@@ -7,15 +5,13 @@ from flask import (
 )
 
 from flask_login import (
-    current_user, login_required, login_user
+    current_user, login_required
 )
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func, asc, or_
 
-from website.plans import get_cumulative_econ_metrics, get_filtered_plans, other_data_indicatorUpdate, to_decimal_2, status_handlers, update_ChangeTimePlan
+from website.plans import get_filtered_plans, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import Ministry, Region, User, Organization, Plan, Ticket, Unit, Direction, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from ..models import Ministry, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
 from .. import db
 
 from functools import wraps
@@ -31,14 +27,13 @@ def owner_only(f):
         
         if not token:
             flash('Токен плана не указан', 'error')
-            return redirect(url_for('plan_bp.plans', user=current_user.id))
+            return redirect(url_for('views.plans', user=current_user.id))
         
-        # Ищем план по token, а не по id
         plan = Plan.query.filter_by(token=token).first()
         
         if plan is None:
             flash('План не найден', 'error')
-            return redirect(url_for('plan_bp.plans', user=current_user.id))
+            return redirect(url_for('views.plans', user=current_user.id))
         
         has_access = (
             current_user.is_admin or 
@@ -52,7 +47,6 @@ def owner_only(f):
     
         g.current_plan = plan
         return f(*args, **kwargs)
-    
     return decorated_function
 
 @views.route('/change_language/<lang_code>')
@@ -89,115 +83,6 @@ def profile_edit():
         return render_template('profile_edit.html', 
                             hide_header=False,
                             current_user=current_user)
-
-@views.route('/api/organizations')
-@login_required
-def get_organizations_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
-
-        query = Organization.query
-        if search_query:
-            query = query.filter(
-                db.or_(
-                    Organization.name.ilike(f"%{search_query}%"),
-                    Organization.okpo.ilike(f"%{search_query}%")
-                )
-            )
-
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "organizations": [
-                {
-                    "id": org.id,
-                    "name": org.name,
-                    "okpo": org.okpo or "",
-                    "ynp": org.ynp or "",
-                    "ministry": org.ministry.name if org.ministry else "",
-                }
-                for org in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-    except Exception as e:
-        logging.error(f"Error fetching organizations: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-@views.route('/api/ministries')
-@login_required
-def get_ministries_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
-        
-        query = Ministry.query.filter(Ministry.is_active == True)
-        
-        if search_query:
-            query = query.filter(Ministry.name.ilike(f"%{search_query}%"))
-        
-        query = query.order_by(Ministry.name)
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "ministrys": [
-                {
-                    "id": ministry.id,
-                    "name": ministry.name
-                }
-                for ministry in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-        
-    except Exception as e:
-        logging.error(f"Error fetching Ministries: {str(e)}")
-        current_app.logger.error(f"ERROR: {str(e)}") 
-        return jsonify({"error": "Internal server error"}), 500
-
-@views.route('/api/regions')
-@login_required
-def get_regions_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
-
-        query = Region.query
-        if search_query:
-            query = query.filter(
-                db.or_(
-                    Region.name.ilike(f"%{search_query}%")
-                )
-            )
-
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "regions": [
-                {
-                    "id": region.id,
-                    "name": region.name
-                }
-                for region in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-    except Exception as e:
-        logging.error(f"Error fetching regions: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
 
 @views.route('/edit-user-org', methods=['POST'])
 @user_with_all_params()

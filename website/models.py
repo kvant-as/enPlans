@@ -178,11 +178,10 @@ class Event(db.Model):
     MoneyLoan = db.Column(Numeric(scale=2))
     MoneyOther = db.Column(Numeric(scale=2))
     is_local = db.Column(db.Boolean)
-    is_corrected = db.Column(db.Boolean)
+    is_corrected = db.Column(db.Boolean, default=False)
     order = db.Column(db.Integer, default=None)
     plan = db.relationship("Plan", back_populates="events")
     direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])
-    # econ_measures = db.relationship("EconMeasure", back_populates="econ_execes")
 
     def as_dict(self):
         return {
@@ -210,7 +209,7 @@ class Indicator(db.Model):
     id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
-    CoeffToTut = db.Column(Numeric(scale=2))
+    CoeffToTut = db.Column(Numeric(scale=3))
     IsMandatory = db.Column(db.Boolean)
     Group = db.Column(db.Float)
     RowN = db.Column(db.Integer)

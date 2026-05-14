@@ -8,17 +8,17 @@
             'has_data': True,
             'is_empty': False
         },
-        'measure-saving': {
-            'title': 'Меропрития эконом.', 
-            'add_button_id': 'AddMeasureSavingModalButton',
-            'has_data': plan.events is defined and plan.events,
-            'is_empty': not (plan.events is defined and plan.events)
+        'event-saving': {
+            'title': 'Мероприятия эконом.',
+            'add_button_id': 'AddEventsModalBtn',
+            'has_data': plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0,
+            'is_empty': not (plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0)
         },
-        'measure-increase': {
-            'title': 'Меропрития увелич.',
-            'add_button_id': 'AddMeasureSavingModalButton',
-            'has_data': plan.events is defined and plan.events,
-            'is_empty': not (plan.events is defined and plan.events)
+        'event-increase': {
+            'title': 'Мероприятия увелич.',
+            'add_button_id': 'AddEventsModalBtn',
+            'has_data': plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0,
+            'is_empty': not (plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0)
         }
     } %}
     
@@ -260,37 +260,25 @@
             <span class="nav-text-mobile">{{ _('Показ.') }}</span>
         </div>
 
-        {#
-        <div class="nav-item {% if active_plan_tab == 'directions' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-directions/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_directions() }}
-                {% if active_plan_tab == 'directions' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Направления') }}</span>
-            <span class="nav-text-mobile">{{ _('Напр.') }}</span>
-        </div>#}
-        
-
-        <div class="nav-item {% if active_plan_tab == 'measure-saving' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan/events-saving/{{plan.token}}'">
+        <div class="nav-item {% if active_plan_tab == 'event-saving' %} active{% endif %}" 
+            onclick="window.location.href='/plans/plan/events-saving/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_measure_saving() }}
-                {% if active_plan_tab == 'measure-saving' %}<div class="active-indicator"></div>{% endif %}
+                {% if active_plan_tab == 'event-saving' %}<div class="active-indicator"></div>{% endif %}
             </div>
             <span class="nav-text">{{ _('Мероприятия эконом.') }}</span>
-            <span class="nav-text-mobile">{{ _('Меропр. эконом.') }}</span>
+            <span class="nav-text-mobile">{{ _('Мер. эко.') }}</span>
         </div> 
 
-        <div class="nav-item {% if active_plan_tab == 'measure-increase' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan/events-increase/{{plan.token}}'">
+        <div class="nav-item {% if active_plan_tab == 'event-increase' %} active{% endif %}" 
+            onclick="window.location.href='/plans/plan/events-increase/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_measure_increase() }}
-                {% if active_plan_tab == 'measure-increase' %}<div class="active-indicator"></div>{% endif %}
+                {% if active_plan_tab == 'event-increase' %}<div class="active-indicator"></div>{% endif %}
             </div>
             <span class="nav-text">{{ _('Мероприятия увелич.') }}</span>
-            <span class="nav-text-mobile">{{ _('Меропр. увелич.') }}</span>
-        </div> 
+            <span class="nav-text-mobile">{{ _('Мер. увeл.') }}</span>
+        </div>
 
     </nav>
 </div>

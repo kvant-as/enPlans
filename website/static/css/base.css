@@ -2348,7 +2348,7 @@ input::placeholder {
   justify-content: center;
   align-items: center;
   height: auto;
-  padding: 0 20px;
+  padding: 0 5px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -5276,9 +5276,14 @@ input[type="checkbox"]:focus {
   border-bottom: none; */
   /* min-width: 2000px; */
 }
+/* 
+.main-table tbody tr:nth-child(even), */
+.modal-table-main tbody tr:nth-child(even){
+  background-color: #f8f8f8;
+}
 
 .main-table-titels th {
-  padding: 12px 16px;
+  padding: 11px 12px;
   text-align: center;
   font-weight: 600;
   font-size: 13px;
@@ -5490,6 +5495,8 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   color: #333;
   /* background-color: var(--th-background); */
+  /* background-color: #fcfcfc;
+  z-index: 1; */
   text-align: left;
   /* border-bottom: 1px solid var(--border-color); */
 }
@@ -7304,7 +7311,7 @@ label {
     bottom: 10px;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 2;
     padding: 0;
     height: 60px;
     margin: 0;
@@ -7434,7 +7441,7 @@ label {
 
   .personal-acc-conteiner {
     margin-bottom: 80px;
-    margin-top: 20px;
+    margin-top: 10px;
   }
 
   .stat {

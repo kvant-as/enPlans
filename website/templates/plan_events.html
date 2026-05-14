@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% if event_type == 'saving' %}
+  {% set title = _('Мероприятия по экономии топливно-энергетических ресурсов') %}
+  {% set section_title = '2.1 Мероприятия по экономии ТЭР (первоначальная редакция)' %}
+  {% set section_changes_title = '2.2 Мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)' %}
+  {% set eff_label = 'Условно-годовой экономический эффект' %}
+  {% set eff_curr_label = 'Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т.' %}
+  {% set empty_message = 'Нет мероприятий по экономии ТЭР' %}
+  {% set empty_changes_message = 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)' %}
+  {% set nav_active = 'event-saving' %}
+{% else %}
+  {% set title = _('Мероприятия по увеличению использования местных топливно-энергетических ресурсов') %}
+  {% set section_title = '3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)' %}
+  {% set section_changes_title = '3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)' %}
+  {% set eff_label = 'Условно-годовое увеличение использования местных ТЭР' %}
+  {% set eff_curr_label = 'Ожидаемое увеличение использования местных ТЭР, т у.т.' %}
+  {% set empty_message = 'Нет мероприятий по увеличению использования местных ТЭР' %}
+  {% set empty_changes_message = 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)' %}
+  {% set nav_active = 'event-increase' %}
+{% endif %}
+
+
+{% block title %}{{ title }} - enPlans{% endblock %}
+
+{% block content %}
+<div class="pers-page-with-table">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header(nav_active, plan, current_user) }}
+</div>
+<div class="personal-plan-conteiner">
+  {{ component.plan_menu(plan, current_user, nav_active) }}
+  
+  {% if original_events or events_with_changes %}
+    <div class="table-container">
+      <table class="main-table" id="measureTable">
+        <thead class="main-table-titels">
+          <tr>
+            <th rowspan="3" class="resizable">
+              <a>№ {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable">
+              <a>Код основных направлений энергосбережения в соответствии с формой 4-энерго-сбережение {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable" style="min-width: 300px;">
+              <a>Наименование мероприятий, работ {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Ед. изм. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Объем внедрения, ед. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th colspan="2" class="resizable">
+              <a>{{ eff_label }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Ожидаемый срок внедрения мероприятия, квартал {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text" style="min-width: 125px">
+              <a>{{ eff_curr_label }} {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Срок окупаемости, лет {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th colspan="7" class="resizable" style="border-right: none;">
+              <a>в том числе по источникам финансирования, руб.</a>
+            </th>
+          </tr>
+          <tr>
+            <th rowspan="2" class="resizable vertical-text">
+              <a>т.у.т. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="2" class="resizable vertical-text">
+              <a>тыс. руб. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th colspan="4" class="resizable">
+              <a>бюджетные</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="2" class="resizable vertical-text">
+              <a>собственные средства организации {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="2" class="resizable vertical-text">
+              <a>кредиты банков, займы {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="2" class="resizable vertical-text" style="border-right: none;">
+              <a>Иные {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="resizable vertical-text">
+              <a>республиканский бюджет на финансирование госпрограммы {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable vertical-text">
+              <a>республиканский бюджет {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable vertical-text">
+              <a>местный бюджет {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th class="resizable vertical-text">
+              <a>другие {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="resizable" style="border-left: none"><a>1</a><div class="resizer"></div></th>
+            <th class="resizable">2<div class="resizer"></div></th>
+            <th class="resizable">3<div class="resizer"></div></th>
+            <th class="resizable">4<div class="resizer"></div></th>
+            <th class="resizable">5<div class="resizer"></div></th>
+            <th class="resizable">6<div class="resizer"></div></th>
+            <th class="resizable">7<div class="resizer"></div></th>
+            <th class="resizable">8<div class="resizer"></div></th>
+            <th class="resizable">9<div class="resizer"></div></th>
+            <th class="resizable">10<div class="resizer"></div></th>
+            <th class="resizable">11<div class="resizer"></div></th>
+            <th class="resizable">12<div class="resizer"></div></th>
+            <th class="resizable">13<div class="resizer"></div></th>
+            <th class="resizable">14<div class="resizer"></div></th>
+            <th class="resizable">15<div class="resizer"></div></th>
+            <th class="resizable">16<div class="resizer"></div></th>
+            <th class="resizable">17<div class="resizer"></div></th>
+            <th class="resizable" style="border-right: none;">18</th>
+          </tr>
+        </thead>
+        
+        <!-- Оригинальные мероприятия -->
+        <tr class="group-header" data-target="non-local-content">
+          <td colspan="18">
+            <div class="group-header-content">
+              {{ icons.dropdown_arrow() }}
+              <span>{{ section_title }}</span>
+            </div>
+           </td>
+         </tr>
+        <tbody class="rows" id="non-local-content">
+          {% if original_events %}
+            {% for row in original_events %}
+              <tr class="menu-row" data-id="{{ row.id }}">
+                <td>{{ loop.index }}</td>
+                <td>{{ row.direction.code }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.direction.unit.name }}</td>
+                <td>{{ row.Volume }}</td>
+                <td>{{ row.EffTut }}</td>
+                <td>{{ row.EffRub }}</td>
+                <td>{{ row.ExpectedQuarter }}</td>
+                <td>{{ row.EffCurrYear }}</td>
+                <td>{{ row.Payback }}</td>
+                <td>{{ row.VolumeFin }}</td>
+                <td>{{ row.BudgetState }}</td>
+                <td>{{ row.BudgetRep }}</td>
+                <td>{{ row.BudgetLoc }}</td>
+                <td>{{ row.BudgetOther }}</td>
+                <td>{{ row.MoneyOwn }}</td>
+                <td>{{ row.MoneyLoan }}</td>
+                <td>{{ row.MoneyOther }}</td>
+              </tr>
+            {% endfor %}
+            <tr class="total-row">
+              <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
+              <td>{{ original_events|sum(attribute='Volume')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='EffTut')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='EffRub')|default(0)|round(2) }}</td>
+              <td>-</td>
+              <td>{{ original_events|sum(attribute='EffCurrYear')|default(0)|round(2) }}</td>
+              <td>-</td>
+              <td>{{ original_events|sum(attribute='VolumeFin')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='BudgetState')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='BudgetRep')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='BudgetLoc')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='BudgetOther')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='MoneyOwn')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='MoneyLoan')|default(0)|round(2) }}</td>
+              <td>{{ original_events|sum(attribute='MoneyOther')|default(0)|round(2) }}</td>
+            </tr>
+          {% else %}
+            <tr class="no-results-row">
+              <td colspan="18">{{ empty_message }}</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        
+        <!-- Мероприятия с изменениями -->
+        <tr class="group-header" data-target="local-content">
+          <td colspan="18">
+            <div class="group-header-content">
+              {{ icons.dropdown_arrow() }}
+              <span>{{ section_changes_title }}</span>
+            </div>
+          </td>
+        </tr>
+        <tbody class="rows" id="local-content">
+          {% if events_with_changes %}
+            {% for row in events_with_changes %}
+              <tr class="menu-row" data-id="{{ row.id }}">
+                <td>{{ loop.index }}</td>
+                <td>{{ row.direction.code }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.direction.unit.name }}</td>
+                <td>{{ row.Volume }}</td>
+                <td>{{ row.EffTut }}</td>
+                <td>{{ row.EffRub }}</td>
+                <td>{{ row.ExpectedQuarter }}</td>
+                <td>{{ row.EffCurrYear }}</td>
+                <td>{{ row.Payback }}</td>
+                <td>{{ row.VolumeFin }}</td>
+                <td>{{ row.BudgetState }}</td>
+                <td>{{ row.BudgetRep }}</td>
+                <td>{{ row.BudgetLoc }}</td>
+                <td>{{ row.BudgetOther }}</td>
+                <td>{{ row.MoneyOwn }}</td>
+                <td>{{ row.MoneyLoan }}</td>
+                <td>{{ row.MoneyOther }}</td>
+              </tr>
+            {% endfor %}
+            <tr class="total-row">
+              <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
+              <td style="text-align: end">{{ events_with_changes|sum(attribute='Volume')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='EffTut')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='EffRub')|default(0)|round(2) }}</td>
+              <td>-</td>
+              <td>{{ events_with_changes|sum(attribute='EffCurrYear')|default(0)|round(2) }}</td>
+              <td>-</td>
+              <td>{{ events_with_changes|sum(attribute='VolumeFin')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='BudgetState')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='BudgetRep')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='BudgetLoc')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='BudgetOther')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='MoneyOwn')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='MoneyLoan')|default(0)|round(2) }}</td>
+              <td>{{ events_with_changes|sum(attribute='MoneyOther')|default(0)|round(2) }}</td>
+            </tr>
+          {% else %}
+            <tr class="no-results-row">
+              <td colspan="18">{{ empty_changes_message }}</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        
+        <!-- Итого и периоды -->
+        <tr class="group-header" data-target="other-content">
+          <td colspan="18">
+            <div class="group-header-content">
+              {{ icons.dropdown_arrow() }}
+              <span>Другое</span>
+            </div>
+          </td>
+        </tr>
+        <tbody id="other-content">
+          <tr>
+            <td></td>
+            <td>Всего:</td>
+            <td colspan="2"></td>
+            <td>{{ (original_events|sum(attribute='Volume')|default(0) + events_with_changes|sum(attribute='Volume')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='EffTut')|default(0) + events_with_changes|sum(attribute='EffTut')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='EffRub')|default(0) + events_with_changes|sum(attribute='EffRub')|default(0))|round(2) }}</td>
+            <td>-</td>
+            <td>{{ (original_events|sum(attribute='EffCurrYear')|default(0) + events_with_changes|sum(attribute='EffCurrYear')|default(0))|round(2) }}</td>
+            <td>-</td>
+            <td>{{ (original_events|sum(attribute='VolumeFin')|default(0) + events_with_changes|sum(attribute='VolumeFin')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='BudgetState')|default(0) + events_with_changes|sum(attribute='BudgetState')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='BudgetRep')|default(0) + events_with_changes|sum(attribute='BudgetRep')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='BudgetLoc')|default(0) + events_with_changes|sum(attribute='BudgetLoc')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='BudgetOther')|default(0) + events_with_changes|sum(attribute='BudgetOther')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='MoneyOwn')|default(0) + events_with_changes|sum(attribute='MoneyOwn')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='MoneyLoan')|default(0) + events_with_changes|sum(attribute='MoneyLoan')|default(0))|round(2) }}</td>
+            <td>{{ (original_events|sum(attribute='MoneyOther')|default(0) + events_with_changes|sum(attribute='MoneyOther')|default(0))|round(2) }}</td>
+          </tr>
+          
+          {% set periods = [
+            ('Январь-Март', 'jan_mar_eff', 'jan_mar_vol'),
+            ('Январь-Июнь', 'jan_jun_eff', 'jan_jun_vol'),
+            ('Январь-Сентябрь', 'jan_sep_eff', 'jan_sep_vol'),
+            ('Январь-Декабрь', 'jan_dec_eff', 'jan_dec_vol')
+          ] %}
+          
+          {% for period_name, eff_key, vol_key in periods %}
+          <tr>
+            <td></td>
+            <td>{{ period_name }}</td>
+            <td colspan="6"></td>
+            <td>{{ "%.2f"|format(total_metrics[eff_key]|default(0)|float) }}</td>
+            <td></td>
+            <td>{{ "%.2f"|format(total_metrics[vol_key]|default(0)|float) }}</td>
+            <td colspan="7"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="no-info-conteiner">
+      <div class="empty-state">
+        {{ icons.icon_no_info1() }}
+        <h1>{{ title }}</h1>
+        <p>Чтобы начать работу, добавьте новое мероприятие.</p>
+      </div>
+    </div>
+    {{ affects.bg_effect() }}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,12 +1,12 @@
 from flask import (
-    Blueprint, g, jsonify, render_template, request, flash, redirect, url_for
+    Blueprint, abort, g, jsonify, render_template, request, flash, redirect, url_for
 )
 
 from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import get_cumulative_econ_metrics, other_data_indicatorUpdate, to_decimal_2, update_ChangeTimePlan
+from website.plans import get_event_metrics, other_data_indicatorUpdate, to_decimal_2, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -15,8 +15,16 @@ from website.user import send_email
 from .. import db
 from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, Ticket, Event
 
+from sqlalchemy import cast, Integer
+
+import logging
+from sqlalchemy.exc import SQLAlchemyError
+
+logger = logging.getLogger(__name__)
 
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
+
+
 
 @plan_bp.route('/review/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -92,21 +100,7 @@ def plan_indicators(token):
                         sentmodal=current_plan.is_control,
                         context_menu = True)
 
-@plan_bp.route('/get-indicator/<int:id>', methods=['GET'])
-@user_with_all_params()
-@login_required
-@session_required
-def get_indicator(id):
-    try:
-        existing_IndicatorUsage = IndicatorUsage.query.get(id)
-        if not existing_IndicatorUsage:
-            return jsonify({'error': 'Indicator not found'}), 404
-        
-        return jsonify(existing_IndicatorUsage.as_dict())
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
+
 @plan_bp.route('/create-indicator/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -188,56 +182,66 @@ def delete_indicator(id):
     return redirect(url_for('plan_bp.plan_indicators', token=current_plan.token))
 
 
-
-
-
-
-
-@plan_bp.route('/events-saving/<token>', methods=['GET', 'POST'])
+@plan_bp.route('/events-<event_type>/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @owner_only
 @session_required
-def plan_event_saving(token):    
+def plan_event(event_type, token):
     if request.method == 'POST':
         pass
     
+    if event_type not in ['saving', 'increase']:
+        abort(404)
+    
     current_plan = g.current_plan
   
-    directions = Direction.query.filter_by().order_by().all()
-    econom_events = (Event.query
+    if event_type == 'saving':
+        type_filter = Direction.is_econom == True
+        directions = Direction.query.filter(Direction.is_econom == True).order_by(Direction.id.asc()).all()
+        title = "Мероприятия по экономии ТЭР"
+    else:
+        type_filter = Direction.is_increase == True
+        directions = Direction.query.filter(Direction.is_increase == True).order_by(Direction.id.asc()).all()
+        title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
+
+    original_events = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
         .filter(Event.id_plan == current_plan.id)
-        .filter(Direction.is_econom == True)
-        .order_by(Direction.code.asc())
+        .filter(type_filter)
+        .filter(Event.is_corrected == False)
+        .order_by(Event.id.asc())
         .all())
-
-    increase_events = (Event.query
+    
+    events_with_changes = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
         .filter(Event.id_plan == current_plan.id)
-        .filter(Direction.is_increase == True)
-        .order_by(Direction.code.asc())
+        .filter(type_filter)
+        .filter(Event.is_corrected == True)
+        .order_by(Event.id.asc())
         .all())
-
-    local_totals = get_cumulative_econ_metrics(current_plan.id, True)
-    non_local_totals = get_cumulative_econ_metrics(current_plan.id, False)
+    
+    events_original = get_event_metrics(current_plan.id, event_type, is_original=True)
+    events_included_changes = get_event_metrics(current_plan.id, event_type, is_original=False)
     
     total_metrics = {
-        'jan_mar_eff': local_totals['jan_mar']['eff_curr_year'] + non_local_totals['jan_mar']['eff_curr_year'],
-        'jan_mar_vol': local_totals['jan_mar']['volume_fin'] + non_local_totals['jan_mar']['volume_fin'],
-        'jan_jun_eff': local_totals['jan_jun']['eff_curr_year'] + non_local_totals['jan_jun']['eff_curr_year'],
-        'jan_jun_vol': local_totals['jan_jun']['volume_fin'] + non_local_totals['jan_jun']['volume_fin'],
-        'jan_sep_eff': local_totals['jan_sep']['eff_curr_year'] + non_local_totals['jan_sep']['eff_curr_year'],
-        'jan_sep_vol': local_totals['jan_sep']['volume_fin'] + non_local_totals['jan_sep']['volume_fin'],
-        'jan_dec_eff': local_totals['jan_dec']['eff_curr_year'] + non_local_totals['jan_dec']['eff_curr_year'],
-        'jan_dec_vol': local_totals['jan_dec']['volume_fin'] + non_local_totals['jan_dec']['volume_fin']
+        'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
+        'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
+        'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
+        'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
+        'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
+        'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
+        'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
+        'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
     }
 
-    return render_template('plan_events_saving.html',  
+    return render_template(f'plan_events.html',  
                         directions=directions,
-                        econom_events=econom_events,
-                        increase_events=increase_events,
+                        original_events=original_events,
+                        events_with_changes=events_with_changes,
                         total_metrics=total_metrics,
+                        title=title,
+                        event_type=event_type,
                         plan=current_plan, 
                         hide_header=False,
                         add_event_modal=True,
@@ -245,75 +249,7 @@ def plan_event_saving(token):
                         edit_event_modal=True,
                         sentmodal=current_plan.is_control,
                         context_menu=True
-                         )
-    
-@plan_bp.route('/events-increase/<token>', methods=['GET', 'POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@session_required
-def plan_event_increase(token):    
-    if request.method == 'POST':
-        pass
-    
-    current_plan = g.current_plan
-  
-    directions = Direction.query.filter_by().order_by().all()
-    
-    econ_exec = (
-        Event.query
-        .filter_by(id_plan=current_plan.id)
-        .order_by(asc(Direction.code))
-        .all()
-    )
-  
-    econom_events = (Event.query
-        .join(Direction, Event.id_direction == Direction.id)
-        .join(Plan, Direction.id_plan == Plan.id)
-        .filter(Plan.id == current_plan.id)
-        .options(joinedload(Event.econ_measures).joinedload(Direction.plan))
-        .all())
-
-    increase_events = (Event.query
-        .join(Direction, Event.id_direction == Direction.id)
-        .join(Plan, Direction.id_plan == Plan.id)
-        .filter(Plan.id == current_plan.id)
-        .options(joinedload(Event.econ_measures).joinedload(Direction.plan))
-    .all())
-
-
-    local_totals = get_cumulative_econ_metrics(current_plan.id, True)
-    non_local_totals = get_cumulative_econ_metrics(current_plan.id, False)
-    
-    total_metrics = {
-        'jan_mar_eff': local_totals['jan_mar']['eff_curr_year'] + non_local_totals['jan_mar']['eff_curr_year'],
-        'jan_mar_vol': local_totals['jan_mar']['volume_fin'] + non_local_totals['jan_mar']['volume_fin'],
-        'jan_jun_eff': local_totals['jan_jun']['eff_curr_year'] + non_local_totals['jan_jun']['eff_curr_year'],
-        'jan_jun_vol': local_totals['jan_jun']['volume_fin'] + non_local_totals['jan_jun']['volume_fin'],
-        'jan_sep_eff': local_totals['jan_sep']['eff_curr_year'] + non_local_totals['jan_sep']['eff_curr_year'],
-        'jan_sep_vol': local_totals['jan_sep']['volume_fin'] + non_local_totals['jan_sep']['volume_fin'],
-        'jan_dec_eff': local_totals['jan_dec']['eff_curr_year'] + non_local_totals['jan_dec']['eff_curr_year'],
-        'jan_dec_vol': local_totals['jan_dec']['volume_fin'] + non_local_totals['jan_dec']['volume_fin']
-    }
-    return render_template('plan_events_increase.html',  
-                        econ_exec=econ_exec,
-                        econ_measures=econ_measures,
-                        econom_events=econom_events,
-                        increase_events=increase_events,
-                        total_metrics=total_metrics,
-                        plan=current_plan, 
-                        hide_header=False,
-                        add_event_modal=True,
-                        confirmModal=True,
-                        edit_event_modal=True,
-                        sentmodal=current_plan.is_control,
-                        context_menu=True
-                         ) 
-
-import logging
-from sqlalchemy.exc import SQLAlchemyError
-
-logger = logging.getLogger(__name__)
+                    )
 
 @plan_bp.route('/create-event/<token>', methods=['POST'])
 @user_with_all_params()
@@ -349,7 +285,9 @@ def create_event(token):
     if not direction:
         flash('Направление не найдено', 'error')
         logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
-        return redirect(url_for('plan_bp.plan_event_saving', token=token))
+        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=token))
+    
+    event_type = request.form.get('event_type') or 'saving'
     
     try:
         new_Event = Event(
@@ -381,6 +319,8 @@ def create_event(token):
         flash('Мероприятие добавлено', 'success')
         logger.debug(f'Event created successfully: id={new_Event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
+        
     except SQLAlchemyError as e:
         db.session.rollback()
         logger.error(f'Database error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
@@ -390,9 +330,10 @@ def create_event(token):
         db.session.rollback()
         logger.error(f'Unexpected error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
         flash('Непредвиденная ошибка при добавлении мероприятия', 'error')
-    return redirect(url_for('plan_bp.plan_event_saving', token=token))
     
-    
+    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
+
+
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -400,6 +341,8 @@ def create_event(token):
 def delete_eventes(id):
     current_event = Event.query.get_or_404(id)
     current_plan = Plan.query.get_or_404(current_event.id_plan)
+    
+    event_type = request.form.get('event_type') or 'saving'
 
     db.session.delete(current_event)
     db.session.commit()
@@ -407,78 +350,77 @@ def delete_eventes(id):
     other_data_indicatorUpdate(current_plan.id)
     update_ChangeTimePlan(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
-    return redirect(url_for('plan_bp.plan_event_saving', token=current_plan.token))
+    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
 
-@plan_bp.route('/edit-Eventes/<int:id>', methods=['POST'])
+
+@plan_bp.route('/edit-event/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @session_required
 def edit_Eventes(id):
-    name = request.form.get('name') or None
-
-    Volume_value = request.form.get('Volume')
-    ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-    Payback = to_decimal_2(request.form.get('Payback'))
-
-    EffTut = to_decimal_2(request.form.get('EffTut'))
-    EffRub = to_decimal_2(request.form.get('EffRub'))
-    EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-    
-    VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-    BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-    BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-    BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-    BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-    MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-    MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-    MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-
-    Volume = int(float(Volume_value)) if Volume_value else None
-    ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
-    
-    current_Event = Event.query.get(id)
-    current_plan = Plan.query.get_or_404(current_Event.id_plan)
-
-    if not current_Event:
-        flash('Мероприятие не найдено', 'error')
-        return redirect(url_for('plan_bp.plan_event_saving', token=current_plan.token))
-    
-    current_Event.name=name
-    current_Event.Volume=Volume
-    current_Event.ExpectedQuarter=ExpectedQuarter
-    current_Event.EffTut=EffTut
-    current_Event.EffRub=EffRub
-    current_Event.EffCurrYear=EffCurrYear
-    current_Event.Payback=Payback
-    current_Event.VolumeFin=VolumeFin
-    current_Event.BudgetState=BudgetState
-    current_Event.BudgetRep=BudgetRep
-    current_Event.BudgetLoc=BudgetLoc
-    current_Event.BudgetOther=BudgetOther
-    current_Event.MoneyOwn=MoneyOwn
-    current_Event.MoneyLoan=MoneyLoan
-    current_Event.MoneyOther=MoneyOther
-
-    db.session.commit()
-    flash('Мероприятие изменено', 'success')
-
-    other_data_indicatorUpdate(current_plan.id)
-    update_ChangeTimePlan(current_plan.id)
-    return redirect(url_for('plan_bp.plan_event_saving', token=current_plan.token))
-
-@plan_bp.route('/get-Evente/<int:id>', methods=['GET'])
-@user_with_all_params()
-@login_required
-def get_Evente(id):
     try:
-        existing_measure = Event.query.get(id)
-        if not existing_measure:
-            return jsonify({'error': 'Event not found'}), 404
+        current_Event = Event.query.get(id)
+        if not current_Event:
+            flash('Мероприятие не найдено', 'error')
+            return redirect(url_for('main.index'))
         
-        return jsonify(existing_measure.as_dict())
+        current_plan = Plan.query.get(current_Event.id_plan)
+        if not current_plan:
+            flash('План не найден', 'error')
+            return redirect(url_for('main.index'))
         
+        event_type = request.form.get('event_type') or 'saving'
+        
+        name = request.form.get('name') or None
+
+        Volume_value = request.form.get('Volume')
+        ExpectedQuarter_value = request.form.get('ExpectedQuarter')
+        Payback = to_decimal_2(request.form.get('Payback'))
+
+        EffTut = to_decimal_2(request.form.get('EffTut'))
+        EffRub = to_decimal_2(request.form.get('EffRub'))
+        EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+        
+        VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
+        BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+        BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+        BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+        BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+        MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+        MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+        MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
+
+        Volume = int(float(Volume_value)) if Volume_value else None
+        ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
+        
+        current_Event.name = name
+        current_Event.Volume = Volume
+        current_Event.ExpectedQuarter = ExpectedQuarter
+        current_Event.EffTut = EffTut
+        current_Event.EffRub = EffRub
+        current_Event.EffCurrYear = EffCurrYear
+        current_Event.Payback = Payback
+        current_Event.VolumeFin = VolumeFin
+        current_Event.BudgetState = BudgetState
+        current_Event.BudgetRep = BudgetRep
+        current_Event.BudgetLoc = BudgetLoc
+        current_Event.BudgetOther = BudgetOther
+        current_Event.MoneyOwn = MoneyOwn
+        current_Event.MoneyLoan = MoneyLoan
+        current_Event.MoneyOther = MoneyOther
+
+        db.session.commit()
+        flash('Мероприятие изменено', 'success')
+
+        other_data_indicatorUpdate(current_plan.id)
+        update_ChangeTimePlan(current_plan.id)
+        
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        db.session.rollback()
+        flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
+        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
 
 @plan_bp.route('/api/change-plan-status/<token>', methods=['POST'])
 @user_with_all_params()

@@ -134,11 +134,11 @@
           </td>
           <td style="text-align: start">{{ row.indicator.name }}</td>
           <td style="text-align: start">{{ row.indicator.unit.name }}</td>
-          <td>{{ (row.QYearBeforePrev / row.indicator.CoeffToTut) | round(3) }}</td>
+          <td>{{ (row.QYearBeforePrev / row.indicator.CoeffToTut) | round(2) }}</td>
           <td>{{ row.QYearBeforePrev }}</td>
-          <td>{{ (row.QYearPrev / row.indicator.CoeffToTut) | round(3) }}</td>
+          <td>{{ (row.QYearPrev / row.indicator.CoeffToTut) | round(2) }}</td>
           <td>{{ row.QYearPrev }}</td>
-          <td>{{ (row.QYearCurrent / row.indicator.CoeffToTut) | round(3) }}</td>
+          <td>{{ (row.QYearCurrent / row.indicator.CoeffToTut) | round(2) }}</td>
           <td>{{ row.QYearCurrent }}</td>
           <td class="difference-cell" style="border-right: none; 
             {% if (row.QYearCurrent - row.QYearPrev) < 0 %}background-color: rgb(96, 255, 122, 0.705);

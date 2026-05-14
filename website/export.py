@@ -2,7 +2,7 @@ import io
 import xml.etree.ElementTree as ET
 from .models import Plan, EconMeasure, Event
 from sqlalchemy.orm import joinedload
-from .routes.views import get_cumulative_econ_metrics
+from .routes.views import get_event_metrics
         
 def export_xml_single(plan: Plan):
     def build_title_xml(plan):
@@ -69,7 +69,7 @@ def export_xml_single(plan: Plan):
         
         return part2
 
-    def build_part3_xml(plan, get_cumulative_econ_metrics, Event):
+    def build_part3_xml(plan, get_event_metrics, Event):
         part3 = ET.Element("part3")
         ET.SubElement(part3, "title").text = "Часть 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов"
 
@@ -109,14 +109,14 @@ def export_xml_single(plan: Plan):
             ("Январь–Сентябрь", "jan_sep"),
             ("Январь–Декабрь", "jan_dec")
         ]
-        local_totals = get_cumulative_econ_metrics(plan.id, True)
-        non_local_totals = get_cumulative_econ_metrics(plan.id, False)
+        events_original = get_event_metrics(plan.id, True)
+        events_included_changes = get_event_metrics(plan.id, False)
 
         totals_elem = ET.SubElement(part3, "totals")
         for q_label, q_key in quarters:
             quarter = ET.SubElement(totals_elem, "quarter", {"name": q_label})
-            ET.SubElement(quarter, "eff_curr_year").text = str(local_totals[q_key]["eff_curr_year"] + non_local_totals[q_key]["eff_curr_year"])
-            ET.SubElement(quarter, "volume_fin").text = str(local_totals[q_key]["volume_fin"] + non_local_totals[q_key]["volume_fin"])
+            ET.SubElement(quarter, "eff_curr_year").text = str(events_original[q_key]["eff_curr_year"] + events_included_changes[q_key]["eff_curr_year"])
+            ET.SubElement(quarter, "volume_fin").text = str(events_original[q_key]["volume_fin"] + events_included_changes[q_key]["volume_fin"])
 
         return part3
 
@@ -128,7 +128,7 @@ def export_xml_single(plan: Plan):
     root.append(build_title_xml(plan))
     root.append(build_part1_xml(plan))
     root.append(build_part2_xml(plan))
-    root.append(build_part3_xml(plan, get_cumulative_econ_metrics, Event))
+    root.append(build_part3_xml(plan, get_event_metrics, Event))
 
     def prettify(elem, level=0):
         indent = "  "
@@ -1762,29 +1762,29 @@ def export_xlsx_single(plan: Plan):
             ("      январь–сентябрь", "jan_sep"),
             ("      январь–декабрь", "jan_dec")
         ]
-        local_totals = get_cumulative_econ_metrics(plan.id, False)
+        events_original = get_event_metrics(plan.id, False)
         
-        non_local_totals = get_cumulative_econ_metrics(plan.id, False)
+        events_included_changes = get_event_metrics(plan.id, False)
         # total_metrics = {
-        #     'jan_mar_eff': local_totals['jan_mar']['eff_curr_year'] + non_local_totals['jan_mar']['eff_curr_year'],
-        #     'jan_mar_vol': local_totals['jan_mar']['volume_fin'] + non_local_totals['jan_mar']['volume_fin'],
-        #     'jan_jun_eff': local_totals['jan_jun']['eff_curr_year'] + non_local_totals['jan_jun']['eff_curr_year'],
-        #     'jan_jun_vol': local_totals['jan_jun']['volume_fin'] + non_local_totals['jan_jun']['volume_fin'],
-        #     'jan_sep_eff': local_totals['jan_sep']['eff_curr_year'] + non_local_totals['jan_sep']['eff_curr_year'],
-        #     'jan_sep_vol': local_totals['jan_sep']['volume_fin'] + non_local_totals['jan_sep']['volume_fin'],
-        #     'jan_dec_eff': local_totals['jan_dec']['eff_curr_year'] + non_local_totals['jan_dec']['eff_curr_year'],
-        #     'jan_dec_vol': local_totals['jan_dec']['volume_fin'] + non_local_totals['jan_dec']['volume_fin']
+        #     'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
+        #     'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
+        #     'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
+        #     'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
+        #     'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
+        #     'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
+        #     'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
+        #     'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
         # }
         
         total_metrics = {
-            'jan_mar_eff': local_totals['jan_mar']['eff_curr_year'],
-            'jan_mar_vol': local_totals['jan_mar']['volume_fin'],
-            'jan_jun_eff': local_totals['jan_jun']['eff_curr_year'],
-            'jan_jun_vol': local_totals['jan_jun']['volume_fin'],
-            'jan_sep_eff': local_totals['jan_sep']['eff_curr_year'],
-            'jan_sep_vol': local_totals['jan_sep']['volume_fin'],
-            'jan_dec_eff': local_totals['jan_dec']['eff_curr_year'],
-            'jan_dec_vol': local_totals['jan_dec']['volume_fin']
+            'jan_mar_eff': events_original['jan_mar']['eff_curr_year'],
+            'jan_mar_vol': events_original['jan_mar']['volume_fin'],
+            'jan_jun_eff': events_original['jan_jun']['eff_curr_year'],
+            'jan_jun_vol': events_original['jan_jun']['volume_fin'],
+            'jan_sep_eff': events_original['jan_sep']['eff_curr_year'],
+            'jan_sep_vol': events_original['jan_sep']['volume_fin'],
+            'jan_dec_eff': events_original['jan_dec']['eff_curr_year'],
+            'jan_dec_vol': events_original['jan_dec']['volume_fin']
         }
 
 
@@ -2330,18 +2330,18 @@ def export_xlsx_single(plan: Plan):
             ("      январь–сентябрь", "jan_sep"),
             ("      январь–декабрь", "jan_dec")
         ]
-        local_totals = get_cumulative_econ_metrics(plan.id, True)
-        non_local_totals = get_cumulative_econ_metrics(plan.id, True)
+        events_original = get_event_metrics(plan.id, True)
+        events_included_changes = get_event_metrics(plan.id, True)
         
         total_metrics = {
-            'jan_mar_eff': non_local_totals['jan_mar']['eff_curr_year'],
-            'jan_mar_vol': non_local_totals['jan_mar']['volume_fin'],
-            'jan_jun_eff': non_local_totals['jan_jun']['eff_curr_year'],
-            'jan_jun_vol': non_local_totals['jan_jun']['volume_fin'],
-            'jan_sep_eff': non_local_totals['jan_sep']['eff_curr_year'],
-            'jan_sep_vol': non_local_totals['jan_sep']['volume_fin'],
-            'jan_dec_eff': non_local_totals['jan_dec']['eff_curr_year'],
-            'jan_dec_vol': non_local_totals['jan_dec']['volume_fin']
+            'jan_mar_eff': events_included_changes['jan_mar']['eff_curr_year'],
+            'jan_mar_vol': events_included_changes['jan_mar']['volume_fin'],
+            'jan_jun_eff': events_included_changes['jan_jun']['eff_curr_year'],
+            'jan_jun_vol': events_included_changes['jan_jun']['volume_fin'],
+            'jan_sep_eff': events_included_changes['jan_sep']['eff_curr_year'],
+            'jan_sep_vol': events_included_changes['jan_sep']['volume_fin'],
+            'jan_dec_eff': events_included_changes['jan_dec']['eff_curr_year'],
+            'jan_dec_vol': events_included_changes['jan_dec']['volume_fin']
         }
 
         for q_label, q_key in quarters:
