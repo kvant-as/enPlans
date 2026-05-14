@@ -8,7 +8,7 @@
 </div>
 <div class="personal-plan-conteiner">
   {{ component.plan_menu(plan, current_user, 'measure-saving') }}
-  {% if non_local_econ_execes or local_econ_execes %}
+  {% if increase_events or econom_events %}
     <div class="table-container">
       <table class="main-table" id="measureTable">
         <thead class="main-table-titels">
@@ -34,7 +34,7 @@
               <div class="resizer"></div>
             </th>
             <th colspan="2" class="resizable">
-              <a>Условно-годовой экономический эффект {{ icons.icon_sort() }}</a>
+              <a>Условно-годовой экономический эффект</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
@@ -54,16 +54,16 @@
               <div class="resizer"></div>
             </th>
             <th colspan="7" class="resizable" style = "border-right: none;">
-              <a>в том числе по источникам финансирования, руб. {{ icons.icon_sort() }}</a>
+              <a>в том числе по источникам финансирования, руб.</a>
             </th>
           </tr>
           <tr>
             <th rowspan="2" class="resizable vertical-text">
-              т.у.т.
+              <a>т.у.т. {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="2" class="resizable vertical-text">
-              тыс. руб.
+              <a>тыс. руб. {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th colspan="4" class="resizable">
@@ -71,33 +71,33 @@
               <div class="resizer"></div>
             </th>
             <th rowspan="2" class="resizable vertical-text">
-              собственные средства организации
+              <a>собственные средства организации {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="2" class="resizable vertical-text">
-              кредиты банков, займы
+              <a>кредиты банков, займы {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="2" class="resizable vertical-text" style = "border-right: none;">
-              Иные
+              <a>Иные {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
           </tr>
           <tr>
             <th class="resizable vertical-text">
-              республиканский бюджет на финансирование госпрограммы
+              <a>республиканский бюджет на финансирование госпрограммы {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th class="resizable vertical-text">
-              республиканский бюджет
+              <a>республиканский бюджет {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th class="resizable vertical-text">
-              местный бюджет
+              <a>местный бюджет {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th class="resizable vertical-text">
-              другие
+              <a>другие {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
           </tr>
@@ -176,27 +176,13 @@
         <tr class="group-header" data-target="non-local-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>2.1 Мероприятия по экономии ТЭР (первоначальная редакция)</span>
             </div>
           </td>
         </tr>
         <tbody class="rows" id="non-local-content">
-          {% if non_local_econ_execes %} {% for row in non_local_econ_execes %}
+          {% if increase_events %} {% for row in increase_events %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
             <td>{{ row.direction.code }}</td>
@@ -222,56 +208,56 @@
             <td style="text-align: left; padding-left: 60px" colspan="4">
               Итого по разделу:
             </td>
-            <td style="text-align: end">
+            <td>
               {{
-              non_local_econ_execes|sum(attribute='Volume')|default(0)|round(3)}}
+              increase_events|sum(attribute='Volume')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffTut')|default(0)|round(3)}}
+              increase_events|sum(attribute='EffTut')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffRub')|default(0)|round(3)}}
+              increase_events|sum(attribute='EffRub')|default(0)|round(3)}}
             </td>
             <td>-</td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffCurrYear')|default(0)|round(3)
+              increase_events|sum(attribute='EffCurrYear')|default(0)|round(3)
               }}
             </td>
             <td>-</td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='VolumeFin')|default(0)|round(3)}}
+              increase_events|sum(attribute='VolumeFin')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetState')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetState')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetRep')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetRep')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetLoc')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetLoc')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetOther')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetOther')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyOwn')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyOwn')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyLoan')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyLoan')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyOther')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyOther')|default(0)|round(3)}}
             </td>
           </tr>
           {% else %}
@@ -283,21 +269,7 @@
         <tr class="group-header" data-target="local-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>
                 2.2 Мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)
               </span>
@@ -305,7 +277,9 @@
           </td>
         </tr>
         <tbody class="rows" id="local-content">
-          {% if local_econ_execes %} {% for row in local_econ_execes %}
+
+          {#
+          {% if econom_events %} {% for row in econom_events %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
             <td>{{ row.direction.code }}</td>
@@ -332,52 +306,52 @@
               Итого по разделу:
             </td>
             <td style="text-align: end">
-              {{ local_econ_execes|sum(attribute='Volume')|default(0)|round(3)}}
+              {{ econom_events|sum(attribute='Volume')|default(0)|round(3)}}
             </td>
             <td>
-              {{ local_econ_execes|sum(attribute='EffTut')|default(0)|round(3)}}
+              {{ econom_events|sum(attribute='EffTut')|default(0)|round(3)}}
             </td>
             <td>
-              {{ local_econ_execes|sum(attribute='EffRub')|default(0)|round(3)}}
+              {{ econom_events|sum(attribute='EffRub')|default(0)|round(3)}}
             </td>
             <td>-</td>
             <td>
               {{
-              local_econ_execes|sum(attribute='EffCurrYear')|default(0)|round(3)
+              econom_events|sum(attribute='EffCurrYear')|default(0)|round(3)
               }}
             </td>
             <td>-</td>
             <td>
               {{
-              local_econ_execes|sum(attribute='VolumeFin')|default(0)|round(3)}}
+              econom_events|sum(attribute='VolumeFin')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetState')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetState')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetRep')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetRep')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetLoc')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetLoc')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetOther')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetOther')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyOwn')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyOwn')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyLoan')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyLoan')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyOther')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyOther')|default(0)|round(3)}}
             </td>
           </tr>
           {% else %}
@@ -387,25 +361,17 @@
             </td>
           </tr>
           {% endif %}
+          #}
+          <tr class="no-results-row">
+            <td colspan="18">
+              Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)
+            </td>
+          </tr>
         </tbody>
         <tr class="group-header" data-target="other-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>Другое</span>
             </div>
           </td>
@@ -415,7 +381,6 @@
             <td></td>
             <td>Всего:</td>
             <td colspan="2"></td>
-
             <td>{{ econ_exec|sum(attribute='Volume')|default(0)|round(3)}}</td>
             <td>{{ econ_exec|sum(attribute='EffTut')|default(0)|round(3)}}</td>
             <td>{{ econ_exec|sum(attribute='EffRub')|default(0)|round(3)}}</td>
@@ -452,16 +417,17 @@
           {% set periods = [ ('Январь-Март', 'jan_mar_eff', 'jan_mar_vol'),
           ('Январь-Июнь', 'jan_jun_eff', 'jan_jun_vol'), ('Январь-Сентябрь',
           'jan_sep_eff', 'jan_sep_vol'), ('Январь-Декабрь', 'jan_dec_eff',
-          'jan_dec_vol') ] %} {% for period_name, eff_key, vol_key in periods %}
-          <tr>
-            <td></td>
-            <td>{{ period_name }}</td>
-            <td colspan="6"></td>
-            <td>{{ total_metrics[eff_key]|default('0.00') }}</td>
-            <td></td>
-            <td>{{ total_metrics[vol_key]|default('0.00') }}</td>
-            <td colspan="7"></td>
-          </tr>
+          'jan_dec_vol') ] %} 
+          {% for period_name, eff_key, vol_key in periods %}
+            <tr>
+              <td></td>
+              <td>{{ period_name }}</td>
+              <td colspan="6"></td>
+              <td>{{ total_metrics[eff_key]|default('0.00') }}</td>
+              <td></td>
+              <td>{{ total_metrics[vol_key]|default('0.00') }}</td>
+              <td colspan="7"></td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>

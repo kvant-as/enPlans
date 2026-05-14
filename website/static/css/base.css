@@ -5313,14 +5313,16 @@ input[type="checkbox"]:focus {
 
 
 .main-table-titels th a svg {
+  display: none;
+  opacity: 0;
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  opacity: 0.4;
   transition: all 0.2s ease;
 }
 
 .main-table-titels th:hover a svg {
+  display: block;
   opacity: 0.8;
 }
 
@@ -5342,7 +5344,7 @@ input[type="checkbox"]:focus {
 }
 
 .main-table td {
-  padding: 7px 16px;
+  padding: 10px 16px;
   border-bottom: 1px solid #f1f5f9;
   border-right: 1px solid var(--border-color);
   color: #334155;
@@ -5644,7 +5646,7 @@ tr.selected {
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
   padding: 30px;
   width: 90%;
-  max-width: 700px;
+  max-width: 750px;
   position: relative;
   opacity: 0;
   transform: scale(0.9);
@@ -5789,11 +5791,14 @@ tr.selected {
 .modal-table-main-titles{
   color: rgb(0, 0, 0);
   width: 100%;
-
 }
 
-.modal-table-main-titles thead tr th{
-  border-bottom: 1px solid var(--border-color);
+.modal-table-main th  {
+  padding: 15px 18px;  
+  font-weight: 600;
+  cursor: pointer;  
+  position: sticky;
+  top: 0;
 }
 
 .modal-table-main th, 
@@ -5803,30 +5808,6 @@ tr.selected {
   text-overflow: ellipsis;
   white-space: nowrap;    
   transition: all 0.3s ease-out;
-}
-
-/* .modal-table-main th:last-child,
-.modal-table-main th:first-child{
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center; 
-}
-
-.modal-table-main td:last-child,
-.modal-table-main td:first-child{
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center; 
-} */
-
-.modal-table-main th  {
-  padding: 15px 18px;  
-  font-weight: 600;
-  cursor: pointer;  
-  position: sticky;
-  top: 0;
 }
 
 .modal-table-main th:hover  {

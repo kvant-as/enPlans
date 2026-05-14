@@ -106,21 +106,7 @@
               {% elif request.args.get('status') == 'approved' %}{{
               _('Одобренные') }} {% else %}{{ _('Статус') }}{% endif %}
             </span>
-            <svg
-              class="dropdown-arrow"
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1L6 6L11 1"
-                stroke="#666"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
+            {{ icons.dropdown_arrow() }}
           </button>
           <div class="dropdown-menu-filter">
             <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
@@ -163,21 +149,7 @@
               'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
               endif %}
             </span>
-            <svg
-              class="dropdown-arrow"
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1L6 6L11 1"
-                stroke="#666"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
+            {{ icons.dropdown_arrow() }}
           </button>
           <div class="dropdown-menu-filter">
             <div class="dropdown-item" data-value="all">

@@ -8,7 +8,7 @@
 </div>
 <div class="personal-plan-conteiner">
   {{ component.plan_menu(plan, current_user, 'measure-increase') }}
-  {% if non_local_econ_execes or local_econ_execes %}
+  {% if increase_events or econom_events %}
     <div class="table-container">
       <table class="main-table" id="measureTable">
         <thead class="main-table-titels">
@@ -176,27 +176,13 @@
         <tr class="group-header" data-target="non-local-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)</span>
             </div>
           </td>
         </tr>
         <tbody class="rows" id="non-local-content">
-          {% if non_local_econ_execes %} {% for row in non_local_econ_execes %}
+          {% if increase_events %} {% for row in increase_events %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
             <td>{{ row.direction.code }}</td>
@@ -222,56 +208,56 @@
             <td style="text-align: left; padding-left: 60px" colspan="4">
               Итого по разделу:
             </td>
-            <td style="text-align: end">
+            <td>
               {{
-              non_local_econ_execes|sum(attribute='Volume')|default(0)|round(3)}}
+              increase_events|sum(attribute='Volume')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffTut')|default(0)|round(3)}}
+              increase_events|sum(attribute='EffTut')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffRub')|default(0)|round(3)}}
+              increase_events|sum(attribute='EffRub')|default(0)|round(3)}}
             </td>
             <td>-</td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='EffCurrYear')|default(0)|round(3)
+              increase_events|sum(attribute='EffCurrYear')|default(0)|round(3)
               }}
             </td>
             <td>-</td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='VolumeFin')|default(0)|round(3)}}
+              increase_events|sum(attribute='VolumeFin')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetState')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetState')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetRep')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetRep')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetLoc')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetLoc')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='BudgetOther')|default(0)|round(3)}}
+              increase_events|sum(attribute='BudgetOther')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyOwn')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyOwn')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyLoan')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyLoan')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              non_local_econ_execes|sum(attribute='MoneyOther')|default(0)|round(3)}}
+              increase_events|sum(attribute='MoneyOther')|default(0)|round(3)}}
             </td>
           </tr>
           {% else %}
@@ -283,21 +269,7 @@
         <tr class="group-header" data-target="local-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>
                 3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)
               </span>
@@ -305,7 +277,7 @@
           </td>
         </tr>
         <tbody class="rows" id="local-content">
-          {% if local_econ_execes %} {% for row in local_econ_execes %}
+          {% if econom_events %} {% for row in econom_events %}
           <tr class="menu-row" data-id="{{ row.id }}">
             <td>{{ loop.index }}</td>
             <td>{{ row.direction.code }}</td>
@@ -331,53 +303,53 @@
             <td style="text-align: left; padding-left: 60px" colspan="4">
               Итого по разделу:
             </td>
-            <td style="text-align: end">
-              {{ local_econ_execes|sum(attribute='Volume')|default(0)|round(3)}}
+            <td>
+              {{ econom_events|sum(attribute='Volume')|default(0)|round(3)}}
             </td>
             <td>
-              {{ local_econ_execes|sum(attribute='EffTut')|default(0)|round(3)}}
+              {{ econom_events|sum(attribute='EffTut')|default(0)|round(3)}}
             </td>
             <td>
-              {{ local_econ_execes|sum(attribute='EffRub')|default(0)|round(3)}}
+              {{ econom_events|sum(attribute='EffRub')|default(0)|round(3)}}
             </td>
             <td>-</td>
             <td>
               {{
-              local_econ_execes|sum(attribute='EffCurrYear')|default(0)|round(3)
+              econom_events|sum(attribute='EffCurrYear')|default(0)|round(3)
               }}
             </td>
             <td>-</td>
             <td>
               {{
-              local_econ_execes|sum(attribute='VolumeFin')|default(0)|round(3)}}
+              econom_events|sum(attribute='VolumeFin')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetState')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetState')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetRep')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetRep')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetLoc')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetLoc')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='BudgetOther')|default(0)|round(3)}}
+              econom_events|sum(attribute='BudgetOther')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyOwn')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyOwn')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyLoan')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyLoan')|default(0)|round(3)}}
             </td>
             <td>
               {{
-              local_econ_execes|sum(attribute='MoneyOther')|default(0)|round(3)}}
+              econom_events|sum(attribute='MoneyOther')|default(0)|round(3)}}
             </td>
           </tr>
           {% else %}
@@ -391,21 +363,7 @@
         <tr class="group-header" data-target="other-content">
           <td colspan="18">
             <div class="group-header-content">
-              <svg
-                class="dropdown-arrow"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M1 1L6 6L11 1"
-                  stroke="#666"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                ></path>
-              </svg>
+              {{ icons.dropdown_arrow() }}
               <span>Другое</span>
             </div>
           </td>

@@ -178,14 +178,14 @@ def other_data_indicatorUpdate(id):
                 usage_with_code_9900 = usage
                 break
         
-        usage_with_code_9900.QYearNext = to_decimal_2(total_eff_curr_year)
+        usage_with_code_9900.QYearCurrent = to_decimal_2(total_eff_curr_year)
         db.session.commit()
 
     def first_title():
         totals = db.session.query(
-                func.sum(IndicatorUsage.QYearPrev).label('total_prev'),
-                func.sum(IndicatorUsage.QYearCurr).label('total_curr'),
-                func.sum(IndicatorUsage.QYearNext).label('total_next')
+                func.sum(IndicatorUsage.QYearBeforePrev).label('total_prev'),
+                func.sum(IndicatorUsage.QYearPrev).label('total_curr'),
+                func.sum(IndicatorUsage.QYearCurrent).label('total_next')
             )\
             .join(IndicatorUsage.indicator)\
             .filter(
@@ -205,9 +205,9 @@ def other_data_indicatorUpdate(id):
                 break
         
         if usage_with_code_1000:
-            usage_with_code_1000.QYearPrev = to_decimal_2(total_prev)
-            usage_with_code_1000.QYearCurr = to_decimal_2(total_curr)
-            usage_with_code_1000.QYearNext = to_decimal_2(total_next)
+            usage_with_code_1000.QYearBeforePrev = to_decimal_2(total_prev)
+            usage_with_code_1000.QYearPrev = to_decimal_2(total_curr)
+            usage_with_code_1000.QYearCurrent = to_decimal_2(total_next)
             db.session.commit()
     
     def four_title():
@@ -242,9 +242,9 @@ def other_data_indicatorUpdate(id):
             diff2 = get_value(indicator_1104, period) - get_value(indicator_1404, period)
             return to_decimal_2(base + (diff1 * Decimal('0.123')) + (diff2 * Decimal('0.143')))
         
+        indicator_260.QYearBeforePrev = calculate_period('QYearBeforePrev')
         indicator_260.QYearPrev = calculate_period('QYearPrev')
-        indicator_260.QYearCurr = calculate_period('QYearCurr')
-        indicator_260.QYearNext = calculate_period('QYearNext')
+        indicator_260.QYearCurrent = calculate_period('QYearCurrent')
         db.session.commit()
 
     def seven_title():
@@ -266,7 +266,7 @@ def other_data_indicatorUpdate(id):
                 usage_with_code_9910 = usage
                 break
 
-        usage_with_code_9999.QYearNext = usage_with_code_9900.QYearNext + usage_with_code_9910.QYearNext
+        usage_with_code_9999.QYearCurrent = usage_with_code_9900.QYearCurrent + usage_with_code_9910.QYearCurrent
 
     first_title()
     four_title()
@@ -285,7 +285,7 @@ def handle_control_status(plan):
         None
     ) # № п/п = 5
     
-    if indicator_usage and indicator_usage.QYearNext != 0:
+    if indicator_usage and indicator_usage.QYearCurrent != 0:
         plan.is_control = True
         plan.is_draft = plan.is_sent = plan.is_error = plan.is_approved = False
         plan.afch = False

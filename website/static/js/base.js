@@ -869,134 +869,114 @@ class EventModal {
   }
 }
 
-/* numbers + dot only */
-var numeric_input = document.querySelectorAll('.app-numeric-input');
-numeric_input.forEach(function(input) {
-    input.addEventListener('input', function(event) {
-        var oldValue = this.value;
-        var selectionStart = this.selectionStart;
-        var selectionEnd = this.selectionEnd;
+var NumericInputHandler = {
+    init: function(selector, options) {
+        var defaults = {
+            allowNegative: false,
+            decimalPlaces: 2,
+            defaultValue: '0.00'
+        };
+        var settings = Object.assign({}, defaults, options);
         
-        var value = oldValue.replace(/[^\d.]/g, '');
-        var parts = value.split('.');
-        if (parts.length > 1) {
-            value = parts[0] + '.' + parts[1].slice(0, 3);
-        }
+        var inputs = document.querySelectorAll(selector);
+        inputs.forEach(function(input) {
+            input.addEventListener('input', function(e) {
+                NumericInputHandler.handleInput(e, settings);
+            });
+            input.addEventListener('focus', function(e) {
+                NumericInputHandler.handleFocus(e, settings);
+            });
+            input.addEventListener('blur', function(e) {
+                NumericInputHandler.handleBlur(e, settings);
+            });
+            input.addEventListener('click', function(e) {
+                e.target.select();
+            });
+        });
+    },
+    
+    handleInput: function(e, settings) {
+        var input = e.target;
+        var cursorPos = input.selectionStart;
+        var oldValue = input.value;
+        var newValue = oldValue;
         
-        if (value.startsWith('0') && value.length > 1 && value[1] !== '.') {
-            value = value.substring(1);
-        }
-
-        if (!value.includes('.')) {
-            value += '.000';
-        }
-
-        var oldDotIndex = oldValue.indexOf('.');
-        var newDotIndex = value.indexOf('.');
-
-        this.value = value;
-
-        if (selectionEnd - selectionStart > 1) {
-            this.setSelectionRange(selectionEnd, selectionEnd);
-        } else if (selectionStart <= oldDotIndex) {
-            var cursorPos = selectionStart + (newDotIndex - oldDotIndex);
-            this.setSelectionRange(cursorPos, cursorPos);
+        if (settings.allowNegative) {
+            newValue = oldValue.replace(/[^\d.-]/g, '');
+            var minusCount = (newValue.match(/-/g) || []).length;
+            if (minusCount > 1) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            } else if (minusCount === 1 && !newValue.startsWith('-')) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            }
+            if (newValue === '-') {
+                input.value = newValue;
+                return;
+            }
         } else {
-            this.setSelectionRange(selectionStart, selectionStart);
+            newValue = oldValue.replace(/[^\d.]/g, '');
         }
-    });
-
-    input.addEventListener('focus', function(event) {
-        if (this.value === '') {
-            this.value = '0.00';
+        
+        if (newValue !== '' && newValue !== '-') {
+            var parts = newValue.split('.');
+            if (parts.length > 1) {
+                newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
+            }
+            
+            if (!newValue.includes('.')) {
+                newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
+            }
+            
+            var floatValue = parseFloat(newValue);
+            if (!isNaN(floatValue)) {
+                newValue = floatValue.toFixed(settings.decimalPlaces);
+            }
         }
-
-        var dotIndex = this.value.indexOf('.');
+        
+        if (newValue !== oldValue) {
+            input.value = newValue;
+            var newCursorPos = Math.min(cursorPos, newValue.length);
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+    },
+    
+    handleFocus: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-') {
+            input.value = settings.defaultValue;
+        }
+        var dotIndex = input.value.indexOf('.');
         if (dotIndex !== -1) {
-            this.setSelectionRange(dotIndex, dotIndex);
+            input.setSelectionRange(dotIndex, dotIndex);
         }
-    });
-
-    input.addEventListener('click', function(event) {
-        this.select();
-    });
-});
-/* end numbers + dot only */
-
-/* numbers + dot + minys only */
-var numeric_input_negative = document.querySelectorAll('.app-numeric-input-negative');
-numeric_input_negative.forEach(function(input) {
-    input.addEventListener('input', function(event) {
-        var oldValue = this.value;
-        var selectionStart = this.selectionStart;
-        var selectionEnd = this.selectionEnd;
-        
-        var value = oldValue.replace(/[^\d.-]/g, '');
-        
-        var minusCount = (value.match(/-/g) || []).length;
-        if (minusCount > 1) {
-            value = value.replace(/-/g, '');
-            value = '-' + value;
-        } else if (minusCount === 1 && !value.startsWith('-')) {
-            value = value.replace(/-/g, '');
-            value = '-' + value;
-        }
-        
-        var parts = value.split('.');
-        if (parts.length > 1) {
-            value = parts[0] + '.' + parts[1].slice(0, 3);
-        }
-        
-        if (!value.startsWith('-')) {
-            if (value.startsWith('0') && value.length > 1 && value[1] !== '.') {
-                value = value.substring(1);
-            }
-        } 
-        else {
-            if (value.startsWith('-0') && value.length > 2 && value[2] !== '.') {
-                value = '-' + value.substring(2);
-            }
-        }
-
-        if (!value.includes('.')) {
-            if (value === '' || value === '-') {
-                value += '0.00';
+    },
+    
+    handleBlur: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-' || input.value === null) {
+            input.value = settings.defaultValue;
+        } else {
+            var num = parseFloat(input.value);
+            if (!isNaN(num)) {
+                input.value = num.toFixed(settings.decimalPlaces);
             } else {
-                value += '.000';
+                input.value = settings.defaultValue;
             }
         }
+    }
+};
 
-        var oldDotIndex = oldValue.indexOf('.');
-        var newDotIndex = value.indexOf('.');
-
-        this.value = value;
-
-        if (selectionEnd - selectionStart > 1) {
-            this.setSelectionRange(selectionEnd, selectionEnd);
-        } else if (selectionStart <= oldDotIndex) {
-            var cursorPos = selectionStart + (newDotIndex - oldDotIndex);
-            this.setSelectionRange(cursorPos, cursorPos);
-        } else {
-            this.setSelectionRange(selectionStart, selectionStart);
-        }
-    });
-
-    input.addEventListener('focus', function(event) {
-        if (this.value === '') {
-            this.value = '0.00';
-        }
-
-        var dotIndex = this.value.indexOf('.');
-        if (dotIndex !== -1) {
-            this.setSelectionRange(dotIndex, dotIndex);
-        }
-    });
-
-    input.addEventListener('click', function(event) {
-        this.select();
-    });
+NumericInputHandler.init('.app-numeric-input', {
+    allowNegative: false,
+    decimalPlaces: 2,
+    defaultValue: '0.00'
 });
-/* end numbers + dot + minys only */
+
+NumericInputHandler.init('.app-numeric-input-negative', {
+    allowNegative: true,
+    decimalPlaces: 2,
+    defaultValue: '0.00'
+});
 
 class DirectionsTable {
     constructor({ searchSelector, tableSelector, hiddenInputSelector, nextButtonSelector }) {
@@ -1584,19 +1564,19 @@ function Edit_indicator_modal(){
 
     // Управляем видимостью элементов
     const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
-    const qYearPrevNoDisplay = document.getElementById('QYearPrev-edit-nodisplay');
+    const QYearBeforePrevNoDisplay = document.getElementById('QYearBeforePrev-edit-nodisplay');
     
     // Находим input поля внутри этих контейнеров
     const qYearCurrInput = qYearCurrNoDisplay ? qYearCurrNoDisplay.querySelector('input') : null;
-    const qYearPrevInput = qYearPrevNoDisplay ? qYearPrevNoDisplay.querySelector('input') : null;
+    const QYearBeforePrevInput = QYearBeforePrevNoDisplay ? QYearBeforePrevNoDisplay.querySelector('input') : null;
     
-    // Скрываем поля QYearPrev и QYearCurr для групп 5 и 6
+    // Скрываем поля QYearBeforePrev и QYearPrev для групп 5 и 6
     if (qYearCurrNoDisplay) {
         qYearCurrNoDisplay.style.display = isSpecialGroup ? 'none' : '';
     }
     
-    if (qYearPrevNoDisplay) {
-        qYearPrevNoDisplay.style.display = isSpecialGroup ? 'none' : '';
+    if (QYearBeforePrevNoDisplay) {
+        QYearBeforePrevNoDisplay.style.display = isSpecialGroup ? 'none' : '';
     }
 
     // Управляем обязательностью полей
@@ -1608,11 +1588,11 @@ function Edit_indicator_modal(){
         }
     }
     
-    if (qYearPrevInput) {
+    if (QYearBeforePrevInput) {
         if (isSpecialGroup) {
-            qYearPrevInput.removeAttribute('required');
+            QYearBeforePrevInput.removeAttribute('required');
         } else {
-            qYearPrevInput.setAttribute('required', 'required');
+            QYearBeforePrevInput.setAttribute('required', 'required');
         }
     }
 
@@ -1629,19 +1609,18 @@ function Edit_indicator_modal(){
             if (data.error) {
                 throw new Error(data.error);
             }
-            // Для групп 5 и 6 не заполняем QYearPrev и QYearCurr
+            // Для групп 5 и 6 не заполняем QYearBeforePrev и QYearCurr
             if (!isSpecialGroup) {
-                setValueIfExists('QYearPrev-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(3) : '');
-                setValueIfExists('QYearCurr-edit', data.QYearCurr ? (data.QYearCurr / data.CoeffToTut).toFixed(3) : '');
+                setValueIfExists('QYearBeforePrev-edit', data.QYearBeforePrev ? (data.QYearBeforePrev / data.CoeffToTut).toFixed(3) : '');
+                setValueIfExists('QYearCurr-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(3) : '');
             } else {
-
-                setValueIfExists('QYearPrev-edit', '');
+                setValueIfExists('QYearBeforePrev-edit', '');
                 setValueIfExists('QYearCurr-edit', '');
             }
             
-            // QYearNext заполняем всегда
+            // QYearCurrent заполняем всегда
             setValueIfExists('indicator-name-nodisplay', data.name);
-            setValueIfExists('QYearNext-edit', data.QYearNext ? (data.QYearNext / data.CoeffToTut).toFixed(3) : '');
+            setValueIfExists('QYearCurrent-edit', data.QYearCurrent ? (data.QYearCurrent / data.CoeffToTut).toFixed(3) : '');
             
             const predictionElements = document.querySelectorAll('.prediction-value');
             predictionElements.forEach(element => {
@@ -4099,7 +4078,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tableDeleteButtonId: 'tableDeleteButton',
           removeUrlTemplate: '/delete-indicator/{id}',
           
-          immutableCodes: ['260', '9900', '9999', '1000'], // Коды, которые нельзя изменять/удалять
+          immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796'], // Коды, которые нельзя изменять/удалять
           immutableEditCodes: [],
           immutableDeleteCodes: ['9911', '9910', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445', '9915', '9916', '9917'], // Коды, которые нельзя удалять (но можно редактировать)
 

@@ -1,6 +1,6 @@
 {% import 'macros/svg_icons.html' as icons %}
 
-{% macro plan_menu(plan, current_user, section, non_local_econ_execes=None, local_econ_execes=None, indicators=None) %}
+{% macro plan_menu(plan, current_user, section, increase_events=None, econom_events=None, indicators=None) %}
     {% set section_config = {
         'indicators': {
             'title': 'Показатели',
@@ -11,14 +11,14 @@
         'measure-saving': {
             'title': 'Меропрития эконом.', 
             'add_button_id': 'AddMeasureSavingModalButton',
-            'has_data': plan.econ_execes is defined and plan.econ_execes,
-            'is_empty': not (plan.econ_execes is defined and plan.econ_execes)
+            'has_data': plan.events is defined and plan.events,
+            'is_empty': not (plan.events is defined and plan.events)
         },
         'measure-increase': {
             'title': 'Меропрития увелич.',
             'add_button_id': 'AddMeasureSavingModalButton',
-            'has_data': plan.econ_execes is defined and plan.econ_execes,
-            'is_empty': not (plan.econ_execes is defined and plan.econ_execes)
+            'has_data': plan.events is defined and plan.events,
+            'is_empty': not (plan.events is defined and plan.events)
         }
     } %}
     
@@ -57,7 +57,7 @@
                     <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
                     <span class="element-text">Экспорт</span>
                 </div>
-                <a href="{% if current_user.is_auditor %}/plans/plan-audit/{{ plan.token }}{% else %}/plans/plan-review/{{ plan.token }}{% endif %}#tickets_link" 
+                <a href="{% if current_user.is_auditor %}/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" 
                     class="element" 
                     id="">
                     <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
@@ -229,7 +229,7 @@
 <div class="header-cont">
     <nav class="navigation-container">
         <div class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-review/{{plan.token}}'">
+             onclick="window.location.href='/plans/plan/review/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_view() }}
                 {% if active_plan_tab == 'review' %}<div class="active-indicator"></div>{% endif %}
@@ -240,7 +240,7 @@
         
         {% if current_user and current_user.is_auditor == True %}
         <div class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-audit/{{plan.token}}'">
+             onclick="window.location.href='/plans/plan/audit/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_audit() }}
                 {% if active_plan_tab == 'audit' %}<div class="active-indicator"></div>{% endif %}
@@ -251,7 +251,7 @@
         {% endif %}
         
         <div class="nav-item {% if active_plan_tab == 'indicators' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-indicators/{{plan.token}}'">
+             onclick="window.location.href='/plans/plan/indicators/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_indicators() }}
                 {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
@@ -273,7 +273,7 @@
         
 
         <div class="nav-item {% if active_plan_tab == 'measure-saving' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-events-saving/{{plan.token}}'">
+             onclick="window.location.href='/plans/plan/events-saving/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_measure_saving() }}
                 {% if active_plan_tab == 'measure-saving' %}<div class="active-indicator"></div>{% endif %}
@@ -283,7 +283,7 @@
         </div> 
 
         <div class="nav-item {% if active_plan_tab == 'measure-increase' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-events-increase/{{plan.token}}'">
+             onclick="window.location.href='/plans/plan/events-increase/{{plan.token}}'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_measure_increase() }}
                 {% if active_plan_tab == 'measure-increase' %}<div class="active-indicator"></div>{% endif %}
@@ -448,7 +448,7 @@
                         <input type="checkbox" class="black" name="ids" value="{{ plan.id }}" id="plan-{{ plan.id }}">
                     {% elif show_actions %}
                         <div class="buttons-row">
-                            <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('views.plan_review', token=plan.token) }}'">
+                            <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('plan_bp.plan_review', token=plan.token) }}'">
                                 {{ icons.icon_view() }}
                                 <span class="tooltip-text">{{ _('Просмотр') }}</span>
                                 <span class="btn-text">{{ _('Просмотр') }}</span>

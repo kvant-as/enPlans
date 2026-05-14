@@ -96,10 +96,17 @@ def create_app():
     from .routes.views import views
     from .routes.auth import auth
     from .routes.chat_bp import chat_bp
+    from .routes.plan_bp import plan_bp
+    from .routes.api_bp import api_bp
+    from .routes.audit_bp import audit_bp
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
     app.register_blueprint(chat_bp, url_prefix='/api/chat')
+    app.register_blueprint(plan_bp, url_prefix='/plans/plan')
+    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(audit_bp, url_prefix='/')
+    
     
     with app.app_context():
         from .routes.admin import AdminSetup

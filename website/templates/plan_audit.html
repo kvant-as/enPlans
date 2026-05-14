@@ -19,7 +19,7 @@
             
             <div class="dropdown-menu" id="planActionsMenu">
                 <div class="nav-menu-list">
-                  <form id="cancel_auditPlanForm" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                  <form id="cancel_auditPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="status" value="sent_without_check" />
                     <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_sent or plan.is_approved %}{%else%}disabled{% endif %}>
@@ -51,11 +51,7 @@
     <div class = "plan-menu">
       <div class="menu-conteiner">
         <div class="menu-conteiner-btns">
-          <form
-            id="to_deletePlanForm"
-            action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
+          <form id="to_deletePlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="status" value="error" />
             <button
@@ -69,7 +65,7 @@
           </form>      
           <form
             id="confirmPlanForm"
-            action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
+            action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
             method="POST"
           >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -96,7 +92,7 @@
     {% if plan.is_approved or plan.is_error %}
     <hr />
     {% else %}
-    <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('views.create_ticket', token=plan.token) }}" method="POST">
+    <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="bottom_tickets_arrea">
         <textarea

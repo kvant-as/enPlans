@@ -26,7 +26,7 @@
                           <span>{{ _('Отправить') }}</span>
                       </button>
                       
-                      <form id="cancelsentPlanForm" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                      <form id="cancelsentPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                           <input type="hidden" name="status" value="draft" />
                           <button type="submit" class="nav-menu-item" {% if plan.is_sent != true %}disabled{% endif %}>
@@ -35,7 +35,7 @@
                           </button>
                       </form>
 
-                      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <input type="hidden" name="status" value="control" />
                           <button id="controlPlanButton" class="nav-menu-item" 
@@ -173,7 +173,7 @@
       {% if org or ministry or region %}
         {% if org %}
           <div class="app-group">
-            <label>{{ _('Организация') }}</label>
+            <label>{{ _('Наименование') }}</label>
             <div class="input-with-icon">
               {{ icons.icon_org() }}
               <input type="text" value="{{ org }}" readonly class="app-input" />

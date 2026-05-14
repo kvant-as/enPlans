@@ -148,10 +148,12 @@ class Direction(db.Model):
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
     id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
-    DateStart = db.Column(db.DateTime)
+    
+    DateStart = db.Column(db.DateTime, default=TimeByMinsk())
     DateEnd = db.Column(db.DateTime)
     
-    is_local = db.Column(db.Boolean, default=False)
+    is_econom = db.Column(db.Boolean)
+    is_increase = db.Column(db.Boolean)
     
     unit = db.relationship('Unit', backref='directions', foreign_keys=[id_unit])
 
@@ -228,9 +230,9 @@ class IndicatorUsage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     id_indicator = db.Column(db.Integer, db.ForeignKey('indicators.id'), nullable=False)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    QYearBeforePrev = db.Column(Numeric(scale=2))
     QYearPrev = db.Column(Numeric(scale=2))
-    QYearCurr = db.Column(Numeric(scale=2))
-    QYearNext = db.Column(Numeric(scale=2))
+    QYearCurrent = db.Column(Numeric(scale=2))
     indicator = db.relationship("Indicator", back_populates="indicators_usage")
     plan = db.relationship("Plan", back_populates="indicators_usage")
 
@@ -239,9 +241,9 @@ class IndicatorUsage(db.Model):
             'id': self.id,
             'id_indicator': self.id_indicator,
             'id_plan': self.id_plan,
+            'QYearBeforePrev': self.QYearBeforePrev,
             'QYearPrev': self.QYearPrev,
-            'QYearCurr': self.QYearCurr,
-            'QYearNext': self.QYearNext,
+            'QYearCurrent': self.QYearCurrent,
             'CoeffToTut': self.indicator.CoeffToTut,
             'name': self.indicator.name
         }

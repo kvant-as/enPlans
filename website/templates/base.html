@@ -87,7 +87,7 @@
                     <div class="user-container" id="user-profile-panel-trigger">
                         <div class="avatar-wrapper">
                             <div class="avatar-circle">
-                                {{ current_user.first_name[:1] | upper if current_user.first_name else '' }}{{ current_user.last_name[:1] | upper if current_user.last_name else '' }}
+                                {{ current_user.first_name[:1] | upper if current_user.first_name else '-' }}{{ current_user.last_name[:1] | upper if current_user.last_name else '-' }}
                             </div>
                         </div>
                         <span class="chevron-icon">›</span>
@@ -291,18 +291,18 @@
             <div class="modal-header">
                 <h1 id="modal-title">{{ _('Добавление мероприятия') }}</h1>
                 {{ icons.icon_close() }}  
-            </div>    
+            </div>
             <div class="modal-body">   
                 <div class="progress-modal-bar-container">
                     <div class="progress-modal-bar" id="modal-progress-bar" style="width: 33%"></div>
                 </div>
                 <div id="step1" class="modal-step">
-                    <div class="answer-highlight">
+                    {#<div class="answer-highlight">
                         <div class="highlight-icon">💡</div>
                         <p>Сначала <strong>выберите</strong> направление, а затем нажмите <strong>Далее</strong></p>
-                    </div>
+                    </div>#}
                     <div class="app-group">
-                        <label>{{ _('Поиск мероприятия') }}</label>
+                        <label>{{ _('Поиск направления') }}</label>
                         <div class="input-with-icon">
                             {{ icons.icon_search() }}
                             <input type="text" data-action="search-directions" 
@@ -317,30 +317,24 @@
                                 <th style="display: none;">id</th>
                                 <th>{{ _('Код') }}</th>
                                 <th>{{ _('Наименование') }}</th>
-                                <th>{{ _('ед. изм.') }}</th>
-
-                              {#   <th style="text-align: center;">{{ _('Местные ТЭР') }}</th>
-                                
-                                <th>{{ _('Эффект (т.у.т.)') }}</th>
-                                <th>{{ _('Экономия') }}</th>#}
+                                <th style = "min-width: 40px;">{{ _('Ед. изм.') }}</th>
+                                <th>{{ _('Эко.') }}</th>
+                                <th>{{ _('Увел.') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in directions %}
                                 <tr>
-                                <td style="display: none;">{{ row.id }}</td>
-                                <td>{{ row.code }}</td>
-                                <td>{{ row.name }}</td>
-                                
-                                <td>{{ row.unit.name }}</td>
-
-                               {# <td style="text-align: center;">
-                                    <input type="checkbox" {% if row.direction.is_local %} checked {% endif %} onclick="return false;">
-                                </td>
-                                <td>{{ row.year_econ }}</td>
-                                <td>{{ row.estim_econ }}</td>#}
-
-
+                                    <td style="display: none;">{{ row.id }}</td>
+                                    <td>{{ row.code }}</td>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.unit.name }}</td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" {% if row.is_econom %} checked {% endif %} onclick="return false;">
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" {% if row.is_increase %} checked {% endif %} onclick="return false;">
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -354,7 +348,7 @@
                         </button>
                     </div>
                 </div>
-                <form action="{{ url_for('views.create_events', token=plan.token) }}" method="POST">
+                <form action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="step2" class="modal-step" style="display: none;">
                     <div class="answer-highlight">
@@ -603,7 +597,7 @@
                     <div class="app-group">
                         <label>[8] {{ _('Ожидаемый срок внедрения мероприятия, квартал') }}</label>
                         <div class="input-with-icon">
-                            <img src="/static/img/Calendar_gray.svg" class="input-icon">
+                            {{ icons.icon_calendar() }}
                             <input type="number" name="ExpectedQuarter" min="1" max="4" 
                             pattern="[1-4]" inputmode="numeric" id="change-ExpectedQuarter-edit-model"
                             placeholder="Квартал" class="app-input" required
@@ -707,7 +701,7 @@
                     <div class="app-group">
                         <label>[18] {{ _('Иные') }}</label>
                         <div class="input-with-icon">
-                            <img src="/static/img/Half_gray.svg"class="input-icon">
+                            {{ icons.icon_half() }}
                             <input type="text" id="change-MoneyOther-edit-model" name = "MoneyOther"
                                 placeholder="0.00" class="app-numeric-input" required>
                         </div>
@@ -787,7 +781,7 @@
                         </button>
                     </div>
                 </div>
-                <form action="{{ url_for('views.create_indicator', token=plan.token) }}" method="POST">
+                <form action="{{ url_for('plan_bp.create_indicator', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div id="step2" class="modal-step" style="display: none;">
                         <div class="answer-highlight">
@@ -795,30 +789,30 @@
                             <p>Укажите значения в исходных <strong>единицах измерения</strong> — они будут автоматически преобразованы в <strong>тонны</strong> условного топлива (т.у.т.).</p>
                         </div>
                         <div class="app-group">
-                            <label>{{ plan.year - 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                            <label>{{ plan.year - 2 }} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon prediction-container">
                                 {{ icons.icon_half() }}
-                                <input type="text" maxlength="" value="0.00" name="QYearPrev"
+                                <input type="text" maxlength="" value="0.00" name="QYearBeforePrev"
                                     placeholder="0.00" class="app-numeric-input" required>
-                                    <span class="prediction-value" data-multiplier="">0.00</span>
+                                     {# <span class="prediction-value" data-multiplier="">0.00</span>#}
                             </div>
                         </div>
                         <div class="app-group">
-                            <label>{{ plan.year}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                            <label>{{ plan.year - 1 }} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="" maxlength="" value="0.00"  name = "QYearCurr"
+                                <input type="text" id="" maxlength="" value="0.00"  name = "QYearPrev"
                                     placeholder="0.00" class="app-numeric-input" required>
-                                    <span class="prediction-value" data-multiplier="">0.00</span>
+                                   {# <span class="prediction-value" data-multiplier="">0.00</span>#}
                             </div>
                         </div>
                         <div class="app-group">
-                            <label>{{ plan.year + 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                            <label>{{ plan.year }} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="" maxlength="" value="0.00"  name = "QYearNext"
+                                <input type="text" id="" maxlength="" value="0.00"  name = "QYearCurrent"
                                     placeholder="0.00" class="app-numeric-input" required>
-                                    <span class="prediction-value" data-multiplier="">0.00</span>
+                                     {# <span class="prediction-value" data-multiplier="">0.00</span>#}
                             </div>
                         </div>
                         <div class="app-group" style = "display:none;">
@@ -871,29 +865,29 @@
                                     </div>
                             </div>
                         </div>
-                        <div class="app-group" id = "QYearPrev-edit-nodisplay">
-                            <label>{{ plan.year - 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                        <div class="app-group" id = "QYearBeforePrev-edit-nodisplay">
+                            <label>{{ plan.year - 2}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="QYearPrev-edit" maxlength="" value="0.00"  name = "QYearPrev"
+                                <input type="text" id="QYearBeforePrev-edit" maxlength="" value="0.00"  name = "QYearBeforePrev"
                                     placeholder="0.00" class="app-numeric-input" required>
                                 <span class="prediction-value" data-multiplier="">0.00</span>
                             </div>
                         </div>
                         <div class="app-group" id = "QYearCurr-edit-nodisplay">
-                            <label>{{ plan.year}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                            <label>{{ plan.year - 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="QYearCurr-edit" maxlength="" value="0.00"  name = "QYearCurr"
+                                <input type="text" id="QYearCurr-edit" maxlength="" value="0.00"  name = "QYearPrev"
                                     placeholder="0.00" class="app-numeric-input" required>
                                 <span class="prediction-value" data-multiplier="">0.00</span>
                             </div>
                         </div>
                         <div class="app-group">
-                            <label>{{ plan.year + 1}} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
+                            <label>{{ plan.year }} {{ _('г.') }} {{ _('в ед. изм.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="QYearNext-edit" maxlength="" value="0.00"  name = "QYearNext"
+                                <input type="text" id="QYearCurrent-edit" maxlength="" value="0.00"  name = "QYearCurrent"
                                     placeholder="0.00" class="app-numeric-input" required>
                                 <span class="prediction-value" data-multiplier="">0.00</span>
                             </div>

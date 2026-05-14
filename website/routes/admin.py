@@ -111,7 +111,7 @@ class MyMainView(AdminIndexView):
             user_data = organization_data = active_users = new_users = 0
             admins_count = auditors_count = respondents_count = orgs_with_users = 0
             plan_data = draft_plans = approved_plans = 0
-            tickets_count = units_count = directions_count = measures_count = 0
+            tickets_count = units_count = directions_count = 0
             execs_count = indicators_count = usages_count = notifications_count = 0
             flash('Ошибка при получении статистики из базы данных', 'error')
 
@@ -143,7 +143,6 @@ class MyMainView(AdminIndexView):
                         tickets_count=tickets_count,
                         units_count=units_count,
                         directions_count=directions_count,
-                        measures_count=measures_count,
                         execs_count=execs_count,
                         indicators_count=indicators_count,
                         usages_count=usages_count,
@@ -478,7 +477,7 @@ class DirectionView(SecureModelView):
     can_edit = True
     can_export = True
 
-    form_columns = ['code', 'name', 'unit', 'is_local', 'DateStart', 'DateEnd']
+    form_columns = ['code', 'name', 'unit', 'is_econom', 'is_increase', 'DateStart', 'DateEnd']
 
     form_args = {
         'code': {
@@ -495,17 +494,22 @@ class DirectionView(SecureModelView):
             'label': 'Единица измерения',
             'description': 'Единица измерения'
         },
-        'is_local': {
-            'label': 'Локальный',
-            'description': 'Является ли локальным'
+        'is_econom': {
+            'label': 'Экономия',
+            'description': 'Является ли экономией'
+        },
+        'is_increase': {
+            'label': 'Увеличение',
+            'description': 'Является ли увеличением'
         }
     }
 
     column_searchable_list = ['code', 'name']
-    column_filters = ['id', 'is_local']
+    column_filters = ['id', 'is_econom', 'is_increase']
 
     column_formatters = {
-        'is_local': lambda v, c, m, p: '🏠 Да' if m.is_local else '🌍 Нет',
+        'is_econom': lambda v, c, m, p: '✅' if m.is_econom else '❌',
+        'is_increase': lambda v, c, m, p: '✅' if m.is_increase else '❌',
         'DateStart': lambda v, c, m, p: m.DateStart.strftime('%d.%m.%Y') if m.DateStart else '',
         'DateEnd': lambda v, c, m, p: m.DateEnd.strftime('%d.%m.%Y') if m.DateEnd else '',
         'unit': lambda v, c, m, p: f"({m.unit.name})" if m.unit else ''
@@ -597,8 +601,8 @@ class EventView(SecureModelView):
     column_filters = ['id', 'is_local', 'is_corrected']
 
     column_formatters = {
-        'is_local': lambda v, c, m, p: '🏠 Да' if m.is_local else '🌍 Нет',
-        'is_corrected': lambda v, c, m, p: '✏️ Да' if m.is_corrected else '📄 Нет',
+        'is_local': lambda v, c, m, p: '✅' if m.is_local else '❌',
+        'is_corrected': lambda v, c, m, p: 'Да' if m.is_corrected else 'Нет',
         'plan': lambda v, c, m, p: f"План #{m.plan.id}" if m.plan else ''
     }
 
@@ -646,7 +650,7 @@ class IndicatorView(SecureModelView):
     }
 
 class IndicatorUsageView(SecureModelView):
-    column_list = ['id', 'plan', 'indicator', 'QYearPrev', 'QYearCurr', 'QYearNext']
+    column_list = ['id', 'plan', 'indicator', 'QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
     column_default_sort = ('id', True)
 
     can_delete = True
@@ -654,7 +658,7 @@ class IndicatorUsageView(SecureModelView):
     can_edit = True
     can_export = True
 
-    form_columns = ['plan', 'indicator', 'QYearPrev', 'QYearCurr', 'QYearNext']
+    form_columns = ['plan', 'indicator', 'QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
 
     form_args = {
         'plan': {

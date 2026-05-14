@@ -47,10 +47,10 @@ def export_xml_single(plan: Plan):
             ET.SubElement(row, "group").text = str(group_value or "")
             ET.SubElement(row, "name").text = str(usage.indicator.name or "-")
             ET.SubElement(row, "unit").text = str(getattr(usage.indicator.unit, "name", "") or "")
-            ET.SubElement(row, "prev_year").text = str(usage.QYearPrev or 0)
-            ET.SubElement(row, "curr_year").text = str(usage.QYearCurr or 0)
-            ET.SubElement(row, "next_year").text = str(usage.QYearNext or 0)
-            ET.SubElement(row, "change").text = str((usage.QYearNext or 0) - (usage.QYearCurr or 0))
+            ET.SubElement(row, "prev_year").text = str(usage.QYearBeforePrev or 0)
+            ET.SubElement(row, "curr_year").text = str(usage.QYearPrev or 0)
+            ET.SubElement(row, "next_year").text = str(usage.QYearCurrent or 0)
+            ET.SubElement(row, "change").text = str((usage.QYearCurrent or 0) - (usage.QYearPrev or 0))
         
         return part1
 
@@ -159,9 +159,9 @@ def export_pdf_single(plan: Plan):
 def type_of_export(plan: Plan) -> str:
     if plan.org_id:
         for indicator_usage in plan.indicators_usage:
-            if indicator_usage.id_indicator == 1 and indicator_usage.QYearNext is not None:
+            if indicator_usage.id_indicator == 1 and indicator_usage.QYearCurrent is not None:
                 try:
-                    q_year_next = float(indicator_usage.QYearNext)
+                    q_year_next = float(indicator_usage.QYearCurrent)
                     if q_year_next >= 25000:
                         return "org_large"
                     else:
@@ -1273,10 +1273,10 @@ def export_xlsx_single(plan: Plan):
                 group_value, 
                 usage.indicator.name if usage.indicator.name else "-",
                 usage.indicator.unit.name,
+                (usage.QYearBeforePrev or 0),
                 (usage.QYearPrev or 0),
-                (usage.QYearCurr or 0),
-                (usage.QYearNext or 0),
-                (usage.QYearNext or 0) - (usage.QYearCurr or 0),
+                (usage.QYearCurrent or 0),
+                (usage.QYearCurrent or 0) - (usage.QYearPrev or 0),
             ]
             ws.append(row)
             
@@ -1660,7 +1660,7 @@ def export_xlsx_single(plan: Plan):
             cell.alignment = center
             cell.font = regular_font_10
 
-        local_econ_execes = (Event.query
+        econom_events = (Event.query
             .join(EconMeasure)
             .join(Plan)
             .filter(Plan.id == plan.id, Event.is_local == True)
@@ -1668,7 +1668,7 @@ def export_xlsx_single(plan: Plan):
             .all()
         )
 
-        non_local_econ_execes = (Event.query
+        increase_events = (Event.query
             .join(EconMeasure)
             .join(Plan)
             .filter(Plan.id == plan.id, Event.is_local == False)
@@ -1731,8 +1731,8 @@ def export_xlsx_single(plan: Plan):
                 cell.number_format = '0.00'
             return start_number + len(execs)
 
-        next_number = add_section("Раздел 2. Мероприятия по экономии топливно-энергетических ресурсов", non_local_econ_execes, 1)
-        # add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", local_econ_execes, next_number)
+        next_number = add_section("Раздел 2. Мероприятия по экономии топливно-энергетических ресурсов", increase_events, 1)
+        # add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", econom_events, next_number)
 
         # row_index += 1
         
@@ -2229,7 +2229,7 @@ def export_xlsx_single(plan: Plan):
             cell.alignment = center
             cell.font = regular_font_10
 
-        local_econ_execes = (Event.query
+        econom_events = (Event.query
             .join(EconMeasure)
             .join(Plan)
             .filter(Plan.id == plan.id, Event.is_local == True)
@@ -2237,7 +2237,7 @@ def export_xlsx_single(plan: Plan):
             .all()
         )
 
-        non_local_econ_execes = (Event.query
+        increase_events = (Event.query
             .join(EconMeasure)
             .join(Plan)
             .filter(Plan.id == plan.id, Event.is_local == False)
@@ -2300,7 +2300,7 @@ def export_xlsx_single(plan: Plan):
                 cell.number_format = '0.00'
             return start_number + len(execs)
 
-        add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", local_econ_execes, 1)
+        add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", econom_events, 1)
 
         # row_index += 1
         
@@ -2696,13 +2696,13 @@ def export_xlsx_single(plan: Plan):
 
     first_half_xlsx(wb, plan)
     
-    local_econ_execes = [exec_item for exec_item in plan.econ_execes if exec_item.is_local]
-    non_local_econ_execes = [exec_item for exec_item in plan.econ_execes if not exec_item.is_local]
+    econom_events = [exec_item for exec_item in plan.econ_execes if exec_item.is_local]
+    increase_events = [exec_item for exec_item in plan.econ_execes if not exec_item.is_local]
         
-    if non_local_econ_execes:
+    if increase_events:
         second_half_xlsx(wb, plan) 
         
-    if local_econ_execes:
+    if econom_events:
         third_half_xlsx(wb, plan)
 
     file_stream = io.BytesIO()
