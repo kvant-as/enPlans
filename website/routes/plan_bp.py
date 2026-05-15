@@ -6,25 +6,21 @@ from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import get_event_metrics, other_data_indicatorUpdate, to_decimal_2, update_ChangeTimePlan
+from website.plans import generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
+from website.plans import status_handlers
 from website.user import send_email
 
 from .. import db
 from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, Ticket, Event
 
-from sqlalchemy import cast, Integer
-
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
-
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
-
-
 
 @plan_bp.route('/review/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -64,6 +60,41 @@ def plan_audit(token):
                         plan=current_plan,     
                         hide_header=False)
 
+# @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
+# @user_with_all_params()
+# @login_required
+# @owner_only
+# @session_required
+# def plan_indicators(token):    
+#     if request.method == 'POST':
+#         pass
+    
+#     current_plan = g.current_plan
+#     indicators_non_madatory = (Indicator.query
+#                         .filter_by(IsMandatory=False)
+#                         .filter(~Indicator.id.in_(
+#                             db.session.query(IndicatorUsage.id_indicator)
+#                             .filter(IndicatorUsage.id_plan == current_plan.id)
+#                         ))
+#                         .all())
+    
+#     current_plan_indicators = (IndicatorUsage.query
+#                 .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
+#                 .filter(IndicatorUsage.id_plan == current_plan.id)
+#                 .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
+#                 .all())
+    
+#     return render_template('plan_indicators.html',  
+#                         plan=current_plan, 
+#                         indicators_non_madatory=indicators_non_madatory,
+#                         current_plan_indicators=current_plan_indicators,
+#                         hide_header=False,
+#                         add_indicator_modal=True,
+#                         edit_indicator_modal=True,
+#                         confirmModal = True,
+#                         sentmodal=current_plan.is_control,
+#                         context_menu = True)
+
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
@@ -74,7 +105,6 @@ def plan_indicators(token):
         pass
     
     current_plan = g.current_plan
-
     indicators_non_madatory = (Indicator.query
                         .filter_by(IsMandatory=False)
                         .filter(~Indicator.id.in_(
@@ -82,24 +112,15 @@ def plan_indicators(token):
                             .filter(IndicatorUsage.id_plan == current_plan.id)
                         ))
                         .all())
-    
-    current_plan_indicators = (IndicatorUsage.query
-                .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
-                .filter(IndicatorUsage.id_plan == current_plan.id)
-                .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
-                .all())
-    
     return render_template('plan_indicators.html',  
                         plan=current_plan, 
                         indicators_non_madatory=indicators_non_madatory,
-                        current_plan_indicators=current_plan_indicators,
                         hide_header=False,
                         add_indicator_modal=True,
                         edit_indicator_modal=True,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,
                         context_menu = True)
-
 
 @plan_bp.route('/create-indicator/<token>', methods=['POST'])
 @user_with_all_params()
@@ -113,7 +134,6 @@ def create_indicator(token):
     QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
     QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
     id_indicator = request.form.get('id_indicator')
-
 
     if id_indicator == None:
         flash('Пустой показатель', 'error')
@@ -136,7 +156,7 @@ def create_indicator(token):
     db.session.add(new_IndicatorUsage)
     db.session.commit()
     other_data_indicatorUpdate(current_plan.id)
-    update_ChangeTimePlan(current_plan.id)
+
     flash('Показатель добавлен', 'success')
     return redirect(url_for('plan_bp.plan_indicators', token=token))
 
@@ -161,7 +181,6 @@ def edit_indicator(id):
 
     current_plan = Plan.query.get_or_404(indicator_usage.id_plan)
     other_data_indicatorUpdate(current_plan.id)
-    update_ChangeTimePlan(current_plan.id)
     flash('Обновление данных', 'success')
     return redirect(url_for('plan_bp.plan_indicators', token=current_plan.token))
 
@@ -181,7 +200,6 @@ def delete_indicator(id):
     flash('Показатель успешно удален', 'success')
     return redirect(url_for('plan_bp.plan_indicators', token=current_plan.token))
 
-
 @plan_bp.route('/events-<event_type>/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
@@ -195,7 +213,7 @@ def plan_event(event_type, token):
         abort(404)
     
     current_plan = g.current_plan
-  
+    
     if event_type == 'saving':
         type_filter = Direction.is_econom == True
         directions = Direction.query.filter(Direction.is_econom == True).order_by(Direction.id.asc()).all()
@@ -204,42 +222,20 @@ def plan_event(event_type, token):
         type_filter = Direction.is_increase == True
         directions = Direction.query.filter(Direction.is_increase == True).order_by(Direction.id.asc()).all()
         title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
+    
+    has_original_events = Event.query.filter(
+        Event.id_plan == current_plan.id,
+        Event.is_corrected == False
+    ).join(Direction).filter(type_filter).first() is not None
+    
+    has_changes_events = Event.query.filter(
+        Event.id_plan == current_plan.id,
+        Event.is_corrected == True
+    ).join(Direction).filter(type_filter).first() is not None
+    
+    has_events = has_original_events or has_changes_events
 
-    original_events = (Event.query
-        .join(Direction, Event.id_direction == Direction.id)
-        .filter(Event.id_plan == current_plan.id)
-        .filter(type_filter)
-        .filter(Event.is_corrected == False)
-        .order_by(Event.id.asc())
-        .all())
-    
-    events_with_changes = (Event.query
-        .join(Direction, Event.id_direction == Direction.id)
-        .filter(Event.id_plan == current_plan.id)
-        .filter(type_filter)
-        .filter(Event.is_corrected == True)
-        .order_by(Event.id.asc())
-        .all())
-    
-    events_original = get_event_metrics(current_plan.id, event_type, is_original=True)
-    events_included_changes = get_event_metrics(current_plan.id, event_type, is_original=False)
-    
-    total_metrics = {
-        'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
-        'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
-        'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
-        'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
-        'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
-        'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
-        'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
-        'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
-    }
-
-    return render_template(f'plan_events.html',  
-                        directions=directions,
-                        original_events=original_events,
-                        events_with_changes=events_with_changes,
-                        total_metrics=total_metrics,
+    return render_template('plan_events.html',  
                         title=title,
                         event_type=event_type,
                         plan=current_plan, 
@@ -247,8 +243,10 @@ def plan_event(event_type, token):
                         add_event_modal=True,
                         confirmModal=True,
                         edit_event_modal=True,
+                        directions=directions,
                         sentmodal=current_plan.is_control,
-                        context_menu=True
+                        context_menu=True,
+                        has_events=has_events
                     )
 
 @plan_bp.route('/create-event/<token>', methods=['POST'])
@@ -289,10 +287,15 @@ def create_event(token):
     
     event_type = request.form.get('event_type') or 'saving'
     
+    display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
+    
+    is_corrected = current_plan.audit_time is not None
+    
     try:
         new_Event = Event(
             id_direction=id_direction,
             id_plan=current_plan.id,
+            display_code=display_code,
             name=name,
             Volume=Volume,
             EffTut=EffTut,
@@ -308,14 +311,13 @@ def create_event(token):
             MoneyOwn=MoneyOwn,
             MoneyLoan=MoneyLoan,
             MoneyOther=MoneyOther,
+            is_corrected=is_corrected
         )
         
         db.session.add(new_Event)
         db.session.commit()
         
-        other_data_indicatorUpdate(current_plan.id)
-        update_ChangeTimePlan(current_plan.id)
-        
+        other_data_indicatorUpdate(current_plan.id) 
         flash('Мероприятие добавлено', 'success')
         logger.debug(f'Event created successfully: id={new_Event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
@@ -333,7 +335,6 @@ def create_event(token):
     
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
 
-
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -348,10 +349,8 @@ def delete_eventes(id):
     db.session.commit()
 
     other_data_indicatorUpdate(current_plan.id)
-    update_ChangeTimePlan(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
-
 
 @plan_bp.route('/edit-event/<int:id>', methods=['POST'])
 @user_with_all_params()
@@ -412,9 +411,7 @@ def edit_Eventes(id):
         db.session.commit()
         flash('Мероприятие изменено', 'success')
 
-        other_data_indicatorUpdate(current_plan.id)
-        update_ChangeTimePlan(current_plan.id)
-        
+        other_data_indicatorUpdate(current_plan.id)  
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
     
     except Exception as e:
@@ -422,7 +419,7 @@ def edit_Eventes(id):
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
         return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
 
-@plan_bp.route('/api/change-plan-status/<token>', methods=['POST'])
+@plan_bp.route('/change-plan-status/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @owner_only

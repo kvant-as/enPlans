@@ -20,7 +20,6 @@
   {% set nav_active = 'event-increase' %}
 {% endif %}
 
-
 {% block title %}{{ title }} - enPlans{% endblock %}
 
 {% block content %}
@@ -30,10 +29,9 @@
 </div>
 <div class="personal-plan-conteiner">
   {{ component.plan_menu(plan, current_user, nav_active) }}
-  
-  {% if original_events or events_with_changes %}
+  {% if has_events %}
     <div class="table-container">
-      <table class="main-table" id="measureTable">
+      <table class="main-table" id="eventTable" data-token="{{ plan.token }}" data-event-type="{{ event_type }}">
         <thead class="main-table-titels">
           <tr>
             <th rowspan="3" class="resizable">
@@ -153,57 +151,14 @@
               {{ icons.dropdown_arrow() }}
               <span>{{ section_title }}</span>
             </div>
-           </td>
-         </tr>
+          </td>
+        </tr>
         <tbody class="rows" id="non-local-content">
-          {% if original_events %}
-            {% for row in original_events %}
-              <tr class="menu-row" data-id="{{ row.id }}">
-                <td>{{ loop.index }}</td>
-                <td>{{ row.direction.code }}</td>
-                <td>{{ row.name }}</td>
-                <td>{{ row.direction.unit.name }}</td>
-                <td>{{ row.Volume }}</td>
-                <td>{{ row.EffTut }}</td>
-                <td>{{ row.EffRub }}</td>
-                <td>{{ row.ExpectedQuarter }}</td>
-                <td>{{ row.EffCurrYear }}</td>
-                <td>{{ row.Payback }}</td>
-                <td>{{ row.VolumeFin }}</td>
-                <td>{{ row.BudgetState }}</td>
-                <td>{{ row.BudgetRep }}</td>
-                <td>{{ row.BudgetLoc }}</td>
-                <td>{{ row.BudgetOther }}</td>
-                <td>{{ row.MoneyOwn }}</td>
-                <td>{{ row.MoneyLoan }}</td>
-                <td>{{ row.MoneyOther }}</td>
-              </tr>
-            {% endfor %}
-            <tr class="total-row">
-              <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
-              <td>{{ original_events|sum(attribute='Volume')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='EffTut')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='EffRub')|default(0)|round(2) }}</td>
-              <td>-</td>
-              <td>{{ original_events|sum(attribute='EffCurrYear')|default(0)|round(2) }}</td>
-              <td>-</td>
-              <td>{{ original_events|sum(attribute='VolumeFin')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='BudgetState')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='BudgetRep')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='BudgetLoc')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='BudgetOther')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='MoneyOwn')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='MoneyLoan')|default(0)|round(2) }}</td>
-              <td>{{ original_events|sum(attribute='MoneyOther')|default(0)|round(2) }}</td>
-            </tr>
-          {% else %}
-            <tr class="no-results-row">
-              <td colspan="18">{{ empty_message }}</td>
-            </tr>
-          {% endif %}
+          <tr class="no-results-row">
+            <td colspan="18">Загрузка...</td>
+          </tr>
         </tbody>
         
-        <!-- Мероприятия с изменениями -->
         <tr class="group-header" data-target="local-content">
           <td colspan="18">
             <div class="group-header-content">
@@ -213,51 +168,9 @@
           </td>
         </tr>
         <tbody class="rows" id="local-content">
-          {% if events_with_changes %}
-            {% for row in events_with_changes %}
-              <tr class="menu-row" data-id="{{ row.id }}">
-                <td>{{ loop.index }}</td>
-                <td>{{ row.direction.code }}</td>
-                <td>{{ row.name }}</td>
-                <td>{{ row.direction.unit.name }}</td>
-                <td>{{ row.Volume }}</td>
-                <td>{{ row.EffTut }}</td>
-                <td>{{ row.EffRub }}</td>
-                <td>{{ row.ExpectedQuarter }}</td>
-                <td>{{ row.EffCurrYear }}</td>
-                <td>{{ row.Payback }}</td>
-                <td>{{ row.VolumeFin }}</td>
-                <td>{{ row.BudgetState }}</td>
-                <td>{{ row.BudgetRep }}</td>
-                <td>{{ row.BudgetLoc }}</td>
-                <td>{{ row.BudgetOther }}</td>
-                <td>{{ row.MoneyOwn }}</td>
-                <td>{{ row.MoneyLoan }}</td>
-                <td>{{ row.MoneyOther }}</td>
-              </tr>
-            {% endfor %}
-            <tr class="total-row">
-              <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
-              <td style="text-align: end">{{ events_with_changes|sum(attribute='Volume')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='EffTut')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='EffRub')|default(0)|round(2) }}</td>
-              <td>-</td>
-              <td>{{ events_with_changes|sum(attribute='EffCurrYear')|default(0)|round(2) }}</td>
-              <td>-</td>
-              <td>{{ events_with_changes|sum(attribute='VolumeFin')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='BudgetState')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='BudgetRep')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='BudgetLoc')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='BudgetOther')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='MoneyOwn')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='MoneyLoan')|default(0)|round(2) }}</td>
-              <td>{{ events_with_changes|sum(attribute='MoneyOther')|default(0)|round(2) }}</td>
-            </tr>
-          {% else %}
-            <tr class="no-results-row">
-              <td colspan="18">{{ empty_changes_message }}</td>
-            </tr>
-          {% endif %}
+          <tr class="no-results-row">
+            <td colspan="18">Загрузка...</td>
+          </tr>
         </tbody>
         
         <!-- Итого и периоды -->
@@ -271,55 +184,22 @@
         </tr>
         <tbody id="other-content">
           <tr>
-            <td></td>
-            <td>Всего:</td>
-            <td colspan="2"></td>
-            <td>{{ (original_events|sum(attribute='Volume')|default(0) + events_with_changes|sum(attribute='Volume')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='EffTut')|default(0) + events_with_changes|sum(attribute='EffTut')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='EffRub')|default(0) + events_with_changes|sum(attribute='EffRub')|default(0))|round(2) }}</td>
-            <td>-</td>
-            <td>{{ (original_events|sum(attribute='EffCurrYear')|default(0) + events_with_changes|sum(attribute='EffCurrYear')|default(0))|round(2) }}</td>
-            <td>-</td>
-            <td>{{ (original_events|sum(attribute='VolumeFin')|default(0) + events_with_changes|sum(attribute='VolumeFin')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='BudgetState')|default(0) + events_with_changes|sum(attribute='BudgetState')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='BudgetRep')|default(0) + events_with_changes|sum(attribute='BudgetRep')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='BudgetLoc')|default(0) + events_with_changes|sum(attribute='BudgetLoc')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='BudgetOther')|default(0) + events_with_changes|sum(attribute='BudgetOther')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='MoneyOwn')|default(0) + events_with_changes|sum(attribute='MoneyOwn')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='MoneyLoan')|default(0) + events_with_changes|sum(attribute='MoneyLoan')|default(0))|round(2) }}</td>
-            <td>{{ (original_events|sum(attribute='MoneyOther')|default(0) + events_with_changes|sum(attribute='MoneyOther')|default(0))|round(2) }}</td>
+            <td colspan="18">Загрузка...</td>
           </tr>
-          
-          {% set periods = [
-            ('Январь-Март', 'jan_mar_eff', 'jan_mar_vol'),
-            ('Январь-Июнь', 'jan_jun_eff', 'jan_jun_vol'),
-            ('Январь-Сентябрь', 'jan_sep_eff', 'jan_sep_vol'),
-            ('Январь-Декабрь', 'jan_dec_eff', 'jan_dec_vol')
-          ] %}
-          
-          {% for period_name, eff_key, vol_key in periods %}
-          <tr>
-            <td></td>
-            <td>{{ period_name }}</td>
-            <td colspan="6"></td>
-            <td>{{ "%.2f"|format(total_metrics[eff_key]|default(0)|float) }}</td>
-            <td></td>
-            <td>{{ "%.2f"|format(total_metrics[vol_key]|default(0)|float) }}</td>
-            <td colspan="7"></td>
-          </tr>
-          {% endfor %}
         </tbody>
       </table>
     </div>
-  {% else %}
+    {% else %}
     <div class="no-info-conteiner">
       <div class="empty-state">
         {{ icons.icon_no_info1() }}
-        <h1>{{ title }}</h1>
+        <h1>{{ title }} отсутствуют</h1>
         <p>Чтобы начать работу, добавьте новое мероприятие.</p>
       </div>
     </div>
     {{ affects.bg_effect() }}
   {% endif %}
 </div>
+
+<script src="{{ url_for('static', filename='js/plan.js') }}"></script>
 {% endblock %}

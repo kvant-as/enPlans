@@ -68,35 +68,6 @@
                 <span>План</span>
             </div>
         </div>
-        {#
-        {% if plan.is_draft or plan.is_control %}
-        <div class="menu-conteiner">
-            <div class="menu-conteiner-btns">
-                {% if plan.is_draft %}
-                <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" 
-                      action="/api/change-plan-status/{{ plan.token }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                    <input type="hidden" name="status" value="control" />
-                    <button id="controlPlanButton" data-plan-type="{{ plan.plan_type }}" 
-                            type="submit" class="element">
-                        <img src="{{ url_for('static', filename='img/icon-control.svg') }}">
-                        <span class="element-text">Контроль</span>
-                    </button>
-                </form>
-                {% endif %}
-                {% if plan.is_control %}
-                <div class="element" id="sentPlanButton">
-                    <img src="{{ url_for('static', filename='img/icon-send.svg') }}">
-                    <span class="element-text">Отправить</span>
-                </div>
-                {% endif %}
-            </div>
-            <div class="menu-conteiner-title">
-                <span>Статус</span>
-            </div>
-        </div>
-        {% endif %}
-        #}
     </div>
 {% endmacro %}
 

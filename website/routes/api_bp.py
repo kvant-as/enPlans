@@ -1,12 +1,14 @@
 import logging
 from venv import logger
-from flask import current_app, request, jsonify, Blueprint
+from flask import current_app, g, request, jsonify, Blueprint
 from flask_login import login_required
 
+from website.plans import get_event_metrics
 from website.routes.auth import user_with_all_params
+from website.routes.views import owner_only
 from website.sessions import session_required
 
-from ..models import IndicatorUsage, Ministry, Organization, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, Ministry, Organization, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -153,7 +155,128 @@ def get_indicator(id):
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/indicators/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+def get_indicators_data(token):
+    current_plan = g.current_plan
     
+    current_plan_indicators = (IndicatorUsage.query
+                .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
+                .filter(IndicatorUsage.id_plan == current_plan.id)
+                .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
+                .all())
+    
+    indicators_data = []
+    for row in current_plan_indicators:
+        indicators_data.append({
+            'id': row.id,
+            'id_indicator': row.id_indicator,
+            'code': row.indicator.code,
+            'name': row.indicator.name,
+            'unit_name': row.indicator.unit.name,
+            'group': float(row.indicator.Group) if row.indicator.Group else None,
+            'row_n': row.indicator.RowN,
+            'coeff_to_tut': float(row.indicator.CoeffToTut) if row.indicator.CoeffToTut else 1,
+            'QYearBeforePrev_unit': float(row.QYearBeforePrev / row.indicator.CoeffToTut) if row.QYearBeforePrev and row.indicator.CoeffToTut else 0,
+            'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
+            'QYearPrev_unit': float(row.QYearPrev / row.indicator.CoeffToTut) if row.QYearPrev and row.indicator.CoeffToTut else 0,
+            'QYearPrev_tut': float(row.QYearPrev) if row.QYearPrev else 0,
+            'QYearCurrent_unit': float(row.QYearCurrent / row.indicator.CoeffToTut) if row.QYearCurrent and row.indicator.CoeffToTut else 0,
+            'QYearCurrent_tut': float(row.QYearCurrent) if row.QYearCurrent else 0,
+            'difference': float(row.QYearCurrent - row.QYearPrev) if row.QYearCurrent and row.QYearPrev else 0
+        })
+    
+    return jsonify({
+        'success': True,
+        'plan_id': current_plan.id,
+        'plan_year': current_plan.year,
+        'indicators': indicators_data
+    })
+    
+@api_bp.route('/events/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+def get_events_data(token):
+    current_plan = g.current_plan
+    event_type = request.args.get('type', 'saving')
+    
+    if event_type not in ['saving', 'increase']:
+        return jsonify({'success': False, 'error': 'Invalid event type'}), 400
+    
+    if event_type == 'saving':
+        type_filter = Direction.is_econom == True
+    else:
+        type_filter = Direction.is_increase == True
+    
+    original_events = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Event.id_plan == current_plan.id)
+        .filter(type_filter)
+        .filter(Event.is_corrected == False)
+        .order_by(Event.id.asc())
+        .all())
+    
+    events_with_changes = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Event.id_plan == current_plan.id)
+        .filter(type_filter)
+        .filter(Event.is_corrected == True)
+        .order_by(Event.id.asc())
+        .all())
+    
+    events_original = get_event_metrics(current_plan.id, event_type, is_original=True)
+    events_included_changes = get_event_metrics(current_plan.id, event_type, is_original=False)
+    
+    total_metrics = {
+        'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
+        'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
+        'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
+        'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
+        'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
+        'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
+        'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
+        'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
+    }
+    
+    def serialize_event(event):
+        return {
+            'id': event.id,
+            'id_direction': event.id_direction,
+            'direction_code': event.direction.code,
+            'display_code': getattr(event, 'display_code', event.direction.code),
+            'name': event.name,
+            'unit_name': event.direction.unit.name,
+            'Volume': float(event.Volume) if event.Volume else None,
+            'EffTut': float(event.EffTut) if event.EffTut else None,
+            'EffRub': float(event.EffRub) if event.EffRub else None,
+            'ExpectedQuarter': event.ExpectedQuarter,
+            'EffCurrYear': float(event.EffCurrYear) if event.EffCurrYear else None,
+            'Payback': float(event.Payback) if event.Payback else None,
+            'VolumeFin': float(event.VolumeFin) if event.VolumeFin else None,
+            'BudgetState': float(event.BudgetState) if event.BudgetState else None,
+            'BudgetRep': float(event.BudgetRep) if event.BudgetRep else None,
+            'BudgetLoc': float(event.BudgetLoc) if event.BudgetLoc else None,
+            'BudgetOther': float(event.BudgetOther) if event.BudgetOther else None,
+            'MoneyOwn': float(event.MoneyOwn) if event.MoneyOwn else None,
+            'MoneyLoan': float(event.MoneyLoan) if event.MoneyLoan else None,
+            'MoneyOther': float(event.MoneyOther) if event.MoneyOther else None,
+            'is_corrected': event.is_corrected
+        }
+    
+    return jsonify({
+        'success': True,
+        'plan_id': current_plan.id,
+        'plan_year': current_plan.year,
+        'event_type': event_type,
+        'original_events': [serialize_event(e) for e in original_events],
+        'events_with_changes': [serialize_event(e) for e in events_with_changes],
+        'total_metrics': total_metrics
+    })
     
 
     

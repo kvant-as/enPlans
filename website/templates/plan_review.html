@@ -136,7 +136,7 @@
             />
           </div>
         </div>
-        <div class="app-group">
+        <div class="app-group" id="tickets_link">
           <label>{{ _('Доля ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
@@ -289,7 +289,7 @@
 
     {% if current_user.is_auditor != true %}
       <hr>
-      <h1 class="name" id="tickets_link">{{ _('Результаты проверки') }}</h1>
+      <h1 class="name">{{ _('Результаты проверки') }}</h1>
       {{ component.tickets_container(plan, current_user) }}
     {% endif %}
 
@@ -344,9 +344,6 @@
               {% else %}
                 <span class="date-empty">{{ _('Не отправлен') }}</span>
               {% endif %}
-            </div>
-            <div class="date-status">
-              {{ component.status_plan(plan, current_user) }}
             </div>
           </div>
         </div>

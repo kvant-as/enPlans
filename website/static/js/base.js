@@ -1,5 +1,3 @@
-
-
 // toggle password
 const togglePassword = {
   init: function() {
@@ -127,7 +125,6 @@ const messageFlash = (function() {
     return { init, addMessage };
 })();
 
-
 // notif modal show
 const NotificationPopup = {
     init: function (options) {
@@ -139,10 +136,10 @@ const NotificationPopup = {
             return;
         }
 
-        this.bindmeasure();
+        this.bindEvents();
     },
 
-    bindmeasure: function () {
+    bindEvents: function () {
         this.button.addEventListener("click", (e) => {
             e.stopPropagation();
             this.toggle();
@@ -268,7 +265,6 @@ const Notifications = {
         this.load();
     }
 };
-
 
 // activation code
 const activationCode = {
@@ -419,7 +415,6 @@ class CodeVerificationTimer {
     }
     
     setupEventListeners() {
-        // Обработчик отправки формы повторной отправки кода
         this.resendForm.addEventListener('submit', (e) => {
             if (this.resendBtn.classList.contains('disabled')) {
                 e.preventDefault();
@@ -427,10 +422,8 @@ class CodeVerificationTimer {
             }
         });
         
-        // Настройка автоперехода между полями ввода кода
         this.setupCodeInputs();
         
-        // Очищаем localStorage при успешной отправке основной формы
         const mainForm = document.querySelector('.auth-form');
         if (mainForm) {
             mainForm.addEventListener('submit', () => {
@@ -439,15 +432,12 @@ class CodeVerificationTimer {
         }
     }
     
-    // Публичные методы для внешнего управления
     destroy() {
         this.clearTimer();
         localStorage.removeItem('codeResendEndTime');
         
-        // Удаляем все обработчики событий
         this.resendForm.removeEventListener('submit', this.handleResendSubmit);
         
-        // Восстанавливаем исходное состояние кнопки
         this.resendBtn.classList.remove('disabled');
         this.resendBtn.style.cursor = 'pointer';
         this.resendBtn.style.opacity = '1';
@@ -463,7 +453,6 @@ class CodeVerificationTimer {
     }
 }
 
-// Класс для управления несколькими экземплярами таймеров
 class CodeVerificationManager {
     constructor() {
         this.instances = new Map();
@@ -500,7 +489,6 @@ class CodeVerificationManager {
         this.instances.clear();
     }
 }
-
 
 function createCodeVerification(options = {}) {
     return new CodeVerificationTimer(options);
@@ -678,97 +666,6 @@ const customDropdown = {
     }
 };
 
-// status row
-const STATUS_CONFIG = {
-  'plan-cont-redac': {
-    width: '20%',
-    color: 'var(--color-redaced)'
-  },
-  'plan-cont-control': {
-    width: '40%', 
-    color: 'var(--color-controled)'
-  },
-  'plan-cont-sent': {
-    width: '60%',
-    color: 'var(--color-sented)'
-  },
-  'plan-cont-eror': {
-    width: '80%',
-    color: 'var(--color-erorsed)'
-  },
-  'plan-cont-sub': {
-    width: '100%',
-    color: 'var(--color-submited)'
-  }
-};
-
-const elements = {
-  planConts: document.querySelectorAll('.plan-cont'),
-  progressLine: document.querySelector('.progress-line-active'),
-  dots: document.querySelectorAll('.status-dot')
-};
-
-const checkElements = () => {
-  if (!elements.planConts.length || !elements.progressLine || !elements.dots.length) {
-    console.warn('Не найдены необходимые элементы для прогресс-бара');
-    return false;
-  }
-  return true;
-};
-
-const setupEventHandlers = () => {
-  elements.planConts.forEach(planCont => {
-    planCont.addEventListener('mouseenter', handleMouseEnter);
-    planCont.addEventListener('mouseleave', handleMouseLeave);
-  });
-};
-
-const handleMouseEnter = (event) => {
-  const planCont = event.currentTarget;
-  
-  for (const [className, config] of Object.entries(STATUS_CONFIG)) {
-    if (planCont.classList.contains(className)) {
-      updateProgressBar(config);
-      updateDots(className);
-      break;
-    }
-  }
-};
-
-const updateProgressBar = (config) => {
-  elements.progressLine.style.width = config.width;
-  elements.progressLine.style.background = config.color;
-};
-
-const updateDots = (activeClass) => {
-  const activeIndex = Object.keys(STATUS_CONFIG).indexOf(activeClass);
-  const activeColor = STATUS_CONFIG[activeClass].color;
-  
-  elements.dots.forEach((dot, index) => {
-    dot.style.background = index <= activeIndex ? activeColor : 'var(--border-color)';
-  });
-};
-
-const handleMouseLeave = () => {
-  elements.progressLine.style.width = '0';
-  elements.dots.forEach(dot => {
-    dot.style.background = 'var(--border-color)';
-  });
-};
-
-const initStatusProgress = () => {
-  if (!checkElements()) return;
-  
-  setupEventHandlers();
-
-  return () => {
-    elements.planConts.forEach(planCont => {
-      planCont.removeEventListener('mouseenter', handleMouseEnter);
-      planCont.removeEventListener('mouseleave', handleMouseLeave);
-    });
-  };
-};
-
 // func to show modals
 function handleModal(modalElement, openLink, closeLink) {
     openLink.addEventListener('click', function(event) {
@@ -788,85 +685,6 @@ function handleModal(modalElement, openLink, closeLink) {
             modalElement.classList.remove('active');
         }
     });
-}
-
-// event modal
-class EventModal {
-  constructor(modalId) {
-    this.modal = document.getElementById(modalId);
-    if (!this.modal) return;
-
-    this.progressBar = this.modal.querySelector('#modal-progress-bar');
-
-    this.stepEls = Array.from(this.modal.querySelectorAll('[id^="step"]'))
-      .filter(el => /^step\d+$/.test(el.id))
-      .sort((a, b) => parseInt(a.id.slice(4), 10) - parseInt(b.id.slice(4), 10));
-
-    this.totalSteps = this.stepEls.length || 1;
-    this.currentStep = 1;
-
-    this.buttons = {
-      step1Next: this.modal.querySelector('#step1-next-btn'),
-      step2Back: this.modal.querySelector('#step2-back-btn'),
-      step2Next: this.modal.querySelector('#step2-next-btn'),
-      step3Back: this.modal.querySelector('#step3-back-btn'),
-      step3Next: this.modal.querySelector('#step3-next-btn')
-    };
-
-    this.init();
-  }
-
-  init() {
-    this.buttons.step1Next?.addEventListener('click', () => this.nextStep());
-    this.buttons.step2Back?.addEventListener('click', () => this.prevStep());
-    this.buttons.step2Next?.addEventListener('click', () => this.nextStep());
-    this.buttons.step3Back?.addEventListener('click', () => this.prevStep());
-    this.buttons.step3Next?.addEventListener('click', () => this.submitForm());
-
-
-  }
-
-  activeStepEl() {
-    return this.stepEls[this.currentStep - 1];
-  }
-
-  updateProgressBar() {
-    if (!this.progressBar) return;
-    const progress = (this.currentStep / this.totalSteps) * 100;
-    this.progressBar.style.width = progress + '%';
-  }
-
-  nextStep() {
-    if (this.currentStep >= this.totalSteps) return;
-    this.activeStepEl().style.display = 'none';
-    this.currentStep++;
-    this.activeStepEl().style.display = 'block';
-    this.updateProgressBar();
-  }
-
-  prevStep() {
-    if (this.currentStep <= 1) return;
-    this.activeStepEl().style.display = 'none';
-    this.currentStep--;
-    this.activeStepEl().style.display = 'block';
-    this.updateProgressBar();
-  }
-
-  validateStep1() { return true; }
-  validateStep2() { return true; }
-
-  submitForm() {
-  }
-
-  close() {
-    this.modal.style.display = 'none';
-  }
-
-  resetForm() {
-    this.stepEls.forEach((el, i) => el.style.display = i === 0 ? 'block' : 'none');
-    this.currentStep = 1;
-    this.updateProgressBar();
-  }
 }
 
 var NumericInputHandler = {
@@ -1056,588 +874,6 @@ class DirectionsTable {
     }
 }
 
-class TableContextMenu {
-    constructor(tableId, menuId, options = {}) {
-        this.table = document.getElementById(tableId);
-        this.menu = document.getElementById(menuId);
-        this.selectedRow = null;
-        
-        // Кнопки в контекстном меню
-        this.contextDeleteButton = options.contextDeleteButtonId ? document.getElementById(options.contextDeleteButtonId) : null;
-        this.contextEditButton = options.contextEditButtonId ? document.getElementById(options.contextEditButtonId) : null;
-        
-        // Кнопки над таблицей
-        this.tableDeleteButton = options.tableDeleteButtonId ? document.getElementById(options.tableDeleteButtonId) : null;
-        this.tableEditButton = options.tableEditButtonId ? document.getElementById(options.tableEditButtonId) : null;
-        
-        // Callback функции
-        this.editCallback = options.editCallback || null;
-        this.removeCallback = options.removeCallback || null;
-        this.removeUrlTemplate = options.removeUrlTemplate || null;
-        
-        // Параметры для неизменяемых строк
-        this.immutableCodes = options.immutableCodes || []; // Коды, которые нельзя изменять/удалять
-        this.immutableEditCodes = options.immutableEditCodes || []; // Коды, которые нельзя редактировать
-        this.immutableDeleteCodes = options.immutableDeleteCodes || []; // Коды, которые нельзя удалять
-        this.codeColumnIndex = options.codeColumnIndex || 0; // Индекс столбца с кодом
-        this.hideCodeColumn = options.hideCodeColumn !== false; // Скрывать ли столбец с кодом
-
-        if (!this.table || !this.menu) return;
-        this.init();
-    }
-
-    init() {
-        if (this.hideCodeColumn) {
-            this.hideCodeColumnInTable();
-        }
-
-        this.table.querySelectorAll('tbody.rows tr.menu-row').forEach(row => {
-            row.addEventListener('contextmenu', (event) => this.onRowRightClick(event, row));
-            row.addEventListener('click', (event) => this.onRowLeftClick(event, row));
-        });
-        
-        document.addEventListener('click', (event) => {
-            if (!this.menu.contains(event.target)) {
-                this.hideMenu();
-            }
-        });
-
-        // Обработчики для кнопок в контекстном меню
-        if (this.contextEditButton) {
-            this.contextEditButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.isRowActive() && this.editCallback && !this.isEditDisabled(this.selectedRow)) {
-                    this.editCallback(this.selectedRow.dataset.id);
-                }
-            });
-        }
-
-        if (this.contextDeleteButton) {
-            this.contextDeleteButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.isRowActive() && !this.isDeleteDisabled(this.selectedRow)) {
-                    this.showConfirmModal(this.selectedRow.dataset.id);
-                }
-            });
-        }
-
-        // Обработчики для кнопок над таблицей
-        if (this.tableEditButton) {
-            this.tableEditButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.isRowActive() && this.editCallback && !this.isEditDisabled(this.selectedRow)) {
-                    this.editCallback(this.selectedRow.dataset.id);
-                }
-            });
-        }
-
-        if (this.tableDeleteButton) {
-            this.tableDeleteButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.isRowActive() && !this.isDeleteDisabled(this.selectedRow)) {
-                    this.showConfirmModal(this.selectedRow.dataset.id);
-                }
-            });
-        }
-
-        this.updateButtonsState();
-    }
-
-    hideCodeColumnInTable() {
-        const headerCells = this.table.querySelectorAll('thead th');
-        if (headerCells.length > this.codeColumnIndex) {
-            headerCells[this.codeColumnIndex].classList.add('hidden-column');
-        }
-        
-        const rows = this.table.querySelectorAll('tbody tr');
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length > this.codeColumnIndex) {
-                cells[this.codeColumnIndex].classList.add('hidden-column');
-            }
-        });
-    }
-
-    getRowCode(row) {
-        const cells = row.querySelectorAll('td');
-        if (cells.length > this.codeColumnIndex) {
-            return cells[this.codeColumnIndex].textContent.trim();
-        }
-        return null;
-    }
-
-    isEditDisabled(row) {
-        if (!row) return true;
-        const rowCode = this.getRowCode(row);
-        return this.immutableCodes.includes(rowCode) || this.immutableEditCodes.includes(rowCode);
-    }
-
-    isDeleteDisabled(row) {
-        if (!row) return true;
-        const rowCode = this.getRowCode(row);
-        return this.immutableCodes.includes(rowCode) || this.immutableDeleteCodes.includes(rowCode);
-    }
-
-    isRowActive() {
-        return this.selectedRow && this.selectedRow.classList.contains('active-row');
-    }
-
-    updateButtonsState() {
-        const isActive = this.isRowActive();
-        const isEditDisabled = this.isEditDisabled(this.selectedRow);
-        const isDeleteDisabled = this.isDeleteDisabled(this.selectedRow);
-        
-        const allButtons = [
-            this.contextEditButton,
-            this.contextDeleteButton,
-            this.tableEditButton,
-            this.tableDeleteButton
-        ];
-        
-        allButtons.forEach(button => {
-            if (button) {
-                if (!isActive) {
-                    button.classList.add('btn-disabled');
-                } else {
-                    const isEditButton = button === this.contextEditButton || button === this.tableEditButton;
-                    const isDeleteButton = button === this.contextDeleteButton || button === this.tableDeleteButton;
-                    
-                    if (isEditButton && isEditDisabled) {
-                        button.classList.add('btn-disabled');
-                    } else if (isEditButton && !isEditDisabled) {
-                        button.classList.remove('btn-disabled');
-                    } else if (isDeleteButton && isDeleteDisabled) {
-                        button.classList.add('btn-disabled');
-                    } else if (isDeleteButton && !isDeleteDisabled) {
-                        button.classList.remove('btn-disabled');
-                    }
-                }
-            }
-        });
-    }
-
-    onRowLeftClick(event, row) {
-        event.stopPropagation();
-        
-        if (row.classList.contains('active-row')) {
-            row.classList.remove('active-row');
-            this.selectedRow = null;
-        } else {
-            if (this.selectedRow && this.selectedRow !== row) {
-                this.selectedRow.classList.remove('active-row');
-            }
-            row.classList.add('active-row');
-            this.selectedRow = row;
-        }
-        
-        const editEventModal = document.getElementById('EditEventModal');
-        if (editEventModal) {
-            Edit_Evente_modal();
-        }
-
-        const editIndicatorModal = document.getElementById('EditIndicatorModal');
-        if (editIndicatorModal) {
-            Edit_indicator_modal();
-        }
-
-        this.updateButtonsState();
-        this.hideContextMenu();
-    }
-
-    onRowRightClick(event, row) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (this.selectedRow && this.selectedRow !== row) {
-            this.selectedRow.classList.remove('active-row');
-        }
-
-        row.classList.add('active-row');
-        this.selectedRow = row;
-
-        if (!this.isDeleteDisabled(row) && this.removeUrlTemplate) {
-            const removeForm = this.menu.querySelector('form#removeForm');
-            if (removeForm) {
-                removeForm.action = this.removeUrlTemplate.replace('{id}', row.dataset.id);
-            }
-        }
-        
-        const editEventModal = document.getElementById('EditEventModal');
-        if (editEventModal) {
-            Edit_Evente_modal();
-        }
-
-        const editIndicatorModal = document.getElementById('EditIndicatorModal');
-        if (editIndicatorModal) {
-            Edit_indicator_modal();
-        }
-        
-        this.updateButtonsState();
-        this.showMenu(event.pageX, event.pageY);
-    }
-
-    showMenu(x, y) {
-        this.menu.style.top = `${y}px`;
-        this.menu.style.left = `${x}px`;
-        this.menu.style.display = 'flex';
-    }
-
-    hideMenu() {
-        this.hideContextMenu();
-    }
-    
-    hideContextMenu() {
-        this.menu.style.display = 'none';
-    }
-
-    showConfirmModal(rowId) {
-        if (this.isDeleteDisabled(this.selectedRow)) {
-            return;
-        }
-
-        const modal = document.getElementById('confirmModal');
-        if (!modal) return;
-
-        const yesBtn = modal.querySelector('#confirmYesdelete');
-        const noBtn = modal.querySelector('#confirmNodelete');
-
-        modal.classList.add('active');
-
-        yesBtn.onclick = null;
-        noBtn.onclick = null;
-
-        yesBtn.onclick = () => {
-            modal.classList.remove('active');
-            
-            if (this.removeCallback) {
-                this.removeCallback(rowId);
-            } else if (this.removeUrlTemplate) {
-                this.submitForm(this.removeUrlTemplate.replace('{id}', rowId));
-            }
-        };
-
-        noBtn.onclick = () => {
-            modal.classList.remove('active');
-        };
-
-        window.onclick = (event) => {
-            if (event.target === modal) {
-                modal.classList.remove('active');
-            }
-        };
-    }
-
-    submitForm(url) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        form.style.display = 'none';
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-        if (csrfToken) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token'; 
-            csrfInput.value = csrfToken.content;
-            form.appendChild(csrfInput);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-function initExportPage() {
-    const form = document.getElementById("exportForm");
-    const formatInput = document.getElementById("selectedFormat");
-    const checkboxes = document.querySelectorAll('input[name="ids"]');
-    const exportBtn = document.getElementById("exportBtn");
-    const selectAllBtn = document.getElementById("selectAllBtn");
-
-    function updateButtonState() {
-        const formatSelected = !!formatInput.value;
-        const planSelected = Array.from(checkboxes).some(cb => cb.checked);
-        exportBtn.disabled = !(formatSelected && planSelected);
-
-        form.action = formatSelected ? `/export-to/${formatInput.value}` : "";
-    }
-
-    document.querySelectorAll(".export-choose").forEach(item => {
-        item.addEventListener("click", () => {
-            document.querySelectorAll(".export-choose").forEach(el => el.classList.remove("active"));
-            item.classList.add("active");
-            formatInput.value = item.dataset.format;
-            updateButtonState();
-        });
-    });
-
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener("change", () => {
-            checkboxes.forEach(cb => cb.checked = selectAllBtn.checked);
-            updateButtonState();
-        });
-    }
-
-    checkboxes.forEach(cb => cb.addEventListener("change", updateButtonState));
-
-    updateButtonState();
-}
-
-
-
-
-function Edit_Evente_modal(){
-    const EditEventModal = document.getElementById('EditEventModal');
-    if (!EditEventModal) {
-        console.error('Модальное окно не найдено');
-        return;
-    }
-
-    var activeRow = document.querySelector('.rows .active-row');
-    if (!activeRow) {
-        // console.error('Активная строка не найдена');
-        return;
-    }
-
-    var idEvent = activeRow.getAttribute('data-id');
-    if (!idEvent) {
-        console.error('ID мероприятия не найден');
-        return;
-    }
-
-    showLoadingIndicator(true);
-    fetch(`/api/get-event/${idEvent}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Ошибка сети: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            setValueIfExists('change-name-edit-model', data.name || '');
-            setValueIfExists('change-Volume-edit-model', data.Volume || '');
-            setValueIfExists('change-EffTut-edit-model', data.EffTut || '');
-            setValueIfExists('change-EffRub-edit-model', data.EffRub || '');
-            setValueIfExists('change-ExpectedQuarter-edit-model', data.ExpectedQuarter || '');
-            setValueIfExists('change-EffCurrYear-edit-model', data.EffCurrYear || '');
-            setValueIfExists('change-Payback-edit-model', data.Payback || '');
-            setValueIfExists('change-VolumeFin-edit-model', data.VolumeFin || '');
-            setValueIfExists('change-BudgetState-edit-model', data.BudgetState || '');
-            setValueIfExists('change-BudgetRep-edit-model', data.BudgetRep || '');
-            setValueIfExists('change-BudgetLoc-edit-model', data.BudgetLoc || '');
-            setValueIfExists('change-BudgetOther-edit-model', data.BudgetOther || '');
-            setValueIfExists('change-MoneyOwn-edit-model', data.MoneyOwn || '');
-            setValueIfExists('change-MoneyLoan-edit-model', data.MoneyLoan || '');
-            setValueIfExists('change-MoneyOther-edit-model', data.MoneyOther || '');
-            
-            var form = document.getElementById('editEventeForm');
-            if (form) {
-                form.action = `/plans/plan/edit-event/${idEvent}`;
-            } else {
-                console.error('Форма editEventeForm не найдена');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching Evente data:', error);
-            alert('Ошибка при загрузке данных мероприятия: ' + error.message);
-        })
-        .finally(() => {
-            showLoadingIndicator(false);
-        });
-}
-
-function Edit_indicator_modal(){
-    const EditIndicatorModal = document.getElementById('EditIndicatorModal');
-    if (!EditIndicatorModal) {
-        console.error('Модальное окно EditIndicatorModal не найдено');
-        return;
-    }
-
-    var activeRow = document.querySelector('.rows .active-row');
-    if (!activeRow) {
-        return;
-    }
-
-    var idIndicator = activeRow.getAttribute('data-id');
-    if (!idIndicator) {
-        console.error('ID не найден');
-        return;
-    }
-    let groupValue = '';
-    
-    const groupDataCell = activeRow.querySelector('td[data-group]');
-    if (groupDataCell) {
-        groupValue = groupDataCell.getAttribute('data-group');
-    } 
-    else {
-        const groupClassCell = activeRow.querySelector('td.group-cell');
-        if (groupClassCell) {
-            groupValue = groupClassCell.textContent.trim();
-        }
-        else {
-            const groupStyleCell = activeRow.querySelector('td[style*="display: none"]');
-            if (groupStyleCell) {
-                groupValue = groupStyleCell.textContent.trim();
-            }
-        }
-    }
-
-    const isGroup5 = groupValue === '5.0';
-    const isGroup6 = groupValue === '6.0';
-    
-    // Для групп 5 и 6 показываем только последнее поле
-    const isSpecialGroup = isGroup5 || isGroup6;
-
-    // Управляем видимостью элементов
-    const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
-    const QYearBeforePrevNoDisplay = document.getElementById('QYearBeforePrev-edit-nodisplay');
-    
-    // Находим input поля внутри этих контейнеров
-    const qYearCurrInput = qYearCurrNoDisplay ? qYearCurrNoDisplay.querySelector('input') : null;
-    const QYearBeforePrevInput = QYearBeforePrevNoDisplay ? QYearBeforePrevNoDisplay.querySelector('input') : null;
-    
-    // Скрываем поля QYearBeforePrev и QYearPrev для групп 5 и 6
-    if (qYearCurrNoDisplay) {
-        qYearCurrNoDisplay.style.display = isSpecialGroup ? 'none' : '';
-    }
-    
-    if (QYearBeforePrevNoDisplay) {
-        QYearBeforePrevNoDisplay.style.display = isSpecialGroup ? 'none' : '';
-    }
-
-    // Управляем обязательностью полей
-    if (qYearCurrInput) {
-        if (isSpecialGroup) {
-            qYearCurrInput.removeAttribute('required');
-        } else {
-            qYearCurrInput.setAttribute('required', 'required');
-        }
-    }
-    
-    if (QYearBeforePrevInput) {
-        if (isSpecialGroup) {
-            QYearBeforePrevInput.removeAttribute('required');
-        } else {
-            QYearBeforePrevInput.setAttribute('required', 'required');
-        }
-    }
-
-    showLoadingIndicator(true);
-
-    fetch(`/api/get-indicator/${idIndicator}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Ошибка сети: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            if (data.CoeffToTut) {
-                data.CoeffToTut = parseFloat(data.CoeffToTut).toFixed(2);
-            }
-            // Для групп 5 и 6 не заполняем QYearBeforePrev и QYearCurr
-            if (!isSpecialGroup) {
-                setValueIfExists('QYearBeforePrev-edit', data.QYearBeforePrev ? (data.QYearBeforePrev / data.CoeffToTut).toFixed(2) : '');
-                setValueIfExists('QYearCurr-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(2) : '');
-            } else {
-                setValueIfExists('QYearBeforePrev-edit', '');
-                setValueIfExists('QYearCurr-edit', '');
-            }
-            
-            // QYearCurrent заполняем всегда
-            setValueIfExists('indicator-name-nodisplay', data.name);
-            setValueIfExists('QYearCurrent-edit', data.QYearCurrent ? (data.QYearCurrent / data.CoeffToTut).toFixed(2) : '');
-            
-            const predictionElements = document.querySelectorAll('.prediction-value');
-            predictionElements.forEach(element => {
-                if (data.CoeffToTut) {
-                    element.dataset.multiplier = data.CoeffToTut;
-                }
-            });
-
-            var form = document.getElementById('editIndicatorForm');
-            if (form) {
-                form.action = `/plans/plan/edit-indicator/${idIndicator}`;
-            } else {
-                console.error('Форма не найдена');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching Evente data:', error);
-            alert('Ошибка при загрузке данных: ' + error.message);
-        })
-        .finally(() => {
-            showLoadingIndicator(false);
-        });
-}
-
-function setValueIfExists(elementId, value) {
-    var element = document.getElementById(elementId);
-    if (element) {
-        element.value = value;
-        // console.log(`Установлено значение для ${elementId}:`, value);
-    } else {
-        console.error(`Элемент с ID '${elementId}' не найден`);
-    }
-}
-
-function showLoadingIndicator(show) {
-    var loader = document.getElementById('loading-indicator');
-    if (loader) {
-        loader.style.display = show ? 'block' : 'none';
-    }
-}
-
-function initColumnResize() {
-    const table = document.querySelector('.main-table');
-    const thElements = table.querySelectorAll('th.resizable');
-    let isResizing = false;
-    let startX = 0;
-    let startWidth = 0;
-    let currentTh = null;
-
-    thElements.forEach(th => {
-        const resizer = th.querySelector('.resizer');
-        if (resizer) {
-            resizer.addEventListener('mousedown', function(e) {
-                isResizing = true;
-                startX = e.clientX;
-                startWidth = th.offsetWidth;
-                currentTh = th;
-                document.body.style.cursor = 'col-resize';
-                e.preventDefault();
-            });
-        }
-    });
-
-    document.addEventListener('mousemove', function(e) {
-        if (isResizing) {
-            const newWidth = startWidth + (e.clientX - startX);
-            currentTh.style.width = newWidth + 'px';
-            currentTh.style.minWidth = newWidth + 'px';
-        }
-    });
-
-    document.addEventListener('mouseup', function() {
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.cursor = '';
-        }
-    });
-}
-
-
 class MultiTypeSearchManager {
     constructor(config = {}) {
         this.config = {
@@ -1654,7 +890,6 @@ class MultiTypeSearchManager {
             totalPagesSelector: '#totalPages',
             clearSearchSelector: 'button[data-action="clear-search"]',
             
-            // API endpoints
             organizationsApiUrl: '/api/organizations',
             ministriesApiUrl: '/api/ministries',
             regionsApiUrl: '/api/regions',
@@ -1687,20 +922,14 @@ class MultiTypeSearchManager {
         this.totalPagesSpan = document.querySelector(this.config.totalPagesSelector);
         this.clearSearchButton = document.querySelector(this.config.clearSearchSelector);
 
-        // if (!this.searchInput || !this.tableBody || !this.selectedOrgInput) {
-        //     console.error('MultiTypeSearchManager: Не найдены необходимые элементы');
-        //     return;
-        // }
-
-        this.bindmeasure();
+        this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
     }
 
-    bindmeasure() {
+    bindEvents() {
         let debounceTimer;
 
-        // Обработка поиска
         this.searchInput.addEventListener('input', (e) => {
             if (this.clearSearchButton) {
                 this.clearSearchButton.style.display = e.target.value ? 'block' : 'none';
@@ -1715,7 +944,6 @@ class MultiTypeSearchManager {
             }, this.config.debounceTime);
         });
 
-        // Очистка поиска
         if (this.clearSearchButton) {
             this.clearSearchButton.addEventListener('click', () => {
                 this.searchInput.value = '';
@@ -1726,7 +954,6 @@ class MultiTypeSearchManager {
             });
         }
 
-        // Выбор элемента в таблице
         this.tableBody.addEventListener('click', (e) => {
             const row = e.target.closest('tr');
             if (row && row.dataset.id) {
@@ -1734,7 +961,6 @@ class MultiTypeSearchManager {
             }
         });
 
-        // Переключение типа (организации/министерства/регионы)
         if (this.typeButtons.length > 0) {
             this.typeButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
@@ -1746,7 +972,6 @@ class MultiTypeSearchManager {
             });
         }
 
-        // Пагинация: предыдущая страница
         if (this.prevPageBtn) {
             this.prevPageBtn.addEventListener('click', () => {
                 if (this.currentPage > 1) {
@@ -1756,7 +981,6 @@ class MultiTypeSearchManager {
             });
         }
 
-        // Пагинация: следующая страница
         if (this.nextPageBtn) {
             this.nextPageBtn.addEventListener('click', () => {
                 if (this.currentPage < this.totalPages) {
@@ -1766,7 +990,6 @@ class MultiTypeSearchManager {
             });
         }
 
-        // Отправка формы
         const form = this.selectedOrgInput.closest('form');
         if (form) {
             form.addEventListener('submit', (e) => {
@@ -1779,11 +1002,6 @@ class MultiTypeSearchManager {
                 if (this.selectedItemTypeInput) {
                     this.selectedItemTypeInput.value = this.selectedItemType;
                 }
-                
-                console.log('Отправка формы:', {
-                    id_org: this.selectedItemId,
-                    item_type: this.selectedItemType
-                });
             });
         }
     }
@@ -1794,7 +1012,6 @@ class MultiTypeSearchManager {
 
             let apiUrl, dataKey;
             
-            // Определяем API endpoint и ключ данных
             switch(this.selectedItemType) {
                 case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
@@ -1802,7 +1019,7 @@ class MultiTypeSearchManager {
                     break;
                 case 'ministry':
                     apiUrl = this.config.ministriesApiUrl;
-                    dataKey = 'ministrys'; // Ваш API использует 'ministrys'
+                    dataKey = 'ministrys';
                     break;
                 case 'region':
                     apiUrl = this.config.regionsApiUrl;
@@ -1862,14 +1079,12 @@ class MultiTypeSearchManager {
             row.dataset.id = item.id;
             row.dataset.type = this.selectedItemType;
             
-            // Проверяем, выбран ли этот элемент
             if (this.selectedItemId == item.id) {
                 row.classList.add('selected');
             }
             
             let html = `<td style="display: none;">${this.escapeHtml(item.id)}</td>`;
             
-            // Разный рендеринг для разных типов
             switch(this.selectedItemType) {
                 case 'organization':
                     html += `
@@ -1880,13 +1095,13 @@ class MultiTypeSearchManager {
                 case 'ministry':
                 case 'region':
                     html += `
-                        <td style = "width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
                         <td style="text-align: center;"></td>
                     `;
                     break;
                 default:
                     html += `
-                        <td style = "width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
                         <td style="text-align: center;"></td>
                     `;
             }
@@ -2024,16 +1239,12 @@ class MultiTypeSearchManager {
     selectItem(row) {
         this.selectedItemId = row.dataset.id;
         
-        // Обновляем скрытые поля формы
         this.selectedOrgInput.value = this.selectedItemId;
         if (this.selectedItemTypeInput) {
             this.selectedItemTypeInput.value = this.selectedItemType;
         }
         
-        // Подсвечиваем выбранную строку
         this.highlightSelectedRow(row);
-        
-        // Активируем кнопку отправки
         this.updateSubmitButtonState(true);
     }
 
@@ -2079,9 +1290,7 @@ class MultiTypeSearchManager {
         this.paginationArea.style.display = 'none';
     }
 
-    hideLoading() {
-
-    }
+    hideLoading() {}
 
     showError(message) {
         this.tableBody.innerHTML = `
@@ -2097,8 +1306,6 @@ class MultiTypeSearchManager {
         this.paginationArea.style.display = 'none';
     }
 
-
-
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -2106,174 +1313,6 @@ class MultiTypeSearchManager {
         return div.innerHTML;
     }
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    if(document.getElementById("paginationArea")){
-        const searchManager = new MultiTypeSearchManager();
-    }
-});
-
-const TableCollapseManager = (function() {
-    let isInitialized = false;
-    let groupHeaders = [];
-
-    function toggleContent(header) {
-        const targetId = header.getAttribute('data-target');
-        const target = document.getElementById(targetId);
-        
-        if (target) {
-            if (target.style.display === 'none') {
-                target.style.display = 'table-row-group';
-                const arrow = header.querySelector('.dropdown-arrow');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(0deg)';
-                    arrow.style.transition = 'transform 0.3s ease';
-                }
-            } else {
-                target.style.display = 'none';
-                const arrow = header.querySelector('.dropdown-arrow');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(-90deg)';
-                    arrow.style.transition = 'transform 0.3s ease';
-                }
-            }
-        }
-    }
-    
-    function initHeaders() {
-        groupHeaders = document.querySelectorAll('.group-header');
-        
-        groupHeaders.forEach(header => {
-            header.style.cursor = 'pointer';
-            
-            header.addEventListener('click', function() {
-                toggleContent(this);
-            });
-            
-            header.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#f5f5f5';
-            });
-            
-            header.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '';
-            });
-        });
-    }
-    
-    // Публичный API
-    return {
-        init: function(options = {}) {
-            if (isInitialized) {
-                console.warn('TableCollapseManager уже инициализирован');
-                return;
-            }
-            
-            const config = {
-                autoInit: options.autoInit !== false,
-                initiallyCollapsed: options.initiallyCollapsed || [''], //other-content
-                ...options
-            };
-            
-            if (config.autoInit) {
-                this.initializeAll();
-            }
-            
-            if (config.initiallyCollapsed && config.initiallyCollapsed.length > 0) {
-                config.initiallyCollapsed.forEach(sectionId => {
-                    this.collapseSection(sectionId);
-                });
-            }
-            
-            isInitialized = true;
-        },
-        
-        initializeAll: function() {
-            initHeaders();
-        },
-        
-        collapseSection: function(sectionId) {
-            const header = document.querySelector(`[data-target="${sectionId}"]`);
-            if (header) {
-                toggleContent(header);
-            }
-        },
-        
-        expandSection: function(sectionId) {
-            const header = document.querySelector(`[data-target="${sectionId}"]`);
-            const target = document.getElementById(sectionId);
-            
-            if (header && target) {
-                target.style.display = 'table-row-group';
-                const arrow = header.querySelector('.dropdown-arrow');
-                if (arrow) arrow.style.transform = 'rotate(0deg)';
-            }
-        },
-        
-        toggleSection: function(sectionId) {
-            const header = document.querySelector(`[data-target="${sectionId}"]`);
-            if (header) {
-                toggleContent(header);
-            }
-        },
-        
-        getSectionState: function(sectionId) {
-            const target = document.getElementById(sectionId);
-            return target ? target.style.display !== 'none' : null;
-        },
-        
-        addSection: function(headerElement, contentElement) {
-            if (!headerElement || !contentElement) {
-                console.error('Необходимо передать и header и content элементы');
-                return;
-            }
-            
-            headerElement.style.cursor = 'pointer';
-            headerElement.addEventListener('click', function() {
-                toggleContent(this);
-            });
-            
-            headerElement.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#f5f5f5';
-            });
-            
-            headerElement.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '';
-            });
-            
-            groupHeaders = document.querySelectorAll('.group-header');
-        },
-        
-
-        destroy: function() {
-            groupHeaders.forEach(header => {
-                const newHeader = header.cloneNode(true);
-                header.parentNode.replaceChild(newHeader, header);
-            });
-            
-            groupHeaders = [];
-            isInitialized = false;
-            console.log('TableCollapseManager уничтожен');
-        },
-        
-        isInitialized: function() {
-            return isInitialized;
-        },
-        
-        getSections: function() {
-            const sections = [];
-            groupHeaders.forEach(header => {
-                const targetId = header.getAttribute('data-target');
-                sections.push({
-                    id: targetId,
-                    header: header,
-                    content: document.getElementById(targetId),
-                    isExpanded: this.getSectionState(targetId)
-                });
-            });
-            return sections;
-        }
-    };
-})();
 
 function initConfirmModal(config) {
     const triggerButtons = config.triggerButton ? 
@@ -2425,321 +1464,6 @@ function initConfirmModal(config) {
     window.initPlansFilter = initPlansFilter;
 })();
 
-// class OrganizationsSearch {
-//   constructor(options = {}) {
-//     this.config = {
-//       step1Selector: '.auth-step-1',
-//       step2Selector: '.auth-step-2',
-//       nextBtnId: 'next-btn',
-//       prevBtnId: 'prev-btn',
-//       searchInputId: 'organization-search',
-//       dropdownId: 'organizations-dropdown',
-//       listId: 'organizations-list',
-//       loadingId: 'organizations-loading',
-//       loadMoreBtnId: 'load-more-organizations',
-//       organizationIdInputId: 'organization_id',
-//       submitBtnId: 'submit-btn',
-//       requiredFields: ['secondname', 'name', 'phone'],
-//       apiEndpoint: '/api/organizations',
-//       minSearchLength: 2,
-//       debounceDelay: 300,
-//       ...options
-//     };
-
-//     this.currentPage = 1;
-//     this.hasMore = false;
-//     this.currentSearchQuery = '';
-//     this.debounceTimer = null;
-
-//     this.init();
-//   }
-
-//   init() {
-//     this.elements = {};
-//     this.getElementReferences();
-//     this.bindmeasure();
-//   }
-
-//   getElementReferences() {
-//     // Основные элементы
-//     this.elements.step1 = document.querySelector(this.config.step1Selector);
-//     this.elements.step2 = document.querySelector(this.config.step2Selector);
-//     this.elements.nextBtn = document.getElementById(this.config.nextBtnId);
-//     this.elements.prevBtn = document.getElementById(this.config.prevBtnId);
-    
-//     // Элементы поиска организаций
-//     this.elements.searchInput = document.getElementById(this.config.searchInputId);
-//     this.elements.dropdown = document.getElementById(this.config.dropdownId);
-//     this.elements.organizationsList = document.getElementById(this.config.listId);
-//     this.elements.loadingIndicator = document.getElementById(this.config.loadingId);
-//     this.elements.loadMoreBtn = document.getElementById(this.config.loadMoreBtnId);
-//     this.elements.organizationIdInput = document.getElementById(this.config.organizationIdInputId);
-//     this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
-
-//     // Проверка наличия всех необходимых элементов
-//     this.validateRequiredElements();
-//   }
-
-//   validateRequiredElements() {
-//     const requiredElements = [
-//       'step1', 'step2', 'nextBtn', 'prevBtn', 'searchInput', 
-//       'dropdown', 'organizationsList', 'loadingIndicator', 
-//       'loadMoreBtn', 'organizationIdInput', 'submitBtn'
-//     ];
-
-//     // requiredElements.forEach(elementName => {
-//     //   if (!this.elements[elementName]) {
-//     //     console.warn(`Element ${elementName} not found`);
-//     //   }
-//     // });
-//   }
-
-//   bindmeasure() {
-//     // События для шагов формы
-//     if (this.elements.nextBtn) {
-//       this.elements.nextBtn.addEventListener('click', () => this.handleNextStep());
-//     }
-    
-//     if (this.elements.prevBtn) {
-//       this.elements.prevBtn.addEventListener('click', () => this.handlePrevStep());
-//     }
-
-//     // События для поиска организаций
-//     if (this.elements.searchInput) {
-//       this.elements.searchInput.addEventListener('input', (e) => this.handleSearchInput(e));
-//       this.elements.searchInput.addEventListener('focus', () => this.handleSearchFocus());
-//       this.elements.searchInput.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
-//     }
-
-//     if (this.elements.loadMoreBtn) {
-//       this.elements.loadMoreBtn.addEventListener('click', () => this.handleLoadMore());
-//     }
-
-//     // Закрытие dropdown при клике вне области
-//     document.addEventListener('click', (e) => this.handleDocumentClick(e));
-//   }
-
-//   handleNextStep() {
-//     const isValid = this.validateRequiredFields();
-    
-//     if (isValid) {
-//       this.elements.step1.style.display = 'none';
-//       this.elements.step2.style.display = 'block';
-//     } else {
-//       alert('Пожалуйста, заполните все обязательные поля');
-//     }
-//   }
-
-//   handlePrevStep() {
-//     this.elements.step2.style.display = 'none';
-//     this.elements.step1.style.display = 'block';
-//   }
-
-//   validateRequiredFields() {
-//     let isValid = true;
-    
-//     this.config.requiredFields.forEach(field => {
-//       const input = document.getElementById(field);
-//       if (input && !input.value.trim()) {
-//         isValid = false;
-//         input.style.borderColor = 'red';
-//       } else if (input) {
-//         input.style.borderColor = '';
-//       }
-//     });
-
-//     return isValid;
-//   }
-
-//   handleSearchInput(e) {
-//     const query = e.target.value.trim();
-//     this.currentSearchQuery = query;
-    
-//     this.elements.organizationIdInput.value = '';
-//     this.elements.submitBtn.disabled = true;
-    
-//     clearTimeout(this.debounceTimer);
-    
-//     if (query.length >= this.config.minSearchLength) {
-//       this.debounceTimer = setTimeout(() => {
-//         this.currentPage = 1;
-//         this.searchOrganizations(query, 1, false);
-//       }, this.config.debounceDelay);
-//     } else {
-//       this.elements.dropdown.style.display = 'none';
-//       this.elements.organizationsList.innerHTML = '';
-//     }
-//   }
-
-//   handleSearchFocus() {
-//     if (this.currentSearchQuery && this.currentSearchQuery.length >= this.config.minSearchLength) {
-//       this.elements.dropdown.style.display = 'block';
-//     }
-//   }
-
-//   handleSearchKeydown(e) {
-//     if (e.key === 'Escape') {
-//       this.elements.dropdown.style.display = 'none';
-//     }
-//     if (e.key === 'Enter') {
-//       e.preventDefault();
-//       const firstItem = this.elements.organizationsList.querySelector('.organization-item');
-//       if (firstItem) {
-//         firstItem.click();
-//       }
-//     }
-//   }
-
-//   handleLoadMore() {
-//     if (this.hasMore && this.currentSearchQuery) {
-//       this.searchOrganizations(this.currentSearchQuery, this.currentPage + 1, true);
-//     }
-//   }
-
-//   handleDocumentClick(e) {
-//     if (!this.elements.searchInput.contains(e.target) && !this.elements.dropdown.contains(e.target)) {
-//       this.elements.dropdown.style.display = 'none';
-//     }
-//   }
-
-//   async searchOrganizations(query, page = 1, append = false) {
-//     if (!append) {
-//       this.elements.loadingIndicator.style.display = 'block';
-//       this.elements.organizationsList.innerHTML = '';
-//     }
-
-//     try {
-//       const response = await fetch(`${this.config.apiEndpoint}?q=${encodeURIComponent(query)}&page=${page}`);
-      
-//       if (!response.ok) {
-//         throw new Error('Network response was not ok');
-//       }
-
-//       const data = await response.json();
-//       this.handleSearchResponse(data, append);
-//     } catch (error) {
-//       console.error('Error fetching organizations:', error);
-//       this.handleSearchError();
-//     }
-//   }
-
-//   handleSearchResponse(data, append) {
-//     this.elements.loadingIndicator.style.display = 'none';
-    
-//     if (!append) {
-//       this.elements.organizationsList.innerHTML = '';
-//     }
-
-//     if (data.organizations && data.organizations.length > 0) {
-//       data.organizations.forEach(org => {
-//         this.createOrganizationElement(org);
-//       });
-
-//       this.hasMore = data.has_next;
-//       if (this.hasMore) {
-//         this.elements.loadMoreBtn.style.display = 'block';
-//         this.currentPage = data.page;
-//       } else {
-//         this.elements.loadMoreBtn.style.display = 'none';
-//       }
-//     } else {
-//       this.elements.organizationsList.innerHTML = '<div class="organization-item">Организации не найдены</div>';
-//       this.elements.loadMoreBtn.style.display = 'none';
-//     }
-    
-//     this.elements.dropdown.style.display = 'block';
-//   }
-
-//   handleSearchError() {
-//     this.elements.loadingIndicator.style.display = 'none';
-//     this.elements.organizationsList.innerHTML = '<div class="organization-item">Ошибка загрузки</div>';
-//   }
-
-//   createOrganizationElement(org) {
-//     const orgElement = document.createElement('div');
-//     orgElement.className = 'organization-item';
-//     orgElement.innerHTML = `
-//       <div class="organization-name">${this.escapeHtml(org.name)}</div>
-//       <div class="organization-okpo">${this.escapeHtml(org.okpo)}</div>
-//     `;
-    
-//     orgElement.addEventListener('click', () => {
-//       this.selectOrganization(org, orgElement);
-//     });
-    
-//     this.elements.organizationsList.appendChild(orgElement);
-//   }
-
-//   selectOrganization(org, element) {
-//     document.querySelectorAll('.organization-item').forEach(item => {
-//       item.classList.remove('selected');
-//     });
-
-//     element.classList.add('selected');
-
-//     this.elements.searchInput.value = `${org.name} (ОКПО: ${org.okpo})`;
-//     this.elements.organizationIdInput.value = org.id;
-    
-//     this.elements.dropdown.style.display = 'none'; 
-//     this.elements.submitBtn.disabled = false;
-//   }
-
-//   escapeHtml(unsafe) {
-//     if (typeof unsafe !== 'string') return unsafe;
-//     return unsafe
-//       .replace(/&/g, "&amp;")
-//       .replace(/</g, "&lt;")
-//       .replace(/>/g, "&gt;")
-//       .replace(/"/g, "&quot;")
-//       .replace(/'/g, "&#039;");
-//   }
-
-//   // Публичные методы для управления извне
-//   destroy() {
-//     // Очистка событий и таймеров
-//     clearTimeout(this.debounceTimer);
-    
-//     // Удаление всех привязанных событий
-//     if (this.elements.nextBtn) {
-//       this.elements.nextBtn.replaceWith(this.elements.nextBtn.cloneNode(true));
-//     }
-//     if (this.elements.prevBtn) {
-//       this.elements.prevBtn.replaceWith(this.elements.prevBtn.cloneNode(true));
-//     }
-//     if (this.elements.searchInput) {
-//       this.elements.searchInput.replaceWith(this.elements.searchInput.cloneNode(true));
-//     }
-//     if (this.elements.loadMoreBtn) {
-//       this.elements.loadMoreBtn.replaceWith(this.elements.loadMoreBtn.cloneNode(true));
-//     }
-    
-//     document.removeEventListener('click', this.handleDocumentClick);
-//   }
-
-//   reset() {
-//     this.currentPage = 1;
-//     this.hasMore = false;
-//     this.currentSearchQuery = '';
-//     clearTimeout(this.debounceTimer);
-    
-//     if (this.elements.searchInput) {
-//       this.elements.searchInput.value = '';
-//     }
-//     if (this.elements.organizationIdInput) {
-//       this.elements.organizationIdInput.value = '';
-//     }
-//     if (this.elements.organizationsList) {
-//       this.elements.organizationsList.innerHTML = '';
-//     }
-//     if (this.elements.dropdown) {
-//       this.elements.dropdown.style.display = 'none';
-//     }
-//     if (this.elements.submitBtn) {
-//       this.elements.submitBtn.disabled = true;
-//     }
-//   }
-// }
-
 class MultiStepForm {
     constructor(options = {}) {
         this.config = {
@@ -2781,8 +1505,7 @@ class MultiStepForm {
     init() {
         this.elements = {};
         this.getElementReferences();
-        this.bindmeasure();
-        // console.log('MultiStepForm initialized');
+        this.bindEvents();
     }
 
     getElementReferences() {
@@ -2843,7 +1566,7 @@ class MultiStepForm {
         };
     }
 
-    bindmeasure() {
+    bindEvents() {
         if (this.elements.nextBtn1) {
             this.elements.nextBtn1.addEventListener('click', () => this.goToStep(2));
         }
@@ -2893,15 +1616,11 @@ class MultiStepForm {
         document.addEventListener('click', (e) => this.handleDocumentClick(e));
         
         this.setupStep1Validation();
-        
-        // console.log('All measure bound');
     }
 
     handleEntityTypeChange(e) {
         this.currentEntityType = e.target.value;
-        console.log('Entity type changed to:', this.currentEntityType);
         
-        // Обновляем скрытое поле entity_type
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
@@ -2956,7 +1675,6 @@ class MultiStepForm {
             hiddenInput.value = item.id;
         }
         
-        // Устанавливаем скрытое поле entity_type
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
@@ -2967,9 +1685,6 @@ class MultiStepForm {
             this.elements.submitBtn.disabled = false;
         }
         this.selectedItem = item;
-        
-        console.log(`Selected ${type}:`, item);
-        console.log(`Entity type: ${this.currentEntityType}`);
     }
 
     handleFormSubmit(e) {
@@ -2984,14 +1699,7 @@ class MultiStepForm {
         this.elements.submitBtn.querySelector('.btn-text').textContent = 'Отправка...';
         this.elements.submitBtn.disabled = true;
         
- 
         const formData = new FormData(this.elements.form);
-        
-
-        console.log('Form data to submit:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: ${value}`);
-        }
         
         fetch(this.elements.form.action, {
             method: 'POST',
@@ -3001,12 +1709,10 @@ class MultiStepForm {
             }
         })
         .then(response => {
-            console.log('Response status:', response.status);
             if (response.redirected) {
                 window.location.href = response.url;
             } else if (response.ok) {
                 return response.json().then(data => {
-                    console.log('Response data:', data);
                     if (data.redirect) {
                         window.location.href = data.redirect;
                     } else if (data.success) {
@@ -3034,24 +1740,14 @@ class MultiStepForm {
 
     validateForm() {
         const step1Valid = this.validateStep1();
-        if (!step1Valid) {
-            console.error('Step 1 validation failed');
-            return false;
-        }
+        if (!step1Valid) return false;
         
         const entityType = this.currentEntityType;
-        if (!entityType) {
-            console.error('Entity type not selected');
-            return false;
-        }
+        if (!entityType) return false;
         
         const hiddenInput = this.elements.hiddenInputs[entityType];
-        if (!hiddenInput || !hiddenInput.value) {
-            console.error(`${entityType} not selected`);
-            return false;
-        }
+        if (!hiddenInput || !hiddenInput.value) return false;
         
-        console.log('Form validation passed');
         return true;
     }
 
@@ -3125,39 +1821,6 @@ class MultiStepForm {
                     this.elements.step3.classList.add('active');
                 }
                 break;
-        }
-    }
-
-    handleEntityTypeChange(e) {
-        this.currentEntityType = e.target.value;
-        console.log('Entity type changed to:', this.currentEntityType);
-        this.updateStep3Content();
-    }
-
-    updateStep3Content() {
-        Object.values(this.elements.entityBlocks).forEach(block => {
-            if (block) block.style.display = 'none';
-        });
-        
-        const currentBlock = this.elements.entityBlocks[this.currentEntityType];
-        if (currentBlock) {
-            currentBlock.style.display = 'block';
-        }
-        
-        this.selectedItem = null;
-        this.resetHiddenFields();
-        if (this.elements.submitBtn) {
-            this.elements.submitBtn.disabled = true;
-        }
-        
-        this.clearSearchResults(this.currentEntityType);
-        
-        const searchInput = this.elements.searchInputs[this.currentEntityType];
-        if (searchInput) {
-            setTimeout(() => {
-                searchInput.value = '';
-                searchInput.focus();
-            }, 100);
         }
     }
 
@@ -3241,8 +1904,6 @@ class MultiStepForm {
             const endpoint = this.config.endpoints[type] || `/api/${type}`;
             const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${page}`;
             
-            console.log(`Fetching ${type}:`, url);
-            
             const response = await fetch(url);
             
             if (!response.ok) {
@@ -3250,7 +1911,6 @@ class MultiStepForm {
             }
             
             const data = await response.json();
-            console.log(`Response for ${type}:`, data);
             
             this.handleSearchResponse(data, type, append);
         } catch (error) {
@@ -3272,10 +1932,8 @@ class MultiStepForm {
             return;
         }
         
-        const dataKey = `${type}s`; // organizations, ministries, regions
+        const dataKey = `${type}s`;
         const items = data[dataKey] || [];
-        
-        console.log(`Found ${items.length} items for ${type}`);
         
         if (!append) {
             list.innerHTML = '';
@@ -3335,36 +1993,6 @@ class MultiStepForm {
         return div;
     }
 
-    selectItem(item, type) {
-        document.querySelectorAll('.search-item').forEach(el => {
-            el.classList.remove('selected');
-        });
-        
-        const clickedElement = document.querySelector(`.search-item[data-id="${item.id}"]`);
-        if (clickedElement) {
-            clickedElement.classList.add('selected');
-        }
-        
-        const input = this.elements.searchInputs[type];
-        if (input) {
-            input.value = item.name;
-        }
-        
-        const hiddenInput = this.elements.hiddenInputs[type];
-        if (hiddenInput) {
-            hiddenInput.value = item.id;
-        }
-        
-        this.hideDropdown(type);
-        
-        if (this.elements.submitBtn) {
-            this.elements.submitBtn.disabled = false;
-        }
-        this.selectedItem = item;
-        
-        console.log(`Selected ${type}:`, item);
-    }
-
     showLoading(type, show) {
         const loading = this.elements.loadings[type];
         if (loading) {
@@ -3409,21 +2037,16 @@ class MultiStepForm {
     }
 
     escapeHtml(text) {
-        if (text === null || text === undefined) {
-            return '';
-        }
+        if (text === null || text === undefined) return '';
         const div = document.createElement('div');
         div.textContent = String(text);
         return div.innerHTML;
     }
 
     destroy() {
-        // Очистка всех таймеров
         Object.values(this.debounceTimers).forEach(timer => {
             if (timer) clearTimeout(timer);
         });
-        
-        console.log('MultiStepForm destroyed');
     }
 
     reset() {
@@ -3454,20 +2077,8 @@ class MultiStepForm {
         });
         
         this.goToStep(1);
-        
-        console.log('MultiStepForm reset');
     }
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        const multiStepForm = new MultiStepForm();
-        window.multiStepForm = multiStepForm; 
-        // console.log('MultiStepForm ready');
-    } catch (error) {
-        console.error('Failed to initialize MultiStepForm:', error);
-    }
-});
 
 class CertificateUploadHandler {
     constructor() {
@@ -3485,11 +2096,11 @@ class CertificateUploadHandler {
             return;
         }
 
-        this.bindmeasure();
+        this.bindEvents();
         this.updateSubmitButtonState();
     }
 
-    bindmeasure() {
+    bindEvents() {
         this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
         this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
         this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
@@ -3542,7 +2153,6 @@ class CertificateUploadHandler {
     processFile(file) {
         this.clearError();
 
-
         if (!this.isValidFile(file)) {
             this.showError('Неверный формат файла. Разрешены только файлы .cer');
             this.fileInput.value = '';
@@ -3579,10 +2189,7 @@ class CertificateUploadHandler {
         this.updateSubmitButtonState(false);
     }
 
-    clearError() {
-        // this.errorMessage.textContent = '';
-        // this.errorMessage.hidden = true;
-    }
+    clearError() {}
 
     escapeHtml(unsafe) {
         return unsafe
@@ -3802,7 +2409,7 @@ class TicketInfo {
                 gap: 8px;
             }
             
-             .ticket-message-container {
+            .ticket-message-container {
                 background: #F5F5F5;
                 padding: 12px;
                 border-radius: 8px;
@@ -3864,31 +2471,11 @@ function initCertificateUpload() {
             
             const style = document.createElement('style');
             style.textContent = `
-                .drop-area {
-                    cursor: default;
-                }
-                
-                .drop-area.drag-over {
-                    border-color: #007bff;
-                    background-color: #f8f9fa;
-                }
-                
-                .file-input-label {
-                    cursor: pointer;
-                    color: #007bff;
-                    text-decoration: underline;
-                }
-                
-                .submit-button:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-                
-                .error-message {
-                    color: #dc3545;
-                    font-size: 14px;
-                    margin-top: 8px;
-                }
+                .drop-area { cursor: default; }
+                .drop-area.drag-over { border-color: #007bff; background-color: #f8f9fa; }
+                .file-input-label { cursor: pointer; color: #007bff; text-decoration: underline; }
+                .submit-button:disabled { opacity: 0.6; cursor: not-allowed; }
+                .error-message { color: #dc3545; font-size: 14px; margin-top: 8px; }
             `;
             document.head.appendChild(style);
         }
@@ -3919,625 +2506,6 @@ function initSections() {
         section.setAttribute('data-initialized', 'true');
     });
 }
-
-document.addEventListener('DOMContentLoaded', initSections);
-window.reinitSections = initSections;
-initCertificateUpload();
-
-document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('.toggle-password')) {
-    togglePassword.init();
-  }
-
-  if (document.querySelector('.activation_code_input')) {
-    activationCode.init();
-  }
-
-    if (document.getElementById('resend-code-btn') && 
-        document.getElementById('resend-form') && 
-        document.getElementById('countdown')) {
-        
-        window.codeVerification = createCodeVerification();
-    }
-
-  if (document.querySelector('.auth-step-1') && document.querySelector('.auth-step-2')) {
-    formSteps.init();
-  }
-
-  initLanguageDropdown();
-
-  customDropdown.init();
-  
-  if (document.querySelector('.plan-cont')) {
-    const cleanup = initStatusProgress();
-  }
-
-  new DirectionsTable({
-      searchSelector: "search-directions",
-      tableSelector: "modal-table-main",
-      hiddenInputSelector: "selected-direction",
-      nextButtonSelector: "directions-next"
-  });
-
-  if (document.querySelector('.main-table')) {
-    setTimeout(initColumnResize, 100);    
-    TableCollapseManager.init();  
-  }
-
-  const directionTable = document.getElementById('directionTable');
-  const directionMenu = document.getElementById('MenuMainTable');
-  if (directionTable && directionMenu) {
-      const tableMenu = new TableContextMenu('directionTable', 'MenuMainTable', {
-          contextEditButtonId: 'contextEditButton',
-          contextDeleteButtonId: 'contextDeleteButton',
-          
-          tableEditButtonId: 'tableEditButton',
-          tableDeleteButtonId: 'tableDeleteButton',
-          removeUrlTemplate: '/delete-econmeasure/{id}',
-          
-          immutableCodes: [], // Коды, которые нельзя изменять/удалять
-          immutableEditCodes: [], // Коды, которые нельзя редактировать (но можно удалять)
-          immutableDeleteCodes: [], // Коды, которые нельзя удалять (но можно редактировать)
-
-          codeColumnIndex: 11, 
-          hideCodeColumn: true
-      });
-  }
-
-  const measureTable = document.getElementById('measureTable');
-  const measureMenu = document.getElementById('MenuMainTable');
-  if (measureTable && measureMenu) {
-      const tableMenu = new TableContextMenu('measureTable', 'MenuMainTable', {
-          contextEditButtonId: 'contextEditButton',
-          contextDeleteButtonId: 'contextDeleteButton',
-          
-          tableEditButtonId: 'tableEditButton',
-          tableDeleteButtonId: 'tableDeleteButton',
-          removeUrlTemplate: '/plans/plan/delete-eventes/{id}',
-          
-          immutableCodes: [], // Коды, которые нельзя изменять/удалять
-          immutableEditCodes: [], // Коды, которые нельзя редактировать (но можно удалять)
-          immutableDeleteCodes: [], // Коды, которые нельзя удалять (но можно редактировать)
-
-          codeColumnIndex: 11, 
-          hideCodeColumn: true
-      });
-  }
-
-  const indicatorsTable = document.getElementById('indicatorsTable');
-  const indicatorsMenu = document.getElementById('MenuMainTable');
-  if (indicatorsTable && indicatorsMenu) {
-      const tableMenu = new TableContextMenu('indicatorsTable', 'MenuMainTable', {
-          contextEditButtonId: 'contextEditButton',
-          contextDeleteButtonId: 'contextDeleteButton',
-          
-          tableEditButtonId: 'tableEditButton',
-          tableDeleteButtonId: 'tableDeleteButton',
-          removeUrlTemplate: '/delete-indicator/{id}',
-          
-          immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917'], // Коды, которые нельзя изменять/удалять
-          immutableEditCodes: [],
-          immutableDeleteCodes: ['9911', '9910', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'], // Коды, которые нельзя удалять (но можно редактировать)
-
-          codeColumnIndex: 11, 
-          hideCodeColumn: true
-      });
-  }
-
-  // Добавление Event
-  const addEventModal = document.getElementById('AddEventModal');
-  const addEventModal1 = new EventModal('AddEventModal');
-  if (addEventModal && addEventModal1) {
-    handleModal(
-      addEventModal, 
-      document.getElementById('AddEventsModalBtn'), 
-      addEventModal.querySelector('.close')
-    );
-  }
-
-  // Добавление Indicator
-  const addIndicatorModal = document.getElementById('AddIndicatorModal');
-  const IndicatorModal = new EventModal('AddIndicatorModal');
-  if (addIndicatorModal && IndicatorModal) {
-    handleModal(
-      addIndicatorModal,
-      document.getElementById('AddIndicatorModalButton'), 
-      addIndicatorModal.querySelector('.close')
-    );
-  }
-
-  // Редактирование Direction
-  const editDirectionModal = document.getElementById('EditDirectionModal');
-  if (editDirectionModal) {
-    handleModal(
-      editDirectionModal, 
-      document.getElementById('tableEditButton'), 
-      editDirectionModal.querySelector('.close')
-    );
-    handleModal(
-      editDirectionModal, 
-      document.getElementById('contextEditButton'), 
-      editDirectionModal.querySelector('.close')
-    );
-  }
-
-  // Редактирование Event
-  const editEventModal = document.getElementById('EditEventModal');
-  const eventModal = new EventModal('EditEventModal');
-  if (editEventModal && eventModal) {
-    handleModal(
-      editEventModal, 
-      document.getElementById('tableEditButton'), 
-      editEventModal.querySelector('.close')
-    );
-    handleModal(
-      editEventModal, 
-      document.getElementById('contextEditButton'), 
-      editEventModal.querySelector('.close')
-    );
-  }
-  
-    // Редактирование Organizattion
-  const orgUserModal = document.getElementById('orgUserModal');
-  if (orgUserModal) {
-    handleModal(
-      orgUserModal, 
-      document.getElementById('orgUserbutton'), 
-      orgUserModal.querySelector('.close')
-    );
-  }
-
-  // Редактирование Indicator
-  const editIndicatorModal = document.getElementById('EditIndicatorModal');
-  if (editIndicatorModal) {
-    handleModal(
-      editIndicatorModal, 
-      document.getElementById('tableEditButton'), 
-      editIndicatorModal.querySelector('.close')
-    );
-    handleModal(
-      editIndicatorModal, 
-      document.getElementById('contextEditButton'), 
-      editIndicatorModal.querySelector('.close')
-    );
-  }
-
-    const questions = document.querySelectorAll('.faq-question');
-    questions.forEach(question => {
-        question.addEventListener('click', function() {
-            const allAnswers = document.querySelectorAll('.faq-answer');
-            const allQuestions = document.querySelectorAll('.faq-question');
-            if (this.classList.contains('active')) {
-                const answer = this.nextElementSibling;
-                answer.classList.remove('active');
-                this.classList.remove('active');
-                return;
-            }
-
-            allAnswers.forEach(answer => {
-                answer.classList.remove('active');
-            });
-            
-            allQuestions.forEach(q => {
-                q.classList.remove('active');
-            });
-            
-            const answer = this.nextElementSibling;
-            answer.classList.add('active');
-            this.classList.add('active');
-        });
-    });
-
-    //edit profile
-    if (document.getElementById('editprofileButton')) {
-        initConfirmModal({
-            triggerId: 'editprofileButton',
-            formId: 'editprofileForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отредактировать данные профиля?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
-        });
-    }
-
-    //logout
-    if (document.getElementById('logoutButton')) {
-        initConfirmModal({
-            triggerId: 'logoutButton',
-            formId: 'logout_form',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите выйти из системы enPlans?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.'
-        });
-    }
-
-    //deletePlan
-    if (document.querySelector('[data-modal-trigger="deletePlan"]')) {
-        initConfirmModal({
-            triggerButton: '[data-modal-trigger="deletePlan"]',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
-        });
-    }
-
-    //edit plan
-    if (document.getElementById('editPlanButton')) {
-        initConfirmModal({
-            triggerId: 'editPlanButton',
-            formId: 'editPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отредактировать данные плана?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
-        });
-    }
-
-    //control plan
-    if (document.getElementById('controlPlanButton')) {
-        const button = document.getElementById('controlPlanButton');
-        const form = document.getElementById('controlPlanForm');
-        const planType = form.dataset.planType;
-        
-        let modalText, modalTextSecond;
-        
-        if (planType === 'org_small') {
-            modalText = 'Вами было указано что вы заполняете план <strong>до 25 тыс. т.</strong>';
-            modalTextSecond = 'Вы действительно хотите пройти контроль плана? План сменит статус.';
-        } else if (planType === 'org_large') {
-            modalText = 'Вами было указано что вы заполняете план <strong>более 25 тыс. т.</strong>';
-            modalTextSecond = 'Вы действительно хотите пройти контроль плана? План сменит статус.';
-        } else {
-            modalText = 'Вы действительно хотите пройти контроль?';
-            modalTextSecond = 'План сменит статус.';
-        }
-        
-        initConfirmModal({
-            triggerId: 'controlPlanButton',
-            formId: 'controlPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            textSecondId: 'modal-text-second',
-            modalText: modalText,
-            modalTextSecond: modalTextSecond
-        });
-    }
-
-    //sent plan
-    // if (document.getElementById('sentPlanButton')) {
-    //     initConfirmModal({
-    //         triggerId: 'sentPlanButton',
-    //         formId: 'sentPlanForm',
-    //         modalId: 'confirmModal2',
-    //         yesId: 'confirmYes',
-    //         noId: 'confirmNo',
-    //         textId: 'modal-text',
-    //         modalText: 'Вы действительно хотите отправить план на проверку?',
-    //         textSecondId: 'modal-text-second',
-    //         modalTextSecond: 'План сменит статус и на время проверки его нельзя будет редактировать.'
-    //     });
-    // }    
-
-    const sentPlanButton = document.getElementById('sentPlanButton');
-    const sentmodal = document.getElementById('sentmodal');
-    if (sentmodal) {
-        handleModal(
-            sentmodal, 
-            sentPlanButton, 
-            sentmodal.querySelector('.close')
-        );
-    }
-
-    //sent audit message plan
-    if (document.getElementById('sent_mesPlanButton')) {
-        initConfirmModal({
-            triggerId: 'sent_mesPlanButton',
-            formId: 'sent_mesPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отправить сообщение об ошибках пользователю?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Описывайте ошибки максимально подробно, для наилучшего восприятия со стороны пользователя.'
-        });
-    }
-
-    //Есть ошибки plan
-    if (document.getElementById('to_deletePlanButton')) {
-        initConfirmModal({
-            triggerId: 'to_deletePlanButton',
-            formId: 'to_deletePlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите сменить статус плана на "Есть ошибки"?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус для последующего исправления ошибок.'
-        });
-    }
-
-    //confirm plan
-    if (document.getElementById('confirmPlanButton')) {
-        initConfirmModal({
-            triggerId: 'confirmPlanButton',
-            formId: 'confirmPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите одобрить план?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус и не будет подлежать последующей редакции или удалению со всех сторон.'
-        });
-    }
-
-    //cancel_audit plan
-    if (document.getElementById('cancel_auditPlanButton')) {
-        initConfirmModal({
-            triggerId: 'cancel_auditPlanButton',
-            formId: 'cancel_auditPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 30-ти дней.'
-        });
-    }
-
-    if (tickets_conteiner = document.querySelector('.tickets-container')) {
-        function customSmoothScroll(element, targetPosition, duration = 800) {
-            if (!element) return;
-            
-            const startPosition = element.scrollTop;
-            const distance = targetPosition - startPosition;
-            let startTime = null;
-
-            function animation(currentTime) {
-                if (startTime === null) startTime = currentTime;
-                const timeElapsed = currentTime - startTime;
-                const progress = Math.min(timeElapsed / duration, 1);
-                
-                const ease = progress < 0.5 
-                    ? 4 * progress * progress * progress 
-                    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-                
-                element.scrollTop = startPosition + distance * ease;
-                
-                if (timeElapsed < duration) {
-                    requestAnimationFrame(animation);
-                }
-            }
-
-            requestAnimationFrame(animation);
-        }
-        
-        customSmoothScroll(tickets_conteiner, tickets_conteiner.scrollHeight);
-        
-    }
-
-
-    const triggerSideBar = document.getElementById("user-profile-panel-trigger");
-    const sidebarUser = document.getElementById("user-profile-panel");
-    const sidebarOverlay = document.getElementById("sidebar-overlay");
-
-    function closeSidebar() {
-        if (sidebarUser) {
-            sidebarUser.classList.remove("show");
-        }
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.remove("show");
-        }
-    }
-
-    function openSidebar() {
-        if (sidebarUser) {
-            sidebarUser.classList.add("show");
-        }
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.add("show");
-        }
-    }
-
-    if (triggerSideBar && sidebarUser) {
-        triggerSideBar.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (sidebarUser.classList.contains("show")) {
-                closeSidebar();
-            } else {
-                openSidebar();
-            }
-        });
-    }
-
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener("click", closeSidebar);
-    }
-
-    document.addEventListener("click", (e) => {
-        if (sidebarUser && sidebarUser.classList.contains("show")) {
-            if (!sidebarUser.contains(e.target) && !triggerSideBar.contains(e.target)) {
-                closeSidebar();
-            }
-        }
-    });
-        
-    if (document.getElementById('exportForm')) {
-        initExportPage();
-    }
-
-
-    if (document.querySelectorAll('.plan-cont')) {
-        initPlansFilter();
-    }
-
-    if (document.getElementById('notifBtn')) {
-        NotificationPopup.init({
-            button: "#notifBtn",
-            popup: "#notifPopup"
-        });
-        Notifications.init();
-        setInterval(() => {
-            Notifications.init();
-        }, 60000);
-
-    }
-
-    if(document.getElementById('organization-search')){
-        try {
-            const organizationsSearch = new OrganizationsSearch();
-            console.log('OrganizationsSearch initialized successfully', organizationsSearch);
-            window.orgSearch = organizationsSearch;
-        } catch (error) {
-            console.error('Error initializing OrganizationsSearch:', error);
-        }
-    }
-
-    // new DropNavigation();
-
-    if (document.querySelectorAll('.tickets-container')) {
-        window.TicketInfo = TicketInfo;
-    }
-    
-});
- 
-
-// Кнопка далее в modal plan measure add and edit
-function validateAndEnableButton() {
-    // Для AddEventModal
-    const addModal = document.getElementById('AddEventModal');
-    if (addModal && addModal.style.display !== 'none') {
-        const addFields = addModal.querySelectorAll('#step2 [name="name"], #step2 [name="Volume"], #step2 [name="ExpectedQuarter"]');
-        const addButton = addModal.querySelector('#step2-next-btn[data-action="next-step-2"]');
-        
-        if (addFields.length === 3 && addButton) {
-            const allFilled = Array.from(addFields).every(field => {
-                const value = field.value.trim();
-                if (field.name === 'name') return value !== '';
-                if (field.name === 'Volume') return value !== '' && parseFloat(value) > 0;
-                if (field.name === 'ExpectedQuarter') return value !== '' && parseInt(value) >= 1 && parseInt(value) <= 4;
-                return false;
-            });
-            
-            addButton.disabled = !allFilled;
-            // console.log('AddModal validation:', allFilled);
-        }
-    }
-    
-    // Для EditEventModal
-    const editModal = document.getElementById('EditEventModal');
-    if (editModal && editModal.style.display !== 'none') {
-        const editFields = editModal.querySelectorAll('#step1 [name="name"], #step1 [name="Volume"], #step1 [name="ExpectedQuarter"]');
-        const editButton = editModal.querySelector('#step1-next-btn[data-action="next-step-2"]');
-        
-        if (editFields.length === 3 && editButton) {
-            const allFilled = Array.from(editFields).every(field => {
-                const value = field.value.trim();
-                if (field.name === 'name') return value !== '';
-                if (field.name === 'Volume') return value !== '' && parseFloat(value) > 0;
-                if (field.name === 'ExpectedQuarter') return value !== '' && parseInt(value) >= 1 && parseInt(value) <= 4;
-                return false;
-            });
-            
-            editButton.disabled = !allFilled;
-            // console.log('EditModal validation:', allFilled);
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    validateAndEnableButton();
-    
-    setInterval(validateAndEnableButton, 300);
-    
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('[name="name"], [name="Volume"], [name="ExpectedQuarter"]')) {
-            validateAndEnableButton();
-        }
-    });
-});
-
-
-document.write('<script src="/static/js/chat.js"></script>');
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.ChatModule) {
-        const userId = document.body.dataset.userId || 1;
-        ChatModule.init(userId);
-        // console.log('Base.js: Chat module loaded and initialized');
-    }
-});
-
-
-// COOKIE INIT
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof window.initCookieBanner === 'function') {
-        window.initCookieBanner();
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    const statNumbers = document.querySelectorAll('.stat-numbers');
-    
-    if (statNumbers.length > 0) {
-        const animateCounter = (element) => {
-            const target = parseInt(element.getAttribute('data-count'));
-            const duration = 2000;
-            const start = 0;
-            const increment = target / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(timer);
-                }
-                element.textContent = Math.floor(current);
-            }, 16);
-        };
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    animateCounter(entry.target);
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.5 });
-        
-        statNumbers.forEach(stat => observer.observe(stat));
-    }
-    
-    const bgGrid = document.querySelector('.bg-grid');
-    
-    if (bgGrid) {
-        window.addEventListener('mousemove', (e) => {
-            const x = (e.clientX / window.innerWidth) * 20;
-            const y = (e.clientY / window.innerHeight) * 20;
-            
-            bgGrid.style.transform = `translate(${x}px, ${y}px)`;
-        });
-    }
-});
 
 function initDropdownMenu(buttonId, menuId) {
     const button = document.getElementById(buttonId);
@@ -4608,6 +2576,84 @@ function initDropdownMenu(buttonId, menuId) {
     });
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.querySelector('.toggle-password')) {
+        togglePassword.init();
+    }
+
+    if (document.querySelector('.activation_code_input')) {
+        activationCode.init();
+    }
+
+    if (document.getElementById('resend-code-btn') && 
+        document.getElementById('resend-form') && 
+        document.getElementById('countdown')) {
+        window.codeVerification = createCodeVerification();
+    }
+
+    if (document.querySelector('.auth-step-1') && document.querySelector('.auth-step-2')) {
+        formSteps.init();
+    }
+
+    initLanguageDropdown();
+    customDropdown.init();
+    
+    if (document.querySelector('.plan-cont')) {
+        initStatusProgress();
+    }
+
+    new DirectionsTable({
+        searchSelector: "search-directions",
+        tableSelector: "modal-table-main",
+        hiddenInputSelector: "selected-direction",
+        nextButtonSelector: "directions-next"
+    });
+
+    if (document.getElementById('paginationArea')) {
+        const searchManager = new MultiTypeSearchManager();
+    }
+
+    if (document.getElementById('exportForm')) {
+        initExportPage();
+    }
+
+    if (document.querySelectorAll('.plan-cont')) {
+        initPlansFilter();
+    }
+
+    if (document.getElementById('notifBtn')) {
+        NotificationPopup.init({
+            button: "#notifBtn",
+            popup: "#notifPopup"
+        });
+        Notifications.init();
+        setInterval(() => {
+            Notifications.init();
+        }, 60000);
+    }
+
+    if (document.querySelectorAll('.tickets-container')) {
+        window.TicketInfo = TicketInfo;
+    }
+    
+    initSections();
+    initCertificateUpload();
+});
+
+document.write('<script src="/static/js/chat.js"></script>');
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.ChatModule) {
+        const userId = document.body.dataset.userId || 1;
+        ChatModule.init(userId);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.initCookieBanner === 'function') {
+        window.initCookieBanner();
+    }
+});
+
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');
 }
@@ -4619,15 +2665,3 @@ if (document.getElementById('dots-profile-user')) {
 if (document.getElementById('menuDotsBtn')) {
     initDropdownMenu('menuDotsBtn', 'planActionsMenu');
 }
-
-document.addEventListener('click', function(event) {
-    const dropdowns = document.querySelectorAll('.has-dropdown');
-    dropdowns.forEach(dropdown => {
-        if (!dropdown.contains(event.target)) {
-            const menu = dropdown.querySelector('.dropdown-menu');
-            if (menu) {
-                // Можно добавить логику закрытия, но с CSS-подходом это необязательно
-            }
-        }
-    });
-});

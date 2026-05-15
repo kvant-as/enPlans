@@ -10,7 +10,7 @@
 <div class="personal-plan-conteiner">
   {{ component.plan_menu(plan, current_user, 'indicators') }}
   <div class="table-container">
-    <table class="main-table" id="indicatorsTable">
+    <table class="main-table" id="indicatorsTable" data-token="{{ plan.token }}">
       <thead class="main-table-titels">
         <tr>
           <th rowspan="2" class="resizable" style="max-width: 90px;">
@@ -30,11 +30,11 @@
             <div class="resizer"></div>
           </th>
           <th colspan="2" class="resizable" style="max-width: 200px">
-            <a>{{ plan.year - 2}} г. план</a>
+            <a>{{ plan.year - 2}} г. отчет</a>
             <div class="resizer"></div>
           </th>
           <th colspan="2" class="resizable" style="max-width: 200px">
-            <a>{{ plan.year - 1}} г. план</a>
+            <a>{{ plan.year - 1}} г. оценка</a>
             <div class="resizer"></div>
           </th>
           <th colspan="2" class="resizable" style="max-width: 200px">
@@ -119,85 +119,13 @@
           </th>
         </tr>
       </thead>
-      <tbody class="rows">
-        {% set ns = namespace(last_group=none) %} 
-        {% for row in current_plan_indicators %}
-          {% set is_new_group = false %} 
-          {% if row.indicator.Group != ns.last_group %} 
-            {% set is_new_group = true %} 
-            {% set ns.last_group = row.indicator.Group %} 
-          {% endif %}
-        <tr class="menu-row {% if is_new_group %}group-header-indicator{% endif %}" data-id="{{ row.id }}">
-          <td style="text-align: center;">{{ loop.index }}</td>
-          <td style="text-align: center">
-            {% if is_new_group %} {{ row.indicator.Group|int if row.indicator.Group % 1 == 0 else row.indicator.Group }} {% endif%}
-          </td>
-          <td style="text-align: start">{{ row.indicator.name }}</td>
-          <td style="text-align: start">{{ row.indicator.unit.name }}</td>
-          <td>{{ (row.QYearBeforePrev / row.indicator.CoeffToTut) | round(2) }}</td>
-          <td>{{ row.QYearBeforePrev }}</td>
-          <td>{{ (row.QYearPrev / row.indicator.CoeffToTut) | round(2) }}</td>
-          <td>{{ row.QYearPrev }}</td>
-          <td>{{ (row.QYearCurrent / row.indicator.CoeffToTut) | round(2) }}</td>
-          <td>{{ row.QYearCurrent }}</td>
-          <td class="difference-cell" style="border-right: none; 
-            {% if (row.QYearCurrent - row.QYearPrev) < 0 %}background-color: rgb(96, 255, 122, 0.705);
-            {% elif (row.QYearCurrent - row.QYearPrev) > 0 %}background-color: rgb(255, 96, 96, 0.705);
-            {% endif %}">
-            {{ row.QYearCurrent - row.QYearPrev }}
-          </td>
-          <td style="display: none">{{ row.indicator.code }}</td>
-          <td style="display: none" data-group="{{ row.indicator.Group }}">
-            {{ row.indicator.Group }}
-          </td>
+      <tbody class="rows" id="indicators-tbody">
+        <tr>
+          <td colspan="11" style="text-align: center;">Загрузка...</td>
         </tr>
-        {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const inputIds = ["QYearBeforePrev-edit", "QYearCurr-edit", "QYearCurrent-edit"];
-    inputIds.forEach((inputId) => {
-      const inputElement = document.getElementById(inputId);
-      const predictionElement = inputElement.nextElementSibling;
-      function updatePredictionValue() {
-        const inputValue = parseFloat(inputElement.value) || 0;
-        const multiplier =
-          parseFloat(predictionElement.dataset.multiplier) || 1;
-        const result = inputValue * multiplier;
-
-        predictionElement.textContent = result.toFixed(3);
-      }
-      inputElement.addEventListener("input", updatePredictionValue);
-      updatePredictionValue();
-    });
-
-    const multiplierValueElements =
-      document.querySelectorAll(".multiplier-value");
-    multiplierValueElements.forEach((element) => {
-      element.addEventListener("click", function () {
-        const fieldId = this.dataset.field;
-        const predictionElement = document.querySelector(
-          `#${fieldId}`,
-        ).nextElementSibling;
-
-        const newMultiplier = prompt(
-          "Введите новое значение множителя:",
-          predictionElement.dataset.multiplier,
-        );
-        if (newMultiplier !== null && !isNaN(parseFloat(newMultiplier))) {
-          predictionElement.dataset.multiplier = newMultiplier;
-          this.textContent = newMultiplier;
-
-          const inputElement = document.getElementById(fieldId);
-          const inputValue = parseFloat(inputElement.value) || 0;
-          const result = inputValue * parseFloat(newMultiplier);
-          predictionElement.textContent = result.toFixed(3);
-        }
-      });
-    });
-  });
-</script>
+<script src="{{ url_for('static', filename='js/plan.js') }}"></script>
 {% endblock %}

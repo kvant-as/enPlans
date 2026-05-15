@@ -144,18 +144,19 @@ def filling_database(db):
 
         ### USER DATA ###
         users_data = [
-            # ('Техник-программист', 'testuser@gmail.com', os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), '+375445533333', False, False, 53),
             ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 14),
             ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), True, False, 6471),
 
-            ('', os.getenv('auditoremailBrest'), 'Иванов1', 'Иван', 'Иванович', '+11', False, True, 7940),
-            ('', os.getenv('auditoremailVitebsk'), 'Иванов2', 'Иван', 'Иванович', '+22', False, True, 7941),
-            ('', os.getenv('auditoremailGomel'), 'Иванов3', 'Иван', 'Иванович', '+33', False, True, 7942),
-            ('', os.getenv('auditoremailGrodno'), 'Иванов4', 'Иван', 'Иванович', '+44', False, True, 7943),
-            ('', os.getenv('auditoremailMinskobl'), 'Иванов5', 'Иван', 'Иванович', '+55', False, True, 7945),
-            ('', os.getenv('auditoremailMogilev'), 'Иванов6', 'Иван', 'Иванович', '+66', False, True, 7946),
-            ('', os.getenv('auditoremailMinsk'), 'Иванов7', 'Иван', 'Иванович', '+77', False, True, 7944),
-            ('', os.getenv('auditoremailNadzor'), 'Иванов8', 'Иван', 'Иванович', '+88', False, True, 7947),
+            # ('', os.getenv('auditoremailBrest'), 'Иванов1', 'Иван', 'Иванович', '+11', False, True, 7940),
+            # ('', os.getenv('auditoremailVitebsk'), 'Иванов2', 'Иван', 'Иванович', '+22', False, True, 7941),
+            # ('', os.getenv('auditoremailGomel'), 'Иванов3', 'Иван', 'Иванович', '+33', False, True, 7942),
+            # ('', os.getenv('auditoremailGrodno'), 'Иванов4', 'Иван', 'Иванович', '+44', False, True, 7943),
+            # ('', os.getenv('auditoremailMinskobl'), 'Иванов5', 'Иван', 'Иванович', '+55', False, True, 7945),
+            # ('', os.getenv('auditoremailMogilev'), 'Иванов6', 'Иван', 'Иванович', '+66', False, True, 7946),
+            # ('', os.getenv('auditoremailMinsk'), 'Иванов7', 'Иван', 'Иванович', '+77', False, True, 7944),
+            
+            ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 6443),
+            ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 7947),
 
             ('', os.getenv('auditoremailBrestTEST'), 'Иванов1', 'Иван', 'Иванович', '+1', False, True, 7940),
             ('', os.getenv('auditoremailVitebskTEST'), 'Иванов2', 'Иван', 'Иванович', '+2', False, True, 7941),
@@ -168,8 +169,15 @@ def filling_database(db):
         ]
 
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
+            if email == os.getenv('testuser'):
+                password = os.getenv('testuserpass')
+            elif email == os.getenv('auditoremailNadzor'):
+                password = os.getenv('auditoremailNadzorpass')
+            else:
+                password = os.getenv('userpass')
+            
             user = User(
-                post = post,
+                post=post,
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
@@ -177,8 +185,8 @@ def filling_database(db):
                 phone=phone,
                 is_admin=is_admin,
                 is_auditor=is_auditor,
-                organization_id = organization_id,
-                password=generate_password_hash(os.getenv('userpass'))
+                organization_id=organization_id,
+                password=generate_password_hash(password)
             )
             db.session.add(user)
         db.session.commit()
@@ -377,6 +385,7 @@ def filling_database(db):
             (1, '1793', 'адсорбированные отходы после очистных сооружений', 1.000, False, 1, 2),
             (1, '1794', 'использованные автопокрышки', 1.000, False, 1, 2),
             (1, '1795', 'прочие горючие отходы', 1.000, False, 1, 2),
+            
             (1, '1796', 'из него местные виды топлива и отходы', 1.000, True, 1.1, 3),
             (1, '1797', 'из них возобновляемые', 1.000, True, 1.2, 4),
             

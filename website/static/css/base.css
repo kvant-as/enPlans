@@ -802,20 +802,12 @@ header nav{
   transform: scale(0.98);
 }
 
-.nav-menu-item:last-child {
-  color: #dc2626;
-}
-
 .nav-menu-item:last-child svg {
   color: #dc2626;
 }
 
 .nav-menu-item:last-child::before {
   background-color: #fee2e2;
-}
-
-.nav-menu-item:last-child:hover {
-  color: #b91c1c;
 }
 
 .nav-menu-item:last-child:hover svg {
@@ -827,7 +819,6 @@ header nav{
   background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
   margin: 4px 0;
 }
-
 
 .info-user .fio, 
 .info-user .org{
@@ -2291,7 +2282,7 @@ input::placeholder {
 }
 
 .organization-item.selected {
-  background-color: #e3f2fd;
+  background-color: var(--active-row-color);
 }
 
 .organization-name {
@@ -3307,6 +3298,9 @@ hr {
   gap: 12px;
   border-radius: 12px;
   transition: all 0.2s ease;
+  width: fit-content;
+  padding-right: 10px;
+  box-sizing: border-box;
 }
 
 .date-item:hover {
@@ -4507,6 +4501,7 @@ input[type="checkbox"]:focus {
   align-self: center;
   text-align: center;
   width: 100%;
+  max-width: 500px;
 }
 
 .empty-state {
@@ -5278,9 +5273,9 @@ input[type="checkbox"]:focus {
 }
 /* 
 .main-table tbody tr:nth-child(even), */
-.modal-table-main tbody tr:nth-child(even){
+/* .modal-table-main tbody tr:nth-child(even){
   background-color: #f8f8f8;
-}
+} */
 
 .main-table-titels th {
   padding: 11px 12px;
@@ -5589,10 +5584,6 @@ input[type="checkbox"]:focus {
     100% { transform: rotate(360deg); }
 }
 
-tr.selected {
-    background-color: #e3f2fd !important;
-}
-
 .submit-button.disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -5822,7 +5813,7 @@ tr.selected {
 }
 
 .modal-table-main tr.selected {
-  background-color: #d0ebff;
+  background-color: var(--active-row-color);
 }
 
 button[disabled] {

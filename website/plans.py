@@ -12,12 +12,38 @@ from flask import (
     current_app
 )
 
+from decimal import Decimal, InvalidOperation
+import logging
 
 def to_decimal_2(value):
     try:
         return Decimal(value).quantize(Decimal('0.00'))
     except (InvalidOperation, TypeError, ValueError):
         return Decimal('0.00')
+    
+def generate_unique_display_code(base_code, plan_id, direction_id):
+    existing_events = Event.query.filter(
+        Event.id_plan == plan_id,
+        Event.id_direction == direction_id
+    ).order_by(Event.id.asc()).all()
+    
+    if not existing_events:
+        return f"{base_code}.1"
+    
+    existing_suffixes = []
+    for event in existing_events:
+        if event.display_code and '.' in event.display_code:
+            parts = event.display_code.split('.')
+            if len(parts) > 1 and parts[-1].isdigit():
+                existing_suffixes.append(int(parts[-1]))
+    
+    if existing_suffixes:
+        next_number = max(existing_suffixes) + 1
+    else:
+        next_number = len(existing_events) + 1
+    
+    return f"{base_code}.{next_number}"
+
     
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
@@ -112,11 +138,6 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
     return plans, status_counts
 
 def get_event_metrics(plan_id, event_type, is_original=True):
-    """
-    event_type: 'saving' или 'increase'
-    is_original: True - только оригинальные (is_corrected=False)
-                 False - только с изменениями (is_corrected=True)
-    """
     query = (db.session.query(
         Event.ExpectedQuarter,
         func.sum(Event.EffCurrYear).label('total_eff'),
@@ -126,13 +147,11 @@ def get_event_metrics(plan_id, event_type, is_original=True):
     .filter(Event.id_plan == plan_id)
     )
     
-    # Фильтр по типу мероприятия
     if event_type == 'saving':
         query = query.filter(Direction.is_econom == True)
     else:
         query = query.filter(Direction.is_increase == True)
     
-    # Фильтр по is_corrected
     if is_original:
         query = query.filter(Event.is_corrected == False)
     else:
@@ -171,124 +190,170 @@ def get_event_metrics(plan_id, event_type, is_original=True):
     
     return cumulative_totals
 
-
-
-def other_data_indicatorUpdate(id):
-    plan = Plan.query.filter_by(id=id).first()
+def other_data_indicatorUpdate(plan_id):
+    plan = Plan.query.get(plan_id)
     if not plan:
         return
-
-    indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
-
-    def econom_ter():
-        total_eff_curr_year = db.session.query(func.sum(Event.EffCurrYear))\
-            .filter(
-                Event.id_plan == plan.id,
-                Event.EffCurrYear.isnot(None)
-            )\
-            .scalar() or 0
-        
-        indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
-        usage_with_code_9900 = None
+    
+    logger = logging.getLogger(__name__)
+    
+    def get_value(indicator, field_name):
+        value = getattr(indicator, field_name)
+        return value if value is not None else Decimal('0')
+    
+    def safe_divide(numerator, denominator):
+        try:
+            if denominator == 0:
+                return Decimal('0')
+            return to_decimal_2(numerator / denominator)
+        except (InvalidOperation, ZeroDivisionError):
+            return Decimal('0')
+    
+    def get_indicator_by_code(indicator_usages, code):
         for usage in indicator_usages:
-            if usage.indicator.code == '9900':
-                usage_with_code_9900 = usage
-                break
-        
-        usage_with_code_9900.QYearCurrent = to_decimal_2(total_eff_curr_year)
-        db.session.commit()
-
+            if usage.indicator.code == code:
+                return usage
+        return None
+    
+    def get_indicators_dict(indicator_usages, codes):
+        result = {}
+        for usage in indicator_usages:
+            if usage.indicator.code in codes:
+                result[usage.indicator.code] = usage
+        return result
+    
+    def commit_changes():
+        try:
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении: {e}")
+            db.session.rollback()
+    
+    indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
+    
     def first_title():
         totals = db.session.query(
-                func.sum(IndicatorUsage.QYearBeforePrev).label('total_prev'),
-                func.sum(IndicatorUsage.QYearPrev).label('total_curr'),
-                func.sum(IndicatorUsage.QYearCurrent).label('total_next')
-            )\
-            .join(IndicatorUsage.indicator)\
-            .filter(
-                IndicatorUsage.id_plan == plan.id,
-                Indicator.IsMandatory == False
-            )\
-            .first()
-
-        total_prev = totals.total_prev or 0
-        total_curr = totals.total_curr or 0
-        total_next = totals.total_next or 0
-
-        usage_with_code_1000 = None
-        for usage in indicator_usages:
-            if usage.indicator.code == '1000':
-                usage_with_code_1000 = usage
-                break
+            func.sum(IndicatorUsage.QYearBeforePrev).label('total_before_prev'),
+            func.sum(IndicatorUsage.QYearPrev).label('total_prev'),
+            func.sum(IndicatorUsage.QYearCurrent).label('total_current')
+        ).join(IndicatorUsage.indicator).filter(
+            IndicatorUsage.id_plan == plan.id,
+            Indicator.IsMandatory == False
+        ).first()
         
-        if usage_with_code_1000:
-            usage_with_code_1000.QYearBeforePrev = to_decimal_2(total_prev)
-            usage_with_code_1000.QYearPrev = to_decimal_2(total_curr)
-            usage_with_code_1000.QYearCurrent = to_decimal_2(total_next)
-            db.session.commit()
+        indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
+        if indicator_1000:
+            indicator_1000.QYearBeforePrev = to_decimal_2(totals.total_before_prev or 0)
+            indicator_1000.QYearPrev = to_decimal_2(totals.total_prev or 0)
+            indicator_1000.QYearCurrent = to_decimal_2(totals.total_current or 0)
+            commit_changes()
     
-    def four_title():
-        indicators_by_code = {}
-        codes_to_find = ['260', '1000', '1105', '1405', '1104', '1404']
+    def econom_ter():
+        total = db.session.query(func.sum(Event.EffCurrYear)).filter(
+            Event.id_plan == plan.id,
+            Event.direction.has(is_econom=True),
+            Event.EffCurrYear.isnot(None)
+        ).scalar() or 0
         
-        for usage in indicator_usages:
-            if usage.indicator.code in codes_to_find:
-                indicators_by_code[usage.indicator.code] = usage
-                if len(indicators_by_code) == len(codes_to_find):
-                    break
+        indicator_9900 = get_indicator_by_code(indicator_usages, '9900')
+        if indicator_9900:
+            indicator_9900.QYearCurrent = to_decimal_2(total)
+            commit_changes()
+    
+    def update_indicator_with_formula(indicator_code, codes_to_find, formula_func, periods=['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']):
+        indicators = get_indicators_dict(indicator_usages, codes_to_find)
         
-        missing_codes = [code for code in codes_to_find if code not in indicators_by_code]
+        missing_codes = [code for code in codes_to_find if code not in indicators]
         if missing_codes:
-            current_app.logger.debug(f"Не найдены индикаторы: {missing_codes}")
-            return
+            logger.debug(f"Не найдены индикаторы для {indicator_code}: {missing_codes}")
+            return False
         
-        indicator_260 = indicators_by_code['260']
-        indicator_1000 = indicators_by_code['1000']
-        indicator_1105 = indicators_by_code['1105']
-        indicator_1405 = indicators_by_code['1405']
-        indicator_1104 = indicators_by_code['1104']
-        indicator_1404 = indicators_by_code['1404']
+        target_indicator = indicators.get(indicator_code)
+        if not target_indicator:
+            logger.debug(f"Целевой индикатор {indicator_code} не найден")
+            return False
         
-        def get_value(indicator, field_name):
-            value = getattr(indicator, field_name)
-            return value if value is not None else Decimal('0')
+        for period in periods:
+            result = formula_func(indicators, period)
+            setattr(target_indicator, period, result)
         
-        def calculate_period(period):
-            base = get_value(indicator_1000, period)
-            diff1 = get_value(indicator_1105, period) - get_value(indicator_1405, period)
-            diff2 = get_value(indicator_1104, period) - get_value(indicator_1404, period)
-            return to_decimal_2(base + (diff1 * Decimal('0.123')) + (diff2 * Decimal('0.143')))
+        commit_changes()
+        return True
+    
+    def formula_260(indicators, period):
+        base = get_value(indicators['1000'], period)
+        diff1 = get_value(indicators['1105'], period) - get_value(indicators['1405'], period)
+        diff2 = get_value(indicators['1104'], period) - get_value(indicators['1404'], period)
+        return to_decimal_2(base + diff1 + diff2)
+    
+    def formula_9999(indicators, period):
+        logger.debug(f"formula_9999: Начало расчета для периода {period}")
+        logger.debug(f"formula_9999: Доступные индикаторы: {list(indicators.keys())}")
         
-        indicator_260.QYearBeforePrev = calculate_period('QYearBeforePrev')
-        indicator_260.QYearPrev = calculate_period('QYearPrev')
-        indicator_260.QYearCurrent = calculate_period('QYearCurrent')
-        db.session.commit()
-
-    def seven_title():
-        usage_with_code_9999 = None
-        for usage in indicator_usages:
-            if usage.indicator.code == '9999':
-                usage_with_code_9999 = usage
-                break
-
-        usage_with_code_9900 = None
-        for usage in indicator_usages:
-            if usage.indicator.code == '9900':
-                usage_with_code_9900 = usage
-                break
+        indicator_9900 = indicators.get('9900')
+        indicator_9910 = indicators.get('9910')
         
-        usage_with_code_9910 = None
-        for usage in indicator_usages:
-            if usage.indicator.code == '9910':
-                usage_with_code_9910 = usage
-                break
-
-        usage_with_code_9999.QYearCurrent = usage_with_code_9900.QYearCurrent + usage_with_code_9910.QYearCurrent
-
-    first_title()
-    four_title()
-    econom_ter()
-    seven_title()
+        if not indicator_9900:
+            logger.debug(f"formula_9999: Индикатор 9900 не найден")
+        if not indicator_9910:
+            logger.debug(f"formula_9999: Индикатор 9910 не найден")
+        
+        if not indicator_9900 or not indicator_9910:
+            logger.debug(f"formula_9999: Индикаторы 9900 или 9910 не найдены, возвращаем 0")
+            return Decimal('0')
+        
+        value_9900 = get_value(indicator_9900, period)
+        value_9910 = get_value(indicator_9910, period)
+        
+        logger.debug(f"formula_9999: indicator_9900.{period} = {value_9900}")
+        logger.debug(f"formula_9999: indicator_9910.{period} = {value_9910}")
+        
+        base = value_9900 + value_9910
+        result = to_decimal_2(base)
+        
+        logger.debug(f"formula_9999: Сумма = {base}, результат = {result}")
+        
+        return result
+    
+    def formula_9915(indicators, period):
+        numerator = get_value(indicators['9999'], period)
+        denominator = get_value(indicators['260'], 'QYearPrev')
+        return safe_divide(numerator, denominator) * 100
+    
+    def formula_9916(indicators, period):
+        numerator = (get_value(indicators['1796'], period) + 
+                    get_value(indicators['1425'], period) + 
+                    get_value(indicators['1424'], period))
+        denominator = get_value(indicators['1000'], period) * 100
+        return safe_divide(numerator, denominator)
+    
+    def formula_9917(indicators, period):
+        numerator = (get_value(indicators['1797'], period) + 
+                    get_value(indicators['1425'], period) + 
+                    get_value(indicators['1424'], period))
+        denominator = get_value(indicators['1000'], period) * 100
+        return safe_divide(numerator, denominator)
+    
+    try:
+        first_title()
+        econom_ter()
+        
+        update_indicator_with_formula('9999', ['9900', '9910'], formula_9999, periods=['QYearCurrent'])
+        
+        update_indicator_with_formula('260', ['260', '1000', '1105', '1405', '1104', '1404'], formula_260)
+        
+        # не считается хз почему
+        update_indicator_with_formula('9915', ['9915', '9999', '260'], formula_9915, periods=['QYearCurrent']) 
+        
+        update_indicator_with_formula('9916', ['9916', '1796', '1425', '1424', '1000'], formula_9916)
+        
+        update_indicator_with_formula('9917', ['9917', '1797', '1425', '1424', '1000'], formula_9917)
+        
+        update_ChangeTimePlan(plan.id)
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
+        db.session.rollback()
 
 def handle_draft_status(plan):
     plan.is_draft = True

@@ -174,7 +174,7 @@
                         <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
                     </p>
                 </div>
-                <form id="sentForm" class="sent-form" action="/api/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+                <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="status" value="sent">
                     <div class="file-upload-section">

@@ -163,6 +163,7 @@ class Event(db.Model):
     id_direction = db.Column(db.Integer, db.ForeignKey('directions.id'), nullable=False)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     name = db.Column(db.String(4000), nullable=False)
+    display_code = db.Column(db.String(400))
     Volume = db.Column(db.Integer)
     EffTut = db.Column(Numeric(scale=2))
     EffRub = db.Column(Numeric(scale=2))
@@ -210,6 +211,10 @@ class Indicator(db.Model):
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
     CoeffToTut = db.Column(Numeric(scale=3))
+    
+    # is_local = db.Column(db.Boolean, default=False)
+    # is_renewable = db.Column(db.Boolean, default=False)
+    
     IsMandatory = db.Column(db.Boolean)
     Group = db.Column(db.Float)
     RowN = db.Column(db.Integer)
