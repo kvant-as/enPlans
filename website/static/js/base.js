@@ -692,7 +692,7 @@ var NumericInputHandler = {
         var defaults = {
             allowNegative: false,
             decimalPlaces: 2,
-            defaultValue: '0.00'
+            defaultValue: '0,00'
         };
         var settings = Object.assign({}, defaults, options);
         
@@ -720,7 +720,7 @@ var NumericInputHandler = {
         var newValue = oldValue;
         
         if (settings.allowNegative) {
-            newValue = oldValue.replace(/[^\d.-]/g, '');
+            newValue = oldValue.replace(/[^\d,.-]/g, '');
             var minusCount = (newValue.match(/-/g) || []).length;
             if (minusCount > 1) {
                 newValue = '-' + newValue.replace(/-/g, '');
@@ -732,10 +732,11 @@ var NumericInputHandler = {
                 return;
             }
         } else {
-            newValue = oldValue.replace(/[^\d.]/g, '');
+            newValue = oldValue.replace(/[^\d,]/g, '');
         }
         
         if (newValue !== '' && newValue !== '-') {
+            newValue = newValue.replace(',', '.');
             var parts = newValue.split('.');
             if (parts.length > 1) {
                 newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
@@ -748,6 +749,7 @@ var NumericInputHandler = {
             var floatValue = parseFloat(newValue);
             if (!isNaN(floatValue)) {
                 newValue = floatValue.toFixed(settings.decimalPlaces);
+                newValue = newValue.replace('.', ',');
             }
         }
         
@@ -763,9 +765,9 @@ var NumericInputHandler = {
         if (input.value === '' || input.value === '-') {
             input.value = settings.defaultValue;
         }
-        var dotIndex = input.value.indexOf('.');
-        if (dotIndex !== -1) {
-            input.setSelectionRange(dotIndex, dotIndex);
+        var commaIndex = input.value.indexOf(',');
+        if (commaIndex !== -1) {
+            input.setSelectionRange(commaIndex, commaIndex);
         }
     },
     
@@ -774,9 +776,11 @@ var NumericInputHandler = {
         if (input.value === '' || input.value === '-' || input.value === null) {
             input.value = settings.defaultValue;
         } else {
-            var num = parseFloat(input.value);
+            var valueWithDot = input.value.replace(',', '.');
+            var num = parseFloat(valueWithDot);
             if (!isNaN(num)) {
-                input.value = num.toFixed(settings.decimalPlaces);
+                var formatted = num.toFixed(settings.decimalPlaces);
+                input.value = formatted.replace('.', ',');
             } else {
                 input.value = settings.defaultValue;
             }
@@ -784,30 +788,38 @@ var NumericInputHandler = {
     }
 };
 
+
 NumericInputHandler.init('.app-numeric-input', {
     allowNegative: false,
     decimalPlaces: 2,
-    defaultValue: '0.00'
+    defaultValue: '0,00'
+});
+
+NumericInputHandler.init('.app-numeric-input-coeff', {
+    allowNegative: false,
+    decimalPlaces: 3,
+    defaultValue: '0,000'
 });
 
 NumericInputHandler.init('.app-numeric-input-negative', {
     allowNegative: true,
     decimalPlaces: 2,
-    defaultValue: '0.00'
+    defaultValue: '0,00'
 });
 
 class DirectionsTable {
     constructor({ searchSelector, tableSelector, hiddenInputSelector, nextButtonSelector }) {
         this.searchInput = document.querySelector(`[data-action="${searchSelector}"]`);
-        this.table = document.querySelector(`[data-action="${tableSelector}"] tbody`);
+        this.table = document.querySelector(`[data-action="${tableSelector}"]`);
+        this.tbody = this.table ? this.table.querySelector('tbody') : null;
         this.hiddenInput = document.querySelector(`[data-action="${hiddenInputSelector}"]`);
         this.nextButton = document.querySelector(`[data-action="${nextButtonSelector}"]`);
         this.selectedId = null;
 
-        if (!this.searchInput || !this.table) return;
+        if (!this.searchInput || !this.tbody) return;
 
         this.noInfoRow = this.createNoInfoRow();
-        this.table.appendChild(this.noInfoRow);
+        this.tbody.appendChild(this.noInfoRow);
         this.noInfoRow.style.display = "none";
 
         this.initSearch();
@@ -822,11 +834,10 @@ class DirectionsTable {
         const noResultsRow = document.createElement("tr");
         noResultsRow.className = "no-results-row";
         const cell = document.createElement("td");
-        cell.colSpan = 6;
+        cell.colSpan = 5;
         cell.textContent = "Нет похожей информации";
         cell.style.textAlign = "center";
         cell.style.padding = "20px";
-        cell.style.paddingLeft = "70px";
         noResultsRow.appendChild(cell);
         return noResultsRow;
     }
@@ -834,7 +845,7 @@ class DirectionsTable {
     initSearch() {
         this.searchInput.addEventListener("input", () => {
             const filter = this.searchInput.value.toLowerCase();
-            const rows = this.table.querySelectorAll("tr:not(.no-results-row)");
+            const rows = this.tbody.querySelectorAll("tr:not(.no-results-row)");
             let visibleCount = 0;
 
             rows.forEach(row => {
@@ -855,11 +866,11 @@ class DirectionsTable {
     }
 
     initSelection() {
-        this.table.addEventListener("click", (e) => {
+        this.tbody.addEventListener("click", (e) => {
             const row = e.target.closest("tr");
             if (!row || row.classList.contains("no-results-row")) return;
 
-            this.table.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
+            this.tbody.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
             row.classList.add("selected");
 
             this.selectedId = row.cells[0].textContent.trim();
@@ -2080,126 +2091,6 @@ class MultiStepForm {
     }
 }
 
-class CertificateUploadHandler {
-    constructor() {
-        this.form = document.getElementById('sentForm');
-        this.dropArea = document.getElementById('drop-area');
-        this.fileInput = document.getElementById('certificate_to_check');
-        this.submitButton = document.getElementById('submit_sent_button');
-        
-        this.init();
-    }
-
-    init() {
-        if (!this.form || !this.dropArea || !this.fileInput || !this.submitButton) {
-            console.error('Required elements not found');
-            return;
-        }
-
-        this.bindEvents();
-        this.updateSubmitButtonState();
-    }
-
-    bindEvents() {
-        this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
-        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        this.removeDropAreaClick();
-    }
-
-    removeDropAreaClick() {
-        this.dropArea.style.cursor = 'default';
-        const fileInputLabel = this.dropArea.querySelector('.file-input-label');
-        if (fileInputLabel) {
-            fileInputLabel.style.cursor = 'pointer';
-            fileInputLabel.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
-    }
-
-    handleDragOver(e) {
-        e.preventDefault();
-        this.dropArea.classList.add('drag-over');
-    }
-
-    handleDragLeave(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.processFile(files[0]);
-
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(files[0]);
-            this.fileInput.files = dataTransfer.files;
-        }
-    }
-
-    handleFileSelect(e) {
-        const file = e.target.files[0];
-        if (file) {
-            this.processFile(file);
-        }
-    }
-
-    processFile(file) {
-        this.clearError();
-
-        if (!this.isValidFile(file)) {
-            this.showError('Неверный формат файла. Разрешены только файлы .cer');
-            this.fileInput.value = '';
-            return;
-        }
-
-        this.showFileName(file.name);
-        this.updateSubmitButtonState(true);
-    }
-
-    isValidFile(file) {
-        const fileName = file.name.toLowerCase();
-        return fileName.endsWith('.cer');
-    }
-
-    showFileName(fileName) {
-        const label = this.dropArea.querySelector('p');
-        if (label) {
-            label.innerHTML = `<strong>${this.escapeHtml(fileName)}</strong>`;
-        }
-    }
-
-    updateSubmitButtonState(isEnabled = false) {
-        this.submitButton.disabled = !isEnabled;
-        
-        if (isEnabled) {
-            this.submitButton.classList.remove('disabled');
-        } else {
-            this.submitButton.classList.add('disabled');
-        }
-    }
-
-    showError(message) {
-        this.updateSubmitButtonState(false);
-    }
-
-    clearError() {}
-
-    escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-}
 
 class TicketInfo {
     constructor(options = {}) {
@@ -2463,24 +2354,7 @@ class TicketInfo {
 
 window.TicketInfo = TicketInfo;
 
-function initCertificateUpload() {
-    document.addEventListener('DOMContentLoaded', function() {
-        const sentModal = document.getElementById('sentmodal');
-        if (sentModal) {
-            new CertificateUploadHandler();
-            
-            const style = document.createElement('style');
-            style.textContent = `
-                .drop-area { cursor: default; }
-                .drop-area.drag-over { border-color: #007bff; background-color: #f8f9fa; }
-                .file-input-label { cursor: pointer; color: #007bff; text-decoration: underline; }
-                .submit-button:disabled { opacity: 0.6; cursor: not-allowed; }
-                .error-message { color: #dc3545; font-size: 14px; margin-top: 8px; }
-            `;
-            document.head.appendChild(style);
-        }
-    });
-}
+
 
 function initSections() {
     const sections = document.querySelectorAll('.user-info-section:not([data-initialized])');
@@ -2637,7 +2511,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     initSections();
-    initCertificateUpload();
 });
 
 document.write('<script src="/static/js/chat.js"></script>');
@@ -2648,11 +2521,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof window.initCookieBanner === 'function') {
-        window.initCookieBanner();
-    }
-});
+// document.addEventListener('DOMContentLoaded', function() {
+//     if (typeof window.initCookieBanner === 'function') {
+//         window.initCookieBanner();
+//     }
+// });
 
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');
@@ -2665,3 +2538,102 @@ if (document.getElementById('dots-profile-user')) {
 if (document.getElementById('menuDotsBtn')) {
     initDropdownMenu('menuDotsBtn', 'planActionsMenu');
 }
+
+const triggerSideBar = document.getElementById("user-profile-panel-trigger");
+const sidebarUser = document.getElementById("user-profile-panel");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+function closeSidebar() {
+    if (sidebarUser) {
+        sidebarUser.classList.remove("show");
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.classList.remove("show");
+    }
+}
+
+function openSidebar() {
+    if (sidebarUser) {
+        sidebarUser.classList.add("show");
+    }
+    if (sidebarOverlay) {
+        sidebarOverlay.classList.add("show");
+    }
+}
+
+if (triggerSideBar && sidebarUser) {
+    triggerSideBar.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (sidebarUser.classList.contains("show")) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+}
+
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", closeSidebar);
+}
+
+document.addEventListener("click", (e) => {
+    if (sidebarUser && sidebarUser.classList.contains("show")) {
+        if (!sidebarUser.contains(e.target) && !triggerSideBar.contains(e.target)) {
+            closeSidebar();
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const statNumbers = document.querySelectorAll('.stat-numbers');
+    
+    if (statNumbers.length > 0) {
+        const animateCounter = (element) => {
+            const target = parseInt(element.getAttribute('data-count'));
+            const duration = 2000;
+            const start = 0;
+            const increment = target / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.floor(current);
+            }, 16);
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounter(entry.target);
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+        
+        statNumbers.forEach(stat => observer.observe(stat));
+    }
+    
+    const bgGrid = document.querySelector('.bg-grid');
+    
+    if (bgGrid) {
+        window.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth) * 20;
+            const y = (e.clientY / window.innerHeight) * 20;
+            
+            bgGrid.style.transform = `translate(${x}px, ${y}px)`;
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const multiStepForm = new MultiStepForm();
+        window.multiStepForm = multiStepForm; 
+    } catch (error) {
+        console.error('Failed to initialize MultiStepForm:', error);
+    }
+});

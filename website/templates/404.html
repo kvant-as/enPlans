@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Страница не найдена') }} - Екзропеект{% endblock %}
+{% block title %}{{ _('Страница не найдена') }} - EnPlans{% endblock %}
 {% block content %}
 
 <div class="error-page">
@@ -26,11 +26,11 @@
 
             <div class="error-stats">
                 <div class="stat-item">
-                    <span class="stat-number">0.00</span>
+                    <span class="stat-number">0,00</span>
                     <span class="stat-label">{{ _('Вероятность найти') }}</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">0.00</span>
+                    <span class="stat-number">0,00</span>
                     <span class="stat-label">{{ _('График поиска') }}</span>
                 </div>
             </div>
@@ -40,15 +40,9 @@
                     {{ _('Назад') }}
                 </button>     
                 <a href="{{ url_for('views.begin_page') }}" class="btn btn-secondary">
-                    {{ icons.icon_plans() }}
-                    {{ _('К планам') }}
+                    {{ icons.icon_main() }}
+                    {{ _('На главную') }}
                 </a>
-
-                
-            </div>
-
-            <div class="error-help">
-                <p><strong>{{ _('Статус:') }}</strong> {{ _('Страница не найдена в системе') }}</p>
             </div>
         </div>
     </div>
@@ -212,23 +206,6 @@
     transform: translateY(-1px);
 }
 
-.error-help {
-    border-top: 1px solid #e9ecef;
-    padding-top: 1.5rem;
-    text-align: center;
-}
-
-.error-help p {
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin: 0 0 0.5rem 0;
-    line-height: 1.5;
-}
-
-.error-help strong {
-    color: #495057;
-}
-
 @media (max-width: 768px) {
     .error-page {
         margin: 1rem auto;
@@ -263,7 +240,6 @@
     }
 }
 
-/* Анимации для соответствия стилю приложения */
 .error-icon {
     animation: subtleBounce 3s ease-in-out infinite;
 }
@@ -295,5 +271,4 @@
     }
 }
 </style>
-
 {% endblock %}

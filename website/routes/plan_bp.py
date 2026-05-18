@@ -1,12 +1,12 @@
 from flask import (
-    Blueprint, abort, g, jsonify, render_template, request, flash, redirect, url_for
+    Blueprint, abort, current_app, g, jsonify, render_template, request, flash, redirect, url_for
 )
 
 from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, update_ChangeTimePlan
+from website.plans import generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -128,61 +128,205 @@ def plan_indicators(token):
 @owner_only
 @session_required
 def create_indicator(token):
-    current_plan = g.current_plan
+    try:
+        current_plan = g.current_plan
+        
+        QYearBeforePrev_ed = to_decimal_2(request.form.get('QYearBeforePrev'))
+        QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
+        QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
+        id_indicator = request.form.get('id_indicator')
+        coeff_type = request.form.get('coeff_type')
+        custom_coeff_raw = request.form.get('custom_coeff')
+        fuel_category = request.form.get('fuel_category')
+
+        # current_app.logger.info(f'Attempting to create indicator for plan {current_plan.id}')
+        # current_app.logger.debug(f'Form data: QYearBeforePrev_ed={QYearBeforePrev_ed}, QYearPrev_ed={QYearPrev_ed}, QYearCurrent_ed={QYearCurrent_ed}, id_indicator={id_indicator}, coeff_type={coeff_type}, custom_coeff_raw={custom_coeff_raw}, fuel_category={fuel_category}')
+
+        if not id_indicator:
+            current_app.logger.warning('Empty indicator')
+            flash('Пустой показатель', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        indicator = Indicator.query.filter_by(id=id_indicator).first()
+        
+        if not indicator:
+            current_app.logger.warning(f'Indicator with id {id_indicator} not found')
+            flash('Показатель не найден', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        current_app.logger.info(f'Found indicator: code={indicator.code}, name={indicator.name}, CoeffToTut={indicator.CoeffToTut}, is_local={indicator.is_local}, is_renewable={indicator.is_renewable}')
+        
+        if indicator.code in ['2023', '2024'] and not fuel_category:
+            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        if coeff_type == 'custom' and custom_coeff_raw:
+            try:
+                used_coeff = to_decimal_3(custom_coeff_raw)
+                custom_coeff_value = used_coeff
+                current_app.logger.info(f'Using custom coefficient: {used_coeff}')
+            except Exception as e:
+                current_app.logger.error(f'Error parsing custom coefficient: {e}')
+                flash('Некорректное значение коэффициента', 'error')
+                return redirect(url_for('plan_bp.plan_indicators', token=token))
+        else:
+            used_coeff = indicator.CoeffToTut
+            custom_coeff_value = None
+            current_app.logger.info(f'Using standard coefficient: {used_coeff}')
+
+        QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * used_coeff)
+        QYearPrev = to_decimal_2(QYearPrev_ed * used_coeff)
+        QYearCurrent = to_decimal_2(QYearCurrent_ed * used_coeff)
+        
+        if indicator.code in ['2023', '2024'] and fuel_category:
+            if fuel_category == 'local':
+                is_local_value = True
+                is_renewable_value = False
+                current_app.logger.info(f'Setting is_local=True for indicator {indicator.code}')
+            elif fuel_category == 'renewable':
+                is_local_value = False
+                is_renewable_value = True
+                current_app.logger.info(f'Setting is_renewable=True for indicator {indicator.code}')
+            else:
+                is_local_value = indicator.is_local
+                is_renewable_value = indicator.is_renewable
+        else:
+            is_local_value = indicator.is_local
+            is_renewable_value = indicator.is_renewable
+            current_app.logger.debug(f'Using indicator default values: is_local={is_local_value}, is_renewable={is_renewable_value}')
+
+        new_IndicatorUsage = IndicatorUsage(
+            id_plan=current_plan.id,
+            id_indicator=id_indicator,
+            QYearBeforePrev=QYearBeforePrev,
+            QYearPrev=QYearPrev,
+            QYearCurrent=QYearCurrent,
+            custom_coeff_to_tut=custom_coeff_value,
+            is_local=is_local_value,
+            is_renewable=is_renewable_value
+        )
+        
+        db.session.add(new_IndicatorUsage)
+        db.session.commit()
+        other_data_indicatorUpdate(current_plan.id)
+        
+        current_app.logger.info(f'Successfully created indicator usage with id {new_IndicatorUsage.id} for plan {current_plan.id}')
+
+        flash('Показатель добавлен', 'success')
+        return redirect(url_for('plan_bp.plan_indicators', token=token))
     
-    QYearBeforePrev_ed = to_decimal_2(request.form.get('QYearBeforePrev'))
-    QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
-    QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
-    id_indicator = request.form.get('id_indicator')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error creating indicator: {str(e)}', exc_info=True)
+        flash(f'Ошибка при добавлении показателя: {str(e)}', 'error')
+        return redirect(url_for('plan_bp.plan_indicators', token=token))
 
-    if id_indicator == None:
-        flash('Пустой показатель', 'error')
-        return redirect(url_for('plan_bp.plan_indicators', id=id))
-    
-    indicator = Indicator.query.filter_by(id=id_indicator).first()
-
-    QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * indicator.CoeffToTut)
-    QYearPrev = to_decimal_2(QYearPrev_ed * indicator.CoeffToTut)
-    QYearCurrent = to_decimal_2(QYearCurrent_ed * indicator.CoeffToTut)
-
-    new_IndicatorUsage = IndicatorUsage(
-        id_plan=current_plan.id,
-        id_indicator=id_indicator,
-        QYearBeforePrev=QYearBeforePrev,
-        QYearPrev=QYearPrev,
-        QYearCurrent=QYearCurrent
-    )
-    
-    db.session.add(new_IndicatorUsage)
-    db.session.commit()
-    other_data_indicatorUpdate(current_plan.id)
-
-    flash('Показатель добавлен', 'success')
-    return redirect(url_for('plan_bp.plan_indicators', token=token))
-
-@plan_bp.route('/edit-indicator/<int:id>', methods=['POST'])
+@plan_bp.route('/edit-indicator/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
+@owner_only
 @session_required
-def edit_indicator(id):
-    QYearBeforePrev_ed = to_decimal_2(request.form.get('QYearBeforePrev'))
-    QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
-    QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
-
-    if id == None:
-        flash('Пустой id', 'error')
-        return redirect(request.url)
+def edit_indicator(token):
+    try:
+        id_indicator = request.form.get('id_indicator')
+        
+        if not id_indicator:
+            flash('ID показателя не указан', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        indicator_usage = IndicatorUsage.query.get_or_404(id_indicator)
+        current_plan = g.current_plan
+        
+        if indicator_usage.id_plan != current_plan.id:
+            flash('Показатель не принадлежит указанному плану', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        QYearBeforePrev_ed = to_decimal_2(request.form.get('QYearBeforePrev'))
+        QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
+        QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
+        coeff_type = request.form.get('coeff_type')
+        custom_coeff_raw = request.form.get('custom_coeff')
+        fuel_category = request.form.get('fuel_category')
+        
+        indicator = indicator_usage.indicator
+        indicator_code = indicator.code
+        indicator_code_num = int(indicator_code) if indicator_code.isdigit() else 0
+        
+        is_coeff_editable = 2000 <= indicator_code_num <= 2024
+        is_codes_9911_9914 = indicator_code in ['9911', '9912', '9913', '9914']
+        
+        current_app.logger.info(f'Editing indicator usage {id_indicator} for plan {current_plan.id}')
+        current_app.logger.debug(f'Indicator code: {indicator_code}, is_coeff_editable: {is_coeff_editable}, is_codes_9911_9914: {is_codes_9911_9914}')
+        
+        if indicator_code in ['2023', '2024'] and not fuel_category:
+            current_app.logger.warning(f'Indicator {indicator_code} requires fuel category but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+            return redirect(url_for('plan_bp.plan_indicators', token=token))
+        
+        if is_coeff_editable and coeff_type == 'custom' and custom_coeff_raw:
+            try:
+                custom_coeff_raw = custom_coeff_raw.replace(',', '.')
+                used_coeff = to_decimal_3(custom_coeff_raw)
+                custom_coeff_value = used_coeff
+                current_app.logger.info(f'Using custom coefficient: {used_coeff}')
+            except Exception as e:
+                current_app.logger.error(f'Error parsing custom coefficient: {e}')
+                flash('Некорректное значение коэффициента', 'error')
+                return redirect(url_for('plan_bp.plan_indicators', token=token))
+        else:
+            used_coeff = indicator.CoeffToTut
+            custom_coeff_value = None
+            current_app.logger.info(f'Using standard coefficient: {used_coeff}')
+        
+        QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * used_coeff)
+        QYearPrev = to_decimal_2(QYearPrev_ed * used_coeff)
+        QYearCurrent = to_decimal_2(QYearCurrent_ed * used_coeff)
+        
+        if indicator_code in ['2023', '2024'] and fuel_category:
+            if fuel_category == 'local':
+                is_local_value = True
+                is_renewable_value = False
+                current_app.logger.info(f'Setting is_local=True for indicator {indicator_code}')
+            elif fuel_category == 'renewable':
+                is_local_value = False
+                is_renewable_value = True
+                current_app.logger.info(f'Setting is_renewable=True for indicator {indicator_code}')
+            else:
+                is_local_value = indicator_usage.is_local
+                is_renewable_value = indicator_usage.is_renewable
+        else:
+            is_local_value = indicator_usage.is_local
+            is_renewable_value = indicator_usage.is_renewable
+        
+        if is_codes_9911_9914:
+            indicator_usage.QYearCurrent = QYearCurrent
+            current_app.logger.info(f'Updated only QYearCurrent for {indicator_code}')
+        else:
+            indicator_usage.QYearBeforePrev = QYearBeforePrev
+            indicator_usage.QYearPrev = QYearPrev
+            indicator_usage.QYearCurrent = QYearCurrent
+            current_app.logger.info(f'Updated all QYear fields for {indicator_code}')
+        
+        if is_coeff_editable:
+            indicator_usage.custom_coeff_to_tut = custom_coeff_value
+            current_app.logger.info(f'Updated custom coefficient for {indicator_code}')
+        
+        indicator_usage.is_local = is_local_value
+        indicator_usage.is_renewable = is_renewable_value
+        
+        db.session.commit()
+        other_data_indicatorUpdate(current_plan.id)
+        
+        current_app.logger.info(f'Successfully updated indicator usage {id_indicator} for plan {current_plan.id}')
+        flash('Показатель успешно обновлен', 'success')
+        return redirect(url_for('plan_bp.plan_indicators', token=token))
     
-    indicator_usage = IndicatorUsage.query.filter_by(id=id).first()
-    indicator_usage.QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * indicator_usage.indicator.CoeffToTut)
-    indicator_usage.QYearPrev = to_decimal_2(QYearPrev_ed * indicator_usage.indicator.CoeffToTut)
-    indicator_usage.QYearCurrent = to_decimal_2(QYearCurrent_ed * indicator_usage.indicator.CoeffToTut)
-    db.session.commit()
-
-    current_plan = Plan.query.get_or_404(indicator_usage.id_plan)
-    other_data_indicatorUpdate(current_plan.id)
-    flash('Обновление данных', 'success')
-    return redirect(url_for('plan_bp.plan_indicators', token=current_plan.token))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error editing indicator: {str(e)}', exc_info=True)
+        flash(f'Ошибка при редактировании показателя: {str(e)}', 'error')
+        return redirect(url_for('plan_bp.plan_indicators', token=token))
 
 @plan_bp.route('/delete-indicator/<int:id>', methods=['POST'])
 @user_with_all_params()

@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%endblock %} 
+{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - EnPlans{%endblock %} 
 {% block content %}
 
 <div class="pers-page">
@@ -151,11 +151,11 @@
                     <button class="nav-menu-item" disabled>
                         {{ icons.icon_edit() }}
                         <span>{{ _('Запросить изменение данных') }}</span>
-                    </button>
+                    </button>{#
                     <button class="nav-menu-item" disabled>
                         {{ icons.icon_add() }}
                         <span>{{ _('Выбрать ещё одну') }}</span>
-                    </button>
+                    </button>#}
                     
                   </div>
               </div>

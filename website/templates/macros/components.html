@@ -3,19 +3,19 @@
 {% macro plan_menu(plan, current_user, section, increase_events=None, econom_events=None, indicators=None) %}
     {% set section_config = {
         'indicators': {
-            'title': 'Показатели',
+            'title': 'Показатель',
             'add_button_id': 'AddIndicatorModalButton',
             'has_data': True,
             'is_empty': False
         },
         'event-saving': {
-            'title': 'Мероприятия эконом.',
+            'title': 'Мероприятие',
             'add_button_id': 'AddEventsModalBtn',
             'has_data': plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0,
             'is_empty': not (plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0)
         },
         'event-increase': {
-            'title': 'Мероприятия увелич.',
+            'title': 'Мероприятие',
             'add_button_id': 'AddEventsModalBtn',
             'has_data': plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0,
             'is_empty': not (plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0)
@@ -369,19 +369,19 @@
                         {% else %}
                             <div class="plan-cont-column-footer-element">
                                 {{ icons.icon_eco() }}
-                                <a class="data-plan" title="Энергосбережение">{{ plan.energy_saving or '0.00' }}</a>
+                                <a class="data-plan" title="Энергосбережение">{{ plan.energy_saving or '0,00' }}</a>
                             </div>
                             <div class="plan-cont-column-footer-element">
                                 {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля ТЭР">{{ plan.share_fuel or '0.00' }}</a>
+                                <a class="data-plan" title="Доля ТЭР">{{ plan.share_fuel or '0,00' }}</a>
                             </div>
                             <div class="plan-cont-column-footer-element">
                                 {{ icons.icon_saving() }}
-                                <a class="data-plan" title="Экономия топлива">{{ plan.saving_fuel or '0.00' }}</a>
+                                <a class="data-plan" title="Экономия топлива">{{ plan.saving_fuel or '0,00' }}</a>
                             </div>
                             <div class="plan-cont-column-footer-element">
                                 {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля энергии">{{ plan.share_energy or '0.00' }}</a>
+                                <a class="data-plan" title="Доля энергии">{{ plan.share_energy or '0,00' }}</a>
                             </div>
                         {% endif %}
                     </div>

@@ -140,18 +140,33 @@ def get_event(id):
         return jsonify({'error': str(e)}), 500
     
 @api_bp.route('/get-indicator/<int:id>', methods=['GET'])
-@user_with_all_params()
 @login_required
-@session_required
-def get_indicator(id):
+def get_indicator_api(id):
     try:
-        existing_IndicatorUsage = IndicatorUsage.query.get(id)
-        if not existing_IndicatorUsage:
-            return jsonify({'error': 'Indicator not found'}), 404
+        indicator_usage = IndicatorUsage.query.get_or_404(id)
         
-        return jsonify(existing_IndicatorUsage.as_dict())
+        used_coeff = indicator_usage.custom_coeff_to_tut if indicator_usage.custom_coeff_to_tut is not None else indicator_usage.indicator.CoeffToTut
         
+        data = {
+            'id': indicator_usage.id,
+            'id_indicator': indicator_usage.id_indicator,
+            'code': indicator_usage.indicator.code,
+            'name': indicator_usage.indicator.name,
+            'unit_name': indicator_usage.indicator.unit.name if indicator_usage.indicator.unit else '',
+            'CoeffToTut': float(indicator_usage.indicator.CoeffToTut) if indicator_usage.indicator.CoeffToTut else 0,
+            'custom_coeff_to_tut': float(indicator_usage.custom_coeff_to_tut) if indicator_usage.custom_coeff_to_tut else None,
+            'used_coeff': float(used_coeff) if used_coeff else 0,
+            'is_custom': indicator_usage.custom_coeff_to_tut is not None,
+            'QYearBeforePrev': float(indicator_usage.QYearBeforePrev) if indicator_usage.QYearBeforePrev else 0,
+            'QYearPrev': float(indicator_usage.QYearPrev) if indicator_usage.QYearPrev else 0,
+            'QYearCurrent': float(indicator_usage.QYearCurrent) if indicator_usage.QYearCurrent else 0,
+            'is_local': indicator_usage.is_local,
+            'is_renewable': indicator_usage.is_renewable
+        }
+        
+        return jsonify(data)
     except Exception as e:
+        current_app.logger.error(f'Error getting indicator {id}: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 
@@ -180,12 +195,16 @@ def get_indicators_data(token):
             'group': float(row.indicator.Group) if row.indicator.Group else None,
             'row_n': row.indicator.RowN,
             'coeff_to_tut': float(row.indicator.CoeffToTut) if row.indicator.CoeffToTut else 1,
-            'QYearBeforePrev_unit': float(row.QYearBeforePrev / row.indicator.CoeffToTut) if row.QYearBeforePrev and row.indicator.CoeffToTut else 0,
+            
+            'QYearBeforePrev_unit': float(row.QYearBeforePrev / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearBeforePrev and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
             'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
-            'QYearPrev_unit': float(row.QYearPrev / row.indicator.CoeffToTut) if row.QYearPrev and row.indicator.CoeffToTut else 0,
+
+            'QYearPrev_unit': float(row.QYearPrev / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearPrev and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
             'QYearPrev_tut': float(row.QYearPrev) if row.QYearPrev else 0,
-            'QYearCurrent_unit': float(row.QYearCurrent / row.indicator.CoeffToTut) if row.QYearCurrent and row.indicator.CoeffToTut else 0,
+
+            'QYearCurrent_unit': float(row.QYearCurrent / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearCurrent and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
             'QYearCurrent_tut': float(row.QYearCurrent) if row.QYearCurrent else 0,
+            
             'difference': float(row.QYearCurrent - row.QYearPrev) if row.QYearCurrent and row.QYearPrev else 0
         })
     

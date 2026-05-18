@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - enPlans {%endblock %} 
+{% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - EnPlans {%endblock %} 
 {% block content %}
 
 <div class="pers-page">
@@ -6,7 +6,7 @@
   <div class="personal-acc-conteiner">
     <a class="name">{{ _('Экспорт данных') }}</a>
     <div class="export-choose-area">
-      <div class="export-choose" data-format="xlsx">
+      <div class="export-choose disabled" data-format="xlsx">
         {{ icons.icon_xlsx() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xlsx)</a>

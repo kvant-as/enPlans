@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Обзор') }} - enPlans{% endblock
+{% extends "base.html" %} {% block title %}{{ _('Обзор') }} - EnPlans{% endblock
 %} {% block content %}
 
 {{ component.back_header(plan, current_user) }}
@@ -55,9 +55,8 @@
               maxlength="15"
               value="{{ plan.energy_saving }}"
               required
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input-negative"
-              pattern="-?[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -72,10 +71,9 @@
               maxlength="15"
               value="{{ plan.share_fuel }}"
               required
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
               required
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -91,10 +89,9 @@
               name="saving_fuel"
               maxlength="15"
               value="{{ plan.saving_fuel }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
               required
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -108,10 +105,9 @@
               name="share_energy"
               maxlength="15"
               value="{{ plan.share_energy }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
               required
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>

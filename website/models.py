@@ -212,18 +212,13 @@ class Indicator(db.Model):
     name = db.Column(db.String(400))
     CoeffToTut = db.Column(Numeric(scale=3))
     
-    # is_local = db.Column(db.Boolean, default=False)
-    # is_renewable = db.Column(db.Boolean, default=False)
+    is_local = db.Column(db.Boolean, default=False)
+    is_renewable = db.Column(db.Boolean, default=False)
     
     IsMandatory = db.Column(db.Boolean)
     Group = db.Column(db.Float)
     RowN = db.Column(db.Integer)
-    # IsSummary = db.Column(db.Boolean)
-    # IsSendRealUnit = db.Column(db.Boolean)
-    # IsSelfProd = db.Column(db.Boolean)
-    # IsLocal = db.Column(db.Boolean)
-    # IsRenewable = db.Column(db.Boolean)
-    # id_indicator_parent = db.Column(db.Integer)
+
     DateStart = db.Column(db.DateTime, default=None)
     DateEnd = db.Column(db.DateTime, default=None)
     unit = db.relationship('Unit', backref='indicators')
@@ -237,6 +232,11 @@ class IndicatorUsage(db.Model):
     QYearBeforePrev = db.Column(Numeric(scale=2))
     QYearPrev = db.Column(Numeric(scale=2))
     QYearCurrent = db.Column(Numeric(scale=2))
+    
+    is_local = db.Column(db.Boolean, default=False)
+    is_renewable = db.Column(db.Boolean, default=False)
+    
+    custom_coeff_to_tut = db.Column(Numeric(scale=3), nullable=True)
     indicator = db.relationship("Indicator", back_populates="indicators_usage")
     plan = db.relationship("Plan", back_populates="indicators_usage")
 
@@ -248,9 +248,14 @@ class IndicatorUsage(db.Model):
             'QYearBeforePrev': self.QYearBeforePrev,
             'QYearPrev': self.QYearPrev,
             'QYearCurrent': self.QYearCurrent,
-            'CoeffToTut': self.indicator.CoeffToTut,
+            'CoeffToTut': self.get_coeff_to_tut(), 
             'name': self.indicator.name
         }
+        
+    def get_coeff_to_tut(self):
+        if self.custom_coeff_to_tut is not None:
+            return self.custom_coeff_to_tut
+        return self.indicator.CoeffToTut
 
 class Notification(db.Model):
     __tablename__ = 'notifications'

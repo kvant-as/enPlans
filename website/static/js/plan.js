@@ -1,5 +1,3 @@
-// plan.js - управление таблицами на страницах планов
-
 class PlanIndicators {
     constructor(token) {
         this.token = token;
@@ -80,10 +78,10 @@ class PlanIndicators {
                 contextDeleteButtonId: 'contextDeleteButton',
                 tableEditButtonId: 'tableEditButton',
                 tableDeleteButtonId: 'tableDeleteButton',
-                removeUrlTemplate: '/delete-indicator/{id}',
-                immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917'],
+                removeUrlTemplate: '../delete-indicator/{id}',
+                immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917', '9910'],
                 immutableEditCodes: [],
-                immutableDeleteCodes: ['9911', '9910', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'],
+                immutableDeleteCodes: ['9911', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'],
                 codeColumnIndex: 11,
                 hideCodeColumn: true
             });
@@ -1040,6 +1038,11 @@ function Edit_indicator_modal() {
     const idIndicator = activeRow.getAttribute('data-id');
     if (!idIndicator) return;
 
+    const editIdInput = document.getElementById('edit-id-indicator');
+    if (editIdInput) {
+        editIdInput.value = idIndicator;
+    }
+
     let groupValue = '';
     const groupDataCell = activeRow.querySelector('td[data-group]');
     if (groupDataCell) {
@@ -1052,33 +1055,10 @@ function Edit_indicator_modal() {
 
     const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
     const QYearBeforePrevNoDisplay = document.getElementById('QYearBeforePrev-edit-nodisplay');
+    const QYearCurrentCard = document.getElementById('QYearCurrent-edit-nodisplay');
     
     const qYearCurrInput = qYearCurrNoDisplay ? qYearCurrNoDisplay.querySelector('input') : null;
     const QYearBeforePrevInput = QYearBeforePrevNoDisplay ? QYearBeforePrevNoDisplay.querySelector('input') : null;
-    
-    if (qYearCurrNoDisplay) {
-        qYearCurrNoDisplay.style.display = isSpecialGroup ? 'none' : '';
-    }
-    
-    if (QYearBeforePrevNoDisplay) {
-        QYearBeforePrevNoDisplay.style.display = isSpecialGroup ? 'none' : '';
-    }
-
-    if (qYearCurrInput) {
-        if (isSpecialGroup) {
-            qYearCurrInput.removeAttribute('required');
-        } else {
-            qYearCurrInput.setAttribute('required', 'required');
-        }
-    }
-    
-    if (QYearBeforePrevInput) {
-        if (isSpecialGroup) {
-            QYearBeforePrevInput.removeAttribute('required');
-        } else {
-            QYearBeforePrevInput.setAttribute('required', 'required');
-        }
-    }
 
     showLoadingIndicator(true);
 
@@ -1086,32 +1066,144 @@ function Edit_indicator_modal() {
         .then(response => response.json())
         .then(data => {
             if (data.error) throw new Error(data.error);
-            if (data.CoeffToTut) {
-                data.CoeffToTut = parseFloat(data.CoeffToTut).toFixed(2);
+            
+            const editSelectedIndicatorName = document.getElementById('edit-selected-indicator-name');
+            if (editSelectedIndicatorName && data.name) {
+                const indicatorCode = data.code || '';
+                const displayName = indicatorCode ? indicatorCode + ' - ' + data.name : data.name;
+                editSelectedIndicatorName.textContent = displayName;
             }
             
-            if (!isSpecialGroup) {
-                setValueIfExists('QYearBeforePrev-edit', data.QYearBeforePrev ? (data.QYearBeforePrev / data.CoeffToTut).toFixed(2) : '');
-                setValueIfExists('QYearCurr-edit', data.QYearPrev ? (data.QYearPrev / data.CoeffToTut).toFixed(2) : '');
+            // Обновляем единицы измерения
+            const unitName = data.unit_name || 'ед. изм.';
+            const unitSpans = document.querySelectorAll('#EditIndicatorModal .value-unit');
+            unitSpans.forEach(function(span) {
+                span.textContent = unitName;
+            });
+            
+            const indicatorCode = data.code;
+            const indicatorCodeNum = parseInt(indicatorCode);
+            const isCoeffEditable = indicatorCodeNum >= 2000 && indicatorCodeNum <= 2024;
+            const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
+            
+            if (isCodes9911to9914) {
+                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
+                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
+                if (QYearCurrentCard) {
+                    QYearCurrentCard.style.display = 'block';
+                    const currentInput = QYearCurrentCard.querySelector('input');
+                    if (currentInput) {
+                        currentInput.setAttribute('required', 'required');
+                        currentInput.removeAttribute('readonly');
+                    }
+                }
+            } else if (isSpecialGroup) {
+                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
+                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
+                if (QYearCurrentCard) {
+                    QYearCurrentCard.style.display = 'block';
+                    const currentInput = QYearCurrentCard.querySelector('input');
+                    if (currentInput) {
+                        currentInput.setAttribute('required', 'required');
+                        currentInput.removeAttribute('readonly');
+                    }
+                }
+            } else {
+                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = '';
+                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = '';
+                if (QYearCurrentCard) {
+                    QYearCurrentCard.style.display = 'block';
+                    const currentInput = QYearCurrentCard.querySelector('input');
+                    if (currentInput) {
+                        currentInput.setAttribute('required', 'required');
+                        currentInput.removeAttribute('readonly');
+                    }
+                }
+            }
+            
+            const coeffSection = document.getElementById('edit-coeff-section');
+            const customOption = document.getElementById('edit-custom-option');
+            
+            if (isCoeffEditable) {
+                coeffSection.style.display = 'block';
+                customOption.style.display = 'block';
+            } else {
+                coeffSection.style.display = 'block';
+                customOption.style.display = 'none';
+                const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
+                if (standardRadio) {
+                    standardRadio.checked = true;
+                }
+            }
+            
+            const standardCoeffSpan = document.getElementById('edit-standard-coeff-value');
+            if (standardCoeffSpan) {
+                standardCoeffSpan.textContent = data.CoeffToTut.toFixed(3).replace('.', ',');
+            }
+            
+            const customCoeffGroup = document.getElementById('edit-custom-coeff-group');
+            const customCoeffInput = document.getElementById('edit-custom-coeff');
+            const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
+            const customRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="custom"]');
+            
+            if (isCoeffEditable && data.is_custom && data.custom_coeff_to_tut) {
+                if (customRadio) customRadio.checked = true;
+                if (customCoeffGroup) customCoeffGroup.style.display = 'block';
+                if (customCoeffInput) customCoeffInput.value = data.custom_coeff_to_tut.toFixed(3).replace('.', ',');
+            } else {
+                if (standardRadio) standardRadio.checked = true;
+                if (customCoeffGroup) customCoeffGroup.style.display = 'none';
+                if (customCoeffInput) customCoeffInput.value = '';
+            }
+            
+            const usedCoeff = data.used_coeff;
+            const coeffValue = usedCoeff ? usedCoeff : data.CoeffToTut;
+            
+            if (isCodes9911to9914) {
+                setValueIfExists('QYearBeforePrev-edit', '');
+                setValueIfExists('QYearCurr-edit', '');
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
+                setValueIfExists('QYearCurrent-edit', valCurrent);
+            } else if (!isSpecialGroup) {
+                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
+                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
+                setValueIfExists('QYearBeforePrev-edit', valBeforePrev);
+                setValueIfExists('QYearCurr-edit', valPrev);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
+                setValueIfExists('QYearCurrent-edit', valCurrent);
             } else {
                 setValueIfExists('QYearBeforePrev-edit', '');
                 setValueIfExists('QYearCurr-edit', '');
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
+                setValueIfExists('QYearCurrent-edit', valCurrent);
             }
             
-            setValueIfExists('indicator-name-nodisplay', data.name);
-            setValueIfExists('QYearCurrent-edit', data.QYearCurrent ? (data.QYearCurrent / data.CoeffToTut).toFixed(2) : '');
+            const categorySection = document.getElementById('edit-category-section');
             
-            const predictionElements = document.querySelectorAll('.prediction-value');
-            predictionElements.forEach(element => {
-                if (data.CoeffToTut) {
-                    element.dataset.multiplier = data.CoeffToTut;
+            if (indicatorCode === '2023' || indicatorCode === '2024') {
+                categorySection.style.display = 'block';
+                
+                const localRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="local"]');
+                const renewableRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="renewable"]');
+                
+                if (data.is_local) {
+                    if (localRadio) localRadio.checked = true;
+                } else if (data.is_renewable) {
+                    if (renewableRadio) renewableRadio.checked = true;
                 }
-            });
+            } else {
+                categorySection.style.display = 'none';
+            }
 
             const form = document.getElementById('editIndicatorForm');
             if (form) {
-                form.action = `/plans/plan/edit-indicator/${idIndicator}`;
+                const token = document.querySelector('#indicatorsTable')?.dataset?.token;
+                if (token) {
+                    form.action = `/plans/plan/edit-indicator/${token}`;
+                }
             }
+                            
+            updateEditTutResults();
         })
         .catch(error => {
             console.error('Error fetching indicator data:', error);
@@ -1121,6 +1213,203 @@ function Edit_indicator_modal() {
             showLoadingIndicator(false);
         });
 }
+
+function updateEditTutResults() {
+    let currentCoeff = null;
+    const coeffTypeRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"]:checked');
+    
+    if (!coeffTypeRadio) return;
+    
+    const coeffType = coeffTypeRadio.value;
+    
+    if (coeffType === 'standard') {
+        const coeffSpan = document.getElementById('edit-standard-coeff-value');
+        if (coeffSpan) {
+            let coeffText = coeffSpan.textContent.replace(',', '.');
+            currentCoeff = parseFloat(coeffText);
+        }
+    } else {
+        const customInput = document.getElementById('edit-custom-coeff');
+        if (customInput && customInput.value) {
+            let customText = customInput.value.replace(',', '.');
+            currentCoeff = parseFloat(customText);
+        } else {
+            currentCoeff = 0;
+        }
+    }
+    
+    if (currentCoeff === null || isNaN(currentCoeff)) {
+        currentCoeff = 0;
+    }
+    
+    const activeRow = document.querySelector('.rows .active-row');
+    let indicatorCode = '';
+    if (activeRow) {
+        const codeCell = activeRow.querySelector('td:nth-child(12)');
+        if (codeCell) {
+            indicatorCode = codeCell.textContent.trim();
+        }
+    }
+    
+    const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
+    
+    if (isCodes9911to9914) {
+        const currentInput = document.getElementById('QYearCurrent-edit');
+        const resultSpan = document.getElementById('edit-result-current');
+        
+        if (currentInput && resultSpan && currentInput.value) {
+            let inputValue = currentInput.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) {
+                value = 0;
+            }
+            const tutValue = value * currentCoeff;
+            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        }
+    } else {
+        const inputs = [
+            { id: 'QYearBeforePrev-edit', resultId: 'edit-result-before', isVisible: document.getElementById('QYearBeforePrev-edit-nodisplay')?.style.display !== 'none' },
+            { id: 'QYearCurr-edit', resultId: 'edit-result-prev', isVisible: document.getElementById('QYearCurr-edit-nodisplay')?.style.display !== 'none' },
+            { id: 'QYearCurrent-edit', resultId: 'edit-result-current', isVisible: document.getElementById('QYearCurrent-edit-nodisplay')?.style.display !== 'none' }
+        ];
+        
+        inputs.forEach(function(item) {
+            if (item.isVisible) {
+                const input = document.getElementById(item.id);
+                const resultSpan = document.getElementById(item.resultId);
+                
+                if (input && resultSpan && input.value) {
+                    let inputValue = input.value.replace(',', '.');
+                    let value = parseFloat(inputValue);
+                    if (isNaN(value)) {
+                        value = 0;
+                    }
+                    const tutValue = value * currentCoeff;
+                    let formattedResult = tutValue.toFixed(2).replace('.', ',');
+                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                }
+            }
+        });
+    }
+}
+
+function updateEditTutResults() {
+    let currentCoeff = null;
+    const coeffTypeRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"]:checked');
+    
+    if (!coeffTypeRadio) return;
+    
+    const coeffType = coeffTypeRadio.value;
+    
+    if (coeffType === 'standard') {
+        const coeffSpan = document.getElementById('edit-standard-coeff-value');
+        if (coeffSpan) {
+            let coeffText = coeffSpan.textContent.replace(',', '.');
+            currentCoeff = parseFloat(coeffText);
+        }
+    } else {
+        const customInput = document.getElementById('edit-custom-coeff');
+        if (customInput && customInput.value) {
+            let customText = customInput.value.replace(',', '.');
+            currentCoeff = parseFloat(customText);
+        } else {
+            currentCoeff = 0;
+        }
+    }
+    
+    if (currentCoeff === null || isNaN(currentCoeff)) {
+        currentCoeff = 0;
+    }
+    
+    const activeRow = document.querySelector('.rows .active-row');
+    let indicatorCode = '';
+    if (activeRow) {
+        const codeCell = activeRow.querySelector('td:nth-child(12)');
+        if (codeCell) {
+            indicatorCode = codeCell.textContent.trim();
+        }
+    }
+    
+    const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
+    
+    if (isCodes9911to9914) {
+        const currentInput = document.getElementById('QYearCurrent-edit');
+        const resultSpan = document.getElementById('edit-result-current');
+        
+        if (currentInput && resultSpan && currentInput.value) {
+            let inputValue = currentInput.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) {
+                value = 0;
+            }
+            const tutValue = value * currentCoeff;
+            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        }
+    } else {
+        const inputs = [
+            { id: 'QYearBeforePrev-edit', resultId: 'edit-result-before' },
+            { id: 'QYearCurr-edit', resultId: 'edit-result-prev' },
+            { id: 'QYearCurrent-edit', resultId: 'edit-result-current' }
+        ];
+        
+        inputs.forEach(function(item) {
+            const input = document.getElementById(item.id);
+            const resultSpan = document.getElementById(item.resultId);
+            
+            if (input && resultSpan && input.value && !input.readOnly) {
+                let inputValue = input.value.replace(',', '.');
+                let value = parseFloat(inputValue);
+                if (isNaN(value)) {
+                    value = 0;
+                }
+                const tutValue = value * currentCoeff;
+                let formattedResult = tutValue.toFixed(2).replace('.', ',');
+                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const editStandardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
+    const editCustomRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="custom"]');
+    const editCustomCoeffGroup = document.getElementById('edit-custom-coeff-group');
+    const editCustomCoeffInput = document.getElementById('edit-custom-coeff');
+    
+    if (editStandardRadio && editCustomRadio) {
+        editStandardRadio.addEventListener('change', function() {
+            if (this.checked) {
+                editCustomCoeffGroup.style.display = 'none';
+                updateEditTutResults();
+            }
+        });
+        
+        editCustomRadio.addEventListener('change', function() {
+            if (this.checked) {
+                editCustomCoeffGroup.style.display = 'block';
+                updateEditTutResults();
+            }
+        });
+    }
+    
+    if (editCustomCoeffInput) {
+        editCustomCoeffInput.addEventListener('input', function() {
+            updateEditTutResults();
+        });
+    }
+    
+    const editValueInputs = ['QYearBeforePrev-edit', 'QYearCurr-edit', 'QYearCurrent-edit'];
+    editValueInputs.forEach(function(id) {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', function() {
+                updateEditTutResults();
+            });
+        }
+    });
+});
 
 function setValueIfExists(elementId, value) {
     const element = document.getElementById(elementId);
@@ -1373,7 +1662,7 @@ document.addEventListener('DOMContentLoaded', function() {
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите выйти из системы enPlans?',
+            modalText: 'Вы действительно хотите выйти из системы EnPlans?',
             textSecondId: 'modal-text-second',
             modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.'
         });
@@ -1463,4 +1752,324 @@ document.addEventListener('DOMContentLoaded', function() {
     if (orgUserModal) {
         handleModal(orgUserModal, document.getElementById('orgUserbutton'), orgUserModal.querySelector('.close'));
     }
+});
+
+function updateTutResults() {
+    let currentCoeff = null;
+    const coeffTypeRadio = document.querySelector('input[name="coeff_type"]:checked');
+    
+    if (!coeffTypeRadio) return;
+    
+    const coeffType = coeffTypeRadio.value;
+    
+    if (coeffType === 'standard') {
+        const coeffSpan = document.getElementById('standard-coeff-value');
+        if (coeffSpan) {
+            let coeffText = coeffSpan.textContent.replace(',', '.');
+            currentCoeff = parseFloat(coeffText);
+        }
+    } else {
+        const customInput = document.querySelector('input[name="custom_coeff"]');
+        if (customInput && customInput.value) {
+            let customText = customInput.value.replace(',', '.');
+            currentCoeff = parseFloat(customText);
+        } else {
+            currentCoeff = 0;
+        }
+    }
+    
+    if (currentCoeff === null || isNaN(currentCoeff)) {
+        currentCoeff = 0;
+    }
+    
+    const years = ['before', 'prev', 'current'];
+    years.forEach(function(year) {
+        const input = document.querySelector(`input[data-year="${year}"]`);
+        const resultSpan = document.getElementById(`result-${year}`);
+        
+        if (input && resultSpan) {
+            let inputValue = input.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) {
+                value = 0;
+            }
+            const tutValue = value * currentCoeff;
+            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        }
+    });
+}
+
+function checkCategoryRequired() {
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const categorySection = document.getElementById('category-section');
+    const submitBtn = document.getElementById('submit-indicator-btn');
+    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    
+    if (!selectedIndicatorName || !categorySection) return;
+    
+    const indicatorText = selectedIndicatorName.textContent;
+    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        
+        function validateCategory() {
+            const isChecked = Array.from(categoryRadios).some(radio => radio.checked);
+            if (submitBtn) {
+                submitBtn.disabled = !isChecked;
+            }
+        }
+        
+        categoryRadios.forEach(radio => {
+            radio.removeEventListener('change', validateCategory);
+            radio.addEventListener('change', validateCategory);
+        });
+        
+        validateCategory();
+    } else {
+        categorySection.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const standardRadio = document.querySelector('input[name="coeff_type"][value="standard"]');
+    const customRadio = document.querySelector('input[name="coeff_type"][value="custom"]');
+    const customCoeffGroup = document.getElementById('custom-coeff-group');
+    const standardCoeffSpan = document.getElementById('standard-coeff-value');
+    const selectedIndicatorDisplay = document.getElementById('selected-indicator-display');
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    
+    if (standardRadio && customRadio) {
+        standardRadio.addEventListener('change', function() {
+            if (this.checked) {
+                customCoeffGroup.style.display = 'none';
+                updateTutResults();
+            }
+        });
+        
+        customRadio.addEventListener('change', function() {
+            if (this.checked) {
+                customCoeffGroup.style.display = 'block';
+                updateTutResults();
+            }
+        });
+    }
+    
+    const customCoeffInput = document.querySelector('input[name="custom_coeff"]');
+    if (customCoeffInput) {
+        customCoeffInput.addEventListener('input', function() {
+            updateTutResults();
+        });
+    }
+    
+    const valueInputs = document.querySelectorAll('.app-numeric-input[data-year]');
+    valueInputs.forEach(function(input) {
+        input.addEventListener('input', function() {
+            updateTutResults();
+        });
+    });
+    
+    const tableBody = document.querySelector('[data-action="modal-table-main"] tbody');
+    if (tableBody) {
+        tableBody.addEventListener('click', function(e) {
+            const row = e.target.closest('tr');
+            if (!row || row.classList.contains('no-results-row')) return;
+            
+            const coeffCell = row.cells[row.cells.length - 1];
+            const unitCell = row.cells[row.cells.length - 2];
+            const nameCell = row.cells[2];
+            const codeCell = row.cells[1];
+            let coeffText = coeffCell ? coeffCell.textContent.trim() : '0';
+            let selectedCoeff = parseFloat(coeffText.replace(',', '.'));
+            const unitName = unitCell ? unitCell.textContent.trim() : 'ед. изм.';
+            const indicatorName = nameCell ? nameCell.textContent.trim() : '';
+            const indicatorCode = codeCell ? codeCell.textContent.trim() : '';
+            
+            const unitSpans = document.querySelectorAll('#unit-name-before, #unit-name-prev, #unit-name-current');
+            unitSpans.forEach(function(span) {
+                span.textContent = unitName;
+            });
+            
+            const displayName = indicatorCode + ' - ' + indicatorName;
+            if (selectedIndicatorName && displayName) {
+                selectedIndicatorName.textContent = displayName;
+                selectedIndicatorDisplay.style.display = 'flex';
+            }
+            
+            if (standardCoeffSpan && selectedCoeff !== null && !isNaN(selectedCoeff)) {
+                let formattedCoeff = selectedCoeff.toFixed(3).replace('.', ',');
+                standardCoeffSpan.textContent = formattedCoeff;
+            }
+            
+            if (standardRadio) {
+                standardRadio.checked = true;
+                if (customCoeffGroup) {
+                    customCoeffGroup.style.display = 'none';
+                }
+                if (customCoeffInput) {
+                    customCoeffInput.value = '';
+                }
+            }
+            
+            window.selectedIndicatorCoeff = selectedCoeff;
+            window.selectedIndicatorCode = indicatorCode;
+            updateTutResults();
+            checkCategoryRequired();
+        });
+    }
+    
+    updateTutResults();
+});
+
+class CertificateUploadHandler {
+    constructor() {
+        this.form = document.getElementById('sentForm');
+        this.dropArea = document.getElementById('drop-certificate-area');
+        this.fileInput = document.getElementById('certificate-to-check');
+        this.submitButton = document.getElementById('submit-sent-button');
+        
+        this.init();
+    }
+
+    init() {
+        if (!this.form || !this.dropArea || !this.fileInput || !this.submitButton) {
+            console.error('Required elements not found');
+            return;
+        }
+
+        this.bindEvents();
+        this.updateSubmitButtonState(false);
+    }
+
+    bindEvents() {
+        this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
+        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        
+        this.dropArea.addEventListener('click', (e) => {
+            if (e.target === this.dropArea || e.target.closest('.drop-certificate-content')) {
+                e.preventDefault();
+                this.fileInput.click();
+            }
+        });
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        this.dropArea.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this.dropArea.classList.remove('drag-over');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        this.dropArea.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.fileInput.files = files;
+            this.processFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+
+    processFile(file) {
+        this.clearError();
+
+        if (!this.isValidFile(file)) {
+            this.showError('Неверный формат файла. Разрешены только файлы .cer');
+            this.resetFileInput();
+            this.resetFileDisplay();
+            this.updateSubmitButtonState(false);
+            return;
+        }
+
+        this.showFileDisplay(file.name);
+        this.updateSubmitButtonState(true);
+    }
+
+    isValidFile(file) {
+        const fileName = file.name.toLowerCase();
+        return fileName.endsWith('.cer');
+    }
+
+    showFileDisplay(fileName) {
+        const textElement = this.dropArea.querySelector('.drop-certificate-text');
+        if (textElement) {
+            textElement.innerHTML = `<strong>${this.escapeHtml(fileName)}</strong>`;
+        }
+        this.dropArea.classList.add('has-file');
+    }
+
+    resetFileDisplay() {
+        const textElement = this.dropArea.querySelector('.drop-certificate-text');
+        if (textElement) {
+            textElement.innerHTML = `Перетащите файл сертификата сюда или 
+                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>`;
+        }
+        this.dropArea.classList.remove('has-file');
+    }
+
+    resetFileInput() {
+        this.fileInput.value = '';
+        this.fileInput.files = null;
+    }
+
+    updateSubmitButtonState(isEnabled) {
+        this.submitButton.disabled = !isEnabled;
+        
+        if (isEnabled) {
+            this.submitButton.classList.remove('disabled');
+        } else {
+            this.submitButton.classList.add('disabled');
+        }
+    }
+
+    showError(message) {
+        let errorDiv = this.dropArea.querySelector('.error-message');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            this.dropArea.appendChild(errorDiv);
+        }
+        errorDiv.textContent = message;
+        
+        setTimeout(() => {
+            this.clearError();
+        }, 3000);
+    }
+
+    clearError() {
+        const errorDiv = this.dropArea.querySelector('.error-message');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    new CertificateUploadHandler();
 });

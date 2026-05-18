@@ -1,5 +1,5 @@
 {% extends "base.html" %} 
-{% block title %}{{ _('Обзор') }} - enPlans{% endblock%}
+{% block title %}{{ _('Обзор') }} - EnPlans{% endblock%}
 {% block content %}
 
 <div class="pers-page">
@@ -90,7 +90,7 @@
           <div class="input-with-icon"></div>
         </div>
       </div>
-      <br />
+      <br>
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('Показатель энергосбережения') }} (%)</label>
@@ -99,9 +99,8 @@
             <input
               type="text"
               value="{{ plan.energy_saving }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input-negative"
-              pattern="-?[0-9]+([\.,][0-9]+)?"
               readonly
             />
           </div>
@@ -113,9 +112,8 @@
             <input
               type="text"
               value="{{ plan.share_fuel }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
-              pattern="[0-9]+([\.,][0-9]+)?"
               readonly
             />
           </div>
@@ -129,10 +127,9 @@
             <input
               type="text"
               value="{{ plan.saving_fuel }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
               readonly
-              pattern="[0-9]+([\.,][0-9]+)?"
             />
           </div>
         </div>
@@ -143,10 +140,9 @@
             <input
               type="text"
               value="{{ plan.share_energy }}"
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
               readonly
-              pattern="[0-9]+([\.,][0-9]+)?"
             />
           </div>
         </div>

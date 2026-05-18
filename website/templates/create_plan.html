@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - enPlans{%endblock %} 
+{% extends "base.html" %} {% block title %}{{ _('Создание плана') }} - EnPlans{%endblock %} 
 {% block content %}
 
 <div class="pers-page">
@@ -43,11 +43,10 @@
               type="text"
               name="energy_saving"
               maxlength="15"
-              value="0.00"
+              value="0,00"
               required
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input-negative"
-              pattern="-?[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -60,11 +59,10 @@
               type="text"
               name="share_fuel"
               maxlength="15"
-              value="0.00"
+              value="0,00"
               required
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -79,11 +77,10 @@
               type="text"
               name="saving_fuel"
               maxlength="15"
-              value="0.00"
+              value="0,00"
               required
-              placeholder="0.00"
+              placeholder="0,00"
               class="app-numeric-input"
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
@@ -96,11 +93,10 @@
               type="text"
               name="share_energy"
               maxlength="15"
-              value="0.00"
-              placeholder="0.00"
+              value="0,00"
+              placeholder="0,00"
               class="app-numeric-input"
               required
-              pattern="[0-9]+([\.,][0-9]+)?"
               title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
