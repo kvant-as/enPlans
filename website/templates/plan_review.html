@@ -77,7 +77,6 @@
               value="{{ plan.year }}"
               placeholder=""
               class="app-input"
-              readonly
               data-current-year="{{ plan.year }}"
             />
           </div>
@@ -101,7 +100,6 @@
               value="{{ plan.energy_saving }}"
               placeholder="0,00"
               class="app-numeric-input-negative"
-              readonly
             />
           </div>
         </div>
@@ -114,7 +112,6 @@
               value="{{ plan.share_fuel }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
@@ -129,7 +126,6 @@
               value="{{ plan.saving_fuel }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
@@ -142,7 +138,6 @@
               value="{{ plan.share_energy }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
@@ -172,7 +167,7 @@
             <label>{{ _('Наименование') }}</label>
             <div class="input-with-icon">
               {{ icons.icon_org() }}
-              <input type="text" value="{{ org }}" readonly class="app-input" />
+              <input type="text" value="{{ org }}" class="app-input" />
             </div>
           </div>
           <div class="row-app-group">
@@ -183,9 +178,7 @@
                 <input
                   type="text"
                   value="{{ plan.user.organization.okpo }}"
-                  placeholder="{{ _('demo@example.com') }}"
                   class="app-input"
-                  readonly
                 />
               </div>
             </div>
@@ -197,7 +190,6 @@
                   type="text"
                   value="{{ plan.user.organization.ynp }}"
                   placeholder="Унп организации"
-                  readonly
                   class="app-input"
                 />
               </div>
@@ -211,7 +203,6 @@
               <input
                 type="text"
                 value="{{ ministry }}"
-                readonly
                 class="app-input"
               />
             </div>
@@ -224,7 +215,6 @@
               <input
                 type="text"
                 value="{{ region }}"
-                readonly
                 class="app-input"
               />
             </div>
@@ -247,7 +237,6 @@
             value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
             placeholder="{{ _('ФИО') }}"
             class="app-input"
-            readonly
           />
         </div>
       </div>
@@ -261,7 +250,6 @@
               maxlength="15"
               value="{{ plan.user.email }}"
               placeholder="{{ _('demo@example.com') }}"
-              readonly
               class="app-input"
             />
           </div>
@@ -275,7 +263,6 @@
               maxlength="15"
               value="{{ plan.user.phone }}"
               placeholder="+375.."
-              readonly
               class="app-input"
             />
           </div>

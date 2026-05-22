@@ -261,7 +261,7 @@ class PlanEvents {
         totalRow.className = 'total-row';
         totalRow.innerHTML = `
             <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'Volume').toFixed(2)}</td>
+            <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffTut').toFixed(2)}</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffRub').toFixed(2)}</td>
             <td style="text-align: end;">-</td>
@@ -293,9 +293,7 @@ class PlanEvents {
         
         const totalRow = document.createElement('tr');
         totalRow.innerHTML = `
-            <td></td>
-            <td>Всего:</td>
-            <td colspan="2"></td>
+            <td colspan="4">Всего по части 2, в том числе:</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'Volume').toFixed(2)}</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffTut').toFixed(2)}</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffRub').toFixed(2)}</td>
@@ -323,9 +321,7 @@ class PlanEvents {
         periods.forEach(period => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td></td>
-                <td>${period.name}</td>
-                <td colspan="6"></td>
+                <td colspan="8">${period.name}</td>
                 <td style="text-align: end;">${this.formatNumber(this.totalMetrics[period.eff])}</td>
                 <td></td>
                 <td style="text-align: end;">${this.formatNumber(this.totalMetrics[period.vol])}</td>

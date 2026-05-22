@@ -11,7 +11,7 @@ from flask_login import (
 from website.plans import get_filtered_plans, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import Ministry, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
 from .. import db
 
 from functools import wraps
@@ -252,6 +252,45 @@ def export():
         current_user=current_user,
         hide_header=False
     )
+    
+# @views.route('/news', methods=['GET'])
+# def news_page():
+#     return render_template(
+#         'news.html',
+#         current_user=current_user,
+#         hide_header=False
+#     )
+    
+# @views.route('/news/<int:news_id>', methods=['GET'])
+# def news_detail_page(news_id):
+#     news_item = News.query.get_or_404(news_id)
+    
+#     news_item.views_count += 1
+#     db.session.commit()
+    
+#     return render_template(
+#         'news_detail.html',
+#         current_user=current_user,
+#         news_item=news_item,
+#         hide_header=False
+#     )
+
+@views.route('/news/<int:id>', methods=['GET'])
+def news_post(id):
+    post = News.query.filter_by(id = id).first()
+    return render_template(f'news_id.html', 
+        current_user=current_user,
+        post=post
+    )
+
+@views.route('/news', methods=['GET'])
+def news():
+    all_news = News.query.order_by(News.created_at.desc()).all()
+    return render_template('news.html', 
+        current_user=current_user,
+        all_news=all_news
+    )
+
     
 @views.route('/export-to/<string:format>', methods=['POST'])
 @user_with_all_params()

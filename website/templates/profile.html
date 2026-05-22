@@ -60,7 +60,6 @@
             value="{{current_user.last_name}}"
             placeholder="{{ _('Фамилия пользователя') }}"
             class="app-input"
-            readonly
           />
         </div>
       </div>
@@ -73,7 +72,6 @@
             value="{{current_user.first_name}}"
             class="app-input"
             placeholder="{{ _('Имя пользователя') }}"
-            readonly
           />
         </div>
       </div>
@@ -87,7 +85,6 @@
           value="{{current_user.patronymic_name}}"
           placeholder="{{ _('Отчество пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -100,7 +97,6 @@
           value="{{current_user.email}}"
           placeholder="{{ _('Email пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -113,7 +109,6 @@
           value="{{current_user.phone}}"
           placeholder="Номер телефона пользователя"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -126,7 +121,6 @@
           value="{{ current_user.post }}"
           placeholder="{{ _('Должность пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -171,7 +165,6 @@
           <input
             type="text"
             value="{{ current_user.organization.name }}"
-            readonly
             class="app-input"
           />
         </div>
@@ -188,7 +181,6 @@
               id="name"
               placeholder="Номер окпо"
               value="{{ current_user.organization.okpo }}"
-              readonly
               class="app-input"
             />
           </div>
@@ -200,7 +192,6 @@
             <input
               type="text"
               value="{{ current_user.organization.ynp|default('Пусто', true) }}"
-              readonly
               class="app-input"
             />
           </div>
@@ -216,7 +207,6 @@
           <input
             type="text"
             value="{{ current_user.ministry.name }}"
-            readonly
             class="app-input"
           />
         </div>
@@ -231,7 +221,6 @@
           <input
             type="text"
             value="{{ current_user.region.name }}"
-            readonly
             class="app-input"
           />
         </div>

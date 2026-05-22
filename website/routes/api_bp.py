@@ -7,11 +7,55 @@ from website.plans import get_event_metrics
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
+from website.time import TimeByMinsk
 
-from ..models import Direction, Indicator, IndicatorUsage, Ministry, Organization, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
+
+@api_bp.route('/news', methods=['GET'])
+@login_required
+def get_news():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    news_items = News.query.filter(
+        News.is_published == True,
+        News.published_at <= TimeByMinsk()
+    ).order_by(News.published_at.desc()).paginate(page=page, per_page=per_page)
+    
+    return jsonify({
+        'news': [{
+            'id': item.id,
+            'title': item.title,
+            'content': item.content,
+            'image_url': item.image_url,
+            'published_at': item.published_at.isoformat() if item.published_at else None,
+            'views_count': item.views_count
+        } for item in news_items.items],
+        'total': news_items.total,
+        'page': news_items.page,
+        'pages': news_items.pages
+    })
+
+@api_bp.route('/news/<int:news_id>', methods=['GET'])
+@login_required
+def get_news_detail(news_id):
+    news_item = News.query.get_or_404(news_id)
+    
+    news_item.views_count += 1
+    db.session.commit()
+    
+    return jsonify({
+        'id': news_item.id,
+        'title': news_item.title,
+        'content': news_item.content,
+        'image_url': news_item.image_url,
+        'published_at': news_item.published_at.isoformat() if news_item.published_at else None,
+        'views_count': news_item.views_count,
+        'created_at': news_item.created_at.isoformat()
+    })
 
 @api_bp.route('/organizations')
 @login_required

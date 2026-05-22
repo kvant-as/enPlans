@@ -1,8 +1,13 @@
+import datetime
 import os
 from dbfread import DBF
 from flask import current_app
 import pandas as pd
 from werkzeug.security import generate_password_hash
+
+from website.time import TimeByMinsk
+
+
 
 def create_database(app, db):
     with app.app_context():
@@ -24,7 +29,7 @@ def read_dbf(file_path, columns):
 
 def filling_database(db):
     if is_db_empty():
-        from .models import User, Organization, Unit, Direction, Indicator, Ministry, Region
+        from .models import User, Organization, Unit, Direction, Indicator, Ministry, Region, News
         from sqlalchemy.exc import IntegrityError
         current_app.logger.debug('Filling is in progress...')
 
@@ -402,7 +407,6 @@ def filling_database(db):
             (16, '9916', 'Целевой показатель по доле местных ТЭР в КПТ', 1.000, True, 7, 20, False, False),
             (16, '9917', 'Целевой показатель по доле возобновляемых источников энергии в КПТ', 1.000, True, 8, 21, False, False)
         ]
-
         from website.plans import to_decimal_3
         for IdUnit, CodeIndicator, NameIndicator, CoeffToTut, IsMandatory, Group, RowN, is_local, is_renewable in indicator_data:
             indicator = Indicator(
@@ -418,6 +422,37 @@ def filling_database(db):
             )
             db.session.add(indicator)
         db.session.commit()
+        
+        news_data = [
+            ('Запущена новая версия системы EnPlans', 'Мы рады сообщить о запуске обновленной версии платформы EnPlans. Добавлены новые функции для планирования энергоэффективности, улучшен интерфейс и повышена производительность системы.', 'update_v2.jpg', True, TimeByMinsk(), 156),
+            ('Изменения в методике расчёта показателей', 'В соответствии с новыми требованиями законодательства обновлена методика расчёта ключевых показателей энергоэффективности. Просим ознакомиться с обновлениями в разделе документации.', 'methodology.jpg', True, TimeByMinsk(), 89),
+            ('Вебинар по работе с платформой', 'Приглашаем всех пользователей на бесплатный вебинар "Эффективная работа с EnPlans". Будут рассмотрены основные функции, работа с отчётами и новые возможности системы.', 'webinar.jpg', True, TimeByMinsk(), 234),
+            ('Обновление справочников', 'В систему добавлены новые единицы измерения и направления деятельности. Актуализированы справочники организаций и министерств.', 'update.jpg', True, TimeByMinsk(), 67),
+            ('Интеграция с внешними системами', 'Реализована возможность интеграции с корпоративными системами учёта энергоресурсов через API. Подробная документация доступна в разделе для разработчиков.', 'integration.jpg', True, TimeByMinsk(), 112),
+            ('Плановая техническая работа', '15 февраля с 02:00 до 06:00 будут проводиться технические работы. Система может быть временно недоступна. Приносим извинения за временные неудобства.', 'maintenance.jpg', True, TimeByMinsk(), 45),
+            ('Новые отчётные формы', 'Добавлены новые формы отчётности по энергосбережению. Обновлены шаблоны экспорта данных в Excel и PDF.', 'reports.jpg', True, TimeByMinsk(), 78),
+            ('Итоги работы за 2023 год', 'Опубликован аналитический отчёт по итогам работы системы в 2023 году. Количество активных пользователей выросло на 35%.', 'results2023.jpg', True, TimeByMinsk(), 203),
+            ('Обучение для администраторов', 'Открыта регистрация на курс повышения квалификации для администраторов системы. Обучение проводится в онлайн-формате.', 'training.jpg', False, None, 0),
+            ('Новый дизайн интерфейса', 'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 'design.jpg', True, TimeByMinsk(), 312),
+        ]
+
+        for title, content, image_url, is_published, published_at, views_count in news_data:
+            news = News(
+                title=title,
+                content=content,
+                image_url=image_url,
+                is_published=is_published,
+                published_at=published_at,
+                views_count=views_count
+            )
+            db.session.add(news)
+        db.session.commit()
+        
+        
+        
+        
+        
+        
         current_app.logger.debug('The filling is finished!')
     else:
         current_app.logger.debug('The database already contains the data!')
