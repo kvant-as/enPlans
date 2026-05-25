@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from venv import logger
 
 from flask_login import current_user
 
@@ -96,7 +97,6 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
     
     return f"{base_code}.{next_number}"
 
-    
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
         new_ticket = Ticket(
@@ -127,8 +127,6 @@ def update_ChangeTimePlan(id):
 
     db.session.commit()
 
-    
-    
 def get_plans_by_okpo():
     okpo_digit = str(current_user.organization.okpo)[-4]
     """Фильтрация по 4-ой цифре с конца OKPO: {okpo_digit}"""
@@ -584,6 +582,46 @@ def other_data_indicatorUpdate(plan_id):
         logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
         db.session.rollback()
 
+def check_and_create_period_directions(plan_id, event_type):
+    try:
+        if event_type == 'saving':
+            period_codes = ['0001', '0002', '0003', '0004']
+            is_local = True
+        else:
+            period_codes = ['0001', '0002', '0003', '0004']
+            is_local = False
+        
+        for code in period_codes:
+            direction = Direction.query.filter_by(code=code).first()
+            
+            if not direction:
+                logger.warning(f'Direction with code {code} not found')
+                continue
+            
+            existing_event = Event.query.filter_by(
+                id_plan=plan_id,
+                id_direction=direction.id,
+                is_local=is_local
+            ).first()
+            
+            if not existing_event:
+                new_event = Event(
+                    id_plan=plan_id,
+                    id_direction=direction.id,
+                    name=direction.name,
+                    is_local=is_local,
+                    is_corrected=False
+                )
+                db.session.add(new_event)
+        
+        db.session.commit()
+        logger.info(f'Period events created for plan_id={plan_id}, event_type={event_type}')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error creating period events for plan_id={plan_id}, event_type={event_type}: {str(e)}')
+        raise
+    
 def handle_draft_status(plan):
     plan.is_draft = True
     plan.is_control = plan.is_sent = plan.is_error = plan.is_approved = False

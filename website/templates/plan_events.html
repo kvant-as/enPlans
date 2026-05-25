@@ -35,14 +35,14 @@
         <thead class="main-table-titels">
           <tr>
             <th rowspan="3" class="resizable">
-              <a>№ {{ icons.icon_sort() }}</a>
+              <a>№</a>
               <div class="resizer"></div>
             </th>
-            <th rowspan="3" class="resizable">
+            <th rowspan="3" class="resizable vertical-text">
               <a>Код основных направлений энергосбережения {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
-            <th rowspan="3" class="resizable" style="min-width: 300px;">
+            <th rowspan="3" class="resizable">
               <a>Наименование мероприятия {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
@@ -62,7 +62,7 @@
               <a>Ожидаемый срок внедрения мероприятия, квартал {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
-            <th rowspan="3" class="resizable vertical-text" style="min-width: 125px">
+            <th rowspan="3" class="resizable vertical-text" style="min-width: 110px">
               <a>{{ eff_curr_label }} {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
@@ -105,7 +105,7 @@
             </th>
           </tr>
           <tr>
-            <th class="resizable vertical-text">
+            <th class="resizable vertical-text" style = "min-width: 100px;">
               <a>республиканский бюджет на финансирование госпрограммы {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
@@ -159,7 +159,7 @@
           </tr>
         </tbody>
         
-        <tr class="group-header" data-target="local-content">
+        <tr class="group-header" data-target="local-content" >
           <td colspan="18">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
@@ -182,7 +182,7 @@
             </div>
           </td>
         </tr>
-        <tbody id="other-content">
+        <tbody id="other-content" class="rows">
           <tr>
             <td colspan="18">Загрузка...</td>
           </tr>

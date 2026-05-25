@@ -733,6 +733,10 @@ var NumericInputHandler = {
             }
         } else {
             newValue = oldValue.replace(/[^\d,]/g, '');
+            if (newValue === '') {
+                input.value = '';
+                return;
+            }
         }
         
         if (newValue !== '' && newValue !== '-') {
@@ -787,7 +791,6 @@ var NumericInputHandler = {
         }
     }
 };
-
 
 NumericInputHandler.init('.app-numeric-input', {
     allowNegative: false,

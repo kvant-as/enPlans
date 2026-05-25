@@ -340,6 +340,17 @@ def filling_database(db):
 
             # ПРОЧИЕ (1900 - экономия)
             (9, '1900', 'Прочие мероприятия по повышению эффективности использования топливно-энергетических ресурсов', True, False),
+            
+            # ПРОЧИЕ
+            (None, '0001', 'Январь-Март', True, False),
+            (None, '0002', 'Январь-Июнь', True, False),
+            (None, '0003', 'Январь-Сентябрь', True, False),
+            (None, '0004', 'Январь-Декабрь', True, False),
+            
+            (None, '0001', 'Январь-Март', False, True),
+            (None, '0002', 'Январь-Июнь', False, True),
+            (None, '0003', 'Январь-Сентябрь', False, True),
+            (None, '0004', 'Январь-Декабрь', False, True)
         ]
 
         for id_unit, code, name, is_econom, is_increase in direction_data:
@@ -352,7 +363,6 @@ def filling_database(db):
             )
             db.session.add(direction)
         db.session.commit()
-
         # ### ----------- ###
 
         ### Indicator DATA ###

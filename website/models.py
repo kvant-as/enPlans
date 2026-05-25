@@ -147,7 +147,7 @@ class Direction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
-    id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
+    id_unit = db.Column(db.Integer, db.ForeignKey('units.id'))
     
     DateStart = db.Column(db.DateTime, default=TimeByMinsk())
     DateEnd = db.Column(db.DateTime)

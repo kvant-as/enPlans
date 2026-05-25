@@ -290,7 +290,6 @@ def news():
         current_user=current_user,
         all_news=all_news
     )
-
     
 @views.route('/export-to/<string:format>', methods=['POST'])
 @user_with_all_params()

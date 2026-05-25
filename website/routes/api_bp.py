@@ -3,7 +3,7 @@ from venv import logger
 from flask import current_app, g, request, jsonify, Blueprint
 from flask_login import login_required
 
-from website.plans import get_event_metrics
+from website.plans import get_event_metrics, to_decimal_2
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -276,11 +276,14 @@ def get_events_data(token):
     else:
         type_filter = Direction.is_increase == True
     
+    period_codes = ['0001', '0002', '0003', '0004']
+    
     original_events = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == False)
+        .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
     
@@ -289,31 +292,51 @@ def get_events_data(token):
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == True)
+        .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
     
-    events_original = get_event_metrics(current_plan.id, event_type, is_original=True)
-    events_included_changes = get_event_metrics(current_plan.id, event_type, is_original=False)
+    period_events = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Event.id_plan == current_plan.id)
+        .filter(type_filter)
+        .filter(Direction.code.in_(period_codes))
+        .order_by(Direction.code.asc())
+        .all())
+
+    period_metrics = {}
+    for period_event in period_events:
+        code = period_event.direction.code
+        
+        period_metrics[code] = {
+            'id': period_event.id,
+            'eff_curr_year': float(period_event.EffCurrYear) if period_event.EffCurrYear else 0,
+            'volume_fin': float(period_event.VolumeFin) if period_event.VolumeFin else 0
+        }
     
     total_metrics = {
-        'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
-        'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
-        'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
-        'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
-        'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
-        'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
-        'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
-        'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
+        'jan_mar_eff': period_metrics.get('0001', {}).get('eff_curr_year', 0),
+        'jan_mar_vol': period_metrics.get('0001', {}).get('volume_fin', 0),
+        'jan_jun_eff': period_metrics.get('0002', {}).get('eff_curr_year', 0),
+        'jan_jun_vol': period_metrics.get('0002', {}).get('volume_fin', 0),
+        'jan_sep_eff': period_metrics.get('0003', {}).get('eff_curr_year', 0),
+        'jan_sep_vol': period_metrics.get('0003', {}).get('volume_fin', 0),
+        'jan_dec_eff': period_metrics.get('0004', {}).get('eff_curr_year', 0),
+        'jan_dec_vol': period_metrics.get('0004', {}).get('volume_fin', 0)
     }
     
     def serialize_event(event):
+        unit_name = None
+        if event.direction and event.direction.unit:
+            unit_name = event.direction.unit.name
+        
         return {
             'id': event.id,
             'id_direction': event.id_direction,
-            'direction_code': event.direction.code,
-            'display_code': getattr(event, 'display_code', event.direction.code),
+            'direction_code': event.direction.code if event.direction else None,
+            'display_code': getattr(event, 'display_code', event.direction.code if event.direction else None),
             'name': event.name,
-            'unit_name': event.direction.unit.name,
+            'unit_name': unit_name,
             'Volume': float(event.Volume) if event.Volume else None,
             'EffTut': float(event.EffTut) if event.EffTut else None,
             'EffRub': float(event.EffRub) if event.EffRub else None,
@@ -338,9 +361,6 @@ def get_events_data(token):
         'event_type': event_type,
         'original_events': [serialize_event(e) for e in original_events],
         'events_with_changes': [serialize_event(e) for e in events_with_changes],
+        'period_metrics': period_metrics,
         'total_metrics': total_metrics
     })
-    
-
-    
-

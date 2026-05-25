@@ -166,6 +166,7 @@ class PlanEvents {
             if (data.success) {
                 this.originalEvents = data.original_events;
                 this.eventsWithChanges = data.events_with_changes;
+                this.periodMetrics = data.period_metrics;
                 this.totalMetrics = data.total_metrics;
                 this.directions = data.directions;
                 
@@ -181,6 +182,10 @@ class PlanEvents {
         }
     }
 
+    getPartNumber() {
+        return this.eventType === 'saving' ? '2' : '3';
+    }
+
     renderOriginalEvents() {
         const tbody = document.getElementById('non-local-content');
         if (!tbody) return;
@@ -191,7 +196,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving' 
                 ? 'Нет мероприятий по экономии ТЭР' 
                 : 'Нет мероприятий по увеличению использования местных ТЭР';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</td></tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
             return;
         }
         
@@ -213,7 +218,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving'
                 ? 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)'
                 : 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</td></tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
             return;
         }
         
@@ -290,10 +295,13 @@ class PlanEvents {
         otherContent.innerHTML = '';
         
         const allEvents = [...(this.originalEvents || []), ...(this.eventsWithChanges || [])];
+        const partNumber = this.getPartNumber();
         
         const totalRow = document.createElement('tr');
+        totalRow.className = 'total-row';
         totalRow.innerHTML = `
-            <td colspan="4">Всего по части 2, в том числе:</td>
+            <td colspan="3">Всего по части ${partNumber}, в том числе:</td>
+            <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'Volume').toFixed(2)}</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffTut').toFixed(2)}</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffRub').toFixed(2)}</td>
@@ -312,21 +320,30 @@ class PlanEvents {
         otherContent.appendChild(totalRow);
         
         const periods = [
-            { name: 'Январь-Март', eff: 'jan_mar_eff', vol: 'jan_mar_vol' },
-            { name: 'Январь-Июнь', eff: 'jan_jun_eff', vol: 'jan_jun_vol' },
-            { name: 'Январь-Сентябрь', eff: 'jan_sep_eff', vol: 'jan_sep_vol' },
-            { name: 'Январь-Декабрь', eff: 'jan_dec_eff', vol: 'jan_dec_vol' }
+            { code: '0001', name: 'Январь-Март' },
+            { code: '0002', name: 'Январь-Июнь' },
+            { code: '0003', name: 'Январь-Сентябрь' },
+            { code: '0004', name: 'Январь-Декабрь' }
         ];
         
         periods.forEach(period => {
+            const periodData = this.periodMetrics && this.periodMetrics[period.code];
+            const eventId = periodData ? periodData.id : null;
+            const effValue = periodData ? periodData.eff_curr_year : 0;
+            
             const row = document.createElement('tr');
+            row.className = 'menu-row';
+            if (eventId) {
+                row.setAttribute('data-id', eventId);
+            }
+            row.setAttribute('data-period-code', period.code);
+            row.setAttribute('data-period-name', period.name);
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
-                <td style="text-align: end;">${this.formatNumber(this.totalMetrics[period.eff])}</td>
-                <td></td>
-                <td style="text-align: end;">${this.formatNumber(this.totalMetrics[period.vol])}</td>
-                <td colspan="7"></td>
+                <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
+                <td colspan="9"></td>
             `;
+            
             otherContent.appendChild(row);
         });
     }
@@ -348,9 +365,10 @@ class PlanEvents {
                 removeUrlTemplate: '/plans/plan/delete-eventes/{id}',
                 immutableCodes: [],
                 immutableEditCodes: [],
-                immutableDeleteCodes: [],
+                immutableDeleteCodes: ['0001', '0002', '0003', '0004'],
                 codeColumnIndex: 11,
-                hideCodeColumn: true
+                hideCodeColumn: true,
+                additionalContainers: ['other-content']
             });
         }
     }
@@ -422,7 +440,6 @@ class PlanEvents {
     }
 }
 
-// EventModal class
 class EventModal {
     constructor(modalId) {
         this.modal = document.getElementById(modalId);
@@ -498,7 +515,6 @@ class EventModal {
     }
 }
 
-// TableContextMenu class
 class TableContextMenu {
     constructor(tableId, menuId, options = {}) {
         this.table = document.getElementById(tableId);
@@ -520,6 +536,7 @@ class TableContextMenu {
         this.immutableDeleteCodes = options.immutableDeleteCodes || [];
         this.codeColumnIndex = options.codeColumnIndex || 0;
         this.hideCodeColumn = options.hideCodeColumn !== false;
+        this.additionalContainers = options.additionalContainers || [];
 
         if (!this.table || !this.menu) return;
         this.init();
@@ -530,9 +547,24 @@ class TableContextMenu {
             this.hideCodeColumnInTable();
         }
 
-        this.table.querySelectorAll('tbody.rows tr.menu-row').forEach(row => {
-            row.addEventListener('contextmenu', (event) => this.onRowRightClick(event, row));
-            row.addEventListener('click', (event) => this.onRowLeftClick(event, row));
+        const selectors = ['tbody.rows tr.menu-row'];
+        this.additionalContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                selectors.push(`#${containerId} tr.menu-row`);
+                if (!container.classList.contains('rows')) {
+                    selectors.push(`#${containerId}.rows tr.menu-row`);
+                }
+            }
+        });
+        
+        selectors.forEach(selector => {
+            this.table.querySelectorAll(selector).forEach(row => {
+                row.removeEventListener('contextmenu', this.onRowRightClick.bind(this));
+                row.removeEventListener('click', this.onRowLeftClick.bind(this));
+                row.addEventListener('contextmenu', (event) => this.onRowRightClick(event, row));
+                row.addEventListener('click', (event) => this.onRowLeftClick(event, row));
+            });
         });
         
         document.addEventListener('click', (event) => {
@@ -600,6 +632,11 @@ class TableContextMenu {
     }
 
     getRowCode(row) {
+        const periodCode = row.getAttribute('data-period-code');
+        if (periodCode) {
+            return periodCode;
+        }
+        
         const cells = row.querySelectorAll('td');
         if (cells.length > this.codeColumnIndex) {
             return cells[this.codeColumnIndex].textContent.trim();
@@ -671,14 +708,26 @@ class TableContextMenu {
             this.selectedRow = row;
         }
         
-        const editEventModal = document.getElementById('EditEventModal');
-        if (editEventModal) {
-            Edit_Evente_modal();
+        const isPeriodRow = row.closest('#other-content') !== null;
+        
+        if (isPeriodRow) {
+            if (typeof Edit_Period_modal === 'function') {
+                Edit_Period_modal();
+            }
+        } else {
+            const editEventModal = document.getElementById('EditEventModal');
+            if (editEventModal) {
+                if (typeof Edit_Evente_modal === 'function') {
+                    Edit_Evente_modal();
+                }
+            }
         }
 
         const editIndicatorModal = document.getElementById('EditIndicatorModal');
         if (editIndicatorModal) {
-            Edit_indicator_modal();
+            if (typeof Edit_indicator_modal === 'function') {
+                Edit_indicator_modal();
+            }
         }
 
         this.updateButtonsState();
@@ -705,12 +754,16 @@ class TableContextMenu {
         
         const editEventModal = document.getElementById('EditEventModal');
         if (editEventModal) {
-            Edit_Evente_modal();
+            if (typeof Edit_Evente_modal === 'function') {
+                Edit_Evente_modal();
+            }
         }
 
         const editIndicatorModal = document.getElementById('EditIndicatorModal');
         if (editIndicatorModal) {
-            Edit_indicator_modal();
+            if (typeof Edit_indicator_modal === 'function') {
+                Edit_indicator_modal();
+            }
         }
         
         this.updateButtonsState();
@@ -788,7 +841,6 @@ class TableContextMenu {
     }
 }
 
-// TableCollapseManager
 const TableCollapseManager = (function() {
     let isInitialized = false;
     let groupHeaders = [];
@@ -822,6 +874,19 @@ const TableCollapseManager = (function() {
         groupHeaders.forEach(header => {
             header.style.cursor = 'pointer';
             
+            const isCollapsed = header.getAttribute('data-collapsed') === 'true';
+            const targetId = header.getAttribute('data-target');
+            const target = document.getElementById(targetId);
+            
+            if (isCollapsed && target) {
+                target.style.display = 'none';
+                const arrow = header.querySelector('.dropdown-arrow');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(-90deg)';
+                    arrow.style.transition = 'transform 0.3s ease';
+                }
+            }
+            
             header.addEventListener('click', function() {
                 toggleContent(this);
             });
@@ -839,13 +904,12 @@ const TableCollapseManager = (function() {
     return {
         init: function(options = {}) {
             if (isInitialized) {
-                console.warn('TableCollapseManager уже инициализирован');
                 return;
             }
             
             const config = {
                 autoInit: options.autoInit !== false,
-                initiallyCollapsed: options.initiallyCollapsed || [''],
+                initiallyCollapsed: options.initiallyCollapsed || [],
                 ...options
             };
             
@@ -868,7 +932,9 @@ const TableCollapseManager = (function() {
         
         collapseSection: function(sectionId) {
             const header = document.querySelector(`[data-target="${sectionId}"]`);
-            if (header) {
+            const target = document.getElementById(sectionId);
+            
+            if (header && target && target.style.display !== 'none') {
                 toggleContent(header);
             }
         },
@@ -877,10 +943,8 @@ const TableCollapseManager = (function() {
             const header = document.querySelector(`[data-target="${sectionId}"]`);
             const target = document.getElementById(sectionId);
             
-            if (header && target) {
-                target.style.display = 'table-row-group';
-                const arrow = header.querySelector('.dropdown-arrow');
-                if (arrow) arrow.style.transform = 'rotate(0deg)';
+            if (header && target && target.style.display === 'none') {
+                toggleContent(header);
             }
         },
         
@@ -926,7 +990,6 @@ const TableCollapseManager = (function() {
     };
 })();
 
-// status row for plan progress
 const STATUS_CONFIG = {
     'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)' },
     'plan-cont-control': { width: '40%', color: 'var(--color-controled)' },
@@ -977,53 +1040,6 @@ function initStatusProgress() {
     });
 }
 
-// Helper functions for modals
-function Edit_Evente_modal() {
-    const EditEventModal = document.getElementById('EditEventModal');
-    if (!EditEventModal) return;
-
-    const activeRow = document.querySelector('.rows .active-row');
-    if (!activeRow) return;
-
-    const idEvent = activeRow.getAttribute('data-id');
-    if (!idEvent) return;
-
-    showLoadingIndicator(true);
-    fetch(`/api/get-event/${idEvent}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) throw new Error(data.error);
-
-            setValueIfExists('change-name-edit-model', data.name || '');
-            setValueIfExists('change-Volume-edit-model', data.Volume || '');
-            setValueIfExists('change-EffTut-edit-model', data.EffTut || '');
-            setValueIfExists('change-EffRub-edit-model', data.EffRub || '');
-            setValueIfExists('change-ExpectedQuarter-edit-model', data.ExpectedQuarter || '');
-            setValueIfExists('change-EffCurrYear-edit-model', data.EffCurrYear || '');
-            setValueIfExists('change-Payback-edit-model', data.Payback || '');
-            setValueIfExists('change-VolumeFin-edit-model', data.VolumeFin || '');
-            setValueIfExists('change-BudgetState-edit-model', data.BudgetState || '');
-            setValueIfExists('change-BudgetRep-edit-model', data.BudgetRep || '');
-            setValueIfExists('change-BudgetLoc-edit-model', data.BudgetLoc || '');
-            setValueIfExists('change-BudgetOther-edit-model', data.BudgetOther || '');
-            setValueIfExists('change-MoneyOwn-edit-model', data.MoneyOwn || '');
-            setValueIfExists('change-MoneyLoan-edit-model', data.MoneyLoan || '');
-            setValueIfExists('change-MoneyOther-edit-model', data.MoneyOther || '');
-            
-            const form = document.getElementById('editEventeForm');
-            if (form) {
-                form.action = `/plans/plan/edit-event/${idEvent}`;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching Evente data:', error);
-            alert('Ошибка при загрузке данных мероприятия: ' + error.message);
-        })
-        .finally(() => {
-            showLoadingIndicator(false);
-        });
-}
-
 function Edit_indicator_modal() {
     const EditIndicatorModal = document.getElementById('EditIndicatorModal');
     if (!EditIndicatorModal) return;
@@ -1056,7 +1072,6 @@ function Edit_indicator_modal() {
     const qYearCurrInput = qYearCurrNoDisplay ? qYearCurrNoDisplay.querySelector('input') : null;
     const QYearBeforePrevInput = QYearBeforePrevNoDisplay ? QYearBeforePrevNoDisplay.querySelector('input') : null;
 
-    showLoadingIndicator(true);
 
     fetch(`/api/get-indicator/${idIndicator}`)
         .then(response => response.json())
@@ -1206,88 +1221,7 @@ function Edit_indicator_modal() {
             alert('Ошибка при загрузке данных: ' + error.message);
         })
         .finally(() => {
-            showLoadingIndicator(false);
         });
-}
-
-function updateEditTutResults() {
-    let currentCoeff = null;
-    const coeffTypeRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"]:checked');
-    
-    if (!coeffTypeRadio) return;
-    
-    const coeffType = coeffTypeRadio.value;
-    
-    if (coeffType === 'standard') {
-        const coeffSpan = document.getElementById('edit-standard-coeff-value');
-        if (coeffSpan) {
-            let coeffText = coeffSpan.textContent.replace(',', '.');
-            currentCoeff = parseFloat(coeffText);
-        }
-    } else {
-        const customInput = document.getElementById('edit-custom-coeff');
-        if (customInput && customInput.value) {
-            let customText = customInput.value.replace(',', '.');
-            currentCoeff = parseFloat(customText);
-        } else {
-            currentCoeff = 0;
-        }
-    }
-    
-    if (currentCoeff === null || isNaN(currentCoeff)) {
-        currentCoeff = 0;
-    }
-    
-    const activeRow = document.querySelector('.rows .active-row');
-    let indicatorCode = '';
-    if (activeRow) {
-        const codeCell = activeRow.querySelector('td:nth-child(12)');
-        if (codeCell) {
-            indicatorCode = codeCell.textContent.trim();
-        }
-    }
-    
-    const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
-    
-    if (isCodes9911to9914) {
-        const currentInput = document.getElementById('QYearCurrent-edit');
-        const resultSpan = document.getElementById('edit-result-current');
-        
-        if (currentInput && resultSpan && currentInput.value) {
-            let inputValue = currentInput.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) {
-                value = 0;
-            }
-            const tutValue = value * currentCoeff;
-            let formattedResult = tutValue.toFixed(2).replace('.', ',');
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        }
-    } else {
-        const inputs = [
-            { id: 'QYearBeforePrev-edit', resultId: 'edit-result-before', isVisible: document.getElementById('QYearBeforePrev-edit-nodisplay')?.style.display !== 'none' },
-            { id: 'QYearCurr-edit', resultId: 'edit-result-prev', isVisible: document.getElementById('QYearCurr-edit-nodisplay')?.style.display !== 'none' },
-            { id: 'QYearCurrent-edit', resultId: 'edit-result-current', isVisible: document.getElementById('QYearCurrent-edit-nodisplay')?.style.display !== 'none' }
-        ];
-        
-        inputs.forEach(function(item) {
-            if (item.isVisible) {
-                const input = document.getElementById(item.id);
-                const resultSpan = document.getElementById(item.resultId);
-                
-                if (input && resultSpan && input.value) {
-                    let inputValue = input.value.replace(',', '.');
-                    let value = parseFloat(inputValue);
-                    if (isNaN(value)) {
-                        value = 0;
-                    }
-                    const tutValue = value * currentCoeff;
-                    let formattedResult = tutValue.toFixed(2).replace('.', ',');
-                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-                }
-            }
-        });
-    }
 }
 
 function updateEditTutResults() {
@@ -1368,56 +1302,140 @@ function updateEditTutResults() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const editStandardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
-    const editCustomRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="custom"]');
-    const editCustomCoeffGroup = document.getElementById('edit-custom-coeff-group');
-    const editCustomCoeffInput = document.getElementById('edit-custom-coeff');
+function Edit_Evente_modal() {
+    const EditEventModal = document.getElementById('EditEventModal');
+    if (!EditEventModal) return;
+
+    let activeRow = document.querySelector('.rows .active-row');
     
-    if (editStandardRadio && editCustomRadio) {
-        editStandardRadio.addEventListener('change', function() {
-            if (this.checked) {
-                editCustomCoeffGroup.style.display = 'none';
-                updateEditTutResults();
+    if (!activeRow) {
+        const allRowsContainers = document.querySelectorAll('.rows');
+        for (const container of allRowsContainers) {
+            const row = container.querySelector('.active-row');
+            if (row) {
+                activeRow = row;
+                break;
             }
-        });
-        
-        editCustomRadio.addEventListener('change', function() {
-            if (this.checked) {
-                editCustomCoeffGroup.style.display = 'block';
-                updateEditTutResults();
-            }
-        });
-    }
-    
-    if (editCustomCoeffInput) {
-        editCustomCoeffInput.addEventListener('input', function() {
-            updateEditTutResults();
-        });
-    }
-    
-    const editValueInputs = ['QYearBeforePrev-edit', 'QYearCurr-edit', 'QYearCurrent-edit'];
-    editValueInputs.forEach(function(id) {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('input', function() {
-                updateEditTutResults();
-            });
         }
-    });
-});
+    }
+    
+    if (!activeRow) return;
+    
+    const idEvent = activeRow.getAttribute('data-id');
+    if (!idEvent) return;
+
+    const modalTitle = document.getElementById('modal-title');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const periodStep = document.getElementById('period-step');
+    const editType = document.getElementById('edit-event-type');
+    const nextButton = document.getElementById('step1-next-btn');
+    const progressContainer = document.querySelector('.progress-modal-bar-container');
+    
+    const periodCode = activeRow.getAttribute('data-period-code');
+    const isPeriod = periodCode && ['0001', '0002', '0003', '0004'].includes(periodCode);
+    
+    if (isPeriod) {
+        if (modalTitle) modalTitle.textContent = 'Редактирование периода';
+        
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'none';
+        if (periodStep) periodStep.style.display = 'block';
+        if (progressContainer) progressContainer.style.display = 'none';
+        
+        if (editType) editType.value = 'period';
+        
+        const periodName = activeRow.getAttribute('data-period-name') || 
+                          activeRow.querySelector('td:first-child')?.textContent.trim() || 
+                          getPeriodNameByCode(periodCode);
+        
+        const periodNameInput = document.getElementById('period-name-display');
+        if (periodNameInput) {
+            periodNameInput.value = periodName;
+        }
+        
+        fetch(`/api/get-event/${idEvent}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                
+                const effCurrYearInput = document.getElementById('period-EffCurrYear-edit');
+                if (effCurrYearInput) {
+                    const value = data.EffCurrYear || 0;
+                    effCurrYearInput.value = value.toFixed(2).replace('.', ',');
+                }
+                
+                const form = document.getElementById('editEventeForm');
+                if (form) {
+                    form.action = `/plans/plan/edit-event/${idEvent}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching period data:', error);
+                alert('Ошибка при загрузке данных периода: ' + error.message);
+            });
+    } else {
+        if (modalTitle) modalTitle.textContent = 'Редактирование мероприятия';
+        
+        if (step1) step1.style.display = 'block';
+        if (step2) step2.style.display = 'none';
+        if (periodStep) periodStep.style.display = 'none';
+        if (progressContainer) progressContainer.style.display = '';
+        
+        if (editType) editType.value = 'full';
+        
+        if (nextButton) nextButton.disabled = true;
+        
+        fetch(`/api/get-event/${idEvent}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+
+                setValueIfExists('change-name-edit-model', data.name || '');
+                setValueIfExists('change-Volume-edit-model', data.Volume || '');
+                setValueIfExists('change-EffTut-edit-model', data.EffTut || '');
+                setValueIfExists('change-EffRub-edit-model', data.EffRub || '');
+                setValueIfExists('change-ExpectedQuarter-edit-model', data.ExpectedQuarter || '');
+                setValueIfExists('change-EffCurrYear-edit-model', data.EffCurrYear || '');
+                setValueIfExists('change-Payback-edit-model', data.Payback || '');
+                setValueIfExists('change-VolumeFin-edit-model', data.VolumeFin || '');
+                setValueIfExists('change-BudgetState-edit-model', data.BudgetState || '');
+                setValueIfExists('change-BudgetRep-edit-model', data.BudgetRep || '');
+                setValueIfExists('change-BudgetLoc-edit-model', data.BudgetLoc || '');
+                setValueIfExists('change-BudgetOther-edit-model', data.BudgetOther || '');
+                setValueIfExists('change-MoneyOwn-edit-model', data.MoneyOwn || '');
+                setValueIfExists('change-MoneyLoan-edit-model', data.MoneyLoan || '');
+                setValueIfExists('change-MoneyOther-edit-model', data.MoneyOther || '');
+                
+                const form = document.getElementById('editEventeForm');
+                if (form) {
+                    form.action = `/plans/plan/edit-event/${idEvent}`;
+                }
+                
+                if (nextButton) nextButton.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error fetching Event data:', error);
+                alert('Ошибка при загрузке данных мероприятия: ' + error.message);
+                if (nextButton) nextButton.disabled = false;
+            });
+    }
+}
+
+function getPeriodNameByCode(code) {
+    const periodNames = {
+        '0001': 'Январь-Март',
+        '0002': 'Январь-Июнь',
+        '0003': 'Январь-Сентябрь',
+        '0004': 'Январь-Декабрь'
+    };
+    return periodNames[code] || 'Период';
+}
 
 function setValueIfExists(elementId, value) {
     const element = document.getElementById(elementId);
     if (element) {
         element.value = value;
-    }
-}
-
-function showLoadingIndicator(show) {
-    const loader = document.getElementById('loading-indicator');
-    if (loader) {
-        loader.style.display = show ? 'block' : 'none';
     }
 }
 
@@ -1475,8 +1493,18 @@ function validateAndEnableButton() {
     
     const editModal = document.getElementById('EditEventModal');
     if (editModal && editModal.style.display !== 'none') {
+        const editType = document.getElementById('edit-event-type')?.value;
+        
+        if (editType === 'period') {
+            const editButton = editModal.querySelector('#step1-next-btn');
+            if (editButton) {
+                editButton.disabled = false;
+            }
+            return;
+        }
+        
         const editFields = editModal.querySelectorAll('#step1 [name="name"], #step1 [name="Volume"], #step1 [name="ExpectedQuarter"]');
-        const editButton = editModal.querySelector('#step1-next-btn[data-action="next-step-2"]');
+        const editButton = editModal.querySelector('#step1-next-btn');
         
         if (editFields.length === 3 && editButton) {
             const allFilled = Array.from(editFields).every(field => {
@@ -1491,7 +1519,232 @@ function validateAndEnableButton() {
     }
 }
 
-// Инициализация при загрузке страницы
+function updateTutResults() {
+    let currentCoeff = null;
+    const coeffTypeRadio = document.querySelector('input[name="coeff_type"]:checked');
+    
+    if (!coeffTypeRadio) return;
+    
+    const coeffType = coeffTypeRadio.value;
+    
+    if (coeffType === 'standard') {
+        const coeffSpan = document.getElementById('standard-coeff-value');
+        if (coeffSpan) {
+            let coeffText = coeffSpan.textContent.replace(',', '.');
+            currentCoeff = parseFloat(coeffText);
+        }
+    } else {
+        const customInput = document.querySelector('input[name="custom_coeff"]');
+        if (customInput && customInput.value) {
+            let customText = customInput.value.replace(',', '.');
+            currentCoeff = parseFloat(customText);
+        } else {
+            currentCoeff = 0;
+        }
+    }
+    
+    if (currentCoeff === null || isNaN(currentCoeff)) {
+        currentCoeff = 0;
+    }
+    
+    const years = ['before', 'prev', 'current'];
+    years.forEach(function(year) {
+        const input = document.querySelector(`input[data-year="${year}"]`);
+        const resultSpan = document.getElementById(`result-${year}`);
+        
+        if (input && resultSpan) {
+            let inputValue = input.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) {
+                value = 0;
+            }
+            const tutValue = value * currentCoeff;
+            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        }
+    });
+}
+
+function checkCategoryRequired() {
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const categorySection = document.getElementById('category-section');
+    const submitBtn = document.getElementById('submit-indicator-btn');
+    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    
+    if (!selectedIndicatorName || !categorySection) return;
+    
+    const indicatorText = selectedIndicatorName.textContent;
+    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        
+        function validateCategory() {
+            const isChecked = Array.from(categoryRadios).some(radio => radio.checked);
+            if (submitBtn) {
+                submitBtn.disabled = !isChecked;
+            }
+        }
+        
+        categoryRadios.forEach(radio => {
+            radio.removeEventListener('change', validateCategory);
+            radio.addEventListener('change', validateCategory);
+        });
+        
+        validateCategory();
+    } else {
+        categorySection.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
+}
+
+class CertificateUploadHandler {
+    constructor() {
+        this.form = document.getElementById('sentForm');
+        this.dropArea = document.getElementById('drop-certificate-area');
+        this.fileInput = document.getElementById('certificate-to-check');
+        this.submitButton = document.getElementById('submit-sent-button');
+        
+        this.init();
+    }
+
+    init() {
+        if (!this.form || !this.dropArea || !this.fileInput || !this.submitButton) {
+            console.error('Required elements not found');
+            return;
+        }
+
+        this.bindEvents();
+        this.updateSubmitButtonState(false);
+    }
+
+    bindEvents() {
+        this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
+        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        
+        this.dropArea.addEventListener('click', (e) => {
+            if (e.target === this.dropArea || e.target.closest('.drop-certificate-content')) {
+                e.preventDefault();
+                this.fileInput.click();
+            }
+        });
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        this.dropArea.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this.dropArea.classList.remove('drag-over');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        this.dropArea.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.fileInput.files = files;
+            this.processFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+
+    processFile(file) {
+        this.clearError();
+
+        if (!this.isValidFile(file)) {
+            this.showError('Неверный формат файла. Разрешены только файлы .cer');
+            this.resetFileInput();
+            this.resetFileDisplay();
+            this.updateSubmitButtonState(false);
+            return;
+        }
+
+        this.showFileDisplay(file.name);
+        this.updateSubmitButtonState(true);
+    }
+
+    isValidFile(file) {
+        const fileName = file.name.toLowerCase();
+        return fileName.endsWith('.cer');
+    }
+
+    showFileDisplay(fileName) {
+        const textElement = this.dropArea.querySelector('.drop-certificate-text');
+        if (textElement) {
+            textElement.innerHTML = `<strong>${this.escapeHtml(fileName)}</strong>`;
+        }
+        this.dropArea.classList.add('has-file');
+    }
+
+    resetFileDisplay() {
+        const textElement = this.dropArea.querySelector('.drop-certificate-text');
+        if (textElement) {
+            textElement.innerHTML = `Перетащите файл сертификата сюда или 
+                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>`;
+        }
+        this.dropArea.classList.remove('has-file');
+    }
+
+    resetFileInput() {
+        this.fileInput.value = '';
+        this.fileInput.files = null;
+    }
+
+    updateSubmitButtonState(isEnabled) {
+        this.submitButton.disabled = !isEnabled;
+        
+        if (isEnabled) {
+            this.submitButton.classList.remove('disabled');
+        } else {
+            this.submitButton.classList.add('disabled');
+        }
+    }
+
+    showError(message) {
+        let errorDiv = this.dropArea.querySelector('.error-message');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            this.dropArea.appendChild(errorDiv);
+        }
+        errorDiv.textContent = message;
+        
+        setTimeout(() => {
+            this.clearError();
+        }, 3000);
+    }
+
+    clearError() {
+        const errorDiv = this.dropArea.querySelector('.error-message');
+        if (errorDiv) {
+            errorDiv.remove();
+        }
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('.plan-cont')) {
         initStatusProgress();
@@ -1551,7 +1804,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (document.getElementById('controlPlanButton')) {
-        const button = document.getElementById('controlPlanButton');
         const form = document.getElementById('controlPlanForm');
         const planType = form?.dataset?.planType;
         
@@ -1748,324 +2000,4 @@ document.addEventListener('DOMContentLoaded', function() {
     if (orgUserModal) {
         handleModal(orgUserModal, document.getElementById('orgUserbutton'), orgUserModal.querySelector('.close'));
     }
-});
-
-function updateTutResults() {
-    let currentCoeff = null;
-    const coeffTypeRadio = document.querySelector('input[name="coeff_type"]:checked');
-    
-    if (!coeffTypeRadio) return;
-    
-    const coeffType = coeffTypeRadio.value;
-    
-    if (coeffType === 'standard') {
-        const coeffSpan = document.getElementById('standard-coeff-value');
-        if (coeffSpan) {
-            let coeffText = coeffSpan.textContent.replace(',', '.');
-            currentCoeff = parseFloat(coeffText);
-        }
-    } else {
-        const customInput = document.querySelector('input[name="custom_coeff"]');
-        if (customInput && customInput.value) {
-            let customText = customInput.value.replace(',', '.');
-            currentCoeff = parseFloat(customText);
-        } else {
-            currentCoeff = 0;
-        }
-    }
-    
-    if (currentCoeff === null || isNaN(currentCoeff)) {
-        currentCoeff = 0;
-    }
-    
-    const years = ['before', 'prev', 'current'];
-    years.forEach(function(year) {
-        const input = document.querySelector(`input[data-year="${year}"]`);
-        const resultSpan = document.getElementById(`result-${year}`);
-        
-        if (input && resultSpan) {
-            let inputValue = input.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) {
-                value = 0;
-            }
-            const tutValue = value * currentCoeff;
-            let formattedResult = tutValue.toFixed(2).replace('.', ',');
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        }
-    });
-}
-
-function checkCategoryRequired() {
-    const selectedIndicatorName = document.getElementById('selected-indicator-name');
-    const categorySection = document.getElementById('category-section');
-    const submitBtn = document.getElementById('submit-indicator-btn');
-    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
-    
-    if (!selectedIndicatorName || !categorySection) return;
-    
-    const indicatorText = selectedIndicatorName.textContent;
-    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
-    
-    if (isCategoryRequired) {
-        categorySection.style.display = 'block';
-        
-        function validateCategory() {
-            const isChecked = Array.from(categoryRadios).some(radio => radio.checked);
-            if (submitBtn) {
-                submitBtn.disabled = !isChecked;
-            }
-        }
-        
-        categoryRadios.forEach(radio => {
-            radio.removeEventListener('change', validateCategory);
-            radio.addEventListener('change', validateCategory);
-        });
-        
-        validateCategory();
-    } else {
-        categorySection.style.display = 'none';
-        if (submitBtn) {
-            submitBtn.disabled = false;
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const standardRadio = document.querySelector('input[name="coeff_type"][value="standard"]');
-    const customRadio = document.querySelector('input[name="coeff_type"][value="custom"]');
-    const customCoeffGroup = document.getElementById('custom-coeff-group');
-    const standardCoeffSpan = document.getElementById('standard-coeff-value');
-    const selectedIndicatorDisplay = document.getElementById('selected-indicator-display');
-    const selectedIndicatorName = document.getElementById('selected-indicator-name');
-    
-    if (standardRadio && customRadio) {
-        standardRadio.addEventListener('change', function() {
-            if (this.checked) {
-                customCoeffGroup.style.display = 'none';
-                updateTutResults();
-            }
-        });
-        
-        customRadio.addEventListener('change', function() {
-            if (this.checked) {
-                customCoeffGroup.style.display = 'block';
-                updateTutResults();
-            }
-        });
-    }
-    
-    const customCoeffInput = document.querySelector('input[name="custom_coeff"]');
-    if (customCoeffInput) {
-        customCoeffInput.addEventListener('input', function() {
-            updateTutResults();
-        });
-    }
-    
-    const valueInputs = document.querySelectorAll('.app-numeric-input[data-year]');
-    valueInputs.forEach(function(input) {
-        input.addEventListener('input', function() {
-            updateTutResults();
-        });
-    });
-    
-    const tableBody = document.querySelector('[data-action="modal-table-main"] tbody');
-    if (tableBody) {
-        tableBody.addEventListener('click', function(e) {
-            const row = e.target.closest('tr');
-            if (!row || row.classList.contains('no-results-row')) return;
-            
-            const coeffCell = row.cells[row.cells.length - 1];
-            const unitCell = row.cells[row.cells.length - 2];
-            const nameCell = row.cells[2];
-            const codeCell = row.cells[1];
-            let coeffText = coeffCell ? coeffCell.textContent.trim() : '0';
-            let selectedCoeff = parseFloat(coeffText.replace(',', '.'));
-            const unitName = unitCell ? unitCell.textContent.trim() : 'ед. изм.';
-            const indicatorName = nameCell ? nameCell.textContent.trim() : '';
-            const indicatorCode = codeCell ? codeCell.textContent.trim() : '';
-            
-            const unitSpans = document.querySelectorAll('#unit-name-before, #unit-name-prev, #unit-name-current');
-            unitSpans.forEach(function(span) {
-                span.textContent = unitName;
-            });
-            
-            const displayName = indicatorCode + ' - ' + indicatorName;
-            if (selectedIndicatorName && displayName) {
-                selectedIndicatorName.textContent = displayName;
-                selectedIndicatorDisplay.style.display = 'flex';
-            }
-            
-            if (standardCoeffSpan && selectedCoeff !== null && !isNaN(selectedCoeff)) {
-                let formattedCoeff = selectedCoeff.toFixed(3).replace('.', ',');
-                standardCoeffSpan.textContent = formattedCoeff;
-            }
-            
-            if (standardRadio) {
-                standardRadio.checked = true;
-                if (customCoeffGroup) {
-                    customCoeffGroup.style.display = 'none';
-                }
-                if (customCoeffInput) {
-                    customCoeffInput.value = '';
-                }
-            }
-            
-            window.selectedIndicatorCoeff = selectedCoeff;
-            window.selectedIndicatorCode = indicatorCode;
-            updateTutResults();
-            checkCategoryRequired();
-        });
-    }
-    
-    updateTutResults();
-});
-
-class CertificateUploadHandler {
-    constructor() {
-        this.form = document.getElementById('sentForm');
-        this.dropArea = document.getElementById('drop-certificate-area');
-        this.fileInput = document.getElementById('certificate-to-check');
-        this.submitButton = document.getElementById('submit-sent-button');
-        
-        this.init();
-    }
-
-    init() {
-        if (!this.form || !this.dropArea || !this.fileInput || !this.submitButton) {
-            console.error('Required elements not found');
-            return;
-        }
-
-        this.bindEvents();
-        this.updateSubmitButtonState(false);
-    }
-
-    bindEvents() {
-        this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
-        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        
-        this.dropArea.addEventListener('click', (e) => {
-            if (e.target === this.dropArea || e.target.closest('.drop-certificate-content')) {
-                e.preventDefault();
-                this.fileInput.click();
-            }
-        });
-    }
-
-    handleDragOver(e) {
-        e.preventDefault();
-        this.dropArea.classList.add('drag-over');
-    }
-
-    handleDragLeave(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.fileInput.files = files;
-            this.processFile(files[0]);
-        }
-    }
-
-    handleFileSelect(e) {
-        const files = e.target.files;
-        if (files.length > 0) {
-            this.processFile(files[0]);
-        }
-    }
-
-    processFile(file) {
-        this.clearError();
-
-        if (!this.isValidFile(file)) {
-            this.showError('Неверный формат файла. Разрешены только файлы .cer');
-            this.resetFileInput();
-            this.resetFileDisplay();
-            this.updateSubmitButtonState(false);
-            return;
-        }
-
-        this.showFileDisplay(file.name);
-        this.updateSubmitButtonState(true);
-    }
-
-    isValidFile(file) {
-        const fileName = file.name.toLowerCase();
-        return fileName.endsWith('.cer');
-    }
-
-    showFileDisplay(fileName) {
-        const textElement = this.dropArea.querySelector('.drop-certificate-text');
-        if (textElement) {
-            textElement.innerHTML = `<strong>${this.escapeHtml(fileName)}</strong>`;
-        }
-        this.dropArea.classList.add('has-file');
-    }
-
-    resetFileDisplay() {
-        const textElement = this.dropArea.querySelector('.drop-certificate-text');
-        if (textElement) {
-            textElement.innerHTML = `Перетащите файл сертификата сюда или 
-                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>`;
-        }
-        this.dropArea.classList.remove('has-file');
-    }
-
-    resetFileInput() {
-        this.fileInput.value = '';
-        this.fileInput.files = null;
-    }
-
-    updateSubmitButtonState(isEnabled) {
-        this.submitButton.disabled = !isEnabled;
-        
-        if (isEnabled) {
-            this.submitButton.classList.remove('disabled');
-        } else {
-            this.submitButton.classList.add('disabled');
-        }
-    }
-
-    showError(message) {
-        let errorDiv = this.dropArea.querySelector('.error-message');
-        if (!errorDiv) {
-            errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            this.dropArea.appendChild(errorDiv);
-        }
-        errorDiv.textContent = message;
-        
-        setTimeout(() => {
-            this.clearError();
-        }, 3000);
-    }
-
-    clearError() {
-        const errorDiv = this.dropArea.querySelector('.error-message');
-        if (errorDiv) {
-            errorDiv.remove();
-        }
-    }
-
-    escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    new CertificateUploadHandler();
 });

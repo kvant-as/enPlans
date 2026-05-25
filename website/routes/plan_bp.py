@@ -6,7 +6,7 @@ from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
+from website.plans import check_and_create_period_directions, generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -358,13 +358,21 @@ def plan_event(event_type, token):
     
     current_plan = g.current_plan
     
+    period_codes = ['0001', '0002', '0003', '0004']
+
     if event_type == 'saving':
         type_filter = Direction.is_econom == True
-        directions = Direction.query.filter(Direction.is_econom == True).order_by(Direction.id.asc()).all()
+        directions = Direction.query.filter(
+            Direction.is_econom == True,
+            Direction.code.notin_(period_codes)
+        ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по экономии ТЭР"
     else:
         type_filter = Direction.is_increase == True
-        directions = Direction.query.filter(Direction.is_increase == True).order_by(Direction.id.asc()).all()
+        directions = Direction.query.filter(
+            Direction.is_increase == True,
+            Direction.code.notin_(period_codes)
+        ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
     
     has_original_events = Event.query.filter(
@@ -431,12 +439,14 @@ def create_event(token):
     
     event_type = request.form.get('event_type') or 'saving'
     
-    display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
-    
-    is_corrected = current_plan.audit_time is not None
-    
     try:
-        new_Event = Event(
+        check_and_create_period_directions(current_plan.id, event_type)
+        
+        display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
+        
+        is_corrected = current_plan.audit_time is not None
+        
+        new_event = Event(
             id_direction=id_direction,
             id_plan=current_plan.id,
             display_code=display_code,
@@ -458,26 +468,20 @@ def create_event(token):
             is_corrected=is_corrected
         )
         
-        db.session.add(new_Event)
+        db.session.add(new_event)
         db.session.commit()
         
         other_data_indicatorUpdate(current_plan.id) 
         flash('Мероприятие добавлено', 'success')
-        logger.debug(f'Event created successfully: id={new_Event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
+        logger.debug(f'Event created successfully: id={new_event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
         
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        logger.error(f'Database error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
-        flash('Ошибка базы данных при добавлении мероприятия', 'error')
-        
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Unexpected error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
-        flash('Непредвиденная ошибка при добавлении мероприятия', 'error')
-    
-    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
+        logger.error(f'Error creating event for plan_id={current_plan.id}: {str(e)}')
+        flash('Ошибка при добавлении мероприятия', 'error')
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
 
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
@@ -502,64 +506,77 @@ def delete_eventes(id):
 @session_required
 def edit_Eventes(id):
     try:
+        logger.info(f'Начало редактирования мероприятия с id={id}')
+        
         current_Event = Event.query.get(id)
         if not current_Event:
+            logger.warning(f'Мероприятие с id={id} не найдено')
             flash('Мероприятие не найдено', 'error')
             return redirect(url_for('main.index'))
         
         current_plan = Plan.query.get(current_Event.id_plan)
         if not current_plan:
+            logger.warning(f'План с id={current_Event.id_plan} не найден для мероприятия {id}')
             flash('План не найден', 'error')
             return redirect(url_for('main.index'))
         
         event_type = request.form.get('event_type') or 'saving'
+        logger.debug(f'Тип мероприятия: {event_type}, план: {current_plan.token}')
         
-        name = request.form.get('name') or None
-
-        Volume_value = request.form.get('Volume')
-        ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-        Payback = to_decimal_2(request.form.get('Payback'))
-
-        EffTut = to_decimal_2(request.form.get('EffTut'))
-        EffRub = to_decimal_2(request.form.get('EffRub'))
-        EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+        edit_type = request.form.get('edit_type') or 'full'
         
-        VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-        BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-        BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-        BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-        BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-        MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-        MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-        MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
+        if edit_type == 'period':
+            EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+            current_Event.EffCurrYear = EffCurrYear
+            logger.info(f'Обновлено только поле EffCurrYear для мероприятия {id}: {EffCurrYear}')
+        else:
+            name = request.form.get('name') or None
+            Volume_value = request.form.get('Volume')
+            ExpectedQuarter_value = request.form.get('ExpectedQuarter')
+            Payback = to_decimal_2(request.form.get('Payback'))
+            EffTut = to_decimal_2(request.form.get('EffTut'))
+            EffRub = to_decimal_2(request.form.get('EffRub'))
+            EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+            VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
+            BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+            BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+            BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+            BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+            MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+            MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+            MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
 
-        Volume = int(float(Volume_value)) if Volume_value else None
-        ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
-        
-        current_Event.name = name
-        current_Event.Volume = Volume
-        current_Event.ExpectedQuarter = ExpectedQuarter
-        current_Event.EffTut = EffTut
-        current_Event.EffRub = EffRub
-        current_Event.EffCurrYear = EffCurrYear
-        current_Event.Payback = Payback
-        current_Event.VolumeFin = VolumeFin
-        current_Event.BudgetState = BudgetState
-        current_Event.BudgetRep = BudgetRep
-        current_Event.BudgetLoc = BudgetLoc
-        current_Event.BudgetOther = BudgetOther
-        current_Event.MoneyOwn = MoneyOwn
-        current_Event.MoneyLoan = MoneyLoan
-        current_Event.MoneyOther = MoneyOther
+            Volume = int(float(Volume_value)) if Volume_value else None
+            ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
+            
+            current_Event.name = name
+            current_Event.Volume = Volume
+            current_Event.ExpectedQuarter = ExpectedQuarter
+            current_Event.EffTut = EffTut
+            current_Event.EffRub = EffRub
+            current_Event.EffCurrYear = EffCurrYear
+            current_Event.Payback = Payback
+            current_Event.VolumeFin = VolumeFin
+            current_Event.BudgetState = BudgetState
+            current_Event.BudgetRep = BudgetRep
+            current_Event.BudgetLoc = BudgetLoc
+            current_Event.BudgetOther = BudgetOther
+            current_Event.MoneyOwn = MoneyOwn
+            current_Event.MoneyLoan = MoneyLoan
+            current_Event.MoneyOther = MoneyOther
+            logger.info(f'Обновлены все поля для мероприятия {id}')
 
         db.session.commit()
         flash('Мероприятие изменено', 'success')
 
-        other_data_indicatorUpdate(current_plan.id)  
+        other_data_indicatorUpdate(current_plan.id)
+        logger.debug(f'Обновлены индикаторы для плана {current_plan.id}')
+        
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
     
     except Exception as e:
         db.session.rollback()
+        logger.error(f'Ошибка при редактировании мероприятия {id}: {str(e)}', exc_info=True)
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
         return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
 
