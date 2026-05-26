@@ -6,7 +6,7 @@ from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import check_and_create_period_directions, generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
+from website.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -392,9 +392,7 @@ def plan_event(event_type, token):
                         event_type=event_type,
                         plan=current_plan, 
                         hide_header=False,
-                        add_event_modal=True,
                         confirmModal=True,
-                        edit_event_modal=True,
                         directions=directions,
                         sentmodal=current_plan.is_control,
                         context_menu=True,
@@ -508,25 +506,33 @@ def edit_Eventes(id):
     try:
         logger.info(f'Начало редактирования мероприятия с id={id}')
         
+        logger.debug(f'Все POST данные: {dict(request.form)}')
+        
         current_Event = Event.query.get(id)
         if not current_Event:
             logger.warning(f'Мероприятие с id={id} не найдено')
             flash('Мероприятие не найдено', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(request.referrer)
         
         current_plan = Plan.query.get(current_Event.id_plan)
         if not current_plan:
             logger.warning(f'План с id={current_Event.id_plan} не найден для мероприятия {id}')
             flash('План не найден', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(request.referrer)
         
         event_type = request.form.get('event_type') or 'saving'
         logger.debug(f'Тип мероприятия: {event_type}, план: {current_plan.token}')
         
         edit_type = request.form.get('edit_type') or 'full'
+        logger.debug(f'edit_type получен: {edit_type}')
         
         if edit_type == 'period':
-            EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+            eff_curr_year_str = request.form.get('EffCurrYear')
+            if eff_curr_year_str and eff_curr_year_str.strip():
+                EffCurrYear = to_decimal_2(eff_curr_year_str)
+            else:
+                EffCurrYear = to_decimal_2('0')
+            
             current_Event.EffCurrYear = EffCurrYear
             logger.info(f'Обновлено только поле EffCurrYear для мероприятия {id}: {EffCurrYear}')
         else:
@@ -546,8 +552,8 @@ def edit_Eventes(id):
             MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
             MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
 
-            Volume = int(float(Volume_value)) if Volume_value else None
-            ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
+            Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
+            ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value and ExpectedQuarter_value.strip() else None
             
             current_Event.name = name
             current_Event.Volume = Volume

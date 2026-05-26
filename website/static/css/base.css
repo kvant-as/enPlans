@@ -2592,7 +2592,7 @@ input::placeholder {
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 2;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -5491,6 +5491,7 @@ input[type="checkbox"]:focus {
   /* border-right: none;
   border-bottom: none; */
   /* min-width: 2000px; */
+  margin-bottom: 100px;
 }
 /* 
 .main-table tbody tr:nth-child(even), */
@@ -5638,7 +5639,7 @@ input[type="checkbox"]:focus {
   }
 }
 
-.main-table tbody tr:nth-child(1) { animation-delay: 0.00s; }
+/* .main-table tbody tr:nth-child(1) { animation-delay: 0.00s; }
 .main-table tbody tr:nth-child(2) { animation-delay: 0.03s; }
 .main-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
 .main-table tbody tr:nth-child(4) { animation-delay: 0.09s; }
@@ -5657,7 +5658,7 @@ input[type="checkbox"]:focus {
 .main-table tbody tr:nth-child(17) { animation-delay: 0.48s; }
 .main-table tbody tr:nth-child(18) { animation-delay: 0.51s; }
 .main-table tbody tr:nth-child(19) { animation-delay: 0.54s; }
-.main-table tbody tr:nth-child(20) { animation-delay: 0.57s; }
+.main-table tbody tr:nth-child(20) { animation-delay: 0.57s; } */
 
 .vertical-text {
   writing-mode: sideways-lr;
@@ -5924,9 +5925,17 @@ input[type="checkbox"]:focus {
 
 }
 
-/* .modal-step{
-    overflow-y: auto;
-} */
+.modal-step[style*="display: none"] {
+    display: none !important;
+}
+
+#period-step {
+    display: none;
+}
+
+#period-step[style*="display: block"] {
+    display: block !important;
+}
 
 .modal-buttons-area{
   width: 100%;

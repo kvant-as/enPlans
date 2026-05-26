@@ -3,7 +3,6 @@ from venv import logger
 from flask import current_app, g, request, jsonify, Blueprint
 from flask_login import login_required
 
-from website.plans import get_event_metrics, to_decimal_2
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
@@ -304,25 +303,27 @@ def get_events_data(token):
         .order_by(Direction.code.asc())
         .all())
 
+    logger.debug(f"=== DEBUG get_events_data ===")
+    logger.debug(f"event_type: {event_type}")
+    logger.debug(f"plan_id: {current_plan.id}")
+    logger.debug(f"period_events count: {len(period_events)}")
+    for pe in period_events:
+        logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
+
     period_metrics = {}
     for period_event in period_events:
         code = period_event.direction.code
         
         period_metrics[code] = {
             'id': period_event.id,
-            'eff_curr_year': float(period_event.EffCurrYear) if period_event.EffCurrYear else 0,
-            'volume_fin': float(period_event.VolumeFin) if period_event.VolumeFin else 0
+            'eff_curr_year': float(period_event.EffCurrYear) if period_event.EffCurrYear else 0
         }
     
     total_metrics = {
         'jan_mar_eff': period_metrics.get('0001', {}).get('eff_curr_year', 0),
-        'jan_mar_vol': period_metrics.get('0001', {}).get('volume_fin', 0),
         'jan_jun_eff': period_metrics.get('0002', {}).get('eff_curr_year', 0),
-        'jan_jun_vol': period_metrics.get('0002', {}).get('volume_fin', 0),
         'jan_sep_eff': period_metrics.get('0003', {}).get('eff_curr_year', 0),
-        'jan_sep_vol': period_metrics.get('0003', {}).get('volume_fin', 0),
-        'jan_dec_eff': period_metrics.get('0004', {}).get('eff_curr_year', 0),
-        'jan_dec_vol': period_metrics.get('0004', {}).get('volume_fin', 0)
+        'jan_dec_eff': period_metrics.get('0004', {}).get('eff_curr_year', 0)
     }
     
     def serialize_event(event):
