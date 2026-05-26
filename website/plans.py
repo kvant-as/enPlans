@@ -598,14 +598,14 @@ def check_and_create_period_directions(plan_id, event_type):
                     id_plan=plan_id,
                     id_direction=direction.id,
                     name=direction.name,
-                    is_local=(event_type == 'saving'),
-                    is_corrected=False
+                    is_econom=(event_type == 'saving'),
+                    is_increase=(event_type == 'increase')
                 )
                 db.session.add(new_event)
-                logger.info(f'Created period event for {event_type}: code={code}, direction_id={direction.id}, plan_id={plan_id}')
+                logger.debug(f'Created period event for {event_type}: code={code}, direction_id={direction.id}, plan_id={plan_id}')
         
         db.session.commit()
-        logger.info(f'Period events created for plan_id={plan_id}, event_type={event_type}')
+        logger.debug(f'Period events created for plan_id={plan_id}, event_type={event_type}')
         
     except Exception as e:
         db.session.rollback()

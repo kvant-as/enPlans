@@ -391,13 +391,17 @@
                     <div class="plan-cont-column-header">
                         {% if not current_user.is_auditor %}
                         <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Создан') }}: {{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
+                            <div class="date-icon">
+                                {{ icons.icon_calendar() }}
+                            </div>
+                            <a class="plan-info">{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
                         </div>
                         {% endif %}
                         <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Подан') }}: {{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
+                            <div class="date-icon">
+                                {{ icons.icon_send() }}
+                            </div>
+                            <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
                         </div>
                     </div>
                 </div>

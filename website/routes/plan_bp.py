@@ -425,7 +425,8 @@ def create_event(token):
     MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
     MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
     MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-
+    event_type = request.form.get('event_type')
+    
     Volume = int(float(Volume_value)) if Volume_value else None
     ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
 
@@ -433,16 +434,20 @@ def create_event(token):
     if not direction:
         flash('Направление не найдено', 'error')
         logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
-        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=token))
-    
-    event_type = request.form.get('event_type') or 'saving'
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
     
     try:
         check_and_create_period_directions(current_plan.id, event_type)
         
         display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
-        
         is_corrected = current_plan.audit_time is not None
+        
+        if event_type == 'saving':
+            is_econom = True
+            is_increase = False
+        else:
+            is_econom = False
+            is_increase = True
         
         new_event = Event(
             id_direction=id_direction,
@@ -463,7 +468,9 @@ def create_event(token):
             MoneyOwn=MoneyOwn,
             MoneyLoan=MoneyLoan,
             MoneyOther=MoneyOther,
-            is_corrected=is_corrected
+            is_corrected=is_corrected,
+            is_econom=is_econom,
+            is_increase=is_increase
         )
         
         db.session.add(new_event)

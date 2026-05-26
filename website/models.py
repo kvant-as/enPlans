@@ -178,8 +178,13 @@ class Event(db.Model):
     MoneyOwn = db.Column(Numeric(scale=2))
     MoneyLoan = db.Column(Numeric(scale=2))
     MoneyOther = db.Column(Numeric(scale=2))
+    
     is_local = db.Column(db.Boolean)
     is_corrected = db.Column(db.Boolean, default=False)
+    
+    is_econom = db.Column(db.Boolean)
+    is_increase = db.Column(db.Boolean)
+    
     order = db.Column(db.Integer, default=None)
     plan = db.relationship("Plan", back_populates="events")
     direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])

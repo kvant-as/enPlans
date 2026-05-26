@@ -271,9 +271,9 @@ def get_events_data(token):
         return jsonify({'success': False, 'error': 'Invalid event type'}), 400
     
     if event_type == 'saving':
-        type_filter = Direction.is_econom == True
+        type_filter = Event.is_econom == True
     else:
-        type_filter = Direction.is_increase == True
+        type_filter = Event.is_increase == True
     
     period_codes = ['0001', '0002', '0003', '0004']
     
@@ -300,6 +300,7 @@ def get_events_data(token):
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Direction.code.in_(period_codes))
+        .filter(Event.is_corrected == False)
         .order_by(Direction.code.asc())
         .all())
 

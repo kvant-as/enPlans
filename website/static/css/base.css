@@ -5609,7 +5609,8 @@ input[type="checkbox"]:focus {
   top: 0;
   width: 5px;
   height: 100%;
-  cursor: col-resize;
+  cursor: col-resize;  
+  box-sizing: border-box;
   user-select: none;
   z-index: 1;
   background: transparent;
