@@ -6,12 +6,14 @@ from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
+from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
-from website.plans import status_handlers
+from website.utils.plans import status_handlers
 from website.user import send_email
+
+from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
 from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, Ticket, Event
@@ -398,7 +400,7 @@ def plan_event(event_type, token):
                         context_menu=True,
                         has_events=has_events
                     )
-
+    
 @plan_bp.route('/create-event/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -408,102 +410,43 @@ def create_event(token):
     current_plan = g.current_plan
     
     id_direction = request.form.get('id_direction')
-    name = request.form.get('name') or None
-
-    Volume_value = request.form.get('Volume')
-    ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-
-    Payback = to_decimal_2(request.form.get('Payback'))
-    EffTut = to_decimal_2(request.form.get('EffTut'))
-    EffRub = to_decimal_2(request.form.get('EffRub'))
-    EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-    VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-    BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-    BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-    BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-    BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-    MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-    MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-    MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
     event_type = request.form.get('event_type')
     
-    Volume = int(float(Volume_value)) if Volume_value else None
-    ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
-
     direction = Direction.query.get(id_direction)
     if not direction:
         flash('Направление не найдено', 'error')
-        logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
+        current_app.logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
     
     try:
         check_and_create_period_directions(current_plan.id, event_type)
-        
-        display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
-        is_corrected = current_plan.audit_time is not None
-        
-        if event_type == 'saving':
-            is_econom = True
-            is_increase = False
-        else:
-            is_econom = False
-            is_increase = True
-        
-        new_event = Event(
-            id_direction=id_direction,
-            id_plan=current_plan.id,
-            display_code=display_code,
-            name=name,
-            Volume=Volume,
-            EffTut=EffTut,
-            EffRub=EffRub,
-            ExpectedQuarter=ExpectedQuarter,
-            EffCurrYear=EffCurrYear,
-            Payback=Payback,
-            VolumeFin=VolumeFin,
-            BudgetState=BudgetState,
-            BudgetRep=BudgetRep,
-            BudgetLoc=BudgetLoc,
-            BudgetOther=BudgetOther,
-            MoneyOwn=MoneyOwn,
-            MoneyLoan=MoneyLoan,
-            MoneyOther=MoneyOther,
-            is_corrected=is_corrected,
-            is_econom=is_econom,
-            is_increase=is_increase
-        )
+
+        event_data = process_event_data(current_plan, direction, event_type, request.form)
+        new_event = create_event_record(current_plan, direction, event_data)
         
         db.session.add(new_event)
         db.session.commit()
         
-        other_data_indicatorUpdate(current_plan.id) 
+        if event_data['is_double_effect'] and event_type == 'increase':
+            update_double_effect_payback(current_plan.id, direction.id)
+        
+        other_data_indicatorUpdate(current_plan.id)
+        
         flash('Мероприятие добавлено', 'success')
-        logger.debug(f'Event created successfully: id={new_event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
+        current_app.logger.info(f'Event created successfully: id={new_event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
         
+    except ValueError as e:
+        db.session.rollback()
+        current_app.logger.error(f'ValueError creating event for plan_id={current_plan.id}: {str(e)}')
+        flash(str(e), 'error')
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Error creating event for plan_id={current_plan.id}: {str(e)}')
+        current_app.logger.error(f'Error creating event for plan_id={current_plan.id}: {str(e)}', exc_info=True)
         flash('Ошибка при добавлении мероприятия', 'error')
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
-
-@plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def delete_eventes(id):
-    current_event = Event.query.get_or_404(id)
-    current_plan = Plan.query.get_or_404(current_event.id_plan)
-    
-    event_type = request.form.get('event_type') or 'saving'
-
-    db.session.delete(current_event)
-    db.session.commit()
-
-    other_data_indicatorUpdate(current_plan.id)
-    flash('Мероприятие успешно удалено', 'success')
-    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
 
 @plan_bp.route('/edit-event/<int:id>', methods=['POST'])
 @user_with_all_params()
@@ -592,6 +535,24 @@ def edit_Eventes(id):
         logger.error(f'Ошибка при редактировании мероприятия {id}: {str(e)}', exc_info=True)
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
         return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
+
+
+@plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def delete_eventes(id):
+    current_event = Event.query.get_or_404(id)
+    current_plan = Plan.query.get_or_404(current_event.id_plan)
+    
+    event_type = request.form.get('event_type') or 'saving'
+
+    db.session.delete(current_event)
+    db.session.commit()
+
+    other_data_indicatorUpdate(current_plan.id)
+    flash('Мероприятие успешно удалено', 'success')
+    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
 
 @plan_bp.route('/change-plan-status/<token>', methods=['POST'])
 @user_with_all_params()

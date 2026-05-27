@@ -1,3 +1,4 @@
+from decimal import Decimal
 import io
 import zipfile
 from flask import (
@@ -8,7 +9,8 @@ from flask_login import (
     current_user, login_required
 )
 
-from website.plans import get_filtered_plans, to_decimal_2, update_ChangeTimePlan
+from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
+from website.utils.plans import get_filtered_plans, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
 from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
@@ -379,17 +381,31 @@ def create_plan():
         if hasattr(current_user, 'region') and current_user.region:
             region_id = current_user.region.id
 
+        def get_usd_rate_for_new_plan():
+            usd_rate, error = fetch_usd_rate_from_belarusbank()
+            
+            if usd_rate is None:
+                current_app.logger.error(f'Failed to fetch USD rate for new plan: {error}')
+                return None
+            
+            return usd_rate
+        
+        def get_cost_per_toe_for_new_plan():
+            return to_decimal_2('260.00')
+
         new_plan = Plan(
             org_id=org_id,
             ministry_id=ministry_id,
             region_id=region_id,
-            
             year=year,
             user_id=current_user.id,
             energy_saving=energy_saving,
             share_fuel=share_fuel,
             saving_fuel=saving_fuel,
-            share_energy=share_energy
+            share_energy=share_energy,
+            
+            usd_rate = get_usd_rate_for_new_plan(),
+            cost_per_toe_usd = get_cost_per_toe_for_new_plan()
         )
         
         db.session.add(new_plan)

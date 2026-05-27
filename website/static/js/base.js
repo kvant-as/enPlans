@@ -745,8 +745,8 @@ var NumericInputHandler = {
             if (parts.length > 1) {
                 newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
             }
-            
-            if (!newValue.includes('.')) {
+
+            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
                 newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
             }
             
@@ -770,8 +770,10 @@ var NumericInputHandler = {
             input.value = settings.defaultValue;
         }
         var commaIndex = input.value.indexOf(',');
-        if (commaIndex !== -1) {
+        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
             input.setSelectionRange(commaIndex, commaIndex);
+        } else if (settings.decimalPlaces === 0) {
+            input.select();
         }
     },
     
@@ -792,11 +794,13 @@ var NumericInputHandler = {
     }
 };
 
+
 NumericInputHandler.init('.app-numeric-input', {
     allowNegative: false,
     decimalPlaces: 2,
     defaultValue: '0,00'
 });
+
 
 NumericInputHandler.init('.app-numeric-input-coeff', {
     allowNegative: false,
@@ -808,6 +812,24 @@ NumericInputHandler.init('.app-numeric-input-negative', {
     allowNegative: true,
     decimalPlaces: 2,
     defaultValue: '0,00'
+});
+
+NumericInputHandler.init('.app-numeric-input-one-decimal', {
+    allowNegative: false,
+    decimalPlaces: 1,
+    defaultValue: '0,0'
+});
+
+NumericInputHandler.init('.app-numeric-input-negative-one-decimal', {
+    allowNegative: true,
+    decimalPlaces: 1,
+    defaultValue: '0,0'
+});
+
+NumericInputHandler.init('.app-numeric-input-integer', {
+    allowNegative: false,
+    decimalPlaces: 0,
+    defaultValue: '0'
 });
 
 class DirectionsTable {

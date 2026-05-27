@@ -315,7 +315,7 @@
                     {% if current_user.is_auditor %}
                         {{ _('Начните обсуждение плана') }}
                     {% else %}
-                        {{ _('Отправьте план для получения сообщений') }}
+                        {{ _('Отправьте план для получения результатов проверки') }}
                     {% endif %}
                 </p>
             </div>
@@ -391,14 +391,14 @@
                     <div class="plan-cont-column-header">
                         {% if not current_user.is_auditor %}
                         <div class="plan-cont-column-footer-element">
-                            <div class="date-icon">
+                            <div class="date-icon black">
                                 {{ icons.icon_calendar() }}
                             </div>
                             <a class="plan-info">{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
                         </div>
                         {% endif %}
                         <div class="plan-cont-column-footer-element">
-                            <div class="date-icon">
+                            <div class="date-icon black">
                                 {{ icons.icon_send() }}
                             </div>
                             <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>

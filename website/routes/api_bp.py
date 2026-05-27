@@ -366,3 +366,51 @@ def get_events_data(token):
         'period_metrics': period_metrics,
         'total_metrics': total_metrics
     })
+
+@api_bp.route('/plan-rates/<token>', methods=['GET'])
+@login_required
+def get_plan_rates(token):
+    from website.models import Plan
+    
+    plan = Plan.query.filter_by(token=token).first()
+    if not plan:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'usd_rate': float(plan.usd_rate) if plan.usd_rate else None,
+        'cost_per_toe_usd': float(plan.cost_per_toe_usd) if plan.cost_per_toe_usd else None
+    })
+
+@api_bp.route('/refresh-plan-rates/<token>', methods=['POST'])
+@login_required
+def refresh_plan_rates(token):
+    from website.models import Plan
+    from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
+    
+    plan = Plan.query.filter_by(token=token).first()
+    if not plan:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+    
+    usd_rate, error = fetch_usd_rate_from_belarusbank()
+    
+    if usd_rate is None:
+        return jsonify({'success': False, 'error': error}), 500
+    
+    plan.usd_rate = usd_rate
+    
+    if plan.cost_per_toe_usd is None or plan.cost_per_toe_usd <= 0:
+        plan.cost_per_toe_usd = 260.0
+    
+    try:
+        from website import db
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'usd_rate': float(plan.usd_rate),
+            'cost_per_toe_usd': float(plan.cost_per_toe_usd)
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500

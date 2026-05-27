@@ -417,7 +417,7 @@ def filling_database(db):
             (16, '9916', 'Целевой показатель по доле местных ТЭР в КПТ', 1.000, True, 7, 20, False, False),
             (16, '9917', 'Целевой показатель по доле возобновляемых источников энергии в КПТ', 1.000, True, 8, 21, False, False)
         ]
-        from website.plans import to_decimal_3
+        from website.plan.plans import to_decimal_3
         for IdUnit, CodeIndicator, NameIndicator, CoeffToTut, IsMandatory, Group, RowN, is_local, is_renewable in indicator_data:
             indicator = Indicator(
                 id_unit=IdUnit,

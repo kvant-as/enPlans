@@ -4,8 +4,8 @@ from venv import logger
 
 from flask_login import current_user
 
-from . import db
-from .models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from .. import db
+from ..models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -15,6 +15,35 @@ from flask import (
 
 from decimal import Decimal, InvalidOperation
 import logging
+
+def to_decimal_1(value):
+    try:
+        if value is None or value == '':
+            return Decimal('0.0')
+        
+        if isinstance(value, Decimal):
+            return value.quantize(Decimal('0.0'))
+        
+        if isinstance(value, (int, float)):
+            return Decimal(str(value)).quantize(Decimal('0.0'))
+        
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return Decimal('0.0')
+            
+            value = value.replace(',', '.')
+            
+            if value.count('.') > 1:
+                parts = value.split('.')
+                value = parts[0] + '.' + ''.join(parts[1:])
+            
+            return Decimal(value).quantize(Decimal('0.0'))
+        
+        return Decimal('0.0')
+        
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal('0.0')
 
 def to_decimal_2(value):
     try:

@@ -31,6 +31,7 @@
 {% block title %}{{ title }} - EnPlans{% endblock %}
 
 {% block content %}
+
 <div class="pers-page-with-table">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header(nav_active, plan, current_user) }}
@@ -215,6 +216,7 @@
             <h1 id="modal-title">{{ _('Добавление мероприятия') }}</h1>
             {{ icons.icon_close() }}  
         </div>
+        <input type="hidden" id="plan-token" value="{{ plan.token }}">
         <div class="modal-body">   
             <div class="progress-modal-bar-container">
                 <div class="progress-modal-bar" id="modal-progress-bar" style="width: 33%"></div>
@@ -230,34 +232,34 @@
                     </div>
                 </div>
                 <div class="modal-table-conteiner"> 
-                <table class="modal-table-main" data-action="modal-table-main">
-                    <thead class="modal-table-main-titles">
-                        <tr>
-                            <th style="display: none;">id</th>
-                            <th>{{ _('Код') }}</th>
-                            <th>{{ _('Наименование') }}</th>
-                            <th style = "min-width: 40px;">{{ _('Ед. изм.') }}</th>
-                            <th>{{ _('Эко.') }}</th>
-                            <th>{{ _('Увел.') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in directions %}
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
                             <tr>
-                                <td style="display: none;">{{ row.id }}</td>
-                                <td>{{ row.code }}</td>
-                                <td>{{ row.name }}</td>
-                                <td>{{ row.unit.name }}</td>
-                                <td style="text-align: center;">
-                                    <input type="checkbox" {% if row.is_econom %} checked {% endif %} onclick="return false;">
-                                </td>
-                                <td style="text-align: center;">
-                                    <input type="checkbox" {% if row.is_increase %} checked {% endif %} onclick="return false;">
-                                </td>
+                                <th style="display: none;">id</th>
+                                <th>{{ _('Код') }}</th>
+                                <th>{{ _('Наименование') }}</th>
+                                <th style="min-width: 40px;">{{ _('Ед. изм.') }}</th>
+                                <th>{{ _('Эко.') }}</th>
+                                <th>{{ _('Увел.') }}</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for row in directions %}
+                                <tr>
+                                    <td style="display: none;">{{ row.id }}</td>
+                                    <td>{{ row.code }}</td>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.unit.name }}</td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" {% if row.is_econom %} checked {% endif %} onclick="return false;">
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" {% if row.is_increase %} checked {% endif %} onclick="return false;">
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
                 <div class="button-auth-area" id="step1-buttons">
                     <div></div>
@@ -267,29 +269,21 @@
                     </button>
                 </div>
             </div>
+
             <form action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="event_type" value="{{ event_type }}">
-                <div id="step2" class="modal-step" style="display: none;">{#
-                    <div class="answer-highlight">
-                        <div class="highlight-icon">💡</div>
-                        <p>Кнопка <strong>Далее</strong> станет активна после заполнения всех обязательных полей.</p>
-                    </div>#}
+                <div id="step2" class="modal-step" style="display: none;">
                     <div class="app-group">
                         <label>[3] {{ _('Наименование мероприятия') }}</label>
                         <div class="input-with-icon">
                             {{ icons.icon_measure() }}
-                            <input type="text" value=""  name = "name"
-                                placeholder="{{ _('Наименование') }}" class="app-input" required>
+                            <input type="text" name="name" placeholder="{{ _('Наименование') }}" class="app-input" required>
                         </div>
                     </div>
                     <div class="app-group">
                         <label>[5] {{ _('Объем внедрения') }}</label>
                         <div class="input-with-icon">
                             {{ icons.icon_half() }}
-                                            <input type="number" name="Volume" step="1" 
-                            placeholder="Объем" class="app-input" value="1" required
-                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            <input type="number" name="Volume" class="app-input" value="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                         </div>
                     </div>
                     <div class="row-app-group">
@@ -297,16 +291,14 @@
                             <label>[6] {{ yslovno67 }}{{ _(', т у.т.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="" value="0,00"  name = "EffTut"
-                                    placeholder="0,00" class="app-numeric-input" required>
+                                <input type="text" value="0,00" name="EffTut" class="app-numeric-input" required>
                             </div>
                         </div>
                         <div class="app-group">
                             <label>[7] {{ yslovno67 }}{{ _(', руб.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="" value="0,00"  name = "EffRub"
-                                    placeholder="0,00" class="app-numeric-input" readonly>
+                                <input type="text" name="EffRub" class="app-numeric-input" value="0" readonly>
                             </div>
                         </div>
                     </div>
@@ -315,36 +307,30 @@
                             <label>[8] {{ _('Ожидаемый срок внедрения мероприятия, квартал') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_calendar() }}
-                                <input type="number" name="ExpectedQuarter" min="1" max="4" 
-                                pattern="[1-4]" inputmode="numeric" value="1"
-                                placeholder="Квартал" class="app-input" required
-                                oninput="this.value = this.value.replace(/[^1-4]/g, '').slice(0, 1)">
+                                <input type="number" name="ExpectedQuarter" min="1" max="4" pattern="[1-4]" inputmode="numeric" value="1"
+                                class="app-input" oninput="this.value = this.value.replace(/[^1-4]/g, '').slice(0, 1)" required>
                             </div>
                         </div>
                         <div class="app-group">
                             <label>[9] {{ expected9 }}{{ _(', т у.т.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" id="" value="0,00"  name = "EffCurrYear"
-                                    placeholder="0,00" class="app-numeric-input" required>
+                                <input type="text" value="0,00" name="EffCurrYear" class="app-numeric-input" required>
                             </div>
                         </div>
                     </div>
-                    <div class="row-app-group">
-                        <div class="app-group">
-                            <label>[10] {{ _('Срок окупаемости, лет') }}</label>
-                            <div class="input-with-icon">
-                                {{ icons.icon_half() }}
-                                <input type="text" id="" value="0,00"  name = "Payback"
-                                    placeholder="0,00" class="app-numeric-input" required>
+                    <div class="currency-info">
+                        <div class="currency-info-content">
+                            <div class="currency-item">
+                                <span class="currency-label">1 USD:</span>
+                                <span class="currency-value" id="usd-rate-display">{{plan.usd_rate}}</span>
+                                <span class="currency-unit">BYN</span>
                             </div>
-                        </div>
-                        <div class="app-group">
-                            <label>[11] {{ _('Объем финансирования, руб.') }}</label>
-                            <div class="input-with-icon">
-                                {{ icons.icon_half() }}
-                                <input type="text" id="" value="0,00"  name = "VolumeFin"
-                                    placeholder="0,00" class="app-numeric-input" required>
+                            <div class="currency-divider"></div>
+                            <div class="currency-item">
+                                <span class="currency-label">1 т.у.т.:</span>
+                                <span class="currency-value" id="cost-per-toe-display">{{plan.cost_per_toe_usd}}</span>
+                                <span class="currency-unit">USD</span>
                             </div>
                         </div>
                     </div>
@@ -359,89 +345,98 @@
                         </button>
                     </div>
                 </div>
-                <div id="step3" class="modal-step" style="display: none;">{#
-                    <div class="answer-highlight">
-                        <div class="highlight-icon">💡</div>
-                        <p>Для добавления мероприятия кликните на <strong>Добавить мероприятие</strong></p>
-                    </div>#}
-                    <div class="row-app-group">
-                    <div class="app-group">
-                        <label>[12] {{ _('республиканский бюджет на финасирование госпрограммы') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "BudgetState"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    <div class="app-group">
-                        <label>[13] {{ _('республиканский бюджет') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "BudgetRep"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    </div> 
-                    <div class="row-app-group">
-                    <div class="app-group">
-                        <label>[14] {{ _('местный бюджет') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "BudgetLoc"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    <div class="app-group">
-                        <label>[15] {{ _('другие') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "BudgetOther"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    </div> 
-                    <div class="app-group">
-                        <label>[16] {{ _('собственные средства организации') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "MoneyOwn"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div> 
-                    <div class="row-app-group">
-                    <div class="app-group">
-                        <label>[17] {{ _('кредиты банков, займы') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "MoneyLoan"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    <div class="app-group">
-                        <label>[18] {{ _('Иные') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_half() }}
-                            <input type="text" id="" value="0,00"  name = "MoneyOther"
-                                placeholder="0,00" class="app-numeric-input" required>
-                        </div>
-                    </div>
-                    </div>
-                    <div class="app-group" style = "display:none;">
-                        <label>id</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_eco() }}
-                            <input class="app-input" name = "id_direction" data-action="selected-direction" readonly>
-                        </div>  
-                    </div>
 
-                    <div class="button-auth-area" id="step2-buttons" style="display: flex; justify-content: space-between;">
+                <div id="step3" class="modal-step" style="display: none;">
+                    <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[10] {{ _('Срок окупаемости, лет') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="text" value="0,0" name="Payback" class="app-numeric-input-one-decimal" readonly>
+                            </div>
+                        </div> 
+                        <div class="app-group">
+                            <label>[11] {{ _('Объем финансирования, руб.') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="text" name="VolumeFin" class="app-numeric-input" value="0" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[12] {{ _('республиканский бюджет на финансирование госпрограммы') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="BudgetState" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                        <div class="app-group">
+                            <label>[13] {{ _('республиканский бюджет') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="BudgetRep" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                    </div> 
+                    <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[14] {{ _('местный бюджет') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="BudgetLoc" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                        <div class="app-group">
+                            <label>[15] {{ _('другие') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="BudgetOther" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[16] {{ _('собственные средства организации') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="MoneyOwn" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div> 
+                        <div class="app-group">
+                            <label>[17] {{ _('кредиты банков, займы') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="MoneyLoan" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[18] {{ _('Иные') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="number" name="MoneyOther" class="app-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            </div>
+                        </div>
+                        <div class="app-group" style="display: none;">
+                            <label>id</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_eco() }}
+                                <input class="app-input" name="id_direction" data-action="selected-direction" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="event_type" value="{{ event_type }}">
+                    <div class="button-auth-area" id="step3-buttons" style="display: flex; justify-content: space-between;">
                         <button type="button" class="svg-btn" id="step3-back-btn">
                             {{ icons.back_icon() }}
                             <span class="btn-text">{{ _('Назад') }}</span>
                         </button>
                         <button type="submit" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
-                            <span class="btn-text">{{ _('Добавить мероприятие ') }}</span>
+                            <span class="btn-text">{{ _('Добавить мероприятие') }}</span>
                         </button>
                     </div>
                 </div>
@@ -449,7 +444,6 @@
         </div>
     </div>
 </div>
-
 
 <div id="EditEventModal" class="modal">
     <div class="modal-content">

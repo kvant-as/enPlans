@@ -167,6 +167,7 @@
   --text-subtitle2: #5d6566;
   --body-background: #fafafa;
   --background-grey: rgb(238, 238, 238);
+  --background-grey-opa: rgb(247, 247, 247);
   --background-grey1: rgba(66, 66, 66, 0.1);
 
   --placeholder-color: #8a8a8a;
@@ -2037,6 +2038,165 @@ input::placeholder {
   margin-top: 10px;
   gap: 20px;
 }
+
+.currency-info {
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.currency-info-content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.currency-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.currency-item:hover {
+  border-color: var(--green-light);
+  transform: translateY(-1px);
+}
+
+.currency-label {
+  font-size: 11px;
+  color: var(--text-subtitle);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.currency-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green-light);
+    line-height: 1;
+}
+
+.currency-unit {
+    font-size: 12px;
+    color: var(--text-subtitle2);
+    font-weight: 500;
+}
+
+.currency-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.rate-source {
+    font-size: 11px;
+    font-weight: 500;
+    color: #2e7d32;
+    background: #e8f5e9;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+}
+
+.rate-source.error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.rate-time {
+    font-size: 10px;
+    color: var(--text-subtitle);
+    opacity: 0.7;
+}
+
+
+.currency-divider {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(180deg, transparent, var(--border-color), transparent);
+    margin: 0 10px;
+}
+
+@keyframes currencyPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.currency-updating {
+    animation: currencyPulse 0.5s ease-in-out;
+}
+
+.currency-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .currency-info {
+        padding: 12px 16px;
+    }
+    
+    .currency-info-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .currency-item {
+        width: 100%;
+        justify-content: space-between;
+        padding: 8px 12px;
+    }
+    
+    .currency-value {
+        font-size: 18px;
+    }
+    
+    .currency-divider {
+        display: none;
+    }
+    
+    .currency-status {
+        align-items: flex-start;
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .currency-info {
+        padding: 10px 12px;
+    }
+    
+    .currency-label {
+        font-size: 12px;
+    }
+    
+    .currency-value {
+        font-size: 16px;
+    }
+    
+    .rate-source {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+    
+    .rate-time {
+        font-size: 9px;
+    }
+}
+
 /* 
 .main-btn main-btn-primary {
   display: inline-flex;
@@ -2809,6 +2969,7 @@ input::placeholder {
   border-radius: 50%; 
   width: 10px;       
   height: 10px;      
+  display: flex;
   padding: 11px;     
   display: flex;     
   align-items: center;
@@ -3276,7 +3437,8 @@ hr {
 .app-input,
 .app-numeric-input,
 .app-numeric-input-coeff,
-.app-numeric-input-negative {
+.app-numeric-input-negative,
+.app-numeric-input-one-decimal {
   width: 100%;
   padding: 9px 16px 9px 38px;
   border: none;
@@ -3296,7 +3458,8 @@ hr {
 
 .app-input:focus:not(.readonly):not(.disabled),
 .app-numeric-input:focus:not(.readonly):not(.disabled),
-.app-numeric-input-negative:focus:not(.readonly):not(.disabled) {
+.app-numeric-input-negative:focus:not(.readonly):not(.disabled),
+.app-numeric-input-one-decimal:focus:not(.readonly):not(.disabled){
   outline: none;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: white;
@@ -3305,10 +3468,12 @@ hr {
 .app-input[readonly],
 .app-numeric-input[readonly],
 .app-numeric-input-negative[readonly],
+.app-numeric-input-one-decimal[readonly],
 .app-input.disabled,
 .app-numeric-input.disabled,
-.app-numeric-input-negative.disabled {
-  background-color: var(--background-grey);
+.app-numeric-input-negative.disabled,
+.app-numeric-input-one-decimal.disabled{
+  background-color: var(--background-grey-opa);
   color: var(--color-readonly);
   cursor: not-allowed;
 }
@@ -3316,27 +3481,33 @@ hr {
 .app-input[readonly] ~ svg,
 .app-numeric-input[readonly] ~ svg,
 .app-numeric-input-negative[readonly] ~ svg,
+.app-numeric-input-one-decimal[readonly] ~ svg,
 .app-input.disabled ~ svg,
 .app-numeric-input.disabled ~ svg,
 .app-numeric-input-negative.disabled ~ svg,
+.app-numeric-input-one-decimal.disabled ~ svg,
 .input-with-icon:has(.app-input[readonly]) svg,
 .input-with-icon:has(.app-numeric-input[readonly]) svg,
 .input-with-icon:has(.app-numeric-input-negative[readonly]) svg,
+.input-with-icon:has(.app-numeric-input-one-decimal[readonly]) svg,
 .input-with-icon:has(.app-input.disabled) svg,
 .input-with-icon:has(.app-numeric-input.disabled) svg,
-.input-with-icon:has(.app-numeric-input-negative.disabled) svg {
+.input-with-icon:has(.app-numeric-input-negative.disabled) svg,
+.input-with-icon:has(.app-numeric-input-one-decimal.disabled) svg {
   opacity: 0.6;
 }
 
 .app-input:active,
 .app-numeric-input:active,
-.app-numeric-input-negative:active {
+.app-numeric-input-negative:active,
+.app-numeric-input-one-decimal:active {
   background-color: var(--background-light);
 }
 
 .app-input:focus-visible,
 .app-numeric-input:focus-visible,
-.app-numeric-input-negative:focus-visible {
+.app-numeric-input-negative:focus-visible,
+.app-numeric-input-one-decimal:focus-visible{
   background-color: white;
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
 }
@@ -3540,6 +3711,12 @@ hr {
   background: rgba(16, 185, 129, 0.1);
 }
 
+.date-icon.black{
+  width: 27px;
+  height: 27px;
+  background: rgba(0, 0, 0, 0.055);
+}
+
 .date-item:hover .date-icon {
   transform: scale(1.05);
 }
@@ -3549,6 +3726,11 @@ hr {
   height: 18px;
   color: var(--green-light) !important;
 }
+
+.date-icon.black svg {
+  color: black !important;
+}
+
 
 .date-content {
   flex: 1;

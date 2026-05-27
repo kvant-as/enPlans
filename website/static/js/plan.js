@@ -893,7 +893,7 @@ class PlanEvents {
     }
 
     formatNumber(value) {
-        if (value === null || value === undefined) return '0,00';
+        if (value === null || value === undefined) return '';
         const num = parseFloat(value);
         if (isNaN(num)) return '0,00';
         return num.toFixed(2).replace('.', ',');
