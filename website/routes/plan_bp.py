@@ -21,6 +21,8 @@ from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, T
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 
+from sqlalchemy import func
+
 logger = logging.getLogger(__name__)
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
 
@@ -403,6 +405,48 @@ def plan_event(event_type, token):
                         has_events=has_events
                     )
     
+def update_period_eff_values(plan_id, event_type):
+    period_codes = ['0001', '0002', '0003', '0004']
+    
+    for code in period_codes:
+        if event_type == 'saving':
+            period_event = Event.query.filter(
+                Event.id_plan == plan_id,
+                Event.display_code == code,
+                Event.is_econom == True,
+                Event.is_increase == False
+            ).first()
+            
+            if period_event and code == '0004':
+                all_events_sum = Event.query.filter(
+                    Event.id_plan == plan_id,
+                    Event.is_econom == True,
+                    Event.is_increase == False,
+                    Event.display_code.notin_(period_codes)
+                ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
+                
+                period_event.EffCurrYear = all_events_sum
+        else:
+            period_event = Event.query.filter(
+                Event.id_plan == plan_id,
+                Event.display_code == code,
+                Event.is_econom == False,
+                Event.is_increase == True
+            ).first()
+            
+            if period_event and code == '0004':
+                all_events_sum = Event.query.filter(
+                    Event.id_plan == plan_id,
+                    Event.is_econom == False,
+                    Event.is_increase == True,
+                    Event.display_code.notin_(period_codes)
+                ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
+                
+                period_event.EffCurrYear = all_events_sum
+    
+    db.session.commit()
+    current_app.logger.info(f'Updated period EffCurrYear values for plan_id={plan_id}, event_type={event_type}')
+
 @plan_bp.route('/create-event/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -433,7 +477,7 @@ def create_event(token):
             update_double_effect_payback(current_plan.id, direction.id)
         
         other_data_indicatorUpdate(current_plan.id)
-        
+        update_period_eff_values(current_plan.id, event_type)
         flash('Мероприятие добавлено', 'success')
         current_app.logger.info(f'Event created successfully: id={new_event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
@@ -551,6 +595,7 @@ def edit_Eventes(id):
             update_double_effect_payback(current_plan.id, current_event.id_direction)
         
         other_data_indicatorUpdate(current_plan.id)
+        update_period_eff_values(current_plan.id, event_type)
         
         flash('Мероприятие изменено', 'success')
         current_app.logger.info(f'Event {id} updated successfully')
@@ -608,7 +653,8 @@ def delete_eventes(id):
     
     if is_double_effect:
         update_double_effect_payback(current_plan.id, direction_id)
-    
+        
+    update_period_eff_values(current_plan.id, event_type)
     other_data_indicatorUpdate(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
