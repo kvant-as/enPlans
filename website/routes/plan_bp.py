@@ -373,6 +373,13 @@ def plan_event(event_type, token):
             Direction.code.notin_(period_codes)
         ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по экономии ТЭР"
+        
+        has_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.is_econom == True,
+            Event.is_increase == False,
+            Event.display_code.notin_(period_codes)
+        ).first() is not None
     else:
         type_filter = Direction.is_increase == True
         directions = Direction.query.filter(
@@ -380,18 +387,13 @@ def plan_event(event_type, token):
             Direction.code.notin_(period_codes)
         ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
-    
-    has_original_events = Event.query.filter(
-        Event.id_plan == current_plan.id,
-        Event.is_corrected == False
-    ).join(Direction).filter(type_filter).first() is not None
-    
-    has_changes_events = Event.query.filter(
-        Event.id_plan == current_plan.id,
-        Event.is_corrected == True
-    ).join(Direction).filter(type_filter).first() is not None
-    
-    has_events = has_original_events or has_changes_events
+        
+        has_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.is_econom == False,
+            Event.is_increase == True,
+            Event.display_code.notin_(period_codes)
+        ).first() is not None
 
     return render_template('plan_events.html',  
                         title=title,
@@ -408,45 +410,45 @@ def plan_event(event_type, token):
 def update_period_eff_values(plan_id, event_type):
     period_codes = ['0001', '0002', '0003', '0004']
     
-    for code in period_codes:
-        if event_type == 'saving':
-            period_event = Event.query.filter(
+    if event_type == 'saving':
+        period_event = Event.query.filter(
+            Event.id_plan == plan_id,
+            Event.display_code == '0004',
+            Event.is_econom == True,
+            Event.is_increase == False
+        ).first()
+        
+        if period_event:
+            all_events_sum = Event.query.filter(
                 Event.id_plan == plan_id,
-                Event.display_code == code,
                 Event.is_econom == True,
-                Event.is_increase == False
-            ).first()
+                Event.is_increase == False,
+                Event.display_code.notin_(period_codes)
+            ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
             
-            if period_event and code == '0004':
-                all_events_sum = Event.query.filter(
-                    Event.id_plan == plan_id,
-                    Event.is_econom == True,
-                    Event.is_increase == False,
-                    Event.display_code.notin_(period_codes)
-                ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
-                
-                period_event.EffCurrYear = all_events_sum
-        else:
-            period_event = Event.query.filter(
+            period_event.EffCurrYear = all_events_sum
+            db.session.commit()
+            current_app.logger.info(f'Updated period 0004 EffCurrYear for plan_id={plan_id}, event_type={event_type}')
+    else:
+        period_event = Event.query.filter(
+            Event.id_plan == plan_id,
+            Event.display_code == '0004',
+            Event.is_econom == False,
+            Event.is_increase == True
+        ).first()
+        
+        if period_event:
+            all_events_sum = Event.query.filter(
                 Event.id_plan == plan_id,
-                Event.display_code == code,
                 Event.is_econom == False,
-                Event.is_increase == True
-            ).first()
+                Event.is_increase == True,
+                Event.display_code.notin_(period_codes)
+            ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
             
-            if period_event and code == '0004':
-                all_events_sum = Event.query.filter(
-                    Event.id_plan == plan_id,
-                    Event.is_econom == False,
-                    Event.is_increase == True,
-                    Event.display_code.notin_(period_codes)
-                ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
-                
-                period_event.EffCurrYear = all_events_sum
-    
-    db.session.commit()
-    current_app.logger.info(f'Updated period EffCurrYear values for plan_id={plan_id}, event_type={event_type}')
-
+            period_event.EffCurrYear = all_events_sum
+            db.session.commit()
+            current_app.logger.info(f'Updated period 0004 EffCurrYear for plan_id={plan_id}, event_type={event_type}')
+            
 @plan_bp.route('/create-event/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required

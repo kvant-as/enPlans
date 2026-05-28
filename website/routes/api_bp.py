@@ -267,7 +267,7 @@ def get_indicators_data(token):
 @session_required
 def get_events_data(token):
     current_plan = g.current_plan
-    event_type = request.args.get('type', 'saving')
+    event_type = request.args.get('type')
     
     if event_type not in ['saving', 'increase']:
         return jsonify({'success': False, 'error': 'Invalid event type'}), 400
