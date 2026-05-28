@@ -22,7 +22,7 @@
                   <form id="cancel_auditPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="status" value="sent_without_check" />
-                    <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_sent or plan.is_approved %}{%else%}disabled{% endif %}>
+                    <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_error or plan.is_approved %}{%else%}disabled{% endif %}>
                         {{ icons.icon_cancel() }}
                         <span>{{ _('Отменить изменения') }}</span>
                     </button>

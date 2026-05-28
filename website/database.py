@@ -7,8 +7,6 @@ from werkzeug.security import generate_password_hash
 
 from website.time import TimeByMinsk
 
-
-
 def create_database(app, db):
     with app.app_context():
         db.create_all()
@@ -370,31 +368,31 @@ def filling_database(db):
             (1, '1000', 'Котельно-печное топливо израсходовано всего, в том числе', 1.000, True, 1, 1, False, False),
             
             (3, '2000', 'газ природный', 1.150, False, 1, 2, False, False),
-            (2, '2001', 'мазут топочный', 1.370, False, 1, 2, False, False),
-            (2, '2002', 'топливо печное бытовое', 1.450, False, 1, 2, False, False),
-            (2, '2003', 'кокс металлургический, коксик и коксовая мелочь', 0.990, False, 1, 2, False, False),
-            (2, '2004', 'кокс нефтяной', 1.130, False, 1, 2, False, False),
-            (2, '2005', 'уголь и продукты переработки угля', 0.814, False, 1, 2, False, False),
-            (2, '2006', 'газы углеводородные сжиженные', 1.570, False, 1, 2, False, False),
-            (2, '2007', 'газы углеводородные нефтепереработки', 1.500, False, 1, 2, False, False),
-            (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 2, False, False),
-            (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 2, False, False),
-            (3, '2010', 'газ природный попутный', 1.300, False, 1, 2, True, False),  # is_local = True
-            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 2, True, False),  # is_local = True
-            (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 2, True, False),  # is_local = True
-            (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 2, True, False),  # is_local = True
-            (1, '2014', 'биогаз', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (5, '2015', 'дрова', 0.228, False, 1, 2, False, True),  # is_renewable = True
-            (5, '2016', 'топливная щепа', 0.187, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2017', 'древесные гранулы, пеллеты', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2018', 'древесные брикеты', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2019', 'RDF-топливо', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2020', 'отходы лесозаготовок и деревообработки', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2021', 'отходы сельскохозяйственной деятельности и прочие виды природного топлива', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2022', 'сульфатные и сульфитные щелока целлюлозно-бумажной промышленности', 1.000, False, 1, 2, False, True),  # is_renewable = True
+            (2, '2001', 'мазут топочный', 1.370, False, 1, 3, False, False),
+            (2, '2002', 'топливо печное бытовое', 1.450, False, 1, 4, False, False),
+            (2, '2003', 'кокс металлургический, коксик и коксовая мелочь', 0.990, False, 1, 5, False, False),
+            (2, '2004', 'кокс нефтяной', 1.130, False, 1, 6, False, False),
+            (2, '2005', 'уголь и продукты переработки угля', 0.814, False, 1, 7, False, False),
+            (2, '2006', 'газы углеводородные сжиженные', 1.570, False, 1, 8, False, False),
+            (2, '2007', 'газы углеводородные нефтепереработки', 1.500, False, 1, 9, False, False),
+            (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 10, False, False),
+            (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 11, False, False),
+            (3, '2010', 'газ природный попутный', 1.300, False, 1, 12, True, False),  # is_local = True
+            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 14, True, False),  # is_local = True
+            (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 15, True, False),  # is_local = True
+            (1, '2014', 'биогаз', 1.000, False, 1, 16, False, True),  # is_renewable = True
+            (5, '2015', 'дрова', 0.228, False, 1, 17, False, True),  # is_renewable = True
+            (5, '2016', 'топливная щепа', 0.187, False, 1, 18, False, True),  # is_renewable = True
+            (1, '2017', 'древесные гранулы, пеллеты', 1.000, False, 1, 19, False, True),  # is_renewable = True
+            (1, '2018', 'древесные брикеты', 1.000, False, 1, 20, False, True),  # is_renewable = True
+            (1, '2019', 'RDF-топливо', 1.000, False, 1, 21, False, True),  # is_renewable = True
+            (1, '2020', 'отходы лесозаготовок и деревообработки', 1.000, False, 1, 22, False, True),  # is_renewable = True
+            (1, '2021', 'отходы сельскохозяйственной деятельности и прочие виды природного топлива', 1.000, False, 1, 23, False, True),  # is_renewable = True
+            (1, '2022', 'сульфатные и сульфитные щелока целлюлозно-бумажной промышленности', 1.000, False, 1, 24, False, True),  # is_renewable = True
                      
-            (1, '2023', 'прочие отходы (вид отходов)', 1.000, False, 1, 2, False, False),
-            (1, '2024', 'прочие виды топлива (вид топлива)', 1.000, False, 1, 2, False, False),
+            (1, '2023', 'прочие отходы', 1.000, False, 1, 25, False, False),
+            (1, '2024', 'прочие виды топлива', 1.000, False, 1, 26, False, False),
             
             (1, '1796', 'из него местные виды топлива и отходы', 1.000, True, 1.1, 3, False, False),
             (1, '1797', 'из них возобновляемые', 1.000, True, 1.2, 4, False, False),
@@ -417,7 +415,7 @@ def filling_database(db):
             (16, '9916', 'Целевой показатель по доле местных ТЭР в КПТ', 1.000, True, 7, 20, False, False),
             (16, '9917', 'Целевой показатель по доле возобновляемых источников энергии в КПТ', 1.000, True, 8, 21, False, False)
         ]
-        from website.plan.plans import to_decimal_3
+        from website.utils.plans import to_decimal_3
         for IdUnit, CodeIndicator, NameIndicator, CoeffToTut, IsMandatory, Group, RowN, is_local, is_renewable in indicator_data:
             indicator = Indicator(
                 id_unit=IdUnit,

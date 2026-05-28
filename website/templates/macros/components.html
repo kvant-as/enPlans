@@ -118,7 +118,7 @@
         </button>
 
         <a class="plan-info">
-            <span class="plan-text">{{ plan_text if plan_text else _('План энергосбережения на') }}</span>
+            <span class="plan-text">{{ plan_text if plan_text else _('План мероприятий по энергосбережению на') }}</span>
             {% if show_plan_info and plan %}
             <span class="plan-year">{{ plan.year }} {{ _('год') }}</span>
             {% endif %}
@@ -350,7 +350,7 @@
                                     <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
                                 {% endif %}
                             {% else %}
-                                {{ _('План энергосбережения') }}
+                                {{ _('План мероприятий по энергосбережению') }}
                             {% endif %}
                             <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
                         </a>

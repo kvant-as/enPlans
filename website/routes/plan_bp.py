@@ -118,8 +118,6 @@ def plan_indicators(token):
                         plan=current_plan, 
                         indicators_non_madatory=indicators_non_madatory,
                         hide_header=False,
-                        add_indicator_modal=True,
-                        edit_indicator_modal=True,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,
                         context_menu = True)
@@ -140,6 +138,7 @@ def create_indicator(token):
         coeff_type = request.form.get('coeff_type')
         custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
+        name_other = str(request.form.get('name_other'))
 
         # current_app.logger.info(f'Attempting to create indicator for plan {current_plan.id}')
         # current_app.logger.debug(f'Form data: QYearBeforePrev_ed={QYearBeforePrev_ed}, QYearPrev_ed={QYearPrev_ed}, QYearCurrent_ed={QYearCurrent_ed}, id_indicator={id_indicator}, coeff_type={coeff_type}, custom_coeff_raw={custom_coeff_raw}, fuel_category={fuel_category}')
@@ -158,9 +157,9 @@ def create_indicator(token):
         
         current_app.logger.info(f'Found indicator: code={indicator.code}, name={indicator.name}, CoeffToTut={indicator.CoeffToTut}, is_local={indicator.is_local}, is_renewable={indicator.is_renewable}')
         
-        if indicator.code in ['2023', '2024'] and not fuel_category:
-            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
+            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
         if coeff_type == 'custom' and custom_coeff_raw:
@@ -206,7 +205,8 @@ def create_indicator(token):
             QYearCurrent=QYearCurrent,
             custom_coeff_to_tut=custom_coeff_value,
             is_local=is_local_value,
-            is_renewable=is_renewable_value
+            is_renewable=is_renewable_value,
+            note=name_other
         )
         
         db.session.add(new_IndicatorUsage)
@@ -250,6 +250,7 @@ def edit_indicator(token):
         coeff_type = request.form.get('coeff_type')
         custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
+        name_other = str(request.form.get('name_other'))
         
         indicator = indicator_usage.indicator
         indicator_code = indicator.code
@@ -261,9 +262,9 @@ def edit_indicator(token):
         current_app.logger.info(f'Editing indicator usage {id_indicator} for plan {current_plan.id}')
         current_app.logger.debug(f'Indicator code: {indicator_code}, is_coeff_editable: {is_coeff_editable}, is_codes_9911_9914: {is_codes_9911_9914}')
         
-        if indicator_code in ['2023', '2024'] and not fuel_category:
-            current_app.logger.warning(f'Indicator {indicator_code} requires fuel category but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
+            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
         if is_coeff_editable and coeff_type == 'custom' and custom_coeff_raw:
@@ -316,6 +317,7 @@ def edit_indicator(token):
         
         indicator_usage.is_local = is_local_value
         indicator_usage.is_renewable = is_renewable_value
+        indicator_usage.note=name_other
         
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
@@ -454,27 +456,22 @@ def create_event(token):
 @session_required
 def edit_Eventes(id):
     try:
-        logger.info(f'Начало редактирования мероприятия с id={id}')
+        current_app.logger.info(f'Starting edit event with id={id}')
         
-        logger.debug(f'Все POST данные: {dict(request.form)}')
-        
-        current_Event = Event.query.get(id)
-        if not current_Event:
-            logger.warning(f'Мероприятие с id={id} не найдено')
+        current_event = Event.query.get(id)
+        if not current_event:
+            current_app.logger.warning(f'Event with id={id} not found')
             flash('Мероприятие не найдено', 'error')
             return redirect(request.referrer)
         
-        current_plan = Plan.query.get(current_Event.id_plan)
+        current_plan = Plan.query.get(current_event.id_plan)
         if not current_plan:
-            logger.warning(f'План с id={current_Event.id_plan} не найден для мероприятия {id}')
+            current_app.logger.warning(f'Plan with id={current_event.id_plan} not found')
             flash('План не найден', 'error')
             return redirect(request.referrer)
         
         event_type = request.form.get('event_type') or 'saving'
-        logger.debug(f'Тип мероприятия: {event_type}, план: {current_plan.token}')
-        
         edit_type = request.form.get('edit_type') or 'full'
-        logger.debug(f'edit_type получен: {edit_type}')
         
         if edit_type == 'period':
             eff_curr_year_str = request.form.get('EffCurrYear')
@@ -483,58 +480,88 @@ def edit_Eventes(id):
             else:
                 EffCurrYear = to_decimal_2('0')
             
-            current_Event.EffCurrYear = EffCurrYear
-            logger.info(f'Обновлено только поле EffCurrYear для мероприятия {id}: {EffCurrYear}')
+            current_event.EffCurrYear = EffCurrYear
+            current_app.logger.info(f'Updated period EffCurrYear for event {id}: {EffCurrYear}')
         else:
             name = request.form.get('name') or None
             Volume_value = request.form.get('Volume')
             ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-            Payback = to_decimal_2(request.form.get('Payback'))
             EffTut = to_decimal_2(request.form.get('EffTut'))
-            EffRub = to_decimal_2(request.form.get('EffRub'))
             EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-            VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-            BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-            BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-            BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-            BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-            MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-            MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-            MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
+            
+            is_double_effect = current_event.is_econom and current_event.is_increase
+            
+            if is_double_effect and current_event.is_econom:
+                BudgetState = BudgetRep = BudgetLoc = BudgetOther = MoneyOwn = MoneyLoan = MoneyOther = 0
+                VolumeFin = 0
+                
+                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+                Payback = None
+                
+                current_app.logger.info(f'Double effect saving event: financing blocked')
+            else:
+                BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+                BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+                BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+                MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
+                
+                VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+                
+                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+                
+                if EffRub > 0:
+                    payback_value = float(VolumeFin) / float(EffRub)
+                    Payback = to_decimal_1(payback_value)
+                else:
+                    Payback = None
+                
+                current_app.logger.info(f'Regular event calculation: VolumeFin={VolumeFin}, EffRub={EffRub}, Payback={Payback}')
 
             Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
             ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value and ExpectedQuarter_value.strip() else None
             
-            current_Event.name = name
-            current_Event.Volume = Volume
-            current_Event.ExpectedQuarter = ExpectedQuarter
-            current_Event.EffTut = EffTut
-            current_Event.EffRub = EffRub
-            current_Event.EffCurrYear = EffCurrYear
-            current_Event.Payback = Payback
-            current_Event.VolumeFin = VolumeFin
-            current_Event.BudgetState = BudgetState
-            current_Event.BudgetRep = BudgetRep
-            current_Event.BudgetLoc = BudgetLoc
-            current_Event.BudgetOther = BudgetOther
-            current_Event.MoneyOwn = MoneyOwn
-            current_Event.MoneyLoan = MoneyLoan
-            current_Event.MoneyOther = MoneyOther
-            logger.info(f'Обновлены все поля для мероприятия {id}')
+            current_event.name = name
+            current_event.Volume = Volume
+            current_event.ExpectedQuarter = ExpectedQuarter
+            current_event.EffTut = EffTut
+            current_event.EffRub = EffRub
+            current_event.EffCurrYear = EffCurrYear
+            current_event.Payback = Payback
+            current_event.VolumeFin = VolumeFin
+            current_event.BudgetState = BudgetState
+            current_event.BudgetRep = BudgetRep
+            current_event.BudgetLoc = BudgetLoc
+            current_event.BudgetOther = BudgetOther
+            current_event.MoneyOwn = MoneyOwn
+            current_event.MoneyLoan = MoneyLoan
+            current_event.MoneyOther = MoneyOther
+            
+            current_app.logger.info(f'Updated all fields for event {id}')
 
         db.session.commit()
-        flash('Мероприятие изменено', 'success')
-
+        
+        if current_event.is_econom and current_event.is_increase and not current_event.is_econom:
+            update_double_effect_payback(current_plan.id, current_event.id_direction)
+        
         other_data_indicatorUpdate(current_plan.id)
-        logger.debug(f'Обновлены индикаторы для плана {current_plan.id}')
+        
+        flash('Мероприятие изменено', 'success')
+        current_app.logger.info(f'Event {id} updated successfully')
         
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
     
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Ошибка при редактировании мероприятия {id}: {str(e)}', exc_info=True)
+        current_app.logger.error(f'Error editing event {id}: {str(e)}', exc_info=True)
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
-        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
+        return redirect(request.referrer)
 
 
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
@@ -545,11 +572,43 @@ def delete_eventes(id):
     current_event = Event.query.get_or_404(id)
     current_plan = Plan.query.get_or_404(current_event.id_plan)
     
-    event_type = request.form.get('event_type') or 'saving'
-
+    if current_event.is_econom and not current_event.is_increase:
+        event_type = 'saving'
+    elif not current_event.is_econom and current_event.is_increase:
+        event_type = 'increase'
+    else:
+        event_type = 'saving'
+    
+    is_double_effect = current_event.is_econom and current_event.is_increase
+    direction_id = current_event.id_direction
+    
+    non_period_events_count = Event.query.filter(
+        Event.id_plan == current_plan.id,
+        Event.id != current_event.id,
+        Event.is_econom == current_event.is_econom,
+        Event.is_increase == current_event.is_increase,
+        Event.display_code.notin_(['0001', '0002', '0003', '0004'])
+    ).count()
+    
     db.session.delete(current_event)
+    
+    if non_period_events_count == 0:
+        period_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.display_code.in_(['0001', '0002', '0003', '0004']),
+            Event.is_econom == current_event.is_econom,
+            Event.is_increase == current_event.is_increase
+        ).all()
+        
+        for period_event in period_events:
+            db.session.delete(period_event)
+        current_app.logger.info(f'Deleted {len(period_events)} period events for plan_id={current_plan.id}, event_type={event_type}')
+    
     db.session.commit()
-
+    
+    if is_double_effect:
+        update_double_effect_payback(current_plan.id, direction_id)
+    
     other_data_indicatorUpdate(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))

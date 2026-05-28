@@ -8,7 +8,7 @@
   <div class="personal-acc-conteiner" style="margin-top: 0">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('План энергосбережения') }}</a>
+        <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
@@ -92,7 +92,7 @@
       <br>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Показатель энергосбережения') }} (%)</label>
+          <label>{{ _('Целевой Целевой показатель энергосбережения') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
@@ -104,7 +104,7 @@
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Доля местных ТЭР в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -118,7 +118,7 @@
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Задания по экономии ТЭР (т. у. т.)') }}</label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
@@ -130,7 +130,7 @@
           </div>
         </div>
         <div class="app-group" id="tickets_link">
-          <label>{{ _('Доля ВИЭ в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -354,7 +354,7 @@
           <div class="radio-org-card" data-type="organization">
             <span class="radio-org-icon"></span>
             <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">До 25 тыс. т.</div>
+            <div class="radio-org-title">До 25 тыс. т у.т.</div>
           </div>
         </label>
 
@@ -368,7 +368,7 @@
           <div class="radio-org-card" data-type="organization">
             <span class="radio-org-icon"></span>
             <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">Более 25 тыс. т.</div>
+            <div class="radio-org-title">Более 25 тыс. т у.т.</div>
           </div>
         </label>
       </div>

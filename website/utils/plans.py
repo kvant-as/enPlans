@@ -495,13 +495,13 @@ def other_data_indicatorUpdate(plan_id):
         denominator = get_value(indicator_260, 'QYearPrev')
         
         result = safe_divide(numerator, denominator) * 100
-        indicator_9915.QYearCurrent = to_decimal_2(result)
+        indicator_9915.QYearCurrent = to_decimal_2(-abs(result))
         
         logger.info(f'Set 9915.QYearCurrent = {result}')
         commit_changes()
     
     def update_indicator_9916():
-        """Обновление индикатора 9916 (доля местных ТЭР в КПТ)"""
+        """Обновление индикатора 9916 (Целевой показатель по доле местных ТЭР в КПТ)"""
         logger.info(f'Calculating 9916 (local share) for plan {plan.id}')
         
         indicator_9916 = get_indicator_by_code(indicator_usages, '9916')
@@ -605,6 +605,12 @@ def other_data_indicatorUpdate(plan_id):
 def check_and_create_period_directions(plan_id, event_type):
     try:
         period_codes = ['0001', '0002', '0003', '0004']
+        period_names = {
+            '0001': 'Январь-Март',
+            '0002': 'Январь-Июнь',
+            '0003': 'Январь-Сентябрь',
+            '0004': 'Январь-Декабрь'
+        }
         
         for code in period_codes:
             if event_type == 'saving':
@@ -626,7 +632,8 @@ def check_and_create_period_directions(plan_id, event_type):
                 new_event = Event(
                     id_plan=plan_id,
                     id_direction=direction.id,
-                    name=direction.name,
+                    name=period_names[code],
+                    display_code=code,
                     is_econom=(event_type == 'saving'),
                     is_increase=(event_type == 'increase')
                 )

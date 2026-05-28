@@ -253,7 +253,9 @@ class PlanIndicators {
             tr.innerHTML = `
                 <td style="text-align: center;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
-                <td style="text-align: start">${this.escapeHtml(row.name)}</td>
+                <td style="text-align: start">
+                    ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
+                </td>
                 <td style="text-align: start">${this.escapeHtml(row.unit_name)}</td>
                 <td>${row.QYearBeforePrev_unit.toFixed(2).replace('.', ',')}</td>
                 <td>${row.QYearBeforePrev_tut.toFixed(2).replace('.', ',')}</td>
@@ -380,6 +382,9 @@ function Edit_indicator_modal() {
     const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
     const QYearBeforePrevNoDisplay = document.getElementById('QYearBeforePrev-edit-nodisplay');
     const QYearCurrentCard = document.getElementById('QYearCurrent-edit-nodisplay');
+    const editCategorySection = document.getElementById('edit-category-section');
+    const editNameSection = document.getElementById('edit-name-section');
+    const editNameInput = document.getElementById('edit-name-section-input');
     
     fetch(`/api/get-indicator/${idIndicator}`)
         .then(response => response.json())
@@ -496,21 +501,63 @@ function Edit_indicator_modal() {
                 setValueIfExists('QYearCurrent-edit', valCurrent);
             }
             
-            const categorySection = document.getElementById('edit-category-section');
+            function validateEditForm() {
+                const isCategoryChecked = categoryRadios && Array.from(categoryRadios).some(radio => radio.checked);
+                const isNameFilled = editNameInput && editNameInput.value.trim() !== '';
+                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
+                
+                if (submitEditBtn) {
+                    if (indicatorCode === '2023' || indicatorCode === '2024') {
+                        submitEditBtn.disabled = !(isCategoryChecked && isNameFilled);
+                    } else {
+                        submitEditBtn.disabled = false;
+                    }
+                }
+            }
+            
+            const categoryRadios = document.querySelectorAll('#EditIndicatorModal input[name="fuel_category"]');
             
             if (indicatorCode === '2023' || indicatorCode === '2024') {
-                categorySection.style.display = 'block';
+                if (editCategorySection) editCategorySection.style.display = 'block';
+                if (editNameSection) editNameSection.style.display = 'block';
                 
-                const localRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="local"]');
-                const renewableRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="renewable"]');
+                if (editNameInput) {
+                    editNameInput.removeAttribute('required');
+                    editNameInput.required = true;
+                }
+                
+                if (data.note && editNameInput) {
+                    editNameInput.value = data.note;
+                }
                 
                 if (data.is_local) {
+                    const localRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="local"]');
                     if (localRadio) localRadio.checked = true;
                 } else if (data.is_renewable) {
+                    const renewableRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="renewable"]');
                     if (renewableRadio) renewableRadio.checked = true;
                 }
+                
+                categoryRadios.forEach(radio => {
+                    radio.removeEventListener('change', validateEditForm);
+                    radio.addEventListener('change', validateEditForm);
+                });
+                
+                if (editNameInput) {
+                    editNameInput.removeEventListener('input', validateEditForm);
+                    editNameInput.addEventListener('input', validateEditForm);
+                }
+                
+                validateEditForm();
             } else {
-                categorySection.style.display = 'none';
+                if (editCategorySection) editCategorySection.style.display = 'none';
+                if (editNameSection) editNameSection.style.display = 'none';
+                if (editNameInput) {
+                    editNameInput.required = false;
+                    editNameInput.value = '';
+                }
+                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
+                if (submitEditBtn) submitEditBtn.disabled = false;
             }
 
             const form = document.getElementById('editIndicatorForm');
@@ -818,6 +865,10 @@ class PlanEvents {
             
             otherContent.appendChild(row);
         });
+        
+        if (window.eventTableMenu) {
+            window.eventTableMenu.init();
+        }
     }
 
     initTableContextMenu() {
@@ -836,7 +887,7 @@ class PlanEvents {
                 tableDeleteButtonId: 'tableDeleteButton',
                 removeUrlTemplate: '/plans/plan/delete-eventes/{id}',
                 immutableCodes: [],
-                immutableEditCodes: [],
+                immutableEditCodes: ['0004'],
                 immutableDeleteCodes: ['0001', '0002', '0003', '0004'],
                 codeColumnIndex: 11,
                 hideCodeColumn: true,
@@ -1029,6 +1080,7 @@ class TableContextMenu {
                 if (!container.classList.contains('rows')) {
                     selectors.push(`#${containerId}.rows tr.menu-row`);
                 }
+                selectors.push(`#${containerId} tr`);
             }
         });
         
@@ -1184,7 +1236,6 @@ class TableContextMenu {
         
         const isPeriodRow = row.closest('#other-content') !== null || row.classList.contains('group-header');
         
-        // Небольшая задержка, чтобы DOM обновился
         setTimeout(() => {
             if (isPeriodRow) {
                 if (typeof Edit_Period_modal === 'function') {
@@ -1611,6 +1662,84 @@ function Edit_Period_modal() {
         });
 }
 
+// static/js/event_modal.js
+
+function getPlanToken() {
+    const hiddenToken = document.getElementById('plan-token');
+    if (hiddenToken && hiddenToken.value) {
+        console.log('Token from hidden input:', hiddenToken.value);
+        return hiddenToken.value;
+    }
+    
+    const eventTable = document.getElementById('eventTable');
+    if (eventTable && eventTable.dataset.token) {
+        console.log('Token from #eventTable:', eventTable.dataset.token);
+        return eventTable.dataset.token;
+    }
+    
+    const modalForm = document.querySelector('#AddEventModal form');
+    if (modalForm) {
+        const actionUrl = modalForm.getAttribute('action');
+        if (actionUrl) {
+            const match = actionUrl.match(/\/create-event\/([a-zA-Z0-9]+)/);
+            if (match && match[1]) {
+                console.log('Token from form action:', match[1]);
+                return match[1];
+            }
+        }
+    }
+    
+    console.error('Could not find plan token in DOM');
+    return null;
+}
+
+async function fetchEditPlanRates() {
+    try {
+        const token = getPlanToken();
+        
+        if (!token) {
+            console.error('No token found for edit rates');
+            return false;
+        }
+
+        const response = await fetch(`/api/plan-rates/${token}`);
+        
+        if (!response.ok) {
+            console.error('Failed to fetch edit plan rates:', response.status);
+            return false;
+        }
+        
+        const data = await response.json();
+
+        if (data.success) {
+            const usdDisplay = document.getElementById('edit-usd-rate-display');
+            const costDisplay = document.getElementById('edit-cost-per-toe-display');
+            
+            if (data.usd_rate && data.usd_rate > 0) {
+                if (usdDisplay) {
+                    usdDisplay.textContent = data.usd_rate.toFixed(4).replace('.', ',');
+                }
+            } else {
+                if (usdDisplay) usdDisplay.textContent = '--';
+            }
+            
+            if (data.cost_per_toe_usd && data.cost_per_toe_usd > 0) {
+                if (costDisplay) {
+                    costDisplay.textContent = data.cost_per_toe_usd.toFixed(2).replace('.', ',');
+                }
+            } else {
+                if (costDisplay) costDisplay.textContent = '--';
+            }
+            
+            return { usdRate: data.usd_rate, costPerToe: data.cost_per_toe_usd };
+        }
+        return false;
+    } catch (error) {
+        console.error('Error fetching edit plan rates:', error);
+        return false;
+    }
+}
+
 function Edit_Evente_modal() {
     const EditEventModal = document.getElementById('EditEventModal');
     if (!EditEventModal) return;
@@ -1634,11 +1763,9 @@ function Edit_Evente_modal() {
     if (!idEvent) return;
 
     const periodCode = activeRow.getAttribute('data-period-code');
-
     const isPeriod = periodCode && ['0001', '0002', '0003', '0004'].includes(periodCode);
-    // console.log('activeRow HTML:', activeRow.outerHTML);
+    
     if (isPeriod) {
-        console.log('Вызов Edit_Period_modal для периода');
         Edit_Period_modal();
         return;
     }
@@ -1674,48 +1801,108 @@ function Edit_Evente_modal() {
     
     if (nextButton) nextButton.disabled = true;
     
-    fetch(`/api/get-event/${idEvent}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) throw new Error(data.error);
-
-            setValueIfExists('change-name-edit-model', data.name || '');
-            setValueIfExists('change-Volume-edit-model', data.Volume || '');
-            setValueIfExists('change-EffTut-edit-model', data.EffTut || '');
-            setValueIfExists('change-EffRub-edit-model', data.EffRub || '');
-            setValueIfExists('change-ExpectedQuarter-edit-model', data.ExpectedQuarter || '');
-            setValueIfExists('change-EffCurrYear-edit-model', data.EffCurrYear || '');
-            setValueIfExists('change-Payback-edit-model', data.Payback || '');
-            setValueIfExists('change-VolumeFin-edit-model', data.VolumeFin || '');
-            setValueIfExists('change-BudgetState-edit-model', data.BudgetState || '');
-            setValueIfExists('change-BudgetRep-edit-model', data.BudgetRep || '');
-            setValueIfExists('change-BudgetLoc-edit-model', data.BudgetLoc || '');
-            setValueIfExists('change-BudgetOther-edit-model', data.BudgetOther || '');
-            setValueIfExists('change-MoneyOwn-edit-model', data.MoneyOwn || '');
-            setValueIfExists('change-MoneyLoan-edit-model', data.MoneyLoan || '');
-            setValueIfExists('change-MoneyOther-edit-model', data.MoneyOther || '');
-            
-            if (form) {
-                form.action = `/plans/plan/edit-event/${idEvent}`;
-            }
-            
-            if (nextButton) nextButton.disabled = false;
-        })
-        .catch(error => {
-            console.error('Error fetching Event data:', error);
-            alert('Ошибка при загрузке данных мероприятия: ' + error.message);
-            if (nextButton) nextButton.disabled = false;
-        });
+    Promise.all([
+        fetch(`/api/get-event/${idEvent}`).then(r => r.json()),
+        fetchEditPlanRates()
+    ]).then(([eventData, rates]) => {
+        if (eventData.error) throw new Error(eventData.error);
+        
+        setValueIfExists('change-name-edit-model', eventData.name || '');
+        setValueIfExists('change-Volume-edit-model', eventData.Volume || '');
+        setValueIfExists('change-EffTut-edit-model', eventData.EffTut || '');
+        setValueIfExists('change-EffRub-edit-model', eventData.EffRub || '');
+        setValueIfExists('change-ExpectedQuarter-edit-model', eventData.ExpectedQuarter || '');
+        setValueIfExists('change-EffCurrYear-edit-model', eventData.EffCurrYear || '');
+        setValueIfExists('change-Payback-edit-model', eventData.Payback || '');
+        setValueIfExists('change-VolumeFin-edit-model', eventData.VolumeFin || '');
+        setValueIfExists('change-BudgetState-edit-model', eventData.BudgetState || '0');
+        setValueIfExists('change-BudgetRep-edit-model', eventData.BudgetRep || '0');
+        setValueIfExists('change-BudgetLoc-edit-model', eventData.BudgetLoc || '0');
+        setValueIfExists('change-BudgetOther-edit-model', eventData.BudgetOther || '0');
+        setValueIfExists('change-MoneyOwn-edit-model', eventData.MoneyOwn || '0');
+        setValueIfExists('change-MoneyLoan-edit-model', eventData.MoneyLoan || '0');
+        setValueIfExists('change-MoneyOther-edit-model', eventData.MoneyOther || '0');
+        
+        if (form) {
+            form.action = `/plans/plan/edit-event/${idEvent}`;
+        }
+        
+        if (nextButton) nextButton.disabled = false;
+        
+        if (rates && rates.usdRate && rates.costPerToe) {
+            initEditCalculations(rates.usdRate, rates.costPerToe);
+        }
+    }).catch(error => {
+        console.error('Error fetching Event data:', error);
+        alert('Ошибка при загрузке данных мероприятия: ' + error.message);
+        if (nextButton) nextButton.disabled = false;
+    });
 }
 
-function getPeriodNameByCode(code) {
-    const periodNames = {
-        '0001': 'Январь-Март',
-        '0002': 'Январь-Июнь',
-        '0003': 'Январь-Сентябрь',
-        '0004': 'Январь-Декабрь'
-    };
-    return periodNames[code] || 'Период';
+function initEditCalculations(usdRate, costPerToe) {
+    function parseEditNumber(value) {
+        if (!value) return 0;
+        const str = value.toString().trim();
+        if (str === '') return 0;
+        return parseFloat(str.replace(',', '.')) || 0;
+    }
+    
+    function formatEditNumber(value, decimalPlaces = 2) {
+        if (isNaN(value) || value === null || value === '') {
+            if (decimalPlaces === 0) return '0';
+            if (decimalPlaces === 1) return '0,0';
+            return '0,00';
+        }
+        if (decimalPlaces === 0) {
+            return Math.round(value).toString();
+        }
+        if (decimalPlaces === 1) {
+            return value.toFixed(1).replace('.', ',');
+        }
+        return value.toFixed(2).replace('.', ',');
+    }
+    
+    function updateEditCalculations() {
+        const budgetState = parseEditNumber(document.getElementById('change-BudgetState-edit-model')?.value);
+        const budgetRep = parseEditNumber(document.getElementById('change-BudgetRep-edit-model')?.value);
+        const budgetLoc = parseEditNumber(document.getElementById('change-BudgetLoc-edit-model')?.value);
+        const budgetOther = parseEditNumber(document.getElementById('change-BudgetOther-edit-model')?.value);
+        const moneyOwn = parseEditNumber(document.getElementById('change-MoneyOwn-edit-model')?.value);
+        const moneyLoan = parseEditNumber(document.getElementById('change-MoneyLoan-edit-model')?.value);
+        const moneyOther = parseEditNumber(document.getElementById('change-MoneyOther-edit-model')?.value);
+        
+        const volumeFin = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+        const volumeFinInput = document.getElementById('change-VolumeFin-edit-model');
+        if (volumeFinInput) volumeFinInput.value = formatEditNumber(volumeFin, 0);
+        
+        const effTut = parseEditNumber(document.getElementById('change-EffTut-edit-model')?.value);
+        const effRub = Math.round(effTut * costPerToe * usdRate);
+        const effRubInput = document.getElementById('change-EffRub-edit-model');
+        if (effRubInput) effRubInput.value = formatEditNumber(effRub, 0);
+        
+        let payback = 0;
+        if (effRub > 0) payback = volumeFin / effRub;
+        const paybackInput = document.getElementById('change-Payback-edit-model');
+        if (paybackInput) paybackInput.value = formatEditNumber(payback, 1);
+    }
+    
+    const editFields = [
+        'change-EffTut-edit-model',
+        'change-BudgetState-edit-model', 'change-BudgetRep-edit-model',
+        'change-BudgetLoc-edit-model', 'change-BudgetOther-edit-model',
+        'change-MoneyOwn-edit-model', 'change-MoneyLoan-edit-model',
+        'change-MoneyOther-edit-model'
+    ];
+    
+    editFields.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if (input) {
+            input.removeEventListener('input', updateEditCalculations);
+            input.addEventListener('input', updateEditCalculations);
+        }
+    });
+    
+    updateEditCalculations();
 }
 
 function setValueIfExists(elementId, value) {
@@ -1808,32 +1995,47 @@ function validateAndEnableButton() {
 function checkCategoryRequired() {
     const selectedIndicatorName = document.getElementById('selected-indicator-name');
     const categorySection = document.getElementById('category-section');
+    const nameSection = document.getElementById('name-section');
     const submitBtn = document.getElementById('submit-indicator-btn');
     const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    const nameInput = document.getElementById('name-section-input');
     
-    if (!selectedIndicatorName || !categorySection) return;
+    if (!selectedIndicatorName || !categorySection || !nameSection) return;
     
     const indicatorText = selectedIndicatorName.textContent;
     const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
     
-    if (isCategoryRequired) {
-        categorySection.style.display = 'block';
+    function validateForm() {
+        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
+        const isNameFilled = nameInput && nameInput.value.trim() !== '';
         
-        function validateCategory() {
-            const isChecked = Array.from(categoryRadios).some(radio => radio.checked);
-            if (submitBtn) {
-                submitBtn.disabled = !isChecked;
+        if (submitBtn) {
+            if (isCategoryRequired) {
+                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
+            } else {
+                submitBtn.disabled = false;
             }
         }
+    }
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        nameSection.style.display = 'block';
         
         categoryRadios.forEach(radio => {
-            radio.removeEventListener('change', validateCategory);
-            radio.addEventListener('change', validateCategory);
+            radio.removeEventListener('change', validateForm);
+            radio.addEventListener('change', validateForm);
         });
         
-        validateCategory();
+        if (nameInput) {
+            nameInput.removeEventListener('input', validateForm);
+            nameInput.addEventListener('input', validateForm);
+        }
+        
+        validateForm();
     } else {
         categorySection.style.display = 'none';
+        nameSection.style.display = 'none';
         if (submitBtn) {
             submitBtn.disabled = false;
         }
@@ -1853,6 +2055,10 @@ class CertificateUploadHandler {
     init() {
         if (!this.form || !this.dropArea || !this.fileInput || !this.submitButton) {
             console.error('Required elements not found');
+            console.log('form:', this.form);
+            console.log('dropArea:', this.dropArea);
+            console.log('fileInput:', this.fileInput);
+            console.log('submitButton:', this.submitButton);
             return;
         }
 
@@ -1933,8 +2139,7 @@ class CertificateUploadHandler {
     resetFileDisplay() {
         const textElement = this.dropArea.querySelector('.drop-certificate-text');
         if (textElement) {
-            textElement.innerHTML = `Перетащите файл сертификата сюда или 
-                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>`;
+            textElement.innerHTML = 'Перетащите файл сертификата сюда или \n                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>';
         }
         this.dropArea.classList.remove('has-file');
     }
@@ -1983,6 +2188,11 @@ class CertificateUploadHandler {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
+}
+
+
+if (document.getElementById('sentmodal')) {
+    new CertificateUploadHandler();
 }
 
 document.addEventListener('DOMContentLoaded', function() {

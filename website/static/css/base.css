@@ -2042,6 +2042,7 @@ input::placeholder {
 .currency-info {
   margin-bottom: 20px;
   transition: all 0.3s ease;
+  margin-top: 10px;
 }
 
 .currency-info-content {
@@ -2067,6 +2068,22 @@ input::placeholder {
   transform: translateY(-1px);
 }
 
+.auto-hint {
+  padding: 8px 12px;
+  background: var(--background-grey-opa);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-subtitle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auto-hint svg{
+  width: 14px;
+  height: 14px;
+}
+
 .currency-label {
   font-size: 11px;
   color: var(--text-subtitle);
@@ -2075,38 +2092,38 @@ input::placeholder {
 }
 
 .currency-value {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--green-light);
-    line-height: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-light);
+  line-height: 1;
 }
 
 .currency-unit {
-    font-size: 12px;
-    color: var(--text-subtitle2);
-    font-weight: 500;
+  font-size: 12px;
+  color: var(--text-subtitle2);
+  font-weight: 500;
 }
 
 .currency-status {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .rate-source {
-    font-size: 11px;
-    font-weight: 500;
-    color: #2e7d32;
-    background: #e8f5e9;
-    padding: 4px 12px;
-    border-radius: 20px;
-    letter-spacing: 0.3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #2e7d32;
+  background: #e8f5e9;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
 }
 
 .rate-source.error {
-    background: #ffebee;
-    color: #c62828;
+  background: #ffebee;
+  color: #c62828;
 }
 
 .rate-time {
@@ -3287,59 +3304,78 @@ hr {
   align-items: center;
 }
 
+
+.name-section{
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+
+.name-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.name-options input{
+  box-sizing: border-box;
+}
+
 .category-section {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 10px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 10px;
 }
 
 .category-section-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
 }
 
 .category-options {
-    display: flex;
-    gap: 15px;
+  display: flex;
+  gap: 15px;
 }
 
 .category-option {
-    flex: 1;
-    cursor: pointer;
+  flex: 1;
+  cursor: pointer;
 }
 
 .category-option input[type="radio"] {
-    display: none;
+  display: none;
 }
 
 .category-option-content {
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 15px;
-    transition: all 0.3s ease;
-    background: white;
-    text-align: center;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 15px;
+  transition: all 0.3s ease;
+  background: white;
+  text-align: center;
 }
 
 .category-option input[type="radio"]:checked + .category-option-content {
-    border-color: var(--green-main);
-    background: linear-gradient(135deg, rgba(76, 175, 153, 0.05) 0%, rgba(76, 160, 175, 0.1) 100%);
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+  border-color: var(--green-main);
+  background: linear-gradient(135deg, rgba(76, 175, 153, 0.05) 0%, rgba(76, 160, 175, 0.1) 100%);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
 }
 
 .category-option-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
 }
 
 .category-option-desc {
-    font-size: 11px;
-    color: #666;
+  font-size: 11px;
+  color: #666;
 }
 
 .prediction-container .app-numeric-input {
@@ -3438,7 +3474,9 @@ hr {
 .app-numeric-input,
 .app-numeric-input-coeff,
 .app-numeric-input-negative,
-.app-numeric-input-one-decimal {
+.app-numeric-input-one-decimal,
+.app-numeric-input-negative-one-decimal,
+.app-numeric-input-integer {
   width: 100%;
   padding: 9px 16px 9px 38px;
   border: none;
@@ -3459,7 +3497,9 @@ hr {
 .app-input:focus:not(.readonly):not(.disabled),
 .app-numeric-input:focus:not(.readonly):not(.disabled),
 .app-numeric-input-negative:focus:not(.readonly):not(.disabled),
-.app-numeric-input-one-decimal:focus:not(.readonly):not(.disabled){
+.app-numeric-input-one-decimal:focus:not(.readonly):not(.disabled),
+.app-numeric-input-negative-one-decimal:focus:not(.readonly):not(.disabled),
+.app-numeric-input-integer:focus:not(.readonly):not(.disabled){
   outline: none;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: white;
@@ -3469,10 +3509,14 @@ hr {
 .app-numeric-input[readonly],
 .app-numeric-input-negative[readonly],
 .app-numeric-input-one-decimal[readonly],
+.app-numeric-input-negative-one-decimal[readonly],
+.app-numeric-input-integer[readonly],
 .app-input.disabled,
 .app-numeric-input.disabled,
 .app-numeric-input-negative.disabled,
-.app-numeric-input-one-decimal.disabled{
+.app-numeric-input-one-decimal.disabled,
+.app-numeric-input-negative-one-decimal.disabled,
+.app-numeric-input-integer.disabled{
   background-color: var(--background-grey-opa);
   color: var(--color-readonly);
   cursor: not-allowed;
@@ -3482,32 +3526,44 @@ hr {
 .app-numeric-input[readonly] ~ svg,
 .app-numeric-input-negative[readonly] ~ svg,
 .app-numeric-input-one-decimal[readonly] ~ svg,
+.app-numeric-input-negative-one-decimal[readonly] ~ svg,
+.app-numeric-input-integer[readonly] ~ svg,
 .app-input.disabled ~ svg,
 .app-numeric-input.disabled ~ svg,
 .app-numeric-input-negative.disabled ~ svg,
 .app-numeric-input-one-decimal.disabled ~ svg,
+.app-numeric-input-negative-one-decimal.disabled ~ svg,
+.app-numeric-input-integer.disabled ~ svg,
 .input-with-icon:has(.app-input[readonly]) svg,
 .input-with-icon:has(.app-numeric-input[readonly]) svg,
 .input-with-icon:has(.app-numeric-input-negative[readonly]) svg,
 .input-with-icon:has(.app-numeric-input-one-decimal[readonly]) svg,
+.input-with-icon:has(.app-numeric-input-negative-one-decimal[readonly]) svg,
+.input-with-icon:has(.app-numeric-input-integer[readonly]) svg,
 .input-with-icon:has(.app-input.disabled) svg,
 .input-with-icon:has(.app-numeric-input.disabled) svg,
 .input-with-icon:has(.app-numeric-input-negative.disabled) svg,
-.input-with-icon:has(.app-numeric-input-one-decimal.disabled) svg {
+.input-with-icon:has(.app-numeric-input-one-decimal.disabled) svg,
+.input-with-icon:has(.app-numeric-input-negative-one-decimal.disabled) svg,
+.input-with-icon:has(.app-numeric-input-integer.disabled) svg {
   opacity: 0.6;
 }
 
 .app-input:active,
 .app-numeric-input:active,
 .app-numeric-input-negative:active,
-.app-numeric-input-one-decimal:active {
+.app-numeric-input-one-decimal:active,
+.app-numeric-input-negative-one-decimal:active,
+.app-numeric-input-integer:active{
   background-color: var(--background-light);
 }
 
 .app-input:focus-visible,
 .app-numeric-input:focus-visible,
 .app-numeric-input-negative:focus-visible,
-.app-numeric-input-one-decimal:focus-visible{
+.app-numeric-input-one-decimal:focus-visible,
+.app-numeric-input-negative-one-decimal:focus-visible,
+.app-numeric-input-integer:focus-visible{
   background-color: white;
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
 }
@@ -6105,7 +6161,8 @@ input[type="checkbox"]:focus {
 
 .modal-body{
   max-height: 90vh;
-
+  /* overflow-y: auto;
+  box-sizing: border-box; */
 }
 
 .modal-step[style*="display: none"] {

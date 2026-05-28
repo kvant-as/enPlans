@@ -94,10 +94,12 @@ class Plan(db.Model):
     change_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     sent_time = db.Column(db.DateTime)
     audit_time = db.Column(db.DateTime)
-    energy_saving = db.Column(Numeric(scale=2))
-    share_fuel = db.Column(Numeric(scale=2))
-    saving_fuel = db.Column(Numeric(scale=2))
-    share_energy = db.Column(Numeric(scale=2))
+    
+    energy_saving = db.Column(Numeric(scale=1))
+    share_fuel = db.Column(Numeric(scale=1))
+    saving_fuel = db.Column(Numeric(scale=1))
+    share_energy = db.Column(Numeric(scale=1))
+    
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
@@ -235,6 +237,7 @@ class IndicatorUsage(db.Model):
     __tablename__ = 'indicators_usage'
     id = db.Column(db.Integer, primary_key=True)
     id_indicator = db.Column(db.Integer, db.ForeignKey('indicators.id'), nullable=False)
+    note = db.Column(db.String(), default=None, nullable=True)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     QYearBeforePrev = db.Column(Numeric(scale=2))
     QYearPrev = db.Column(Numeric(scale=2))
