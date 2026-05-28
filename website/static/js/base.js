@@ -733,6 +733,10 @@ var NumericInputHandler = {
             }
         } else {
             newValue = oldValue.replace(/[^\d,]/g, '');
+            if (newValue === '') {
+                input.value = '';
+                return;
+            }
         }
         
         if (newValue !== '' && newValue !== '-') {
@@ -741,8 +745,8 @@ var NumericInputHandler = {
             if (parts.length > 1) {
                 newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
             }
-            
-            if (!newValue.includes('.')) {
+
+            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
                 newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
             }
             
@@ -766,8 +770,10 @@ var NumericInputHandler = {
             input.value = settings.defaultValue;
         }
         var commaIndex = input.value.indexOf(',');
-        if (commaIndex !== -1) {
+        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
             input.setSelectionRange(commaIndex, commaIndex);
+        } else if (settings.decimalPlaces === 0) {
+            input.select();
         }
     },
     
@@ -795,6 +801,7 @@ NumericInputHandler.init('.app-numeric-input', {
     defaultValue: '0,00'
 });
 
+
 NumericInputHandler.init('.app-numeric-input-coeff', {
     allowNegative: false,
     decimalPlaces: 3,
@@ -805,6 +812,24 @@ NumericInputHandler.init('.app-numeric-input-negative', {
     allowNegative: true,
     decimalPlaces: 2,
     defaultValue: '0,00'
+});
+
+NumericInputHandler.init('.app-numeric-input-one-decimal', {
+    allowNegative: false,
+    decimalPlaces: 1,
+    defaultValue: '0,0'
+});
+
+NumericInputHandler.init('.app-numeric-input-negative-one-decimal', {
+    allowNegative: true,
+    decimalPlaces: 1,
+    defaultValue: '0,0'
+});
+
+NumericInputHandler.init('.app-numeric-input-integer', {
+    allowNegative: false,
+    decimalPlaces: 0,
+    defaultValue: '0'
 });
 
 class DirectionsTable {
@@ -835,9 +860,40 @@ class DirectionsTable {
         noResultsRow.className = "no-results-row";
         const cell = document.createElement("td");
         cell.colSpan = 5;
-        cell.textContent = "Нет похожей информации";
         cell.style.textAlign = "center";
-        cell.style.padding = "20px";
+        cell.style.padding = "40px 20px";
+        
+        const container = document.createElement("div");
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.alignItems = "center";
+        container.style.gap = "12px";
+        
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "38");
+        svg.setAttribute("height", "38");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("fill", "none");
+        svg.style.opacity = "0.5";
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z");
+        path.setAttribute("stroke", "#999");
+        path.setAttribute("stroke-width", "1.5");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute("fill", "none");
+        
+        svg.appendChild(path);
+        
+        const text = document.createElement("span");
+        text.textContent = "Нет похожей информации";
+        text.style.fontSize = "13px";
+        text.style.color = "#999";
+        
+        container.appendChild(svg);
+        container.appendChild(text);
+        cell.appendChild(container);
         noResultsRow.appendChild(cell);
         return noResultsRow;
     }

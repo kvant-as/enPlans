@@ -3,15 +3,58 @@ from venv import logger
 from flask import current_app, g, request, jsonify, Blueprint
 from flask_login import login_required
 
-from website.plans import get_event_metrics
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
+from website.time import TimeByMinsk
 
-from ..models import Direction, Indicator, IndicatorUsage, Ministry, Organization, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
+
+@api_bp.route('/news', methods=['GET'])
+@login_required
+def get_news():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    news_items = News.query.filter(
+        News.is_published == True,
+        News.published_at <= TimeByMinsk()
+    ).order_by(News.published_at.desc()).paginate(page=page, per_page=per_page)
+    
+    return jsonify({
+        'news': [{
+            'id': item.id,
+            'title': item.title,
+            'content': item.content,
+            'image_url': item.image_url,
+            'published_at': item.published_at.isoformat() if item.published_at else None,
+            'views_count': item.views_count
+        } for item in news_items.items],
+        'total': news_items.total,
+        'page': news_items.page,
+        'pages': news_items.pages
+    })
+
+@api_bp.route('/news/<int:news_id>', methods=['GET'])
+@login_required
+def get_news_detail(news_id):
+    news_item = News.query.get_or_404(news_id)
+    
+    news_item.views_count += 1
+    db.session.commit()
+    
+    return jsonify({
+        'id': news_item.id,
+        'title': news_item.title,
+        'content': news_item.content,
+        'image_url': news_item.image_url,
+        'published_at': news_item.published_at.isoformat() if news_item.published_at else None,
+        'views_count': news_item.views_count,
+        'created_at': news_item.created_at.isoformat()
+    })
 
 @api_bp.route('/organizations')
 @login_required
@@ -152,6 +195,7 @@ def get_indicator_api(id):
             'id_indicator': indicator_usage.id_indicator,
             'code': indicator_usage.indicator.code,
             'name': indicator_usage.indicator.name,
+            'note': indicator_usage.note,
             'unit_name': indicator_usage.indicator.unit.name if indicator_usage.indicator.unit else '',
             'CoeffToTut': float(indicator_usage.indicator.CoeffToTut) if indicator_usage.indicator.CoeffToTut else 0,
             'custom_coeff_to_tut': float(indicator_usage.custom_coeff_to_tut) if indicator_usage.custom_coeff_to_tut else None,
@@ -191,6 +235,7 @@ def get_indicators_data(token):
             'id_indicator': row.id_indicator,
             'code': row.indicator.code,
             'name': row.indicator.name,
+            'note': row.note,
             'unit_name': row.indicator.unit.name,
             'group': float(row.indicator.Group) if row.indicator.Group else None,
             'row_n': row.indicator.RowN,
@@ -222,21 +267,24 @@ def get_indicators_data(token):
 @session_required
 def get_events_data(token):
     current_plan = g.current_plan
-    event_type = request.args.get('type', 'saving')
+    event_type = request.args.get('type')
     
     if event_type not in ['saving', 'increase']:
         return jsonify({'success': False, 'error': 'Invalid event type'}), 400
     
     if event_type == 'saving':
-        type_filter = Direction.is_econom == True
+        type_filter = Event.is_econom == True
     else:
-        type_filter = Direction.is_increase == True
+        type_filter = Event.is_increase == True
+    
+    period_codes = ['0001', '0002', '0003', '0004']
     
     original_events = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == False)
+        .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
     
@@ -245,31 +293,54 @@ def get_events_data(token):
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == True)
+        .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
     
-    events_original = get_event_metrics(current_plan.id, event_type, is_original=True)
-    events_included_changes = get_event_metrics(current_plan.id, event_type, is_original=False)
+    period_events = (Event.query
+        .join(Direction, Event.id_direction == Direction.id)
+        .filter(Event.id_plan == current_plan.id)
+        .filter(type_filter)
+        .filter(Direction.code.in_(period_codes))
+        .filter(Event.is_corrected == False)
+        .order_by(Direction.code.asc())
+        .all())
+
+    logger.debug(f"=== DEBUG get_events_data ===")
+    logger.debug(f"event_type: {event_type}")
+    logger.debug(f"plan_id: {current_plan.id}")
+    logger.debug(f"period_events count: {len(period_events)}")
+    for pe in period_events:
+        logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
+
+    period_metrics = {}
+    for period_event in period_events:
+        code = period_event.direction.code
+        
+        period_metrics[code] = {
+            'id': period_event.id,
+            'eff_curr_year': float(period_event.EffCurrYear) if period_event.EffCurrYear else 0
+        }
     
     total_metrics = {
-        'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
-        'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
-        'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
-        'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
-        'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
-        'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
-        'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
-        'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
+        'jan_mar_eff': period_metrics.get('0001', {}).get('eff_curr_year', 0),
+        'jan_jun_eff': period_metrics.get('0002', {}).get('eff_curr_year', 0),
+        'jan_sep_eff': period_metrics.get('0003', {}).get('eff_curr_year', 0),
+        'jan_dec_eff': period_metrics.get('0004', {}).get('eff_curr_year', 0)
     }
     
     def serialize_event(event):
+        unit_name = None
+        if event.direction and event.direction.unit:
+            unit_name = event.direction.unit.name
+        
         return {
             'id': event.id,
             'id_direction': event.id_direction,
-            'direction_code': event.direction.code,
-            'display_code': getattr(event, 'display_code', event.direction.code),
+            'direction_code': event.direction.code if event.direction else None,
+            'display_code': getattr(event, 'display_code', event.direction.code if event.direction else None),
             'name': event.name,
-            'unit_name': event.direction.unit.name,
+            'unit_name': unit_name,
             'Volume': float(event.Volume) if event.Volume else None,
             'EffTut': float(event.EffTut) if event.EffTut else None,
             'EffRub': float(event.EffRub) if event.EffRub else None,
@@ -294,9 +365,54 @@ def get_events_data(token):
         'event_type': event_type,
         'original_events': [serialize_event(e) for e in original_events],
         'events_with_changes': [serialize_event(e) for e in events_with_changes],
+        'period_metrics': period_metrics,
         'total_metrics': total_metrics
     })
-    
 
+@api_bp.route('/plan-rates/<token>', methods=['GET'])
+@login_required
+def get_plan_rates(token):
+    from website.models import Plan
     
+    plan = Plan.query.filter_by(token=token).first()
+    if not plan:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'usd_rate': float(plan.usd_rate) if plan.usd_rate else None,
+        'cost_per_toe_usd': float(plan.cost_per_toe_usd) if plan.cost_per_toe_usd else None
+    })
 
+@api_bp.route('/refresh-plan-rates/<token>', methods=['POST'])
+@login_required
+def refresh_plan_rates(token):
+    from website.models import Plan
+    from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
+    
+    plan = Plan.query.filter_by(token=token).first()
+    if not plan:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+    
+    usd_rate, error = fetch_usd_rate_from_belarusbank()
+    
+    if usd_rate is None:
+        return jsonify({'success': False, 'error': error}), 500
+    
+    plan.usd_rate = usd_rate
+    
+    if plan.cost_per_toe_usd is None or plan.cost_per_toe_usd <= 0:
+        plan.cost_per_toe_usd = 260.0
+    
+    try:
+        from website import db
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'usd_rate': float(plan.usd_rate),
+            'cost_per_toe_usd': float(plan.cost_per_toe_usd)
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500

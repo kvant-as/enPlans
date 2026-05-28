@@ -1,10 +1,11 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from venv import logger
 
 from flask_login import current_user
 
-from . import db
-from .models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from .. import db
+from ..models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -14,6 +15,35 @@ from flask import (
 
 from decimal import Decimal, InvalidOperation
 import logging
+
+def to_decimal_1(value):
+    try:
+        if value is None or value == '':
+            return Decimal('0.0')
+        
+        if isinstance(value, Decimal):
+            return value.quantize(Decimal('0.0'))
+        
+        if isinstance(value, (int, float)):
+            return Decimal(str(value)).quantize(Decimal('0.0'))
+        
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return Decimal('0.0')
+            
+            value = value.replace(',', '.')
+            
+            if value.count('.') > 1:
+                parts = value.split('.')
+                value = parts[0] + '.' + ''.join(parts[1:])
+            
+            return Decimal(value).quantize(Decimal('0.0'))
+        
+        return Decimal('0.0')
+        
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal('0.0')
 
 def to_decimal_2(value):
     try:
@@ -96,7 +126,6 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
     
     return f"{base_code}.{next_number}"
 
-    
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
         new_ticket = Ticket(
@@ -127,8 +156,6 @@ def update_ChangeTimePlan(id):
 
     db.session.commit()
 
-    
-    
 def get_plans_by_okpo():
     okpo_digit = str(current_user.organization.okpo)[-4]
     """Фильтрация по 4-ой цифре с конца OKPO: {okpo_digit}"""
@@ -189,58 +216,49 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
     }
     return plans, status_counts
 
-def get_event_metrics(plan_id, event_type, is_original=True):
-    query = (db.session.query(
-        Event.ExpectedQuarter,
-        func.sum(Event.EffCurrYear).label('total_eff'),
-        func.sum(Event.VolumeFin).label('total_vol')
-    )
-    .join(Direction, Event.id_direction == Direction.id)
-    .filter(Event.id_plan == plan_id)
-    )
+# def get_event_metrics(plan_id, event_type, is_original=True):
+#     query = (db.session.query(
+#         Event.ExpectedQuarter,
+#         func.sum(Event.EffCurrYear).label('total_eff'),
+#         func.sum(Event.VolumeFin).label('total_vol')
+#     )
+#     .join(Direction, Event.id_direction == Direction.id)
+#     .filter(Event.id_plan == plan_id)
+#     )
     
-    if event_type == 'saving':
-        query = query.filter(Direction.is_econom == True)
-    else:
-        query = query.filter(Direction.is_increase == True)
+#     if event_type == 'saving':
+#         query = query.filter(Direction.is_econom == True)
+#     else:
+#         query = query.filter(Direction.is_increase == True)
     
-    if is_original:
-        query = query.filter(Event.is_corrected == False)
-    else:
-        query = query.filter(Event.is_corrected == True)
+#     if is_original:
+#         query = query.filter(Event.is_corrected == False)
+#     else:
+#         query = query.filter(Event.is_corrected == True)
 
-    quarterly_results = query.group_by(Event.ExpectedQuarter).all()
+#     quarterly_results = query.group_by(Event.ExpectedQuarter).all()
     
-    cumulative_totals = {
-        'jan_mar': {'eff_curr_year': 0, 'volume_fin': 0},
-        'jan_jun': {'eff_curr_year': 0, 'volume_fin': 0},
-        'jan_sep': {'eff_curr_year': 0, 'volume_fin': 0},
-        'jan_dec': {'eff_curr_year': 0, 'volume_fin': 0}
-    }
+#     cumulative_totals = {
+#         'jan_mar': {'eff_curr_year': 0},
+#         'jan_jun': {'eff_curr_year': 0},
+#         'jan_sep': {'eff_curr_year': 0},
+#         'jan_dec': {'eff_curr_year': 0}
+#     }
     
-    quarter_data = {1: {'eff': 0, 'vol': 0}, 2: {'eff': 0, 'vol': 0}, 
-                   3: {'eff': 0, 'vol': 0}, 4: {'eff': 0, 'vol': 0}}
+#     quarter_data = {1: {'eff': 0, 'vol': 0}, 2: {'eff': 0, 'vol': 0}, 
+#                    3: {'eff': 0, 'vol': 0}, 4: {'eff': 0, 'vol': 0}}
     
-    for quarter, eff_sum, vol_sum in quarterly_results:
-        if quarter in [1, 2, 3, 4]:
-            quarter_data[quarter]['eff'] = float(eff_sum) if eff_sum else 0
-            quarter_data[quarter]['vol'] = float(vol_sum) if vol_sum else 0
+#     for quarter, eff_sum, vol_sum in quarterly_results:
+#         if quarter in [1, 2, 3, 4]:
+#             quarter_data[quarter]['eff'] = float(eff_sum) if eff_sum else 0
+#             quarter_data[quarter]['vol'] = float(vol_sum) if vol_sum else 0
     
-    cumulative_totals['jan_mar']['eff_curr_year'] = quarter_data[1]['eff']
-    cumulative_totals['jan_mar']['volume_fin'] = quarter_data[1]['vol']
-    
-    cumulative_totals['jan_jun']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff']
-    cumulative_totals['jan_jun']['volume_fin'] = quarter_data[1]['vol'] + quarter_data[2]['vol']
-    
-    cumulative_totals['jan_sep']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff']
-    cumulative_totals['jan_sep']['volume_fin'] = quarter_data[1]['vol'] + quarter_data[2]['vol'] + quarter_data[3]['vol']
-    
-    cumulative_totals['jan_dec']['eff_curr_year'] = (quarter_data[1]['eff'] + quarter_data[2]['eff'] + 
-                                                   quarter_data[3]['eff'] + quarter_data[4]['eff'])
-    cumulative_totals['jan_dec']['volume_fin'] = (quarter_data[1]['vol'] + quarter_data[2]['vol'] + 
-                                                quarter_data[3]['vol'] + quarter_data[4]['vol'])
-    
-    return cumulative_totals
+#     cumulative_totals['jan_mar']['eff_curr_year'] = quarter_data[1]['eff']
+#     cumulative_totals['jan_jun']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff']
+#     cumulative_totals['jan_sep']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff']
+#     cumulative_totals['jan_dec']['eff_curr_year'] = (quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff'] + quarter_data[4]['eff'])
+
+#     return cumulative_totals
 
 def other_data_indicatorUpdate(plan_id):
     plan = Plan.query.get(plan_id)
@@ -477,13 +495,13 @@ def other_data_indicatorUpdate(plan_id):
         denominator = get_value(indicator_260, 'QYearPrev')
         
         result = safe_divide(numerator, denominator) * 100
-        indicator_9915.QYearCurrent = to_decimal_2(result)
+        indicator_9915.QYearCurrent = to_decimal_2(-abs(result))
         
         logger.info(f'Set 9915.QYearCurrent = {result}')
         commit_changes()
     
     def update_indicator_9916():
-        """Обновление индикатора 9916 (доля местных ТЭР в КПТ)"""
+        """Обновление индикатора 9916 (Целевой показатель по доле местных ТЭР в КПТ)"""
         logger.info(f'Calculating 9916 (local share) for plan {plan.id}')
         
         indicator_9916 = get_indicator_by_code(indicator_usages, '9916')
@@ -584,6 +602,52 @@ def other_data_indicatorUpdate(plan_id):
         logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
         db.session.rollback()
 
+def check_and_create_period_directions(plan_id, event_type):
+    try:
+        period_codes = ['0001', '0002', '0003', '0004']
+        period_names = {
+            '0001': 'Январь-Март',
+            '0002': 'Январь-Июнь',
+            '0003': 'Январь-Сентябрь',
+            '0004': 'Январь-Декабрь'
+        }
+        
+        for code in period_codes:
+            if event_type == 'saving':
+                direction = Direction.query.filter_by(code=code, is_econom=True, is_increase=False).first()
+            else:
+                direction = Direction.query.filter_by(code=code, is_econom=False, is_increase=True).first()
+            
+            if not direction:
+                logger.warning(f'Direction with code {code} and event_type {event_type} not found')
+                continue
+            
+            existing_event = Event.query.filter_by(
+                id_plan=plan_id,
+                id_direction=direction.id,
+                is_corrected=False
+            ).first()
+            
+            if not existing_event:
+                new_event = Event(
+                    id_plan=plan_id,
+                    id_direction=direction.id,
+                    name=period_names[code],
+                    display_code=code,
+                    is_econom=(event_type == 'saving'),
+                    is_increase=(event_type == 'increase')
+                )
+                db.session.add(new_event)
+                logger.debug(f'Created period event for {event_type}: code={code}, direction_id={direction.id}, plan_id={plan_id}')
+        
+        db.session.commit()
+        logger.debug(f'Period events created for plan_id={plan_id}, event_type={event_type}')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error creating period events for plan_id={plan_id}, event_type={event_type}: {str(e)}')
+        raise
+    
 def handle_draft_status(plan):
     plan.is_draft = True
     plan.is_control = plan.is_sent = plan.is_error = plan.is_approved = False

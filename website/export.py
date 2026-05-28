@@ -24,12 +24,12 @@ def export_xml_single(plan: Plan):
         ET.SubElement(title, "year_label").text = f"на {plan.year} год"
 
         targets = ET.SubElement(title, "targets")
-        ET.SubElement(targets, "label").text = "Целевые показатели: показатель энергосбережения"
+        ET.SubElement(targets, "label").text = "Целевые показатели: Целевой показатель энергосбережения"
         ET.SubElement(targets, "details").text = (
-            f"показатель энергосбережения - {plan.energy_saving}% "
+            f"Целевой показатель энергосбережения - {plan.energy_saving}% "
             f"(задание по экономии ТЭР - {plan.share_fuel} т у.т.); "
-            f"доля местных ТЭР в КПТ - {plan.saving_fuel}%; "
-            f"доля местных ТЭР в КПТ - {plan.share_energy}%."
+            f"Целевой показатель по доле местных ТЭР в КПТ - {plan.saving_fuel}%; "
+            f"Целевой показатель по доле местных ТЭР в КПТ - {plan.share_energy}%."
         )
         return title
 
@@ -1232,7 +1232,7 @@ def export_xlsx_single(plan: Plan):
             f"{plan.year - 1} г. план", 
             f"{plan.year} г. оценка", 
             f"{plan.year + 1} г. прогноз", 
-            "Изменение ТЭР прогнозного года к предыдущему (увеличение + , снижение - )"
+            "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. (увеличение + , снижение - )"
         ]
         ws.append(headers)
         

@@ -1,8 +1,11 @@
+import datetime
 import os
 from dbfread import DBF
 from flask import current_app
 import pandas as pd
 from werkzeug.security import generate_password_hash
+
+from website.time import TimeByMinsk
 
 def create_database(app, db):
     with app.app_context():
@@ -24,7 +27,7 @@ def read_dbf(file_path, columns):
 
 def filling_database(db):
     if is_db_empty():
-        from .models import User, Organization, Unit, Direction, Indicator, Ministry, Region
+        from .models import User, Organization, Unit, Direction, Indicator, Ministry, Region, News
         from sqlalchemy.exc import IntegrityError
         current_app.logger.debug('Filling is in progress...')
 
@@ -144,8 +147,8 @@ def filling_database(db):
 
         ### USER DATA ###
         users_data = [
-            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 14),
-            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), True, False, 6471),
+            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, True, 14),
+            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, 6471),
 
             # ('', os.getenv('auditoremailBrest'), 'Иванов1', 'Иван', 'Иванович', '+11', False, True, 7940),
             # ('', os.getenv('auditoremailVitebsk'), 'Иванов2', 'Иван', 'Иванович', '+22', False, True, 7941),
@@ -335,6 +338,17 @@ def filling_database(db):
 
             # ПРОЧИЕ (1900 - экономия)
             (9, '1900', 'Прочие мероприятия по повышению эффективности использования топливно-энергетических ресурсов', True, False),
+            
+            # ПРОЧИЕ
+            (None, '0001', 'Январь-Март', True, False),
+            (None, '0002', 'Январь-Июнь', True, False),
+            (None, '0003', 'Январь-Сентябрь', True, False),
+            (None, '0004', 'Январь-Декабрь', True, False),
+            
+            (None, '0001', 'Январь-Март', False, True),
+            (None, '0002', 'Январь-Июнь', False, True),
+            (None, '0003', 'Январь-Сентябрь', False, True),
+            (None, '0004', 'Январь-Декабрь', False, True)
         ]
 
         for id_unit, code, name, is_econom, is_increase in direction_data:
@@ -347,7 +361,6 @@ def filling_database(db):
             )
             db.session.add(direction)
         db.session.commit()
-
         # ### ----------- ###
 
         ### Indicator DATA ###
@@ -355,31 +368,31 @@ def filling_database(db):
             (1, '1000', 'Котельно-печное топливо израсходовано всего, в том числе', 1.000, True, 1, 1, False, False),
             
             (3, '2000', 'газ природный', 1.150, False, 1, 2, False, False),
-            (2, '2001', 'мазут топочный', 1.370, False, 1, 2, False, False),
-            (2, '2002', 'топливо печное бытовое', 1.450, False, 1, 2, False, False),
-            (2, '2003', 'кокс металлургический, коксик и коксовая мелочь', 0.990, False, 1, 2, False, False),
-            (2, '2004', 'кокс нефтяной', 1.130, False, 1, 2, False, False),
-            (2, '2005', 'уголь и продукты переработки угля', 0.814, False, 1, 2, False, False),
-            (2, '2006', 'газы углеводородные сжиженные', 1.570, False, 1, 2, False, False),
-            (2, '2007', 'газы углеводородные нефтепереработки', 1.500, False, 1, 2, False, False),
-            (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 2, False, False),
-            (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 2, False, False),
-            (3, '2010', 'газ природный попутный', 1.300, False, 1, 2, True, False),  # is_local = True
-            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 2, True, False),  # is_local = True
-            (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 2, True, False),  # is_local = True
-            (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 2, True, False),  # is_local = True
-            (1, '2014', 'биогаз', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (5, '2015', 'дрова', 0.228, False, 1, 2, False, True),  # is_renewable = True
-            (5, '2016', 'топливная щепа', 0.187, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2017', 'древесные гранулы, пеллеты', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2018', 'древесные брикеты', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2019', 'RDF-топливо', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2020', 'отходы лесозаготовок и деревообработки', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2021', 'отходы сельскохозяйственной деятельности и прочие виды природного топлива', 1.000, False, 1, 2, False, True),  # is_renewable = True
-            (1, '2022', 'сульфатные и сульфитные щелока целлюлозно-бумажной промышленности', 1.000, False, 1, 2, False, True),  # is_renewable = True
+            (2, '2001', 'мазут топочный', 1.370, False, 1, 3, False, False),
+            (2, '2002', 'топливо печное бытовое', 1.450, False, 1, 4, False, False),
+            (2, '2003', 'кокс металлургический, коксик и коксовая мелочь', 0.990, False, 1, 5, False, False),
+            (2, '2004', 'кокс нефтяной', 1.130, False, 1, 6, False, False),
+            (2, '2005', 'уголь и продукты переработки угля', 0.814, False, 1, 7, False, False),
+            (2, '2006', 'газы углеводородные сжиженные', 1.570, False, 1, 8, False, False),
+            (2, '2007', 'газы углеводородные нефтепереработки', 1.500, False, 1, 9, False, False),
+            (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 10, False, False),
+            (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 11, False, False),
+            (3, '2010', 'газ природный попутный', 1.300, False, 1, 12, True, False),  # is_local = True
+            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 14, True, False),  # is_local = True
+            (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 15, True, False),  # is_local = True
+            (1, '2014', 'биогаз', 1.000, False, 1, 16, False, True),  # is_renewable = True
+            (5, '2015', 'дрова', 0.228, False, 1, 17, False, True),  # is_renewable = True
+            (5, '2016', 'топливная щепа', 0.187, False, 1, 18, False, True),  # is_renewable = True
+            (1, '2017', 'древесные гранулы, пеллеты', 1.000, False, 1, 19, False, True),  # is_renewable = True
+            (1, '2018', 'древесные брикеты', 1.000, False, 1, 20, False, True),  # is_renewable = True
+            (1, '2019', 'RDF-топливо', 1.000, False, 1, 21, False, True),  # is_renewable = True
+            (1, '2020', 'отходы лесозаготовок и деревообработки', 1.000, False, 1, 22, False, True),  # is_renewable = True
+            (1, '2021', 'отходы сельскохозяйственной деятельности и прочие виды природного топлива', 1.000, False, 1, 23, False, True),  # is_renewable = True
+            (1, '2022', 'сульфатные и сульфитные щелока целлюлозно-бумажной промышленности', 1.000, False, 1, 24, False, True),  # is_renewable = True
                      
-            (1, '2023', 'прочие отходы (вид отходов)', 1.000, False, 1, 2, False, False),
-            (1, '2024', 'прочие виды топлива (вид топлива)', 1.000, False, 1, 2, False, False),
+            (1, '2023', 'прочие отходы', 1.000, False, 1, 25, False, False),
+            (1, '2024', 'прочие виды топлива', 1.000, False, 1, 26, False, False),
             
             (1, '1796', 'из него местные виды топлива и отходы', 1.000, True, 1.1, 3, False, False),
             (1, '1797', 'из них возобновляемые', 1.000, True, 1.2, 4, False, False),
@@ -402,8 +415,7 @@ def filling_database(db):
             (16, '9916', 'Целевой показатель по доле местных ТЭР в КПТ', 1.000, True, 7, 20, False, False),
             (16, '9917', 'Целевой показатель по доле возобновляемых источников энергии в КПТ', 1.000, True, 8, 21, False, False)
         ]
-
-        from website.plans import to_decimal_3
+        from website.utils.plans import to_decimal_3
         for IdUnit, CodeIndicator, NameIndicator, CoeffToTut, IsMandatory, Group, RowN, is_local, is_renewable in indicator_data:
             indicator = Indicator(
                 id_unit=IdUnit,
@@ -418,6 +430,37 @@ def filling_database(db):
             )
             db.session.add(indicator)
         db.session.commit()
+        
+        news_data = [
+            ('Запущена новая версия системы EnPlans', 'Мы рады сообщить о запуске обновленной версии платформы EnPlans. Добавлены новые функции для планирования энергоэффективности, улучшен интерфейс и повышена производительность системы.', 'update_v2.jpg', True, TimeByMinsk(), 156),
+            ('Изменения в методике расчёта показателей', 'В соответствии с новыми требованиями законодательства обновлена методика расчёта ключевых показателей энергоэффективности. Просим ознакомиться с обновлениями в разделе документации.', 'methodology.jpg', True, TimeByMinsk(), 89),
+            ('Вебинар по работе с платформой', 'Приглашаем всех пользователей на бесплатный вебинар "Эффективная работа с EnPlans". Будут рассмотрены основные функции, работа с отчётами и новые возможности системы.', 'webinar.jpg', True, TimeByMinsk(), 234),
+            ('Обновление справочников', 'В систему добавлены новые единицы измерения и направления деятельности. Актуализированы справочники организаций и министерств.', 'update.jpg', True, TimeByMinsk(), 67),
+            ('Интеграция с внешними системами', 'Реализована возможность интеграции с корпоративными системами учёта энергоресурсов через API. Подробная документация доступна в разделе для разработчиков.', 'integration.jpg', True, TimeByMinsk(), 112),
+            ('Плановая техническая работа', '15 февраля с 02:00 до 06:00 будут проводиться технические работы. Система может быть временно недоступна. Приносим извинения за временные неудобства.', 'maintenance.jpg', True, TimeByMinsk(), 45),
+            ('Новые отчётные формы', 'Добавлены новые формы отчётности по энергосбережению. Обновлены шаблоны экспорта данных в Excel и PDF.', 'reports.jpg', True, TimeByMinsk(), 78),
+            ('Итоги работы за 2023 год', 'Опубликован аналитический отчёт по итогам работы системы в 2023 году. Количество активных пользователей выросло на 35%.', 'results2023.jpg', True, TimeByMinsk(), 203),
+            ('Обучение для администраторов', 'Открыта регистрация на курс повышения квалификации для администраторов системы. Обучение проводится в онлайн-формате.', 'training.jpg', False, None, 0),
+            ('Новый дизайн интерфейса', 'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 'design.jpg', True, TimeByMinsk(), 312),
+        ]
+
+        for title, content, image_url, is_published, published_at, views_count in news_data:
+            news = News(
+                title=title,
+                content=content,
+                image_url=image_url,
+                is_published=is_published,
+                published_at=published_at,
+                views_count=views_count
+            )
+            db.session.add(news)
+        db.session.commit()
+        
+        
+        
+        
+        
+        
         current_app.logger.debug('The filling is finished!')
     else:
         current_app.logger.debug('The database already contains the data!')

@@ -46,69 +46,57 @@
       <br />
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Показатель энергосбережения') }} (%)</label>
+          <label>{{ _('Целевой показатель энергосбережения') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
               type="text"
               name="energy_saving"
-              maxlength="15"
               value="{{ plan.energy_saving }}"
               required
-              placeholder="0,00"
-              class="app-numeric-input-negative"
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
+              class="app-numeric-input-negative-one-decimal"
             />
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Доля местных ТЭР в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
               type="text"
               name="share_fuel"
-              maxlength="15"
               value="{{ plan.share_fuel }}"
               required
-              placeholder="0,00"
-              class="app-numeric-input"
+              class="app-numeric-input-one-decimal"
               required
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
         </div>
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Задания по экономии ТЭР (т. у. т.)') }}</label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
               type="text"
               name="saving_fuel"
-              maxlength="15"
               value="{{ plan.saving_fuel }}"
-              placeholder="0,00"
-              class="app-numeric-input"
+              class="app-numeric-input-one-decimal"
               required
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Доля ВИЭ в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
               type="text"
               name="share_energy"
-              maxlength="15"
               value="{{ plan.share_energy }}"
-              placeholder="0,00"
-              class="app-numeric-input"
+              class="app-numeric-input-one-decimal"
               required
-              title="{{ _('Введите числовое значение (например: 12.345)') }}"
             />
           </div>
         </div>

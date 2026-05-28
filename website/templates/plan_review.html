@@ -8,7 +8,7 @@
   <div class="personal-acc-conteiner" style="margin-top: 0">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('План энергосбережения') }}</a>
+        <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
@@ -77,7 +77,6 @@
               value="{{ plan.year }}"
               placeholder=""
               class="app-input"
-              readonly
               data-current-year="{{ plan.year }}"
             />
           </div>
@@ -93,7 +92,7 @@
       <br>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Показатель энергосбережения') }} (%)</label>
+          <label>{{ _('Целевой Целевой показатель энергосбережения') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
@@ -101,12 +100,11 @@
               value="{{ plan.energy_saving }}"
               placeholder="0,00"
               class="app-numeric-input-negative"
-              readonly
             />
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Доля местных ТЭР в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -114,14 +112,13 @@
               value="{{ plan.share_fuel }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Задания по экономии ТЭР (т. у. т.)') }}</label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
@@ -129,12 +126,11 @@
               value="{{ plan.saving_fuel }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
         <div class="app-group" id="tickets_link">
-          <label>{{ _('Доля ВИЭ в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -142,7 +138,6 @@
               value="{{ plan.share_energy }}"
               placeholder="0,00"
               class="app-numeric-input"
-              readonly
             />
           </div>
         </div>
@@ -172,7 +167,7 @@
             <label>{{ _('Наименование') }}</label>
             <div class="input-with-icon">
               {{ icons.icon_org() }}
-              <input type="text" value="{{ org }}" readonly class="app-input" />
+              <input type="text" value="{{ org }}" class="app-input" />
             </div>
           </div>
           <div class="row-app-group">
@@ -183,9 +178,7 @@
                 <input
                   type="text"
                   value="{{ plan.user.organization.okpo }}"
-                  placeholder="{{ _('demo@example.com') }}"
                   class="app-input"
-                  readonly
                 />
               </div>
             </div>
@@ -197,7 +190,6 @@
                   type="text"
                   value="{{ plan.user.organization.ynp }}"
                   placeholder="Унп организации"
-                  readonly
                   class="app-input"
                 />
               </div>
@@ -211,7 +203,6 @@
               <input
                 type="text"
                 value="{{ ministry }}"
-                readonly
                 class="app-input"
               />
             </div>
@@ -224,7 +215,6 @@
               <input
                 type="text"
                 value="{{ region }}"
-                readonly
                 class="app-input"
               />
             </div>
@@ -247,7 +237,6 @@
             value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
             placeholder="{{ _('ФИО') }}"
             class="app-input"
-            readonly
           />
         </div>
       </div>
@@ -261,7 +250,6 @@
               maxlength="15"
               value="{{ plan.user.email }}"
               placeholder="{{ _('demo@example.com') }}"
-              readonly
               class="app-input"
             />
           </div>
@@ -275,7 +263,6 @@
               maxlength="15"
               value="{{ plan.user.phone }}"
               placeholder="+375.."
-              readonly
               class="app-input"
             />
           </div>
@@ -367,7 +354,7 @@
           <div class="radio-org-card" data-type="organization">
             <span class="radio-org-icon"></span>
             <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">До 25 тыс. т.</div>
+            <div class="radio-org-title">До 25 тыс. т у.т.</div>
           </div>
         </label>
 
@@ -381,7 +368,7 @@
           <div class="radio-org-card" data-type="organization">
             <span class="radio-org-icon"></span>
             <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">Более 25 тыс. т.</div>
+            <div class="radio-org-title">Более 25 тыс. т у.т.</div>
           </div>
         </label>
       </div>

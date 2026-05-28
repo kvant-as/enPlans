@@ -118,7 +118,7 @@
         </button>
 
         <a class="plan-info">
-            <span class="plan-text">{{ plan_text if plan_text else _('План энергосбережения на') }}</span>
+            <span class="plan-text">{{ plan_text if plan_text else _('План мероприятий по энергосбережению на') }}</span>
             {% if show_plan_info and plan %}
             <span class="plan-year">{{ plan.year }} {{ _('год') }}</span>
             {% endif %}
@@ -227,8 +227,8 @@
                 {{ icons.icon_indicators() }}
                 {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Показатели') }}</span>
-            <span class="nav-text-mobile">{{ _('Показ.') }}</span>
+            <span class="nav-text">{{ _('Часть') }} 1</span>
+            <span class="nav-text-mobile">{{ _('Часть') }} 1</span>
         </div>
 
         <div class="nav-item {% if active_plan_tab == 'event-saving' %} active{% endif %}" 
@@ -237,8 +237,8 @@
                 {{ icons.icon_measure_saving() }}
                 {% if active_plan_tab == 'event-saving' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Мероприятия эконом.') }}</span>
-            <span class="nav-text-mobile">{{ _('Мер. эко.') }}</span>
+            <span class="nav-text">{{ _('Часть') }} 2</span>
+            <span class="nav-text-mobile">{{ _('Часть') }} 2</span>
         </div> 
 
         <div class="nav-item {% if active_plan_tab == 'event-increase' %} active{% endif %}" 
@@ -247,8 +247,8 @@
                 {{ icons.icon_measure_increase() }}
                 {% if active_plan_tab == 'event-increase' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Мероприятия увелич.') }}</span>
-            <span class="nav-text-mobile">{{ _('Мер. увeл.') }}</span>
+            <span class="nav-text">{{ _('Часть') }} 3</span>
+            <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
         </div>
 
     </nav>
@@ -315,7 +315,7 @@
                     {% if current_user.is_auditor %}
                         {{ _('Начните обсуждение плана') }}
                     {% else %}
-                        {{ _('Отправьте план для получения сообщений') }}
+                        {{ _('Отправьте план для получения результатов проверки') }}
                     {% endif %}
                 </p>
             </div>
@@ -350,7 +350,7 @@
                                     <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
                                 {% endif %}
                             {% else %}
-                                {{ _('План энергосбережения') }}
+                                {{ _('План мероприятий по энергосбережению') }}
                             {% endif %}
                             <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
                         </a>
@@ -391,13 +391,17 @@
                     <div class="plan-cont-column-header">
                         {% if not current_user.is_auditor %}
                         <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Создан') }}: {{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
+                            <div class="date-icon black">
+                                {{ icons.icon_calendar() }}
+                            </div>
+                            <a class="plan-info">{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
                         </div>
                         {% endif %}
                         <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Подан') }}: {{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
+                            <div class="date-icon black">
+                                {{ icons.icon_send() }}
+                            </div>
+                            <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
                         </div>
                     </div>
                 </div>

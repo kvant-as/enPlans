@@ -94,10 +94,12 @@ class Plan(db.Model):
     change_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     sent_time = db.Column(db.DateTime)
     audit_time = db.Column(db.DateTime)
-    energy_saving = db.Column(Numeric(scale=2))
-    share_fuel = db.Column(Numeric(scale=2))
-    saving_fuel = db.Column(Numeric(scale=2))
-    share_energy = db.Column(Numeric(scale=2))
+    
+    energy_saving = db.Column(Numeric(scale=1))
+    share_fuel = db.Column(Numeric(scale=1))
+    saving_fuel = db.Column(Numeric(scale=1))
+    share_energy = db.Column(Numeric(scale=1))
+    
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
@@ -109,6 +111,8 @@ class Plan(db.Model):
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
     afch = db.Column(db.Boolean, default=False)
+    usd_rate = db.Column(Numeric(scale=2))
+    cost_per_toe_usd = db.Column(Numeric(scale=2))
     
     tickets = db.relationship('Ticket', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     
@@ -147,7 +151,7 @@ class Direction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(400))
     name = db.Column(db.String(400))
-    id_unit = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False)
+    id_unit = db.Column(db.Integer, db.ForeignKey('units.id'))
     
     DateStart = db.Column(db.DateTime, default=TimeByMinsk())
     DateEnd = db.Column(db.DateTime)
@@ -164,22 +168,27 @@ class Event(db.Model):
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     name = db.Column(db.String(4000), nullable=False)
     display_code = db.Column(db.String(400))
+    
     Volume = db.Column(db.Integer)
     EffTut = db.Column(Numeric(scale=2))
-    EffRub = db.Column(Numeric(scale=2))
+    EffRub = db.Column(db.Integer)
     ExpectedQuarter = db.Column(db.Integer)
     EffCurrYear = db.Column(Numeric(scale=2))
-    Payback = db.Column(Numeric(scale=2))
-    VolumeFin = db.Column(Numeric(scale=2))
-    BudgetState = db.Column(Numeric(scale=2))
-    BudgetRep = db.Column(Numeric(scale=2))
-    BudgetLoc = db.Column(Numeric(scale=2))
-    BudgetOther = db.Column(Numeric(scale=2))
-    MoneyOwn = db.Column(Numeric(scale=2))
-    MoneyLoan = db.Column(Numeric(scale=2))
-    MoneyOther = db.Column(Numeric(scale=2))
+    Payback = db.Column(Numeric(scale=1))
+    VolumeFin = db.Column(db.Integer)
+    BudgetState = db.Column(db.Integer)
+    BudgetRep = db.Column(db.Integer)
+    BudgetLoc = db.Column(db.Integer)
+    BudgetOther = db.Column(db.Integer)
+    MoneyOwn = db.Column(db.Integer)
+    MoneyLoan = db.Column(db.Integer)
+    MoneyOther = db.Column(db.Integer)
+    
     is_local = db.Column(db.Boolean)
     is_corrected = db.Column(db.Boolean, default=False)
+    is_econom = db.Column(db.Boolean)
+    is_increase = db.Column(db.Boolean)
+    
     order = db.Column(db.Integer, default=None)
     plan = db.relationship("Plan", back_populates="events")
     direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])
@@ -228,6 +237,7 @@ class IndicatorUsage(db.Model):
     __tablename__ = 'indicators_usage'
     id = db.Column(db.Integer, primary_key=True)
     id_indicator = db.Column(db.Integer, db.ForeignKey('indicators.id'), nullable=False)
+    note = db.Column(db.String(), default=None, nullable=True)
     id_plan = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
     QYearBeforePrev = db.Column(Numeric(scale=2))
     QYearPrev = db.Column(Numeric(scale=2))
@@ -264,6 +274,17 @@ class Notification(db.Model):
     message = db.Column(db.String(140), nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=TimeByMinsk())
+
+class News(db.Model):
+    __tablename__ = 'news'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    image_url = db.Column(db.String(500), nullable=True)
+    is_published = db.Column(db.Boolean, default=False)
+    published_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    views_count = db.Column(db.Integer, default=0)
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'

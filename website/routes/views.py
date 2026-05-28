@@ -1,17 +1,21 @@
+from decimal import Decimal
 import io
 import zipfile
 from flask import (
     Blueprint, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
 
+from sqlalchemy import select
+
 from flask_login import (
     current_user, login_required
 )
 
-from website.plans import get_filtered_plans, to_decimal_2, update_ChangeTimePlan
+from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
+from website.utils.plans import get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import Ministry, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
 from .. import db
 
 from functools import wraps
@@ -253,6 +257,44 @@ def export():
         hide_header=False
     )
     
+# @views.route('/news', methods=['GET'])
+# def news_page():
+#     return render_template(
+#         'news.html',
+#         current_user=current_user,
+#         hide_header=False
+#     )
+    
+# @views.route('/news/<int:news_id>', methods=['GET'])
+# def news_detail_page(news_id):
+#     news_item = News.query.get_or_404(news_id)
+    
+#     news_item.views_count += 1
+#     db.session.commit()
+    
+#     return render_template(
+#         'news_detail.html',
+#         current_user=current_user,
+#         news_item=news_item,
+#         hide_header=False
+#     )
+
+@views.route('/news/<int:id>', methods=['GET'])
+def news_post(id):
+    post = News.query.filter_by(id = id).first()
+    return render_template(f'news_id.html', 
+        current_user=current_user,
+        post=post
+    )
+
+@views.route('/news', methods=['GET'])
+def news():
+    all_news = News.query.order_by(News.created_at.desc()).all()
+    return render_template('news.html', 
+        current_user=current_user,
+        all_news=all_news
+    )
+    
 @views.route('/export-to/<string:format>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -305,13 +347,15 @@ def export_to(format):
     zip_stream.seek(0)
     return send_file(zip_stream, as_attachment=True, download_name="plans.zip", mimetype="application/zip")
 
+from sqlalchemy import select
+
 @views.route('/create-plan', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @session_required
 def create_plan():
     if request.method == 'POST':
-        year = request.form.get('year')
+        year = int(request.form.get('year'))
 
         existing_plan = Plan.query.filter_by(
             user_id=current_user.id,
@@ -320,13 +364,12 @@ def create_plan():
         
         if existing_plan:
             flash(f'У вас уже есть план на {year} год!', 'error')
-            return render_template('create_plan.html', 
-                        hide_header=False)
+            return render_template('create_plan.html', hide_header=False)
 
-        energy_saving = to_decimal_2(request.form.get('energy_saving'))
-        share_fuel = to_decimal_2(request.form.get('share_fuel'))
-        saving_fuel = to_decimal_2(request.form.get('saving_fuel'))
-        share_energy = to_decimal_2(request.form.get('share_energy'))
+        energy_saving = to_decimal_1(request.form.get('energy_saving'))
+        share_fuel = to_decimal_1(request.form.get('share_fuel'))
+        saving_fuel = to_decimal_1(request.form.get('saving_fuel'))
+        share_energy = to_decimal_1(request.form.get('share_energy'))
 
         org_id = None
         ministry_id = None
@@ -341,25 +384,51 @@ def create_plan():
         if hasattr(current_user, 'region') and current_user.region:
             region_id = current_user.region.id
 
+        def get_usd_rate_for_new_plan():
+            usd_rate, error = fetch_usd_rate_from_belarusbank()
+            
+            if usd_rate is None:
+                current_app.logger.warning(f'Failed to fetch USD rate: {error}')
+                flash('Не удалось получить актуальный курс доллара. Будет использовано значение по умолчанию 2.75', 'warning')
+                return Decimal('2.75')
+            
+            return usd_rate
+        
+        def get_cost_per_toe_for_new_plan(year):
+            if year == 2026:
+                return to_decimal_2('260.00')
+            elif year == 2027:
+                return to_decimal_2('270.00')
+            else:
+                flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
+                return None
+
+        usd_rate_value = get_usd_rate_for_new_plan()
+        cost_per_toe_value = get_cost_per_toe_for_new_plan(year)
+        
+        if cost_per_toe_value is None:
+            return render_template('create_plan.html', hide_header=False)
+
         new_plan = Plan(
             org_id=org_id,
             ministry_id=ministry_id,
             region_id=region_id,
-            
             year=year,
             user_id=current_user.id,
             energy_saving=energy_saving,
             share_fuel=share_fuel,
             saving_fuel=saving_fuel,
-            share_energy=share_energy
+            share_energy=share_energy,
+            usd_rate=usd_rate_value,
+            cost_per_toe_usd=cost_per_toe_value
         )
         
         db.session.add(new_plan)
         db.session.commit()
 
-        existing_indicators = db.session.query(IndicatorUsage.id_indicator)\
-            .filter(IndicatorUsage.id_plan == new_plan.id)\
-            .subquery()
+        existing_indicators = select(IndicatorUsage.id_indicator).where(
+            IndicatorUsage.id_plan == new_plan.id
+        )
         
         mandatory_indicators = Indicator.query\
             .filter(Indicator.IsMandatory == True)\
@@ -380,8 +449,7 @@ def create_plan():
         flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
 
-    return render_template('create_plan.html', 
-                    hide_header=False)
+    return render_template('create_plan.html', hide_header=False)
     
 @views.route('/plans/plan-edit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -408,10 +476,10 @@ def edit_plan(token):
             flash(f'У вас уже есть другой план на {year} год!', 'error')
             return redirect(url_for('views.plans'))
         
-        energy_saving = to_decimal_2(request.form.get('energy_saving'))
-        share_fuel = to_decimal_2(request.form.get('share_fuel'))
-        saving_fuel = to_decimal_2(request.form.get('saving_fuel'))
-        share_energy = to_decimal_2(request.form.get('share_energy'))
+        energy_saving = to_decimal_1(request.form.get('energy_saving'))
+        share_fuel = to_decimal_1(request.form.get('share_fuel'))
+        saving_fuel = to_decimal_1(request.form.get('saving_fuel'))
+        share_energy = to_decimal_1(request.form.get('share_energy'))
 
         current_plan.year = year
         current_plan.energy_saving = energy_saving

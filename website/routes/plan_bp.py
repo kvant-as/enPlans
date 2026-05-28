@@ -6,18 +6,22 @@ from flask_login import (
     current_user, login_required 
 )
 
-from website.plans import generate_unique_display_code, get_event_metrics, other_data_indicatorUpdate, to_decimal_2, to_decimal_3, update_ChangeTimePlan
+from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
-from website.plans import status_handlers
+from website.utils.plans import status_handlers
 from website.user import send_email
+
+from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
 from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, Ticket, Event
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
+
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
@@ -116,8 +120,6 @@ def plan_indicators(token):
                         plan=current_plan, 
                         indicators_non_madatory=indicators_non_madatory,
                         hide_header=False,
-                        add_indicator_modal=True,
-                        edit_indicator_modal=True,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,
                         context_menu = True)
@@ -138,6 +140,7 @@ def create_indicator(token):
         coeff_type = request.form.get('coeff_type')
         custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
+        name_other = str(request.form.get('name_other'))
 
         # current_app.logger.info(f'Attempting to create indicator for plan {current_plan.id}')
         # current_app.logger.debug(f'Form data: QYearBeforePrev_ed={QYearBeforePrev_ed}, QYearPrev_ed={QYearPrev_ed}, QYearCurrent_ed={QYearCurrent_ed}, id_indicator={id_indicator}, coeff_type={coeff_type}, custom_coeff_raw={custom_coeff_raw}, fuel_category={fuel_category}')
@@ -156,9 +159,9 @@ def create_indicator(token):
         
         current_app.logger.info(f'Found indicator: code={indicator.code}, name={indicator.name}, CoeffToTut={indicator.CoeffToTut}, is_local={indicator.is_local}, is_renewable={indicator.is_renewable}')
         
-        if indicator.code in ['2023', '2024'] and not fuel_category:
-            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
+            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
         if coeff_type == 'custom' and custom_coeff_raw:
@@ -204,7 +207,8 @@ def create_indicator(token):
             QYearCurrent=QYearCurrent,
             custom_coeff_to_tut=custom_coeff_value,
             is_local=is_local_value,
-            is_renewable=is_renewable_value
+            is_renewable=is_renewable_value,
+            note=name_other
         )
         
         db.session.add(new_IndicatorUsage)
@@ -248,6 +252,7 @@ def edit_indicator(token):
         coeff_type = request.form.get('coeff_type')
         custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
+        name_other = str(request.form.get('name_other'))
         
         indicator = indicator_usage.indicator
         indicator_code = indicator.code
@@ -259,9 +264,9 @@ def edit_indicator(token):
         current_app.logger.info(f'Editing indicator usage {id_indicator} for plan {current_plan.id}')
         current_app.logger.debug(f'Indicator code: {indicator_code}, is_coeff_editable: {is_coeff_editable}, is_codes_9911_9914: {is_codes_9911_9914}')
         
-        if indicator_code in ['2023', '2024'] and not fuel_category:
-            current_app.logger.warning(f'Indicator {indicator_code} requires fuel category but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива', 'error')
+        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
+            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
+            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
         if is_coeff_editable and coeff_type == 'custom' and custom_coeff_raw:
@@ -314,6 +319,7 @@ def edit_indicator(token):
         
         indicator_usage.is_local = is_local_value
         indicator_usage.is_renewable = is_renewable_value
+        indicator_usage.note=name_other
         
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
@@ -358,41 +364,91 @@ def plan_event(event_type, token):
     
     current_plan = g.current_plan
     
+    period_codes = ['0001', '0002', '0003', '0004']
+
     if event_type == 'saving':
         type_filter = Direction.is_econom == True
-        directions = Direction.query.filter(Direction.is_econom == True).order_by(Direction.id.asc()).all()
+        directions = Direction.query.filter(
+            Direction.is_econom == True,
+            Direction.code.notin_(period_codes)
+        ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по экономии ТЭР"
+        
+        has_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.is_econom == True,
+            Event.is_increase == False,
+            Event.display_code.notin_(period_codes)
+        ).first() is not None
     else:
         type_filter = Direction.is_increase == True
-        directions = Direction.query.filter(Direction.is_increase == True).order_by(Direction.id.asc()).all()
+        directions = Direction.query.filter(
+            Direction.is_increase == True,
+            Direction.code.notin_(period_codes)
+        ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
-    
-    has_original_events = Event.query.filter(
-        Event.id_plan == current_plan.id,
-        Event.is_corrected == False
-    ).join(Direction).filter(type_filter).first() is not None
-    
-    has_changes_events = Event.query.filter(
-        Event.id_plan == current_plan.id,
-        Event.is_corrected == True
-    ).join(Direction).filter(type_filter).first() is not None
-    
-    has_events = has_original_events or has_changes_events
+        
+        has_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.is_econom == False,
+            Event.is_increase == True,
+            Event.display_code.notin_(period_codes)
+        ).first() is not None
 
     return render_template('plan_events.html',  
                         title=title,
                         event_type=event_type,
                         plan=current_plan, 
                         hide_header=False,
-                        add_event_modal=True,
                         confirmModal=True,
-                        edit_event_modal=True,
                         directions=directions,
                         sentmodal=current_plan.is_control,
                         context_menu=True,
                         has_events=has_events
                     )
-
+    
+def update_period_eff_values(plan_id, event_type):
+    period_codes = ['0001', '0002', '0003', '0004']
+    
+    if event_type == 'saving':
+        period_event = Event.query.filter(
+            Event.id_plan == plan_id,
+            Event.display_code == '0004',
+            Event.is_econom == True,
+            Event.is_increase == False
+        ).first()
+        
+        if period_event:
+            all_events_sum = Event.query.filter(
+                Event.id_plan == plan_id,
+                Event.is_econom == True,
+                Event.is_increase == False,
+                Event.display_code.notin_(period_codes)
+            ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
+            
+            period_event.EffCurrYear = all_events_sum
+            db.session.commit()
+            current_app.logger.info(f'Updated period 0004 EffCurrYear for plan_id={plan_id}, event_type={event_type}')
+    else:
+        period_event = Event.query.filter(
+            Event.id_plan == plan_id,
+            Event.display_code == '0004',
+            Event.is_econom == False,
+            Event.is_increase == True
+        ).first()
+        
+        if period_event:
+            all_events_sum = Event.query.filter(
+                Event.id_plan == plan_id,
+                Event.is_econom == False,
+                Event.is_increase == True,
+                Event.display_code.notin_(period_codes)
+            ).with_entities(func.sum(Event.EffCurrYear)).scalar() or 0
+            
+            period_event.EffCurrYear = all_events_sum
+            db.session.commit()
+            current_app.logger.info(f'Updated period 0004 EffCurrYear for plan_id={plan_id}, event_type={event_type}')
+            
 @plan_bp.route('/create-event/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -402,82 +458,158 @@ def create_event(token):
     current_plan = g.current_plan
     
     id_direction = request.form.get('id_direction')
-    name = request.form.get('name') or None
-
-    Volume_value = request.form.get('Volume')
-    ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-
-    Payback = to_decimal_2(request.form.get('Payback'))
-    EffTut = to_decimal_2(request.form.get('EffTut'))
-    EffRub = to_decimal_2(request.form.get('EffRub'))
-    EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-    VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-    BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-    BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-    BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-    BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-    MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-    MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-    MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-
-    Volume = int(float(Volume_value)) if Volume_value else None
-    ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
-
+    event_type = request.form.get('event_type')
+    
     direction = Direction.query.get(id_direction)
     if not direction:
         flash('Направление не найдено', 'error')
-        logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
-        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=token))
-    
-    event_type = request.form.get('event_type') or 'saving'
-    
-    display_code = generate_unique_display_code(direction.code, current_plan.id, id_direction)
-    
-    is_corrected = current_plan.audit_time is not None
+        current_app.logger.warning(f'Direction not found: id_direction={id_direction}, plan_id={current_plan.id}')
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
     
     try:
-        new_Event = Event(
-            id_direction=id_direction,
-            id_plan=current_plan.id,
-            display_code=display_code,
-            name=name,
-            Volume=Volume,
-            EffTut=EffTut,
-            EffRub=EffRub,
-            ExpectedQuarter=ExpectedQuarter,
-            EffCurrYear=EffCurrYear,
-            Payback=Payback,
-            VolumeFin=VolumeFin,
-            BudgetState=BudgetState,
-            BudgetRep=BudgetRep,
-            BudgetLoc=BudgetLoc,
-            BudgetOther=BudgetOther,
-            MoneyOwn=MoneyOwn,
-            MoneyLoan=MoneyLoan,
-            MoneyOther=MoneyOther,
-            is_corrected=is_corrected
-        )
+        check_and_create_period_directions(current_plan.id, event_type)
+
+        event_data = process_event_data(current_plan, direction, event_type, request.form)
+        new_event = create_event_record(current_plan, direction, event_data)
         
-        db.session.add(new_Event)
+        db.session.add(new_event)
         db.session.commit()
         
-        other_data_indicatorUpdate(current_plan.id) 
+        if event_data['is_double_effect'] and event_type == 'increase':
+            update_double_effect_payback(current_plan.id, direction.id)
+        
+        other_data_indicatorUpdate(current_plan.id)
+        update_period_eff_values(current_plan.id, event_type)
         flash('Мероприятие добавлено', 'success')
-        logger.debug(f'Event created successfully: id={new_Event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
+        current_app.logger.info(f'Event created successfully: id={new_event.id}, plan_id={current_plan.id}, direction_id={id_direction}')
         
         return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
         
-    except SQLAlchemyError as e:
+    except ValueError as e:
         db.session.rollback()
-        logger.error(f'Database error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
-        flash('Ошибка базы данных при добавлении мероприятия', 'error')
-        
+        current_app.logger.error(f'ValueError creating event for plan_id={current_plan.id}: {str(e)}')
+        flash(str(e), 'error')
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Unexpected error while creating event: {str(e)}, plan_id={current_plan.id}, direction_id={id_direction}')
-        flash('Непредвиденная ошибка при добавлении мероприятия', 'error')
+        current_app.logger.error(f'Error creating event for plan_id={current_plan.id}: {str(e)}', exc_info=True)
+        flash('Ошибка при добавлении мероприятия', 'error')
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
+
+@plan_bp.route('/edit-event/<int:id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def edit_Eventes(id):
+    try:
+        current_app.logger.info(f'Starting edit event with id={id}')
+        
+        current_event = Event.query.get(id)
+        if not current_event:
+            current_app.logger.warning(f'Event with id={id} not found')
+            flash('Мероприятие не найдено', 'error')
+            return redirect(request.referrer)
+        
+        current_plan = Plan.query.get(current_event.id_plan)
+        if not current_plan:
+            current_app.logger.warning(f'Plan with id={current_event.id_plan} not found')
+            flash('План не найден', 'error')
+            return redirect(request.referrer)
+        
+        event_type = request.form.get('event_type') or 'saving'
+        edit_type = request.form.get('edit_type') or 'full'
+        
+        if edit_type == 'period':
+            eff_curr_year_str = request.form.get('EffCurrYear')
+            if eff_curr_year_str and eff_curr_year_str.strip():
+                EffCurrYear = to_decimal_2(eff_curr_year_str)
+            else:
+                EffCurrYear = to_decimal_2('0')
+            
+            current_event.EffCurrYear = EffCurrYear
+            current_app.logger.info(f'Updated period EffCurrYear for event {id}: {EffCurrYear}')
+        else:
+            name = request.form.get('name') or None
+            Volume_value = request.form.get('Volume')
+            ExpectedQuarter_value = request.form.get('ExpectedQuarter')
+            EffTut = to_decimal_2(request.form.get('EffTut'))
+            EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
+            
+            is_double_effect = current_event.is_econom and current_event.is_increase
+            
+            if is_double_effect and current_event.is_econom:
+                BudgetState = BudgetRep = BudgetLoc = BudgetOther = MoneyOwn = MoneyLoan = MoneyOther = 0
+                VolumeFin = 0
+                
+                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+                Payback = None
+                
+                current_app.logger.info(f'Double effect saving event: financing blocked')
+            else:
+                BudgetState = to_decimal_2(request.form.get('BudgetState')) 
+                BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
+                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+                BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
+                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
+                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+                MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
+                
+                VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+                
+                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+                
+                if EffRub > 0:
+                    payback_value = float(VolumeFin) / float(EffRub)
+                    Payback = to_decimal_1(payback_value)
+                else:
+                    Payback = None
+                
+                current_app.logger.info(f'Regular event calculation: VolumeFin={VolumeFin}, EffRub={EffRub}, Payback={Payback}')
+
+            Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
+            ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value and ExpectedQuarter_value.strip() else None
+            
+            current_event.name = name
+            current_event.Volume = Volume
+            current_event.ExpectedQuarter = ExpectedQuarter
+            current_event.EffTut = EffTut
+            current_event.EffRub = EffRub
+            current_event.EffCurrYear = EffCurrYear
+            current_event.Payback = Payback
+            current_event.VolumeFin = VolumeFin
+            current_event.BudgetState = BudgetState
+            current_event.BudgetRep = BudgetRep
+            current_event.BudgetLoc = BudgetLoc
+            current_event.BudgetOther = BudgetOther
+            current_event.MoneyOwn = MoneyOwn
+            current_event.MoneyLoan = MoneyLoan
+            current_event.MoneyOther = MoneyOther
+            
+            current_app.logger.info(f'Updated all fields for event {id}')
+
+        db.session.commit()
+        
+        if current_event.is_econom and current_event.is_increase and not current_event.is_econom:
+            update_double_effect_payback(current_plan.id, current_event.id_direction)
+        
+        other_data_indicatorUpdate(current_plan.id)
+        update_period_eff_values(current_plan.id, event_type)
+        
+        flash('Мероприятие изменено', 'success')
+        current_app.logger.info(f'Event {id} updated successfully')
+        
+        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
     
-    return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=token))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error editing event {id}: {str(e)}', exc_info=True)
+        flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
+        return redirect(request.referrer)
+
 
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
@@ -487,81 +619,47 @@ def delete_eventes(id):
     current_event = Event.query.get_or_404(id)
     current_plan = Plan.query.get_or_404(current_event.id_plan)
     
-    event_type = request.form.get('event_type') or 'saving'
-
+    if current_event.is_econom and not current_event.is_increase:
+        event_type = 'saving'
+    elif not current_event.is_econom and current_event.is_increase:
+        event_type = 'increase'
+    else:
+        event_type = 'saving'
+    
+    is_double_effect = current_event.is_econom and current_event.is_increase
+    direction_id = current_event.id_direction
+    
+    non_period_events_count = Event.query.filter(
+        Event.id_plan == current_plan.id,
+        Event.id != current_event.id,
+        Event.is_econom == current_event.is_econom,
+        Event.is_increase == current_event.is_increase,
+        Event.display_code.notin_(['0001', '0002', '0003', '0004'])
+    ).count()
+    
     db.session.delete(current_event)
+    
+    if non_period_events_count == 0:
+        period_events = Event.query.filter(
+            Event.id_plan == current_plan.id,
+            Event.display_code.in_(['0001', '0002', '0003', '0004']),
+            Event.is_econom == current_event.is_econom,
+            Event.is_increase == current_event.is_increase
+        ).all()
+        
+        for period_event in period_events:
+            db.session.delete(period_event)
+        current_app.logger.info(f'Deleted {len(period_events)} period events for plan_id={current_plan.id}, event_type={event_type}')
+    
     db.session.commit()
-
+    
+    if is_double_effect:
+        update_double_effect_payback(current_plan.id, direction_id)
+        
+    update_period_eff_values(current_plan.id, event_type)
     other_data_indicatorUpdate(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
-
-@plan_bp.route('/edit-event/<int:id>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def edit_Eventes(id):
-    try:
-        current_Event = Event.query.get(id)
-        if not current_Event:
-            flash('Мероприятие не найдено', 'error')
-            return redirect(url_for('main.index'))
-        
-        current_plan = Plan.query.get(current_Event.id_plan)
-        if not current_plan:
-            flash('План не найден', 'error')
-            return redirect(url_for('main.index'))
-        
-        event_type = request.form.get('event_type') or 'saving'
-        
-        name = request.form.get('name') or None
-
-        Volume_value = request.form.get('Volume')
-        ExpectedQuarter_value = request.form.get('ExpectedQuarter')
-        Payback = to_decimal_2(request.form.get('Payback'))
-
-        EffTut = to_decimal_2(request.form.get('EffTut'))
-        EffRub = to_decimal_2(request.form.get('EffRub'))
-        EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-        
-        VolumeFin = to_decimal_2(request.form.get('VolumeFin'))
-        BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-        BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-        BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
-        BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-        MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-        MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
-        MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-
-        Volume = int(float(Volume_value)) if Volume_value else None
-        ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value else None
-        
-        current_Event.name = name
-        current_Event.Volume = Volume
-        current_Event.ExpectedQuarter = ExpectedQuarter
-        current_Event.EffTut = EffTut
-        current_Event.EffRub = EffRub
-        current_Event.EffCurrYear = EffCurrYear
-        current_Event.Payback = Payback
-        current_Event.VolumeFin = VolumeFin
-        current_Event.BudgetState = BudgetState
-        current_Event.BudgetRep = BudgetRep
-        current_Event.BudgetLoc = BudgetLoc
-        current_Event.BudgetOther = BudgetOther
-        current_Event.MoneyOwn = MoneyOwn
-        current_Event.MoneyLoan = MoneyLoan
-        current_Event.MoneyOther = MoneyOther
-
-        db.session.commit()
-        flash('Мероприятие изменено', 'success')
-
-        other_data_indicatorUpdate(current_plan.id)  
-        return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
-    
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
-        return redirect(url_for('plan_bp.plan_event', event_type='saving', token=current_plan.token if 'current_plan' in locals() else ''))
 
 @plan_bp.route('/change-plan-status/<token>', methods=['POST'])
 @user_with_all_params()

@@ -55,7 +55,6 @@ def create_app():
     app = Flask(__name__, static_url_path='/static')
     from itsdangerous import URLSafeSerializer, BadSignature
     s = URLSafeSerializer(os.getenv('SECRET_KEY'))
-
     app.config.update(
         SECRET_KEY=os.getenv('SECRET_KEY'),
         SQLALCHEMY_DATABASE_URI=f"postgresql://{os.getenv('postrgeuser')}:{os.getenv('postrgepass')}@localhost:5432/{os.getenv('postrgedbname')}",
@@ -74,6 +73,8 @@ def create_app():
 
         AI_API_URL=os.getenv('AI_API_URL'),
         AI_X_API_KEY=os.getenv('AI_X_API_KEY'),
+        
+        LOG_LEVEL='DEBUG'
     )
 
     db.init_app(app)
