@@ -185,7 +185,8 @@ def build_html(message_body, email_type):
         <div class="email-container">
             <div class="email-header">
                 <h1>EnPlans</h1>
-                <p>Система представления планов мероприятий по энергосбережению</p>
+                <p>Формирование планов
+мероприятий по энергосбережению</p>
             </div>
             <div class="email-content">
                 {content}
