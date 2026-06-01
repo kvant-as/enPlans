@@ -1130,7 +1130,7 @@ class MultiTypeSearchManager {
             this.tableBody.innerHTML = `
                 <tr>
                     <td colspan="3" style="text-align: center; padding: 40px; color: #6b7280;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+                        <div style="font-size: 48px; margin-bottom: 16px;"></div>
                         <div>${this.currentQuery ? 'По вашему запросу ничего не найдено' : 'Нет данных для отображения'}</div>
                     </td>
                 </tr>

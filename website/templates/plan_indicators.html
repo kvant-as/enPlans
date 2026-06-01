@@ -12,11 +12,11 @@
   <div class="table-container">
     <table class="main-table" id="indicatorsTable" data-token="{{ plan.token }}">
       <thead class="main-table-titels">
-        <tr>
+        <tr> {#
           <th rowspan="2" class="resizable" style="max-width: 90px;">
             <a>Строка {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
-          </th>
+          </th>#}
           <th rowspan="2" class="resizable">
             <a>№ п/п {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
@@ -109,14 +109,14 @@
             8
             <div class="resizer"></div>
           </th>
-          <th class="resizable">
+          <th class="resizable" style="border-right: none;">
             9
             <div class="resizer"></div>
           </th>
-          <th class="resizable" style="border-right: none;">
+          <!-- <th class="resizable" style="border-right: none;">
             10
             <div class="resizer"></div>
-          </th>
+          </th> -->
         </tr>
       </thead>
       <tbody class="rows" id="indicators-tbody">

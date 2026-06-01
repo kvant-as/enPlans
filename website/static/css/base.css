@@ -880,6 +880,7 @@ header nav{
   display: flex;
   gap: 15px;
   margin: 20px 0;
+  justify-content: center;
 }
 
 .radio-org-card {
@@ -1009,7 +1010,11 @@ header nav{
 }
 
 .search-item.selected {
-  background-color: #e3f2fd;
+  background-color: #e3f2fd !important;
+}
+
+.organizations-table tbody tr.selected{
+    background-color: #e3f2fd !important;
 }
 
 .search-item .item-name {

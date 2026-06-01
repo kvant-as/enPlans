@@ -249,9 +249,9 @@ class PlanIndicators {
             const tr = document.createElement('tr');
             tr.className = `menu-row ${isNewGroup ? 'group-header-indicator' : ''}`;
             tr.setAttribute('data-id', row.id);
-            
+            // <td style="text-align: center;">${index + 1}</td>
+            // <td>${row.code}</td>
             tr.innerHTML = `
-                <td style="text-align: center;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
                 <td style="text-align: start">
                     ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
@@ -266,7 +266,6 @@ class PlanIndicators {
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
                     ${row.difference.toFixed(2).replace('.', ',')}
                 </td>
-                <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             

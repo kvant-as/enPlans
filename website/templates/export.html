@@ -60,7 +60,7 @@
                   рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
                   elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
                   {% elif request.args.get('status') == 'approved' %}{{
-                  _('Одобренные') }} {% else %}{{ _('Статус') }}{% endif %}
+                  _('Согласованные') }} {% else %}{{ _('Статус') }}{% endif %}
                 </span>
                 {{ icons.dropdown_arrow() }}
               </button>
@@ -80,7 +80,7 @@
                   {{ _('С ошибками') }}
                 </div>
                 <div class="dropdown-item" data-value="approved">
-                  {{ _('Одобренные') }}
+                  {{ _('Согласованные') }}
                 </div>
               </div>
             </div>
