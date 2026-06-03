@@ -64,41 +64,6 @@ def plan_audit(token):
                         plan=current_plan,     
                         hide_header=False)
 
-# @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
-# @user_with_all_params()
-# @login_required
-# @owner_only
-# @session_required
-# def plan_indicators(token):    
-#     if request.method == 'POST':
-#         pass
-    
-#     current_plan = g.current_plan
-#     indicators_non_madatory = (Indicator.query
-#                         .filter_by(IsMandatory=False)
-#                         .filter(~Indicator.id.in_(
-#                             db.session.query(IndicatorUsage.id_indicator)
-#                             .filter(IndicatorUsage.id_plan == current_plan.id)
-#                         ))
-#                         .all())
-    
-#     current_plan_indicators = (IndicatorUsage.query
-#                 .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
-#                 .filter(IndicatorUsage.id_plan == current_plan.id)
-#                 .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
-#                 .all())
-    
-#     return render_template('plan_indicators.html',  
-#                         plan=current_plan, 
-#                         indicators_non_madatory=indicators_non_madatory,
-#                         current_plan_indicators=current_plan_indicators,
-#                         hide_header=False,
-#                         add_indicator_modal=True,
-#                         edit_indicator_modal=True,
-#                         confirmModal = True,
-#                         sentmodal=current_plan.is_control,
-#                         context_menu = True)
-
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required

@@ -1,18 +1,116 @@
 import logging
 from venv import logger
-from flask import current_app, g, request, jsonify, Blueprint
-from flask_login import login_required
+from flask import current_app, g, render_template, request, jsonify, Blueprint
+from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
 from website.time import TimeByMinsk
+from website.utils.plans import get_filtered_plans
 
 from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
 
+from flask import render_template_string
+
+@api_bp.route('/plans', methods=['GET'])
+@login_required
+def api_get_plans():
+    try:
+        status_filter = request.args.get('status', 'all')
+        year_filter = request.args.get('year', 'all')
+        search_name = request.args.get('search_name', '')
+        search_okpo = request.args.get('search_okpo', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)
+        
+        plans, total_count, status_counts = get_filtered_plans(
+            current_user, status_filter, year_filter, search_name, search_okpo, page, per_page
+        )
+        
+        is_compact = current_user.is_regional or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
+            ''',
+            plans=plans,
+            current_user=current_user,
+            show_checkboxes=False,
+            show_actions=True,
+            custom_empty_message=None,
+            compact_view=is_compact
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': html,
+            'counts': status_counts,
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'has_next': page * per_page < total_count
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@api_bp.route('/export-plans', methods=['GET'])
+@login_required
+def api_get_export_plans():
+    try:
+        status_filter = request.args.get('status', 'all')
+        year_filter = request.args.get('year', 'all')
+        search_name = request.args.get('search_name', '')
+        search_okpo = request.args.get('search_okpo', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)
+        
+        plans, total_count, status_counts = get_filtered_plans(
+            current_user, status_filter, year_filter, search_name, search_okpo, page, per_page
+        )
+        
+        is_compact = current_user.is_regional or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
+            ''',
+            plans=plans,
+            current_user=current_user,
+            show_checkboxes=True,
+            show_actions=False,
+            custom_empty_message=None,
+            compact_view=is_compact
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': html,
+            'counts': status_counts,
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'has_next': page * per_page < total_count
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+        
 @api_bp.route('/news', methods=['GET'])
 @login_required
 def get_news():

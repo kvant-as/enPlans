@@ -249,9 +249,8 @@ class PlanIndicators {
             const tr = document.createElement('tr');
             tr.className = `menu-row ${isNewGroup ? 'group-header-indicator' : ''}`;
             tr.setAttribute('data-id', row.id);
-            // <td style="text-align: center;">${index + 1}</td>
-            // <td>${row.code}</td>
             tr.innerHTML = `
+                <td style="text-align: center; display: none;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
                 <td style="text-align: start">
                     ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
@@ -266,6 +265,7 @@ class PlanIndicators {
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
                     ${row.difference.toFixed(2).replace('.', ',')}
                 </td>
+                <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             
@@ -1911,40 +1911,6 @@ function setValueIfExists(elementId, value) {
     }
 }
 
-function initExportPage() {
-    const form = document.getElementById("exportForm");
-    const formatInput = document.getElementById("selectedFormat");
-    const checkboxes = document.querySelectorAll('input[name="ids"]');
-    const exportBtn = document.getElementById("exportBtn");
-    const selectAllBtn = document.getElementById("selectAllBtn");
-
-    function updateButtonState() {
-        const formatSelected = !!formatInput.value;
-        const planSelected = Array.from(checkboxes).some(cb => cb.checked);
-        exportBtn.disabled = !(formatSelected && planSelected);
-        form.action = formatSelected ? `/export-to/${formatInput.value}` : "";
-    }
-
-    document.querySelectorAll(".export-choose").forEach(item => {
-        item.addEventListener("click", () => {
-            document.querySelectorAll(".export-choose").forEach(el => el.classList.remove("active"));
-            item.classList.add("active");
-            formatInput.value = item.dataset.format;
-            updateButtonState();
-        });
-    });
-
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener("change", () => {
-            checkboxes.forEach(cb => cb.checked = selectAllBtn.checked);
-            updateButtonState();
-        });
-    }
-
-    checkboxes.forEach(cb => cb.addEventListener("change", updateButtonState));
-    updateButtonState();
-}
-
 function validateAndEnableButton() {
     const addModal = document.getElementById('AddEventModal');
     if (addModal && addModal.style.display !== 'none') {
@@ -2194,7 +2160,595 @@ if (document.getElementById('sentmodal')) {
     new CertificateUploadHandler();
 }
 
+class PlansLoader {
+    constructor(options = {}) {
+        this.currentStatus = options.initialStatus || 'all';
+        this.currentYear = options.initialYear || 'all';
+        this.currentSearchName = '';
+        this.currentSearchOkpo = '';
+        this.currentPage = 1;
+        this.isLoading = false;
+        this.hasMore = true;
+        this.searchTimeout = null;
+        this.perPage = options.perPage || 5;
+        
+        this.containerId = options.containerId || 'plans-container';
+        this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
+        this.searchNameId = options.searchNameId || 'search-name';
+        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        
+        this.init();
+    }
+    
+    async loadPlans(reset = true) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        const page = reset ? 1 : this.currentPage + 1;
+        const container = document.getElementById(this.containerId);
+        
+        if (reset && container) {
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div> ';
+        }
+        
+        try {
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
+            if (this.currentSearchName) {
+                url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
+            }
+            if (this.currentSearchOkpo) {
+                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (reset) {
+                    if (container) {
+                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
+                    }
+                    this.currentPage = 1;
+                } else {
+                    const plansArea = document.querySelector('.plans-area');
+                    if (plansArea) {
+                        plansArea.insertAdjacentHTML('beforeend', data.html);
+                    }
+                    this.currentPage = page;
+                }
+                
+                this.hasMore = data.pagination.has_next;
+                this.updateLoadMoreButton();
+                this.updateCountsDisplay(data.counts);
+            }
+        } catch (error) {
+            console.error('Error loading plans:', error);
+        } finally {
+            this.isLoading = false;
+        }
+    }
+    
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+        }
+    }
+    
+    updateCountsDisplay(counts) {
+        if (!counts) return;
+        
+        const statAll = document.querySelector('.stat-number');
+        const statDraft = document.querySelector('.stat-number-redac');
+        const statControl = document.querySelector('.stat-number-control');
+        const statSent = document.querySelector('.stat-number-sent');
+        const statError = document.querySelector('.stat-number-eror');
+        const statApproved = document.querySelector('.stat-number-sub');
+        
+        if (statAll) statAll.textContent = counts.all || '-';
+        if (statDraft) statDraft.textContent = counts.draft || '-';
+        if (statControl) statControl.textContent = counts.control || '-';
+        if (statSent) statSent.textContent = counts.sent || '-';
+        if (statError) statError.textContent = counts.error || '-';
+        if (statApproved) statApproved.textContent = counts.approved || '-';
+    }
+    
+    handleSearch() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        this.searchTimeout = setTimeout(() => {
+            this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
+            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.loadPlans(true);
+        }, 500);
+    }
+    
+    initFilters() {
+        const searchNameInput = document.getElementById(this.searchNameId);
+        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        
+        if (searchNameInput) {
+            searchNameInput.addEventListener('input', () => this.handleSearch());
+        }
+        if (searchOkpoInput) {
+            searchOkpoInput.addEventListener('input', () => this.handleSearch());
+        }
+        
+        const statusDropdown = document.querySelector('[data-filter-type="status"]');
+        const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        
+        if (statusDropdown) {
+            const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+            const items = statusDropdown.querySelectorAll('.dropdown-item');
+            const menu = statusDropdown.querySelector('.dropdown-menu-filter');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    statusDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentStatus = value;
+                    const selectedSpan = document.getElementById('selected-status');
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    statusDropdown.classList.remove('active');
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (yearDropdown) {
+            const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
+            const items = yearDropdown.querySelectorAll('.dropdown-item');
+            const menu = yearDropdown.querySelector('.dropdown-menu-filter');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    yearDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentYear = value;
+                    const selectedSpan = document.getElementById('selected-year');
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    yearDropdown.classList.remove('active');
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (statusDropdown && !statusDropdown.contains(e.target)) {
+                statusDropdown.classList.remove('active');
+            }
+            if (yearDropdown && !yearDropdown.contains(e.target)) {
+                yearDropdown.classList.remove('active');
+            }
+        });
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+        }
+    }
+    
+    init() {
+        this.initFilters();
+        this.loadPlans(true);
+    }
+}
+
+class ExportPlansLoader {
+    constructor(options = {}) {
+        this.currentStatus = options.initialStatus || 'all';
+        this.currentYear = options.initialYear || 'all';
+        this.currentSearchName = '';
+        this.currentSearchOkpo = '';
+        this.currentPage = 1;
+        this.isLoading = false;
+        this.hasMore = true;
+        this.searchTimeout = null;
+        this.perPage = options.perPage || 5;
+        this.selectedPlans = new Set();
+        this.selectedFormat = null;
+        
+        this.containerId = options.containerId || 'plans-container';
+        this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
+        this.searchNameId = options.searchNameId || 'search-name';
+        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.selectAllId = options.selectAllId || 'selectAllBtn';
+        this.exportFormId = options.exportFormId || 'exportForm';
+        
+        console.log('ExportPlansLoader initialized with options:', options);
+        this.init();
+    }
+    
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+            console.log('Load more button display:', loadMoreContainer.style.display);
+        }
+    }
+    
+    updateExportButton() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.disabled = this.selectedPlans.size === 0 || !this.selectedFormat;
+            console.log('Export button disabled:', exportBtn.disabled, 'selected plans:', this.selectedPlans.size, 'selected format:', this.selectedFormat);
+        }
+    }
+    
+    updateFormAction() {
+        const form = document.getElementById(this.exportFormId);
+        if (form && this.selectedFormat) {
+            form.action = `/export-to/${this.selectedFormat}`;
+            console.log('Form action updated to:', form.action);
+        }
+    }
+    
+ async loadPlans(reset = true) {
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    const page = reset ? 1 : this.currentPage + 1;
+    const container = document.getElementById(this.containerId);
+    
+    console.log('loadPlans called:', { reset, page, currentStatus: this.currentStatus, currentYear: this.currentYear });
+    
+    if (reset && container) {
+        container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
+    }
+    
+    const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+    if (!reset && loadMoreBtn) {
+        const originalText = loadMoreBtn.innerHTML;
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span> Загрузка...';
+        this.originalBtnText = originalText;
+    }
+    
+    try {
+        let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
+        if (this.currentSearchName) {
+            url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
+        }
+        if (this.currentSearchOkpo) {
+            url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+        }
+        
+        console.log('Fetching URL:', url);
+        const response = await fetch(url);
+        console.log('Response status:', response.status);
+        
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data.success) {
+            if (reset) {
+                if (container) {
+                    container.innerHTML = `<div class="plans-area">${data.html}</div>`;
+                    console.log('Container reset with new HTML');
+                }
+                this.currentPage = 1;
+                this.selectedPlans.clear();
+            } else {
+                const plansArea = document.querySelector('.plans-area');
+                if (plansArea) {
+                    plansArea.insertAdjacentHTML('beforeend', data.html);
+                    console.log('Added more plans to existing area');
+                }
+                this.currentPage = page;
+            }
+            
+            this.hasMore = data.pagination.has_next;
+            console.log('Has more:', this.hasMore);
+            this.updateLoadMoreButton();
+            this.attachCheckboxListeners();
+            this.updateExportButton();
+        } else {
+            console.error('API returned success=false:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading plans:', error);
+        if (reset && container) {
+            container.innerHTML = '<div class="plans-error" style="text-align: center; padding: 40px; color: red;">Ошибка загрузки планов</div>';
+        }
+    } finally {
+        this.isLoading = false;
+        if (!reset && loadMoreBtn && this.originalBtnText) {
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = this.originalBtnText;
+        }
+    }
+}
+    
+    attachCheckboxListeners() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        console.log('Attaching listeners to checkboxes, found:', checkboxes.length);
+        checkboxes.forEach(cb => {
+            cb.removeEventListener('change', this.handleCheckboxChange.bind(this));
+            cb.addEventListener('change', this.handleCheckboxChange.bind(this));
+        });
+        // Не вызываем updateSelectAllButton здесь, так как чекбоксы еще не отмечены
+        this.updateExportButton();
+    }
+    
+    handleCheckboxChange(e) {
+        const checkbox = e.target;
+        const planId = checkbox.value;
+        
+        console.log('Checkbox changed:', { planId, checked: checkbox.checked });
+        
+        if (checkbox.checked) {
+            this.selectedPlans.add(planId);
+        } else {
+            this.selectedPlans.delete(planId);
+        }
+        
+        console.log('Selected plans count:', this.selectedPlans.size);
+        this.updateSelectAllButton();
+        this.updateExportButton();
+    }
+    
+    updateSelectAllButton() {
+        const selectAllCheckbox = document.getElementById(this.selectAllId);
+        if (!selectAllCheckbox) {
+            console.log('SelectAll checkbox not found');
+            return;
+        }
+        
+        const allCheckboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+        
+        console.log('UpdateSelectAllButton:', { allChecked, someChecked, totalCheckboxes: allCheckboxes.length });
+        
+        if (allChecked) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (someChecked) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+    
+    selectAll() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        const selectAllCheckbox = document.getElementById(this.selectAllId);
+        
+        console.log('SelectAll clicked, current state:', { 
+            checked: selectAllCheckbox?.checked, 
+            indeterminate: selectAllCheckbox?.indeterminate 
+        });
+        
+        const shouldCheck = !selectAllCheckbox?.checked;
+        
+        console.log('Should check:', shouldCheck);
+        
+        checkboxes.forEach(cb => {
+            cb.checked = shouldCheck;
+            const planId = cb.value;
+            if (shouldCheck) {
+                this.selectedPlans.add(planId);
+            } else {
+                this.selectedPlans.delete(planId);
+            }
+        });
+        
+        if (shouldCheck) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+        
+        console.log('Selected plans after selectAll:', this.selectedPlans.size);
+        this.updateExportButton();
+    }
+    
+    handleSearch() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        this.searchTimeout = setTimeout(() => {
+            this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
+            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            console.log('Search triggered:', { name: this.currentSearchName, okpo: this.currentSearchOkpo });
+            this.loadPlans(true);
+        }, 300);
+    }
+    
+    initFormatSelection() {
+        const formatItems = document.querySelectorAll('.export-choose');
+        const exportForm = document.getElementById(this.exportFormId);
+        
+        console.log('Initializing format selection, found items:', formatItems.length);
+        
+        formatItems.forEach(item => {
+            item.removeEventListener('click', this.formatClickHandler);
+            this.formatClickHandler = () => {
+                const format = item.dataset.format;
+                console.log('Format selected:', format);
+                formatItems.forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                this.selectedFormat = format;
+                
+                if (exportForm) {
+                    exportForm.action = `/export-to/${format}`;
+                }
+                
+                this.updateExportButton();
+            };
+            item.addEventListener('click', this.formatClickHandler);
+        });
+    }
+    
+    initFilters() {
+        const searchNameInput = document.getElementById(this.searchNameId);
+        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        
+        if (searchNameInput) {
+            searchNameInput.addEventListener('input', () => this.handleSearch());
+        }
+        if (searchOkpoInput) {
+            searchOkpoInput.addEventListener('input', () => this.handleSearch());
+        }
+        
+        const statusDropdown = document.querySelector('[data-filter-type="status"]');
+        const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        
+        if (statusDropdown) {
+            const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+            const items = statusDropdown.querySelectorAll('.dropdown-item');
+            const menu = statusDropdown.querySelector('.dropdown-menu-filter');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    statusDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentStatus = value;
+                    const selectedSpan = document.getElementById('selected-status');
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    statusDropdown.classList.remove('active');
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (yearDropdown) {
+            const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
+            const items = yearDropdown.querySelectorAll('.dropdown-item');
+            const menu = yearDropdown.querySelector('.dropdown-menu-filter');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    yearDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentYear = value;
+                    const selectedSpan = document.getElementById('selected-year');
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    yearDropdown.classList.remove('active');
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (statusDropdown && !statusDropdown.contains(e.target)) {
+                statusDropdown.classList.remove('active');
+            }
+            if (yearDropdown && !yearDropdown.contains(e.target)) {
+                yearDropdown.classList.remove('active');
+            }
+        });
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+        }
+    }
+    
+    init() {
+        const container = document.getElementById(this.containerId);
+        if (!container) {
+            console.error('Container not found:', this.containerId);
+            return;
+        }
+        
+        console.log('Container found, initializing...');
+        this.initFilters();
+        
+        const selectAllCheckbox = document.getElementById(this.selectAllId);
+        if (selectAllCheckbox) {
+            console.log('SelectAll checkbox found');
+            selectAllCheckbox.removeEventListener('change', this.selectAllHandler);
+            this.selectAllHandler = () => this.selectAll();
+            selectAllCheckbox.addEventListener('change', this.selectAllHandler);
+        } else {
+            console.log('SelectAll checkbox not found:', this.selectAllId);
+        }
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (loadMoreBtn) {
+            console.log('LoadMore button found');
+            loadMoreBtn.removeEventListener('click', this.loadMoreHandler);
+            this.loadMoreHandler = () => this.loadPlans(false);
+            loadMoreBtn.addEventListener('click', this.loadMoreHandler);
+        } else {
+            console.log('LoadMore button not found:', this.loadMoreBtnId);
+        }
+        
+        this.initFormatSelection();
+        this.loadPlans(true);
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', function() {
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    
+    if (selectAllBtn) {
+        window.exportPlansLoader = new ExportPlansLoader({
+            initialStatus: window.initialStatus || 'all',
+            initialYear: window.initialYear || 'all',
+            perPage: 5,
+            containerId: 'plans-container',
+            loadMoreBtnId: 'load-more-btn',
+            searchNameId: 'search-name',
+            searchOkpoId: 'search-okpo',
+            selectAllId: 'selectAllBtn',
+            exportFormId: 'exportForm'
+        });
+    } else {
+        window.plansLoader = new PlansLoader({
+            initialStatus: window.initialStatus || 'all',
+            initialYear: window.initialYear || 'all',
+            perPage: 5,
+            containerId: 'plans-container',
+            loadMoreBtnId: 'load-more-btn',
+            searchNameId: 'search-name',
+            searchOkpoId: 'search-okpo'
+        });
+    }
+
     const formEventeForm = document.getElementById('editEventeForm');
     if (formEventeForm) {
         formEventeForm.addEventListener('submit', function(e) {
@@ -2232,10 +2786,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (document.getElementById('exportForm')) {
-        initExportPage();
-    }
-
     validateAndEnableButton();
     setInterval(validateAndEnableButton, 300);
     
@@ -2244,10 +2794,6 @@ document.addEventListener('DOMContentLoaded', function() {
             validateAndEnableButton();
         }
     });
-
-    if (document.querySelectorAll('.plan-cont')) {
-        window.initPlansFilter();
-    }
 
     const sentPlanButton = document.getElementById('sentPlanButton');
     const sentmodal = document.getElementById('sentmodal');

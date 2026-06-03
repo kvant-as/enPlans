@@ -213,7 +213,7 @@ def delete_profile():
         flash('Неверный email для подтверждения', 'error')
         return redirect(url_for('views.profile'))
     
-    if user.is_admin or user.is_auditor:
+    if user.is_admin or user.is_regional:
         flash('Администраторы и аудиторы не могут удалить аккаунт', 'error')
         return redirect(url_for('views.profile'))
     

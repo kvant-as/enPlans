@@ -41,7 +41,7 @@ def owner_only(f):
         
         has_access = (
             current_user.is_admin or 
-            current_user.is_auditor or 
+            current_user.is_regional or 
             plan.user_id == current_user.id
         )
         
@@ -212,6 +212,19 @@ def edit_plan_type(token):
 @login_required
 @session_required
 def plans():
+    return render_template(
+        'plans.html',
+        years=range(2024, 2056),
+        current_user=current_user,
+        hide_header=False
+    )
+    
+    
+@views.route('/plans-audit', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required   
+def plans_audit():
     status_filter = request.args.get('status', 'all')
     year_filter = request.args.get('year', 'all')
 
@@ -226,73 +239,22 @@ def plans():
     }
 
     return render_template(
-        'plans.html',
+        'plans_audit.html',
         **context,
         current_user=current_user,
         hide_header=False
-    )
+    ) 
 
 @views.route('/export', methods=['GET'])
 @user_with_all_params()
 @login_required
 @session_required
 def export():
-    status_filter = request.args.get('status', 'all')
-    year_filter = request.args.get('year', 'all')
-
-    plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
-
-    context = {
-        'years': range(2024, 2056),
-        'plans': plans,
-        'status_counts': status_counts,
-        'current_status_filter': status_filter,
-        'current_year_filter': year_filter
-    }
-
     return render_template(
         'export.html',
-        **context,
+        years=range(2024, 2056),
         current_user=current_user,
         hide_header=False
-    )
-    
-# @views.route('/news', methods=['GET'])
-# def news_page():
-#     return render_template(
-#         'news.html',
-#         current_user=current_user,
-#         hide_header=False
-#     )
-    
-# @views.route('/news/<int:news_id>', methods=['GET'])
-# def news_detail_page(news_id):
-#     news_item = News.query.get_or_404(news_id)
-    
-#     news_item.views_count += 1
-#     db.session.commit()
-    
-#     return render_template(
-#         'news_detail.html',
-#         current_user=current_user,
-#         news_item=news_item,
-#         hide_header=False
-#     )
-
-@views.route('/news/<int:id>', methods=['GET'])
-def news_post(id):
-    post = News.query.filter_by(id = id).first()
-    return render_template(f'news_id.html', 
-        current_user=current_user,
-        post=post
-    )
-
-@views.route('/news', methods=['GET'])
-def news():
-    all_news = News.query.order_by(News.created_at.desc()).all()
-    return render_template('news.html', 
-        current_user=current_user,
-        all_news=all_news
     )
     
 @views.route('/export-to/<string:format>', methods=['POST'])
@@ -346,6 +308,46 @@ def export_to(format):
 
     zip_stream.seek(0)
     return send_file(zip_stream, as_attachment=True, download_name="plans.zip", mimetype="application/zip")
+    
+# @views.route('/news', methods=['GET'])
+# def news_page():
+#     return render_template(
+#         'news.html',
+#         current_user=current_user,
+#         hide_header=False
+#     )
+    
+# @views.route('/news/<int:news_id>', methods=['GET'])
+# def news_detail_page(news_id):
+#     news_item = News.query.get_or_404(news_id)
+    
+#     news_item.views_count += 1
+#     db.session.commit()
+    
+#     return render_template(
+#         'news_detail.html',
+#         current_user=current_user,
+#         news_item=news_item,
+#         hide_header=False
+#     )
+
+@views.route('/news/<int:id>', methods=['GET'])
+def news_post(id):
+    post = News.query.filter_by(id = id).first()
+    return render_template(f'news_id.html', 
+        current_user=current_user,
+        post=post
+    )
+
+@views.route('/news', methods=['GET'])
+def news():
+    all_news = News.query.order_by(News.created_at.desc()).all()
+    return render_template('news.html', 
+        current_user=current_user,
+        all_news=all_news
+    )
+    
+
 
 from sqlalchemy import select
 
@@ -400,8 +402,9 @@ def create_plan():
             elif year == 2027:
                 return to_decimal_2('270.00')
             else:
-                flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
-                return None
+                return to_decimal_2('270.00')
+                # flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
+                # return None
 
         usd_rate_value = get_usd_rate_for_new_plan()
         cost_per_toe_value = get_cost_per_toe_for_new_plan(year)

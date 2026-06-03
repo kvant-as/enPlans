@@ -9,6 +9,8 @@ from website.time import TimeByMinsk
 
 def create_database(app, db):
     with app.app_context():
+        # db.reflect()
+        # db.drop_all()  
         db.create_all()
         filling_database(db)
 
@@ -171,7 +173,7 @@ def filling_database(db):
             ('', os.getenv('auditoremailNadzorTEST'), 'Иванов8', 'Иван', 'Иванович', '+8', False, True, 7947),
         ]
 
-        for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
+        for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_regional, organization_id in users_data:
             if email == os.getenv('testuser'):
                 password = os.getenv('testuserpass')
             elif email == os.getenv('auditoremailNadzor'):
@@ -187,7 +189,7 @@ def filling_database(db):
                 patronymic_name=patronymic_name,
                 phone=phone,
                 is_admin=is_admin,
-                is_auditor=is_auditor,
+                is_regional=is_regional,
                 organization_id=organization_id,
                 password=generate_password_hash(password)
             )

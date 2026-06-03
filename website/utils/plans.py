@@ -166,7 +166,7 @@ def get_plans_by_okpo():
         Plan.is_approved == True
     )
     
-    if current_user.is_admin or (current_user.is_auditor and str(current_user.organization.okpo)[-4] == "8"):
+    if current_user.is_admin or (current_user.is_regional and str(current_user.organization.okpo)[-4] == "8"):
         return Plan.query.filter(
             status_filter
         ).order_by(Plan.year.asc())
@@ -175,15 +175,21 @@ def get_plans_by_okpo():
             status_filter,
             func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
         ).order_by(Plan.year.asc())
-        
-def get_filtered_plans(user, status_filter="all", year_filter="all"):
-    if user.is_auditor:
-        base_query = get_plans_by_okpo()
+
+def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", page=1, per_page=5):
+    if user.is_regional and not user.is_admin:
+        base_query = Plan.query.filter(Plan.is_sent == True)
+    elif user.is_admin:
+        base_query = Plan.query.filter_by(user_id=user.id)
     else:
         base_query = Plan.query.filter_by(user_id=user.id)
     
-    display_query = base_query
-
+    if search_name:
+        base_query = base_query.join(Organization).filter(Organization.name.ilike(f'%{search_name}%'))
+    
+    if search_okpo:
+        base_query = base_query.join(Organization).filter(Organization.okpo.ilike(f'%{search_okpo}%'))
+    
     status_filters = {
         'draft': Plan.is_draft == True,
         'control': Plan.is_control == True,
@@ -191,21 +197,21 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
         'error': Plan.is_error == True,
         'approved': Plan.is_approved == True
     }
-
+    
+    filtered_query = base_query
     if status_filter != 'all' and status_filter in status_filters:
-        display_query = display_query.filter(status_filters[status_filter])
-
+        filtered_query = filtered_query.filter(status_filters[status_filter])
+    
     if year_filter != 'all':
-        display_query = display_query.filter(Plan.year == int(year_filter))
-
-    plans = display_query.all()
-
+        filtered_query = filtered_query.filter(Plan.year == int(year_filter))
+    
+    total_count = filtered_query.count()
+    plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
     count_query = base_query
     if year_filter != 'all':
         count_query = count_query.filter(Plan.year == int(year_filter))
-    if status_filter != 'all' and status_filter in status_filters:
-        count_query = count_query.filter(status_filters[status_filter])
-
+    
     status_counts = {
         'all': count_query.count(),
         'draft': count_query.filter(Plan.is_draft == True).count(),
@@ -214,7 +220,8 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
         'error': count_query.filter(Plan.is_error == True).count(),
         'approved': count_query.filter(Plan.is_approved == True).count()
     }
-    return plans, status_counts
+    
+    return plans, total_count, status_counts
 
 # def get_event_metrics(plan_id, event_type, is_original=True):
 #     query = (db.session.query(
@@ -710,8 +717,6 @@ def handle_control_status(plan):
         
         if indicator_9912.QYearCurrent < indicator_9911.QYearCurrent:
             errors.append("Экономия ТЭР за январь-июнь должна быть больше или равна экономии за январь-март.")
-    
-    
     
     
     if indicator_9915 and plan.energy_saving:

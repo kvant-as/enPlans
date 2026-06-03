@@ -53,29 +53,44 @@ const messageFlash = (function() {
             ? '/static/img/Error.svg'
             : '/static/img/Checkmark.svg';
 
+        let messageText = msgObj.msg;
+        let isLong = messageText && messageText.length > 80;
+        let displayText = isLong ? messageText.substring(0, 80) + '...' : messageText;
+
         alertBox.innerHTML = `
             <img src="${imgSrc}" class="alert-icon" alt="">
             <div class="p_message_cont">
-                <p>${msgObj.msg}</p>
+                <p>${displayText}</p>
+                ${isLong ? '<span class="expand-hint">нажмите для развертывания</span>' : ''}
             </div>
             <button class="alert-close">&times;</button>
         `;
 
+        if (isLong) {
+            const fullText = messageText;
+            const pElement = alertBox.querySelector('.p_message_cont p');
+            const hintElement = alertBox.querySelector('.expand-hint');
+            
+            alertBox.addEventListener('click', (e) => {
+                if (e.target.classList.contains('alert-close')) return;
+                
+                if (alertBox.classList.contains('collapsed')) {
+                    pElement.textContent = fullText;
+                    hintElement.textContent = 'нажмите для сворачивания';
+                    alertBox.classList.remove('collapsed');
+                    alertBox.classList.add('expanded');
+                } else if (alertBox.classList.contains('expanded')) {
+                    pElement.textContent = displayText;
+                    hintElement.textContent = 'нажмите для развертывания';
+                    alertBox.classList.remove('expanded');
+                    alertBox.classList.add('collapsed');
+                }
+            });
+        }
+
         alertBox.querySelector('.alert-close').addEventListener('click', e => {
             e.stopPropagation();
             removeMessage(alertBox, msgObj);
-        });
-
-        alertBox.addEventListener('click', () => {
-            container.querySelectorAll('.custom-alert').forEach((el, index) => {
-                if (index === container.children.length - 1) {
-                    el.classList.toggle('expanded');
-                    el.classList.toggle('collapsed');
-                } else {
-                    el.classList.remove('expanded');
-                    el.classList.add('collapsed');
-                }
-            });
         });
 
         container.appendChild(alertBox);
@@ -550,120 +565,6 @@ const formSteps = {
       });
     }
   }
-};
-
-// language modal
-function initLanguageDropdown() {
-  const button = document.querySelector('.language-button');
-  const dropdown = document.querySelector('.language-dropdown-content');
-
-  if (!button || !dropdown) return;
-
-  button.addEventListener('click', function(e) {
-    e.stopPropagation();
-    dropdown.classList.toggle('show');
-  });
-
-  window.addEventListener('click', function() {
-    if (dropdown.classList.contains('show')) {
-      dropdown.classList.remove('show');
-    }
-  });
-}
-
-// dropdown Module
-const customDropdown = {
-    init: function() {
-        this.dropdowns = document.querySelectorAll('.custom-dropdown');
-        
-        if (this.dropdowns.length === 0) return;
-        
-        this.setupDropdowns();
-        this.setupDocumentClick();
-        this.setupFilterListeners();
-    },
-    
-    setupDropdowns: function() {
-        this.dropdowns.forEach(dropdown => {
-            const toggle = dropdown.querySelector('.dropdown-toggle');
-            const menu = dropdown.querySelector('.dropdown-menu-filter');
-            const items = dropdown.querySelectorAll('.dropdown-item');
-            const selectedOption = dropdown.querySelector('.selected-option');
-            
-            toggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleDropdown(dropdown);
-            });
-            
-            items.forEach(item => {
-                item.addEventListener('click', () => {
-                    this.selectItem(item, selectedOption);
-                    this.closeDropdown(dropdown);
-                });
-            });
-        });
-    },
-    
-    setupFilterListeners: function() {
-        this.dropdowns.forEach(dropdown => {
-            const items = dropdown.querySelectorAll('.dropdown-item');
-            const filterType = dropdown.getAttribute('data-filter-type');
-            
-            items.forEach(item => {
-                item.addEventListener('click', () => {
-                    const value = item.getAttribute('data-value');
-                    this.submitFilterForm(filterType, value);
-                });
-            });
-        });
-    },
-    
-    submitFilterForm: function(filterType, value) {
-        const form = document.getElementById(filterType + 'Filter');
-        const input = document.getElementById(filterType + 'Input');
-        
-        if (form && input) {
-            input.value = value;
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            ['status', 'year'].forEach(param => {
-                if (param !== filterType && urlParams.has(param)) {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = param;
-                    hiddenInput.value = urlParams.get(param);
-                    form.appendChild(hiddenInput);
-                }
-            });
-            
-            form.submit();
-        }
-    },
-    
-    setupDocumentClick: function() {
-        document.addEventListener('click', () => {
-            this.closeAllDropdowns();
-        });
-    },
-    
-    toggleDropdown: function(dropdown) {
-        this.closeAllDropdowns();
-        dropdown.classList.toggle('active');
-    },
-    
-    closeDropdown: function(dropdown) {
-        dropdown.classList.remove('active');
-    },
-    
-    closeAllDropdowns: function() {
-        this.dropdowns.forEach(dropdown => {
-            this.closeDropdown(dropdown);
-        });
-    },
-    
-    selectItem: function(item, selectedOption) {
-        selectedOption.textContent = item.textContent;
-    }
 };
 
 // func to show modals
@@ -1454,82 +1355,6 @@ function initConfirmModal(config) {
         }
     });
 }
-
-(function() {
-    function filterPlans(nameInput, okpoInput, plans, noResultsContainer) {
-        const nameFilter = nameInput ? nameInput.value.toLowerCase() : "";
-        const okpoFilter = okpoInput ? okpoInput.value.toLowerCase() : "";
-        
-        let visibleCount = 0;
-        
-        plans.forEach(plan => {
-            const planName = plan.dataset.name || "";
-            const planOkpo = plan.dataset.okpo || "";
-
-            const matchName = planName.includes(nameFilter);
-            const matchOkpo = planOkpo.includes(okpoFilter);
-
-            const isVisible = (matchName && matchOkpo);
-            plan.style.display = isVisible ? "" : "none";
-            
-            if (isVisible) visibleCount++;
-        });
-        
-        if (noResultsContainer) {
-            noResultsContainer.style.display = visibleCount === 0 ? "block" : "none";
-        }
-    }
-
-    function initPlansFilter(config = {}) {
-        const {
-            nameInputSelector = "#search-name",
-            okpoInputSelector = "#search-okpo",
-            plansSelector = '[data-plan="choose"]',
-            noResultsSelector = "#no-results",
-            createIfNotExists = true
-        } = config;
-
-        const nameInput = document.querySelector(nameInputSelector);
-        const okpoInput = document.querySelector(okpoInputSelector);
-        const plans = document.querySelectorAll(plansSelector);
-        let noResultsContainer = document.querySelector(noResultsSelector);
-
-        if (!plans.length) return;
-        
-        if (!noResultsContainer && createIfNotExists) {
-            const plansContainer = plans[0].parentNode;
-            noResultsContainer = document.createElement("div");
-            noResultsContainer.id = noResultsSelector.replace("#", "");
-            noResultsContainer.className = "no-results";
-            noResultsContainer.innerHTML = `
-                <div class="choose-plan">
-                    <div class="no-info-conteiner">
-                        <div class="empty-state">
-                            <svg viewBox="0 0 24 24" fill="none">
-                                <path
-                                    d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
-                                    fill="#E6E6E6"
-                                />
-                            </svg>
-                            <h1>По вашему запросу ничего не найдено</h1>
-                            <p>Попробуйте изменить параметры поиска.</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            noResultsContainer.style.display = "none";
-            plansContainer.appendChild(noResultsContainer);
-        }
-
-        const handler = () => filterPlans(nameInput, okpoInput, plans, noResultsContainer);
-
-        if (nameInput) nameInput.addEventListener("input", handler);
-        if (okpoInput) okpoInput.addEventListener("input", handler);
-        setTimeout(handler, 100);
-    }
-
-    window.initPlansFilter = initPlansFilter;
-})();
 
 class MultiStepForm {
     constructor(options = {}) {
@@ -2524,9 +2349,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.auth-step-1') && document.querySelector('.auth-step-2')) {
         formSteps.init();
     }
-
-    initLanguageDropdown();
-    customDropdown.init();
     
     if (document.querySelector('.plan-cont')) {
         initStatusProgress();
@@ -2541,14 +2363,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (document.getElementById('paginationArea')) {
         const searchManager = new MultiTypeSearchManager();
-    }
-
-    if (document.getElementById('exportForm')) {
-        initExportPage();
-    }
-
-    if (document.querySelectorAll('.plan-cont')) {
-        initPlansFilter();
     }
 
     if (document.getElementById('notifBtn')) {

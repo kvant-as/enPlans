@@ -9,71 +9,61 @@
         <a class="name">{{ _('Планы мероприятий по энергосбережению') }}</a>
       </div>
       <div class="header-content-right">
-        {% if current_user.is_auditor != true %}
+        {% if current_user.is_regional != true or current_user.is_municipal != true or current_user.is_departament != true or current_user.is_higher_organization != true %}
           <button
             type="button"
             class="main-btn main-btn-primary"
             onclick="window.location.href = '/create-plan'">
             {{ icons.icon_add() }}
-            <span class="btn-text">{{ _('Создать новый') }}</span>
+            <span class="btn-text">{{ _('Создать план') }}</span>
           </button>
         {%endif%}
       </div>
     </div>
 
     <div class="stats-container">
-      {% macro format_count(value) %}
-          {{ value if value and value != 0 else '-' }}
-      {% endmacro %}
-
       <div class="stats-track">
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number">{{ format_count(status_counts.all) }}</a>
-                  <a class="word-numb">{{ _('Все') }}</a>
-              </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number" id="stat-all">-</a>
+            <a class="word-numb">{{ _('Все') }}</a>
           </div>
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number-redac">{{ format_count(status_counts.draft) }}</a>
-                  <a class="word-numb">{{ _('В редакции') }}</a>
-              </div>
-              <div class="status-dot"></div>
+        </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number-redac" id="stat-draft">-</a>
+            <a class="word-numb">{{ _('В редакции') }}</a>
           </div>
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number-control">{{ format_count(status_counts.control) }}</a>
-                  <a class="word-numb">{{ _('Контроль') }}</a>
-              </div>
-              <div class="status-dot"></div>
+          <div class="status-dot"></div>
+        </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number-control" id="stat-control">-</a>
+            <a class="word-numb">{{ _('Контроль') }}</a>
           </div>
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number-sent">{{ format_count(status_counts.sent) }}</a>
-                  <a class="word-numb">
-                      {% if current_user.is_auditor != true %}
-                          {{ _('На рассмотрении') }}
-                      {% else %}
-                          {{ _('Не просмотренные') }}
-                      {% endif %}
-                  </a>
-              </div>
-              <div class="status-dot"></div>
+          <div class="status-dot"></div>
+        </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number-sent" id="stat-sent">-</a>
+            <a class="word-numb">{{ _('На рассмотрении') }}</a>
           </div>
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number-eror">{{ format_count(status_counts.error) }}</a>
-                  <a class="word-numb">{{ _('С ошибками') }}</a>
-              </div>
-              <div class="status-dot"></div>
+          <div class="status-dot"></div>
+        </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number-eror" id="stat-error">-</a>
+            <a class="word-numb">{{ _('С ошибками') }}</a>
           </div>
-          <div class="stat-and-dot">
-              <div class="stat">
-                  <a class="stat-number-sub">{{ format_count(status_counts.approved) }}</a>
-                  <a class="word-numb">{{ _('Согласованные') }}</a>
-              </div>
-              <div class="status-dot"></div>
+          <div class="status-dot"></div>
+        </div>
+        <div class="stat-and-dot">
+          <div class="stat">
+            <a class="stat-number-sub" id="stat-approved">-</a>
+            <a class="word-numb">{{ _('Согласованные') }}</a>
           </div>
+          <div class="status-dot"></div>
+        </div>
       </div>
       <div class="progress-line-container">
         <div class="progress-line-background"></div>
@@ -81,113 +71,22 @@
       </div>
     </div>
 
-    <div class="filters-area">
-      <form
-        method="GET"
-        action="{{ url_for('views.plans') }}"
-        class="filter-form"
-        id="statusFilter"
-      >
-        <input
-          type="hidden"
-          name="status"
-          id="statusInput"
-          value="{{ request.args.get('status', 'all') }}"
-        />
-        <div class="custom-dropdown" data-filter-type="status">
-          <button type="button" class="dropdown-toggle">
-            <span class="selected-option">
-              {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
-              }} {% elif request.args.get('status') == 'control' %}{{
-              _('Контроль пройден') }} {% elif request.args.get('status') ==
-              'sent' %}{% if current_user.is_auditor != true %}{{ _('На
-              рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
-              elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
-              {% elif request.args.get('status') == 'approved' %}{{
-              _('Согласованные') }} {% else %}{{ _('Статус') }}{% endif %}
-            </span>
-            {{ icons.dropdown_arrow() }}
-          </button>
-          <div class="dropdown-menu-filter">
-            <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
-            <div class="dropdown-item" data-value="draft">
-              {{ _('В редакции') }}
-            </div>
-            <div class="dropdown-item" data-value="control">
-              {{ _('Контроль пройден') }}
-            </div>
-            <div class="dropdown-item" data-value="sent">
-              {% if current_user.is_auditor != true %}{{ _('На рассмотрении')
-              }}{%else%}{{ _('Не просмотренные') }}{%endif%}
-            </div>
-            <div class="dropdown-item" data-value="error">
-              {{ _('С ошибками') }}
-            </div>
-            <div class="dropdown-item" data-value="approved">
-              {{ _('Согласованные') }}
-            </div>
-          </div>
-        </div>
-      </form>
+    {{ component.filters_section(years, current_user, show_search=true, show_status=true, show_year=true) }}
 
-      <form
-        method="GET"
-        action="{{ url_for('views.plans') }}"
-        class="filter-form"
-        id="yearFilter"
-      >
-        <input
-          type="hidden"
-          name="year"
-          id="yearInput"
-          value="{{ request.args.get('year', 'all') }}"
-        />
-        <div class="custom-dropdown" data-filter-type="year">
-          <button type="button" class="dropdown-toggle">
-            <span class="selected-option">
-              {% if request.args.get('year') and request.args.get('year') !=
-              'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
-              endif %}
-            </span>
-            {{ icons.dropdown_arrow() }}
+    <div id="plans-container"></div>
+        <div id="load-more-container">
+          <button id="load-more-btn" class="load-more-btn">
+            <span class="loading-spinner" style="display: none;"></span>
+            {{ icons.icon_download() }}
+            <span class="btn-text">{{ _('Загрузить еще') }}</span>
           </button>
-          <div class="dropdown-menu-filter">
-            <div class="dropdown-item" data-value="all">
-              {{ _('Все года') }}
-            </div>
-            {% for year in years %}
-            <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
-            {% endfor %}
-          </div>
         </div>
-      </form>
-
-      {% if current_user.is_auditor %}
-      <div class="input-with-icon">
-        {{ icons.icon_search() }}
-        <input
-          type="text"
-          data-action="search-directions"
-          placeholder="{{ _('Наим. предприятия') }}"
-          class="app-input"
-          id="search-name"
-        />
       </div>
-      <div class="input-with-icon">
-        {{ icons.icon_search() }}
-        <input
-          type="text"
-          data-action="search-directions"
-          placeholder="{{ _('ОКПО предприятия') }}"
-          class="app-input"
-          id="search-okpo"
-        />
-      </div>
-      {% endif %}
     </div>
-    {{ component.plans_list(plans, current_user, show_checkboxes=false, show_actions=true) }}
-  </div>
-</div>
 
-{{ affects.bg_effect() }} 
+<script>
+  window.initialStatus = '{{ request.args.get("status", "all") }}';
+  window.initialYear = '{{ request.args.get("year", "all") }}';
+</script>
+
 {% endblock %}

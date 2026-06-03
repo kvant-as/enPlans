@@ -1,0 +1,193 @@
+{% extends "base.html" %} {% block title %}{{ _('Проверка планов') }} - EnPlans{% endblock
+%} {% block content %}
+
+<div class="pers-page">
+  {{ component.navigation_header('plans_audit', current_user) }}
+  <div class="personal-acc-conteiner">
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name">{{ _('Проверка планов мероприятий по энергосбережению') }}</a>
+      </div>
+      <div class="header-content-right">
+        {% if current_user.is_regional != true %}
+          <button
+            type="button"
+            class="main-btn main-btn-primary"
+            onclick="window.location.href = '/create-plan'">
+            {{ icons.icon_add() }}
+            <span class="btn-text">{{ _('Создать план') }}</span>
+          </button>
+        {%endif%}
+      </div>
+    </div>
+
+    <div class="stats-container">
+      {% macro format_count(value) %}
+          {{ value if value and value != 0 else '-' }}
+      {% endmacro %}
+
+      <div class="stats-track">
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number">{{ format_count(status_counts.all) }}</a>
+                  <a class="word-numb">{{ _('Все') }}</a>
+              </div>
+          </div>
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number-redac">{{ format_count(status_counts.draft) }}</a>
+                  <a class="word-numb">{{ _('В редакции') }}</a>
+              </div>
+              <div class="status-dot"></div>
+          </div>
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number-control">{{ format_count(status_counts.control) }}</a>
+                  <a class="word-numb">{{ _('Контроль') }}</a>
+              </div>
+              <div class="status-dot"></div>
+          </div>
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number-sent">{{ format_count(status_counts.sent) }}</a>
+                  <a class="word-numb">
+                      {% if current_user.is_regional != true %}
+                          {{ _('На рассмотрении') }}
+                      {% else %}
+                          {{ _('Не просмотренные') }}
+                      {% endif %}
+                  </a>
+              </div>
+              <div class="status-dot"></div>
+          </div>
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number-eror">{{ format_count(status_counts.error) }}</a>
+                  <a class="word-numb">{{ _('С ошибками') }}</a>
+              </div>
+              <div class="status-dot"></div>
+          </div>
+          <div class="stat-and-dot">
+              <div class="stat">
+                  <a class="stat-number-sub">{{ format_count(status_counts.approved) }}</a>
+                  <a class="word-numb">{{ _('Согласованные') }}</a>
+              </div>
+              <div class="status-dot"></div>
+          </div>
+      </div>
+      <div class="progress-line-container">
+        <div class="progress-line-background"></div>
+        <div class="progress-line-active"></div>
+      </div>
+    </div>
+
+    <div class="filters-area">
+      <form
+        method="GET"
+        action="{{ url_for('views.plans') }}"
+        class="filter-form"
+        id="statusFilter"
+      >
+        <input
+          type="hidden"
+          name="status"
+          id="statusInput"
+          value="{{ request.args.get('status', 'all') }}"
+        />
+        <div class="custom-dropdown" data-filter-type="status">
+          <button type="button" class="dropdown-toggle">
+            <span class="selected-option">
+              {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
+              }} {% elif request.args.get('status') == 'control' %}{{
+              _('Контроль пройден') }} {% elif request.args.get('status') ==
+              'sent' %}{% if current_user.is_regional != true %}{{ _('На
+              рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
+              elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
+              {% elif request.args.get('status') == 'approved' %}{{
+              _('Согласованные') }} {% else %}{{ _('Статус') }}{% endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
+            <div class="dropdown-item" data-value="draft">
+              {{ _('В редакции') }}
+            </div>
+            <div class="dropdown-item" data-value="control">
+              {{ _('Контроль пройден') }}
+            </div>
+            <div class="dropdown-item" data-value="sent">
+              {% if current_user.is_regional != true %}{{ _('На рассмотрении')
+              }}{%else%}{{ _('Не просмотренные') }}{%endif%}
+            </div>
+            <div class="dropdown-item" data-value="error">
+              {{ _('С ошибками') }}
+            </div>
+            <div class="dropdown-item" data-value="approved">
+              {{ _('Согласованные') }}
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <form
+        method="GET"
+        action="{{ url_for('views.plans') }}"
+        class="filter-form"
+        id="yearFilter"
+      >
+        <input
+          type="hidden"
+          name="year"
+          id="yearInput"
+          value="{{ request.args.get('year', 'all') }}"
+        />
+        <div class="custom-dropdown" data-filter-type="year">
+          <button type="button" class="dropdown-toggle">
+            <span class="selected-option">
+              {% if request.args.get('year') and request.args.get('year') !=
+              'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
+              endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">
+              {{ _('Все года') }}
+            </div>
+            {% for year in years %}
+            <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </form>
+
+      {% if current_user.is_regional %}
+      <div class="input-with-icon">
+        {{ icons.icon_search() }}
+        <input
+          type="text"
+          data-action="search-directions"
+          placeholder="{{ _('Наим. предприятия') }}"
+          class="app-input"
+          id="search-name"
+        />
+      </div>
+      <div class="input-with-icon">
+        {{ icons.icon_search() }}
+        <input
+          type="text"
+          data-action="search-directions"
+          placeholder="{{ _('ОКПО предприятия') }}"
+          class="app-input"
+          id="search-okpo"
+        />
+      </div>
+      {% endif %}
+    </div>
+    {{ component.plans_list(plans, current_user, show_checkboxes=false, show_actions=true, compact_view=true) }}
+  </div>
+</div>
+
+{{ affects.bg_effect() }} 
+{% endblock %}

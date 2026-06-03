@@ -20,7 +20,7 @@
             <div class="header-aside" onclick="window.location.href='/'">
                 <div class="logo-wrapper {% if current_user and current_user.is_authenticated %}
                         {% if current_user.is_admin %}red-shadow
-                        {% elif current_user.is_auditor %}green-shadow
+                        {% elif current_user.is_regional %}green-shadow
                         {% endif %}
                     {% endif %}">
                     <img src="{{ url_for('static', filename='img/logo.svg') }}"
@@ -67,7 +67,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0;" onclick="ChatModule.toggleChat()">
+                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0; display: none;" onclick="ChatModule.toggleChat()">
                         {{ icons.icon_helper() }} 
                         <span class="tooltip-text">{{ _('Консультант') }}</span>
                     </button>
@@ -230,7 +230,7 @@
     </div>    
 
     {% if context_menu %}
-        {% set is_disabled = plan.is_sent or plan.is_approved or current_user.is_auditor %}
+        {% set is_disabled = plan.is_sent or plan.is_approved %}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}
@@ -260,7 +260,7 @@
                         data-type="organization">
                     {{ _('Организации') }}
                 </button>
-                {#<button type="button" 
+                <button type="button" 
                         class="spravoch-btn" 
                         data-action="select-type" 
                         data-type="ministry">
@@ -271,7 +271,7 @@
                         data-action="select-type" 
                         data-type="region">
                     {{ _('Регионы') }}
-                </button>#}
+                </button>
             </div>
             <div class="modal-body">
                 <div id="step1" class="modal-step">
