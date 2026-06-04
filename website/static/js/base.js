@@ -2235,8 +2235,6 @@ class TicketInfo {
 
 window.TicketInfo = TicketInfo;
 
-
-
 function initSections() {
     const sections = document.querySelectorAll('.user-info-section:not([data-initialized])');
     

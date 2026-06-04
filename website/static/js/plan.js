@@ -265,7 +265,7 @@ class PlanIndicators {
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
                     ${row.difference.toFixed(2).replace('.', ',')}
                 </td>
-                <td style="display: none">${row.code}</td>
+                <td>${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             
@@ -758,20 +758,20 @@ class PlanEvents {
             <td style="text-align: center;">${this.escapeHtml(row.display_code || row.direction_code)}</td>
             <td style="text-align: start;">${this.escapeHtml(row.name)}</td>
             <td style="text-align: center;">${this.escapeHtml(row.unit_name)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.Volume)}</td>
+            <td style="text-align: end;">${(row.Volume || 0).toString()}</td>
             <td style="text-align: end;">${this.formatNumber(row.EffTut)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.EffRub)}</td>
-            <td style="text-align: center;">${row.ExpectedQuarter || ''}</td>
+            <td style="text-align: end;">${(row.EffRub || 0).toString()}</td>
+            <td style="text-align: center;">${row.ExpectedQuarter || ''}</td> 
             <td style="text-align: end;">${this.formatNumber(row.EffCurrYear)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.Payback)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.VolumeFin)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetState)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetRep)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetLoc)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetOther)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyOwn)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyLoan)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyOther)}</td>
+            <td style="text-align: end;">${(row.Payback || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(row.VolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetState || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetRep || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetLoc || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetOther || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyOwn || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyLoan || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyOther || 0).toString()}</td>
         `;
         
         return tr;
@@ -786,18 +786,18 @@ class PlanEvents {
             <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffTut').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'EffRub').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'EffRub') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'VolumeFin').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetState').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetRep').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetLoc').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetOther').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyOwn').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyLoan').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyOther').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetState') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetOther') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
         `;
         tbody.appendChild(totalRow);
     }
@@ -820,20 +820,20 @@ class PlanEvents {
         totalRow.innerHTML = `
             <td colspan="3">Всего по части ${partNumber}, в том числе:</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'Volume').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffTut').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'EffRub').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'EffRub') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'VolumeFin').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetState').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetRep').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetLoc').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetOther').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyOwn').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyLoan').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyOther').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
         `;
         otherContent.appendChild(totalRow);
         
