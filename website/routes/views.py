@@ -1,13 +1,10 @@
 from decimal import Decimal
-import io
-import zipfile
 from flask import (
-    Blueprint, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
+    Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
 
 import uuid
 import threading
-import os
 import zipfile
 
 from sqlalchemy import select
@@ -16,6 +13,7 @@ from flask_login import (
     current_user, login_required
 )
 
+from ..time import TimeByMinsk
 from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
 from website.utils.plans import get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
@@ -331,49 +329,28 @@ def download_export(task_id):
         download_name=f'plans_export_{task_id[:8]}.zip',
         mimetype='application/zip'
     )
-    
-# @views.route('/news', methods=['GET'])
-# def news_page():
-#     return render_template(
-#         'news.html',
-#         current_user=current_user,
-#         hide_header=False
-#     )
-    
-# @views.route('/news/<int:news_id>', methods=['GET'])
-# def news_detail_page(news_id):
-#     news_item = News.query.get_or_404(news_id)
-    
-#     news_item.views_count += 1
-#     db.session.commit()
-    
-#     return render_template(
-#         'news_detail.html',
-#         current_user=current_user,
-#         news_item=news_item,
-#         hide_header=False
-#     )
-
-@views.route('/news/<int:id>', methods=['GET'])
-def news_post(id):
-    post = News.query.filter_by(id = id).first()
-    return render_template(f'news_id.html', 
-        current_user=current_user,
-        post=post
-    )
 
 @views.route('/news', methods=['GET'])
 def news():
-    all_news = News.query.order_by(News.created_at.desc()).all()
-    return render_template('news.html', 
+    return render_template('news.html', current_user=current_user)
+
+@views.route('/news/<int:id>', methods=['GET'])
+def news_post(id):
+    post = News.query.get(id)
+    if not post:
+        abort(404)
+    
+    if post.published_at is None:
+        post.published_at = post.created_at
+    
+    post.views_count = (post.views_count or 0) + 1
+    db.session.commit()
+    
+    return render_template('news_id.html', 
         current_user=current_user,
-        all_news=all_news
+        post=post
     )
     
-
-
-from sqlalchemy import select
-
 @views.route('/create-plan', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
@@ -574,20 +551,6 @@ def stats():
         pass
     return render_template('stats.html', 
                         hide_header=False)
-    
-# @views.route('/news', methods=['GET', 'POST'])
-# @user_with_all_params()
-# @login_required
-# @session_required
-# def news():
-#     if request.method == 'POST':
-#         pass
-#     return render_template('news.html', 
-#                         hide_header=False)
-    
-
-
-
 
 @views.route('/api/ticket/<int:ticket_id>/details')
 @login_required
@@ -634,12 +597,19 @@ def begin_page():
     user_data = User.query.count()
     organization_data = Organization.query.count()
     plan_data = Plan.query.count()
+    
+    latest_news = News.query.filter(
+        News.published_at <= TimeByMinsk(),
+        News.published_at.isnot(None)
+    ).order_by(News.published_at.desc()).first()
+    
     return render_template('begin.html',
-            user_data=user_data,
-            organization_data=organization_data,
-            plan_data=plan_data,
-            active_tab = 'begin'
-            )
+        user_data=user_data,
+        organization_data=organization_data,
+        plan_data=plan_data,
+        latest_news=latest_news,
+        active_tab='begin'
+    )
 
 @views.route('/api/notifications', methods=['GET'])
 @user_with_all_params()

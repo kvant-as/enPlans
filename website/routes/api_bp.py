@@ -1,3 +1,4 @@
+import datetime
 import logging
 from venv import logger
 from flask import current_app, g, render_template, request, jsonify, Blueprint
@@ -112,46 +113,65 @@ def api_get_export_plans():
         
         
 @api_bp.route('/news', methods=['GET'])
-@login_required
-def get_news():
+def api_news():
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = request.args.get('per_page', 9, type=int)
+    filter_type = request.args.get('filter', 'published')
+    sort_by = request.args.get('sort', 'date')
     
-    news_items = News.query.filter(
-        News.is_published == True,
-        News.published_at <= TimeByMinsk()
-    ).order_by(News.published_at.desc()).paginate(page=page, per_page=per_page)
+    current_time = TimeByMinsk()
+    query = News.query
+    
+    if filter_type == 'published':
+        query = query.filter(News.published_at <= current_time, News.published_at.isnot(None))
+
+    if sort_by == 'date':
+        query = query.order_by(News.published_at.desc().nullslast(), News.created_at.desc())
+    elif sort_by == 'views':
+        query = query.order_by(News.views_count.desc().nullslast(), News.published_at.desc().nullslast())
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
     return jsonify({
+        'success': True,
         'news': [{
-            'id': item.id,
-            'title': item.title,
-            'content': item.content,
-            'image_url': item.image_url,
-            'published_at': item.published_at.isoformat() if item.published_at else None,
-            'views_count': item.views_count
-        } for item in news_items.items],
-        'total': news_items.total,
-        'page': news_items.page,
-        'pages': news_items.pages
+            'id': n.id,
+            'title': n.title,
+            'content': n.content,
+            'image_url': n.image_url,
+            'published_at': n.published_at.isoformat() if n.published_at else n.created_at.isoformat(),
+            'created_at': n.created_at.isoformat(),
+            'views_count': n.views_count or 0,
+            'is_published': n.published_at is not None and n.published_at <= current_time
+        } for n in pagination.items],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page,
+        'total_views': db.session.query(db.func.sum(News.views_count)).scalar() or 0
     })
 
-@api_bp.route('/news/<int:news_id>', methods=['GET'])
-@login_required
-def get_news_detail(news_id):
-    news_item = News.query.get_or_404(news_id)
+@api_bp.route('/news/<int:id>', methods=['GET'])
+def api_news_post(id):
+    current_time = TimeByMinsk()
+    post = News.query.get(id)
+    if not post:
+        return jsonify({'success': False, 'error': 'Новость не найдена'}), 404
     
-    news_item.views_count += 1
+    post.views_count = (post.views_count or 0) + 1
     db.session.commit()
     
     return jsonify({
-        'id': news_item.id,
-        'title': news_item.title,
-        'content': news_item.content,
-        'image_url': news_item.image_url,
-        'published_at': news_item.published_at.isoformat() if news_item.published_at else None,
-        'views_count': news_item.views_count,
-        'created_at': news_item.created_at.isoformat()
+        'success': True,
+        'news': {
+            'id': post.id,
+            'title': post.title,
+            'content': post.content,
+            'image_url': post.image_url,
+            'published_at': post.published_at.isoformat() if post.published_at else post.created_at.isoformat(),
+            'created_at': post.created_at.isoformat(),
+            'views_count': post.views_count or 0,
+            'is_published': post.published_at is not None and post.published_at <= current_time
+        }
     })
 
 @api_bp.route('/organizations')
