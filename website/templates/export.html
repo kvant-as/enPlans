@@ -8,21 +8,21 @@
     <a class="name">{{ _('Экспорт данных') }}</a>
     <div class="export-choose-area">
       <div class="export-choose" data-format="xlsx">
-        {{ icons.icon_xlsx() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xlsx)</a>
           <a class="export-choose-text-dis">Таблица с данными планов и мероприятий</a>
         </div>
       </div>
       <div class="export-choose disabled" data-format="pdf">
-        {{ icons.icon_pdf() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.pdf)</a>
           <a class="export-choose-text-dis">Форматированный план для печати</a>
         </div>
       </div>
       <div class="export-choose disabled" data-format="xml">
-        {{ icons.icon_xml() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xml)</a>
           <a class="export-choose-text-dis">Структурированные данные для программ</a>
@@ -34,15 +34,20 @@
       <div class="header-content-left">
         {{ component.filters_section(years, current_user, show_search=true, show_status=true, show_year=true) }}
       </div>
-      <div class="header-content-right">
-        <div class="check-box-area">
-          <input type="checkbox" id="selectAllBtn"/>
-          <a>{{ _('Выбрать все') }}</a>
+        <div class="header-content-right">
+          <div class="check-box-area">
+            <button type="button" id="selectAllBtn" class="select-all-btn">
+                {{ icons.icon_confirm() }}
+                <a>{{ _('Выбрать все') }}</a>
+            </button>
+            <button type="button" id="clearAllBtn" class="clear-all-btn" style="display: none;">
+                {{ icons.icon_close() }}
+                <a>{{ _('Очистить все') }}</a>
+            </button>
         </div>
       </div>
     </div>
 
-    <!-- Скрытые поля для начальных значений фильтров -->
     <input type="hidden" id="statusInput" value="all">
     <input type="hidden" id="yearInput" value="all">
 

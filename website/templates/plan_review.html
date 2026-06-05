@@ -141,7 +141,7 @@
         </div>
       </div>
 
-    {% if current_user.is_regional == true or current_user.is_admin == true %}
+    {% if current_user.is_auditor == true or current_user.is_admin == true %}
       <hr>
       <h1 class="name">{{ _('Предприятие') }}</h1>
 

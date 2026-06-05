@@ -5,6 +5,11 @@ from flask import (
     Blueprint, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
 
+import uuid
+import threading
+import os
+import zipfile
+
 from sqlalchemy import select
 
 from flask_login import (
@@ -41,7 +46,7 @@ def owner_only(f):
         
         has_access = (
             current_user.is_admin or 
-            current_user.is_regional or 
+            current_user.is_auditor or 
             plan.user_id == current_user.id
         )
         
@@ -257,57 +262,75 @@ def export():
         hide_header=False
     )
     
-@views.route('/export-to/<string:format>', methods=['POST'])
+@views.route('/export/start', methods=['POST'])
 @user_with_all_params()
 @login_required
 @session_required
-def export_to(format):
-    ids = request.form.getlist("ids")
-    if not ids:
-        flash("Не выбраны планы.", "error")
-        return redirect(request.url)
-
-    plans = Plan.query.filter(Plan.id.in_(ids)).all()
-    if not plans:
-        flash("Не найдены выбранные планы.", "error")
-        return redirect(request.url)
-    
-    from ..export import (
-        export_pdf_single, 
-        export_xlsx_single,
-        export_xml_single
+def start_export():
+    try:
+        export_format = request.form.get('format', '').lower()
+        plan_ids = request.form.getlist('ids')
         
-    )
-    if len(plans) == 1:
-        plan = plans[0]
-        if format == "xml":
-            file_stream, mime, filename = export_xml_single(plan)
-        elif format == "xlsx":
-            file_stream, mime, filename = export_xlsx_single(plan)
-        elif format == "pdf":
-            file_stream, mime, filename = export_pdf_single(plan)
-        else:
-            flash("Неизвестный формат.", "error")
-            return redirect(request.url)
-        return send_file(file_stream, as_attachment=True, download_name=filename, mimetype=mime)
+        if not plan_ids:
+            return jsonify({'success': False, 'error': 'Не выбраны планы'})
+        
+        plan_ids = [int(pid) for pid in plan_ids]
+        
+        if export_format not in ['xlsx', 'xml', 'pdf']:
+            return jsonify({'success': False, 'error': 'Неверный формат'})
+        
+        task_id = str(uuid.uuid4())
+        
+        from ..export import create_export_archive_async
+        from flask import current_app
+        
+        thread = threading.Thread(
+            target=create_export_archive_async,
+            args=(export_format, task_id, current_user.id, plan_ids, current_app._get_current_object())
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'success': True, 'task_id': task_id})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@views.route('/export/status/<task_id>', methods=['GET'])
+@login_required
+def export_status(task_id):
+    from ..export import export_tasks
+    if task_id not in export_tasks:
+        return jsonify({'success': False, 'error': 'Задача не найдена'})
     
-    zip_stream = io.BytesIO()
-    with zipfile.ZipFile(zip_stream, "w") as zip_file:
-        for plan in plans:
-            if format == "xml":
-                f_stream, _, fname = export_xml_single(plan)
-            elif format == "xlsx":
-                f_stream, _, fname = export_xlsx_single(plan)
-            elif format == "pdf":
-                f_stream, _, fname = export_pdf_single(plan)
-            else:
-                flash("Неизвестный формат.", "error")
-                return redirect(request.url)
+    task = export_tasks[task_id]
+    return jsonify({
+        'success': True,
+        'status': task['status'],
+        'progress': task.get('progress', 0),
+        'error': task.get('error', '')
+    })
 
-            zip_file.writestr(fname, f_stream.getvalue())
-
-    zip_stream.seek(0)
-    return send_file(zip_stream, as_attachment=True, download_name="plans.zip", mimetype="application/zip")
+@views.route('/export/download/<task_id>', methods=['GET'])
+@login_required
+def download_export(task_id):
+    from ..export import export_tasks
+    if task_id not in export_tasks:
+        flash('Файл не найден', 'error')
+        return redirect(request.referrer or url_for('views.export_page'))
+    
+    task = export_tasks[task_id]
+    
+    if task['status'] != 'completed':
+        flash('Архив еще не готов', 'error')
+        return redirect(request.referrer or url_for('views.export_page'))
+    
+    return send_file(
+        task['file_path'],
+        as_attachment=True,
+        download_name=f'plans_export_{task_id[:8]}.zip',
+        mimetype='application/zip'
+    )
     
 # @views.route('/news', methods=['GET'])
 # def news_page():

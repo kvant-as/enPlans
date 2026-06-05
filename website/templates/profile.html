@@ -127,7 +127,7 @@
     <hr/>
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{% if current_user.is_regional %}{{ _('Региональное управление') }}{% else
+        <a class="name" style="padding-bottom: 0">{% if current_user.is_auditor %}{{ _('Региональное управление') }}{% else
       %}{{ _('Данные отчитывающегося субъекта') }}{% endif %}</a>
       </div>
       <div class="header-content-right">

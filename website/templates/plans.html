@@ -9,7 +9,7 @@
         <a class="name">{{ _('Планы мероприятий по энергосбережению') }}</a>
       </div>
       <div class="header-content-right">
-        {% if current_user.is_regional != true or current_user.is_municipal != true or current_user.is_departament != true or current_user.is_higher_organization != true %}
+        {% if current_user.is_auditor != true or current_user.is_municipal != true or current_user.is_departament != true or current_user.is_higher_organization != true %}
           <button
             type="button"
             class="main-btn main-btn-primary"

@@ -166,7 +166,7 @@ def get_plans_by_okpo():
         Plan.is_approved == True
     )
     
-    if current_user.is_admin or (current_user.is_regional and str(current_user.organization.okpo)[-4] == "8"):
+    if current_user.is_admin or (current_user.is_auditor and str(current_user.organization.okpo)[-4] == "8"):
         return Plan.query.filter(
             status_filter
         ).order_by(Plan.year.asc())
@@ -177,7 +177,7 @@ def get_plans_by_okpo():
         ).order_by(Plan.year.asc())
 
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", page=1, per_page=5):
-    if user.is_regional and not user.is_admin:
+    if user.is_auditor and not user.is_admin:
         base_query = Plan.query.filter(Plan.is_sent == True)
     elif user.is_admin:
         base_query = Plan.query.filter_by(user_id=user.id)

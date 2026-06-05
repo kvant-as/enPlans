@@ -90,10 +90,10 @@ class MyMainView(AdminIndexView):
             week_ago = now - timedelta(days=7)
             new_users = User.query.filter(User.begin_time >= week_ago).count()
             admins_count = User.query.filter_by(is_admin=True).count()
-            auditors_count = User.query.filter_by(is_regional=True).count()
+            auditors_count = User.query.filter_by(is_auditor=True).count()
             respondents_count = User.query.filter(
                 User.is_admin == False,
-                User.is_regional == False
+                User.is_auditor == False
             ).count()
             orgs_with_users = db.session.query(Organization).join(User).distinct().count()
             plan_data = Plan.query.count()
@@ -205,7 +205,7 @@ class SecureModelView(ModelView):
 
 class UserView(SecureModelView):
     column_list = ['id', 'email', 'last_name', 'first_name', 'patronymic_name', 
-                   'post', 'phone', 'organization', 'is_admin', 'is_regional', 
+                   'post', 'phone', 'organization', 'is_admin', 'is_auditor', 
                    'last_active', 'begin_time']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'email', 'last_name', 'first_name', 'last_active', 'begin_time')
@@ -220,7 +220,7 @@ class UserView(SecureModelView):
 
     form_columns = ['email', 'last_name', 'first_name', 'patronymic_name', 
                     'post', 'phone', 'organization', 'password', 
-                    'is_admin', 'is_regional']
+                    'is_admin', 'is_auditor']
 
     form_args = {
         'email': {
@@ -275,12 +275,12 @@ class UserView(SecureModelView):
 
     column_exclude_list = ['password', 'reset_password_token', 'reset_password_expires']
     column_searchable_list = ['email', 'last_name', 'first_name', 'patronymic_name', 'phone']
-    column_filters = ['id', 'email', 'is_admin', 'is_regional', 'organization_id']
+    column_filters = ['id', 'email', 'is_admin', 'is_auditor', 'organization_id']
 
     column_formatters = {
         'organization': lambda v, c, m, p: m.organization.name if m.organization else 'Не назначена',
         'is_admin': lambda v, c, m, p: '✅ Да' if m.is_admin else '❌ Нет',
-        'is_regional': lambda v, c, m, p: '✅ Да' if m.is_regional else '❌ Нет',
+        'is_auditor': lambda v, c, m, p: '✅ Да' if m.is_auditor else '❌ Нет',
         'last_active': lambda v, c, m, p: m.last_active.strftime('%d.%m.%Y %H:%M') if m.last_active else '',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else ''
     }
@@ -300,7 +300,7 @@ class UserView(SecureModelView):
             model.password = generate_password_hash(password)
 
         model.last_active = datetime.utcnow()
-        if model.is_admin or model.is_regional:
+        if model.is_admin or model.is_auditor:
             model.organization_id = None
 
     def on_form_prefill(self, form, id):

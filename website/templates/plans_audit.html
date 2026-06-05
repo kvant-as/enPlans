@@ -9,7 +9,7 @@
         <a class="name">{{ _('Проверка планов мероприятий по энергосбережению') }}</a>
       </div>
       <div class="header-content-right">
-        {% if current_user.is_regional != true %}
+        {% if current_user.is_auditor != true %}
           <button
             type="button"
             class="main-btn main-btn-primary"
@@ -51,7 +51,7 @@
               <div class="stat">
                   <a class="stat-number-sent">{{ format_count(status_counts.sent) }}</a>
                   <a class="word-numb">
-                      {% if current_user.is_regional != true %}
+                      {% if current_user.is_auditor != true %}
                           {{ _('На рассмотрении') }}
                       {% else %}
                           {{ _('Не просмотренные') }}
@@ -100,7 +100,7 @@
               {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
               }} {% elif request.args.get('status') == 'control' %}{{
               _('Контроль пройден') }} {% elif request.args.get('status') ==
-              'sent' %}{% if current_user.is_regional != true %}{{ _('На
+              'sent' %}{% if current_user.is_auditor != true %}{{ _('На
               рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
               elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
               {% elif request.args.get('status') == 'approved' %}{{
@@ -117,7 +117,7 @@
               {{ _('Контроль пройден') }}
             </div>
             <div class="dropdown-item" data-value="sent">
-              {% if current_user.is_regional != true %}{{ _('На рассмотрении')
+              {% if current_user.is_auditor != true %}{{ _('На рассмотрении')
               }}{%else%}{{ _('Не просмотренные') }}{%endif%}
             </div>
             <div class="dropdown-item" data-value="error">
@@ -162,7 +162,7 @@
         </div>
       </form>
 
-      {% if current_user.is_regional %}
+      {% if current_user.is_auditor %}
       <div class="input-with-icon">
         {{ icons.icon_search() }}
         <input

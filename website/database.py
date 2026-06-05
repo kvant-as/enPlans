@@ -173,7 +173,7 @@ def filling_database(db):
             ('', os.getenv('auditoremailNadzorTEST'), 'Иванов8', 'Иван', 'Иванович', '+8', False, True, 7947),
         ]
 
-        for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_regional, organization_id in users_data:
+        for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
             if email == os.getenv('testuser'):
                 password = os.getenv('testuserpass')
             elif email == os.getenv('auditoremailNadzor'):
@@ -189,7 +189,7 @@ def filling_database(db):
                 patronymic_name=patronymic_name,
                 phone=phone,
                 is_admin=is_admin,
-                is_regional=is_regional,
+                is_auditor=is_auditor,
                 organization_id=organization_id,
                 password=generate_password_hash(password)
             )

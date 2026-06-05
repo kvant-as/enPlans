@@ -20,7 +20,7 @@
             <div class="header-aside" onclick="window.location.href='/'">
                 <div class="logo-wrapper {% if current_user and current_user.is_authenticated %}
                         {% if current_user.is_admin %}red-shadow
-                        {% elif current_user.is_regional %}green-shadow
+                        {% elif current_user.is_auditor %}green-shadow
                         {% endif %}
                     {% endif %}">
                     <img src="{{ url_for('static', filename='img/logo.svg') }}"

@@ -31,7 +31,7 @@ def api_get_plans():
             current_user, status_filter, year_filter, search_name, search_okpo, page, per_page
         )
         
-        is_compact = current_user.is_regional or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
         
         html = render_template_string(
             '''
@@ -78,7 +78,7 @@ def api_get_export_plans():
             current_user, status_filter, year_filter, search_name, search_okpo, page, per_page
         )
         
-        is_compact = current_user.is_regional or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
         
         html = render_template_string(
             '''

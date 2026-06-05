@@ -828,6 +828,10 @@ header nav{
   transform: scale(0.98);
 }
 
+.nav-menu-item:last-child {
+  color: #dc2626;
+}
+
 .nav-menu-item:last-child svg {
   color: #dc2626;
 }
@@ -3983,10 +3987,6 @@ hr {
   box-sizing: border-box;
 }
 
-.export-choose svg{
-  color: black;
-}
-
 .export-choose:hover {
   border-color: #c4c4c4;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -4000,7 +4000,6 @@ hr {
 
 .export-choose.active svg {
   color: var(--green-light);
-  fill: var(--green-light); 
   stroke: var(--green-light); 
 }
 
@@ -4026,7 +4025,6 @@ hr {
 .export-choose svg{
   width: 31px;
   height: 31px;
-  fill: black;
 }
 
 .export-choose-text{
@@ -4062,6 +4060,30 @@ hr {
   font-size: 15px;
   color: black;
   font-weight: 500;
+}
+
+.select-all-btn, .clear-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--background-grey);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.select-all-btn:hover, .clear-all-btn:hover {
+  background: var(--button-grey-hover);
+  transform: translateY(-1px);
+}
+
+.select-all-btn svg, .clear-all-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 input[type="checkbox"] {
@@ -6161,6 +6183,53 @@ input[type="checkbox"]:focus {
 #modal-title{
   font-weight: 600;
   font-size: 17px !important;
+}
+
+
+.export-progress-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.export-progress-modal .modal-content {
+    max-width: 450px;
+    min-width: 350px;
+    padding: 30px;
+    opacity: 1;
+    transform: scale(1);
+}
+
+.export-progress-modal .progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--background-grey);
+    border-radius: 100px;
+    margin: 25px 0;
+    overflow: hidden;
+}
+
+.export-progress-modal .progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--green-main), var(--green-light));
+    border-radius: 100px;
+    transition: width 0.3s ease;
+}
+
+.export-progress-modal .progress-text {
+    font-size: 14px;
+    color: var(--text-subtitle2);
+    font-weight: 500;
+    margin: 0;
+    text-align: center;
 }
 
 .modal {

@@ -12,7 +12,7 @@ SESSION_COOKIE_NAME = 'session_token'
 SESSION_DURATION = timedelta(days=7)
 
 def get_user_session_timeout(user):
-    if user.is_admin or user.is_regional:
+    if user.is_admin or user.is_auditor:
         return timedelta(hours=9)
     return timedelta(minutes=60)
 
@@ -27,7 +27,7 @@ def create_session_token(user):
         'user_id': user.id,
         'email': user.email,
         'is_admin': user.is_admin,
-        'is_regional': user.is_regional,
+        'is_auditor': user.is_auditor,
         'full_name': f"{user.last_name} {user.first_name} {user.patronymic_name or ''}".strip(),
         'session_id': str(uuid.uuid4()),
         'created_at': now.isoformat(),

@@ -26,7 +26,7 @@ class User(db.Model, UserMixin):
     
     is_admin = db.Column(db.Boolean, default=False)
     
-    is_regional = db.Column(db.Boolean, default=False)
+    is_auditor = db.Column(db.Boolean, default=False)
     is_municipal = db.Column(db.Boolean, default=False)
     is_departament = db.Column(db.Boolean, default=False)
     is_higher_organization = db.Column(db.Boolean, default=False)
@@ -133,7 +133,7 @@ class Plan(db.Model):
     usd_rate = db.Column(Numeric(scale=4))
     cost_per_toe_usd = db.Column(Numeric(scale=2))
     
-    is_regional_approved = db.Column(db.Boolean, default=False)
+    is_auditor_approved = db.Column(db.Boolean, default=False)
     is_municipal_approved = db.Column(db.Boolean, default=False)
     is_department_approved = db.Column(db.Boolean, default=False)
     is_higher_organization_approved = db.Column(db.Boolean, default=False)

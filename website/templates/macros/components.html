@@ -53,11 +53,12 @@
         
         <div class="menu-conteiner">
             <div class="menu-conteiner-btns">
+                {#
                 <div class="element btn-disabled" id="">
                     <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
                     <span class="element-text">Экспорт</span>
-                </div>
-                <a href="{% if current_user.is_regional %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" 
+                </div>#}
+                <a href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" 
                     class="element" 
                     id="">
                     <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
@@ -95,7 +96,7 @@
         {% elif plan.is_sent %}
             {{ icons.pending_icon() }}
             <span>
-                {% if current_user and current_user.is_regional != true %}
+                {% if current_user and current_user.is_auditor != true %}
                     {{ _('На рассмотрении') }}
                 {% else %}
                     {{ _('Не просмотрен') }}
@@ -151,7 +152,7 @@
                 <span class="nav-text">{{ _('Планы') }}</span>
                 <span class="nav-text-mobile">{{ _('Планы') }}</span>
             </div>
-        {% elif current_user.is_regional %}
+        {% elif current_user.is_auditor %}
             <div class="nav-item {% if active_tab == 'plans_audit' %} active{% endif %}" onclick="window.location.href='/plans-audit'">
                 <div class="nav-icon-wrapper">
                     {{ icons.icon_audit() }}
@@ -171,7 +172,7 @@
             </div>
         {% endif %}
         
-        {% if current_user and current_user.is_admin == false and current_user.is_regional == false %}
+        {% if current_user and current_user.is_admin == false and current_user.is_auditor == false %}
         <div class="nav-item {% if active_tab == 'create' %} active{% endif %}" onclick="window.location.href='/create-plan'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_add() }}
@@ -237,7 +238,7 @@
             <span class="nav-text-mobile">{{ _('Обзор') }}</span>
         </div>
         
-        {% if current_user and current_user.is_regional == True %}
+        {% if current_user and current_user.is_auditor == True %}
         <div class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}" 
              onclick="window.location.href='/plans/plan/audit/{{plan.token}}'">
             <div class="nav-icon-wrapper">
@@ -340,7 +341,7 @@
                 {{ icons.icon_no_info() }}
                 <h1>{{ _('Нет сообщений') }}</h1>
                 <p class="empty-subtitle">
-                    {% if current_user.is_regional %}
+                    {% if current_user.is_auditor %}
                         {{ _('Начните обсуждение плана') }}
                     {% else %}
                         {{ _('Отправьте план для получения результатов проверки') }}
@@ -532,7 +533,7 @@
             <div class="dropdown-item" data-value="draft">{{ _('В редакции') }}</div>
             <div class="dropdown-item" data-value="control">{{ _('Контроль пройден') }}</div>
             <div class="dropdown-item" data-value="sent">
-                {% if current_user and (current_user.is_regional or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
+                {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
                     {{ _('Не просмотренные') }}
                 {% else %}
                     {{ _('На рассмотрении') }}

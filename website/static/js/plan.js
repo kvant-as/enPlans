@@ -265,7 +265,7 @@ class PlanIndicators {
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
                     ${row.difference.toFixed(2).replace('.', ',')}
                 </td>
-                <td>${row.code}</td>
+                <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             
@@ -2220,6 +2220,9 @@ class PlansLoader {
                 this.hasMore = data.pagination.has_next;
                 this.updateLoadMoreButton();
                 this.updateCountsDisplay(data.counts);
+                this.attachCheckboxListeners();
+                this.updateSelectAllButton();
+                this.updateExportButton();
             }
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -2366,15 +2369,18 @@ class ExportPlansLoader {
         this.perPage = options.perPage || 5;
         this.selectedPlans = new Set();
         this.selectedFormat = null;
+        this.exportInProgress = false;
+        this.currentTaskId = null;
+        this.progressInterval = null;
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchOkpoId = options.searchOkpoId || 'search-okpo';
         this.selectAllId = options.selectAllId || 'selectAllBtn';
+        this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
         
-        console.log('ExportPlansLoader initialized with options:', options);
         this.init();
     }
     
@@ -2382,110 +2388,104 @@ class ExportPlansLoader {
         const loadMoreContainer = document.getElementById('load-more-container');
         if (loadMoreContainer) {
             loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
-            console.log('Load more button display:', loadMoreContainer.style.display);
         }
+    }
+    
+    updateButtons() {
+        const selectAllBtn = document.getElementById(this.selectAllId);
+        const clearAllBtn = document.getElementById(this.clearAllId);
+        
+        if (selectAllBtn && clearAllBtn) {
+            if (this.selectedPlans.size > 0) {
+                selectAllBtn.style.display = 'none';
+                clearAllBtn.style.display = 'flex';
+            } else {
+                selectAllBtn.style.display = 'flex';
+                clearAllBtn.style.display = 'none';
+            }
+        }
+        
+        this.updateExportButton();
     }
     
     updateExportButton() {
         const exportBtn = document.getElementById('exportBtn');
         if (exportBtn) {
             exportBtn.disabled = this.selectedPlans.size === 0 || !this.selectedFormat;
-            console.log('Export button disabled:', exportBtn.disabled, 'selected plans:', this.selectedPlans.size, 'selected format:', this.selectedFormat);
         }
     }
     
-    updateFormAction() {
-        const form = document.getElementById(this.exportFormId);
-        if (form && this.selectedFormat) {
-            form.action = `/export-to/${this.selectedFormat}`;
-            console.log('Form action updated to:', form.action);
-        }
-    }
-    
- async loadPlans(reset = true) {
-    if (this.isLoading) return;
-    
-    this.isLoading = true;
-    const page = reset ? 1 : this.currentPage + 1;
-    const container = document.getElementById(this.containerId);
-    
-    console.log('loadPlans called:', { reset, page, currentStatus: this.currentStatus, currentYear: this.currentYear });
-    
-    if (reset && container) {
-        container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
-    }
-    
-    const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
-    if (!reset && loadMoreBtn) {
-        const originalText = loadMoreBtn.innerHTML;
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span> Загрузка...';
-        this.originalBtnText = originalText;
-    }
-    
-    try {
-        let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
-        if (this.currentSearchName) {
-            url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
-        }
-        if (this.currentSearchOkpo) {
-            url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+    async loadPlans(reset = true) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        const page = reset ? 1 : this.currentPage + 1;
+        const container = document.getElementById(this.containerId);
+        
+        if (reset && container) {
+            container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
         }
         
-        console.log('Fetching URL:', url);
-        const response = await fetch(url);
-        console.log('Response status:', response.status);
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (!reset && loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span> Загрузка...';
+        }
         
-        const data = await response.json();
-        console.log('Response data:', data);
-        
-        if (data.success) {
-            if (reset) {
-                if (container) {
-                    container.innerHTML = `<div class="plans-area">${data.html}</div>`;
-                    console.log('Container reset with new HTML');
-                }
-                this.currentPage = 1;
-                this.selectedPlans.clear();
-            } else {
-                const plansArea = document.querySelector('.plans-area');
-                if (plansArea) {
-                    plansArea.insertAdjacentHTML('beforeend', data.html);
-                    console.log('Added more plans to existing area');
-                }
-                this.currentPage = page;
+        try {
+            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
+            if (this.currentSearchName) {
+                url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
+            }
+            if (this.currentSearchOkpo) {
+                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
             }
             
-            this.hasMore = data.pagination.has_next;
-            console.log('Has more:', this.hasMore);
-            this.updateLoadMoreButton();
-            this.attachCheckboxListeners();
-            this.updateExportButton();
-        } else {
-            console.error('API returned success=false:', data.error);
-        }
-    } catch (error) {
-        console.error('Error loading plans:', error);
-        if (reset && container) {
-            container.innerHTML = '<div class="plans-error" style="text-align: center; padding: 40px; color: red;">Ошибка загрузки планов</div>';
-        }
-    } finally {
-        this.isLoading = false;
-        if (!reset && loadMoreBtn && this.originalBtnText) {
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.innerHTML = this.originalBtnText;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (reset) {
+                    if (container) {
+                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
+                    }
+                    this.currentPage = 1;
+                    this.selectedPlans.clear();
+                } else {
+                    const plansArea = document.querySelector('.plans-area');
+                    if (plansArea) {
+                        plansArea.insertAdjacentHTML('beforeend', data.html);
+                    }
+                    this.currentPage = page;
+                }
+                
+                this.hasMore = data.pagination.has_next;
+                this.updateLoadMoreButton();
+                this.attachCheckboxListeners();
+                this.updateButtons();
+                this.updateExportButton();
+            }
+        } catch (error) {
+            console.error('Error loading plans:', error);
+            if (reset && container) {
+                container.innerHTML = '<div class="plans-error" style="text-align: center; padding: 40px; color: red;">Ошибка загрузки планов</div>';
+            }
+        } finally {
+            this.isLoading = false;
+            if (!reset && loadMoreBtn) {
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '<span class="btn-text">Загрузить еще</span>';
+            }
         }
     }
-}
     
     attachCheckboxListeners() {
         const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
-        console.log('Attaching listeners to checkboxes, found:', checkboxes.length);
         checkboxes.forEach(cb => {
-            cb.removeEventListener('change', this.handleCheckboxChange.bind(this));
+            cb.removeEventListener('change', this.handleCheckboxChange);
             cb.addEventListener('change', this.handleCheckboxChange.bind(this));
         });
-        // Не вызываем updateSelectAllButton здесь, так как чекбоксы еще не отмечены
+        this.updateButtons();
         this.updateExportButton();
     }
     
@@ -2493,76 +2493,39 @@ class ExportPlansLoader {
         const checkbox = e.target;
         const planId = checkbox.value;
         
-        console.log('Checkbox changed:', { planId, checked: checkbox.checked });
-        
         if (checkbox.checked) {
             this.selectedPlans.add(planId);
         } else {
             this.selectedPlans.delete(planId);
         }
         
-        console.log('Selected plans count:', this.selectedPlans.size);
-        this.updateSelectAllButton();
+        this.updateButtons();
         this.updateExportButton();
-    }
-    
-    updateSelectAllButton() {
-        const selectAllCheckbox = document.getElementById(this.selectAllId);
-        if (!selectAllCheckbox) {
-            console.log('SelectAll checkbox not found');
-            return;
-        }
-        
-        const allCheckboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
-        const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
-        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
-        
-        console.log('UpdateSelectAllButton:', { allChecked, someChecked, totalCheckboxes: allCheckboxes.length });
-        
-        if (allChecked) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else if (someChecked) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
     }
     
     selectAll() {
         const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
-        const selectAllCheckbox = document.getElementById(this.selectAllId);
-        
-        console.log('SelectAll clicked, current state:', { 
-            checked: selectAllCheckbox?.checked, 
-            indeterminate: selectAllCheckbox?.indeterminate 
-        });
-        
-        const shouldCheck = !selectAllCheckbox?.checked;
-        
-        console.log('Should check:', shouldCheck);
         
         checkboxes.forEach(cb => {
-            cb.checked = shouldCheck;
+            cb.checked = true;
             const planId = cb.value;
-            if (shouldCheck) {
-                this.selectedPlans.add(planId);
-            } else {
-                this.selectedPlans.delete(planId);
-            }
+            this.selectedPlans.add(planId);
         });
         
-        if (shouldCheck) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
+        this.updateButtons();
+        this.updateExportButton();
+    }
+    
+    clearAll() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
         
-        console.log('Selected plans after selectAll:', this.selectedPlans.size);
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+            const planId = cb.value;
+            this.selectedPlans.delete(planId);
+        });
+        
+        this.updateButtons();
         this.updateExportButton();
     }
     
@@ -2573,30 +2536,19 @@ class ExportPlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
-            console.log('Search triggered:', { name: this.currentSearchName, okpo: this.currentSearchOkpo });
             this.loadPlans(true);
         }, 300);
     }
     
     initFormatSelection() {
         const formatItems = document.querySelectorAll('.export-choose');
-        const exportForm = document.getElementById(this.exportFormId);
-        
-        console.log('Initializing format selection, found items:', formatItems.length);
-        
         formatItems.forEach(item => {
             item.removeEventListener('click', this.formatClickHandler);
             this.formatClickHandler = () => {
                 const format = item.dataset.format;
-                console.log('Format selected:', format);
                 formatItems.forEach(el => el.classList.remove('active'));
                 item.classList.add('active');
                 this.selectedFormat = format;
-                
-                if (exportForm) {
-                    exportForm.action = `/export-to/${format}`;
-                }
-                
                 this.updateExportButton();
             };
             item.addEventListener('click', this.formatClickHandler);
@@ -2620,12 +2572,10 @@ class ExportPlansLoader {
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
-            const menu = statusDropdown.querySelector('.dropdown-menu-filter');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    e.preventDefault();
                     if (yearDropdown) yearDropdown.classList.remove('active');
                     statusDropdown.classList.toggle('active');
                 });
@@ -2634,8 +2584,7 @@ class ExportPlansLoader {
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const value = item.dataset.value;
-                    this.currentStatus = value;
+                    this.currentStatus = item.dataset.value;
                     const selectedSpan = document.getElementById('selected-status');
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
@@ -2647,12 +2596,10 @@ class ExportPlansLoader {
         if (yearDropdown) {
             const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
             const items = yearDropdown.querySelectorAll('.dropdown-item');
-            const menu = yearDropdown.querySelector('.dropdown-menu-filter');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    e.preventDefault();
                     if (statusDropdown) statusDropdown.classList.remove('active');
                     yearDropdown.classList.toggle('active');
                 });
@@ -2661,8 +2608,7 @@ class ExportPlansLoader {
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const value = item.dataset.value;
-                    this.currentYear = value;
+                    this.currentYear = item.dataset.value;
                     const selectedSpan = document.getElementById('selected-year');
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     yearDropdown.classList.remove('active');
@@ -2686,41 +2632,186 @@ class ExportPlansLoader {
         }
     }
     
-    init() {
-        const container = document.getElementById(this.containerId);
-        if (!container) {
-            console.error('Container not found:', this.containerId);
+    showExportProgress() {
+        let modal = document.getElementById('export-progress-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'export-progress-modal';
+            modal.className = 'export-progress-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1>Формирование архива</h1>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                    <p class="progress-text">Подготовка файлов... 0%</p>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+    
+    updateExportProgress(percent) {
+        const modal = document.getElementById('export-progress-modal');
+        if (!modal) return;
+        const fill = modal.querySelector('.progress-bar-fill');
+        const text = modal.querySelector('.progress-text');
+        if (fill) fill.style.width = `${percent}%`;
+        if (text) text.textContent = `Подготовка файлов... ${Math.round(percent)}%`;
+    }
+    
+    hideExportProgress() {
+        const modal = document.getElementById('export-progress-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+    
+    showNotification(message, type) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            alert(message);
+        }
+    }
+    
+    async startAsyncExport() {
+        if (this.selectedPlans.size === 0 || !this.selectedFormat) {
+            this.showNotification('Выберите планы и формат экспорта', 'warning');
             return;
         }
         
-        console.log('Container found, initializing...');
-        this.initFilters();
-        
-        const selectAllCheckbox = document.getElementById(this.selectAllId);
-        if (selectAllCheckbox) {
-            console.log('SelectAll checkbox found');
-            selectAllCheckbox.removeEventListener('change', this.selectAllHandler);
-            this.selectAllHandler = () => this.selectAll();
-            selectAllCheckbox.addEventListener('change', this.selectAllHandler);
-        } else {
-            console.log('SelectAll checkbox not found:', this.selectAllId);
+        if (this.exportInProgress) {
+            this.showNotification('Экспорт уже выполняется', 'warning');
+            return;
         }
         
-        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
-        if (loadMoreBtn) {
-            console.log('LoadMore button found');
-            loadMoreBtn.removeEventListener('click', this.loadMoreHandler);
-            this.loadMoreHandler = () => this.loadPlans(false);
-            loadMoreBtn.addEventListener('click', this.loadMoreHandler);
-        } else {
-            console.log('LoadMore button not found:', this.loadMoreBtnId);
+        const formData = new FormData();
+        formData.append('format', this.selectedFormat);
+        this.selectedPlans.forEach(planId => formData.append('ids', planId));
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+        
+        this.showExportProgress();
+        this.exportInProgress = true;
+        
+        try {
+            const response = await fetch('/export/start', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentTaskId = data.task_id;
+                this.pollExportStatus();
+            } else {
+                this.hideExportProgress();
+                this.showNotification(data.error || 'Ошибка при запуске экспорта', 'error');
+                this.exportInProgress = false;
+            }
+        } catch (error) {
+            console.error('Error starting export:', error);
+            this.hideExportProgress();
+            this.showNotification('Ошибка сети при запуске экспорта', 'error');
+            this.exportInProgress = false;
+        }
+    }
+    
+    pollExportStatus() {
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+        }
+        
+        this.progressInterval = setInterval(async () => {
+            if (!this.currentTaskId) {
+                clearInterval(this.progressInterval);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/export/status/${this.currentTaskId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.updateExportProgress(data.progress || 0);
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(this.progressInterval);
+                        window.location.href = `/export/download/${this.currentTaskId}`;
+                        setTimeout(() => {
+                            this.hideExportProgress();
+                            this.exportInProgress = false;
+                            this.currentTaskId = null;
+                        }, 1000);
+                    } else if (data.status === 'error') {
+                        clearInterval(this.progressInterval);
+                        this.hideExportProgress();
+                        this.showNotification(data.error || 'Ошибка при экспорте', 'error');
+                        this.exportInProgress = false;
+                        this.currentTaskId = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+                clearInterval(this.progressInterval);
+                this.hideExportProgress();
+                this.showNotification('Ошибка при проверке статуса экспорта', 'error');
+                this.exportInProgress = false;
+                this.currentTaskId = null;
+            }
+        }, 1000);
+    }
+    
+    initFormSubmit() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.removeEventListener('click', this.formSubmitHandler);
+            this.formSubmitHandler = (e) => {
+                e.preventDefault();
+                this.startAsyncExport();
+            };
+            exportBtn.addEventListener('click', this.formSubmitHandler);
+        }
+    }
+    
+    init() {
+        const container = document.getElementById(this.containerId);
+        if (!container) return;
+        
+        this.initFilters();
+        
+        const selectAllBtn = document.getElementById(this.selectAllId);
+        if (selectAllBtn) {
+            selectAllBtn.removeEventListener('click', this.selectAllHandler);
+            this.selectAllHandler = () => this.selectAll();
+            selectAllBtn.addEventListener('click', this.selectAllHandler);
+        }
+        
+        const clearAllBtn = document.getElementById(this.clearAllId);
+        if (clearAllBtn) {
+            clearAllBtn.removeEventListener('click', this.clearAllHandler);
+            this.clearAllHandler = () => this.clearAll();
+            clearAllBtn.addEventListener('click', this.clearAllHandler);
         }
         
         this.initFormatSelection();
+        this.initFormSubmit();
         this.loadPlans(true);
     }
 }
-
 
 document.addEventListener('DOMContentLoaded', function() {
     const selectAllBtn = document.getElementById('selectAllBtn');
