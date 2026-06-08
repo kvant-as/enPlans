@@ -859,8 +859,7 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            ministriesApiUrl: '/api/ministries',
-            regionsApiUrl: '/api/regions',
+            auditorOrganizationsApiUrl: '/api/ministries',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -871,7 +870,7 @@ class MultiTypeSearchManager {
         this.totalPages = 1;
         this.totalItems = 0;
         this.currentQuery = '';
-        this.selectedItemType = 'organization';
+        this.selectedItemType = 'respondent';
         this.selectedItemId = null;
         this.init();
     }
@@ -981,21 +980,17 @@ class MultiTypeSearchManager {
             let apiUrl, dataKey;
             
             switch(this.selectedItemType) {
-                case 'organization':
+                case 'respondent':
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'organizations';
+                    dataKey = 'respondent';
                     break;
-                case 'ministry':
-                    apiUrl = this.config.ministriesApiUrl;
-                    dataKey = 'ministrys';
-                    break;
-                case 'region':
-                    apiUrl = this.config.regionsApiUrl;
-                    dataKey = 'regions';
+                case 'auditor':
+                    apiUrl = this.config.auditorOrganizationsApiUrl;
+                    dataKey = 'auditor';
                     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'organizations';
+                    dataKey = 'respondent';
             }
 
             const url = `${apiUrl}?q=${encodeURIComponent(this.currentQuery)}&page=${this.currentPage}`;
@@ -1054,16 +1049,17 @@ class MultiTypeSearchManager {
             let html = `<td style="display: none;">${this.escapeHtml(item.id)}</td>`;
             
             switch(this.selectedItemType) {
-                case 'organization':
+                case 'respondent':
                     html += `
                         <td>${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;">${this.escapeHtml(item.ynp || '-')}</td>
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                case 'ministry':
-                case 'region':
+                case 'auditor':
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="width: 100%;">${this.escapeHtml(item.type)}</td>
                         <td style="text-align: center;"></td>
                     `;
                     break;
@@ -1113,21 +1109,16 @@ class MultiTypeSearchManager {
         `;
         
         switch(this.selectedItemType) {
-            case 'organization':
+            case 'respondent':
                 headersHTML += `
-                    <th>Наименование</th>
+                    <th>Наименование предприятия</th>
+                    <th style="text-align: center;">УНП</th>
                     <th style="text-align: center;">ОКПО</th>
                 `;
                 break;
-            case 'ministry':
+            case 'auditor':
                 headersHTML += `
-                    <th>Наименование министерства</th>
-                    <th style="text-align: center;"></th>
-                `;
-                break;
-            case 'region':
-                headersHTML += `
-                    <th>Наименование региона</th>
+                    <th>Наименование</th>
                     <th style="text-align: center;"></th>
                 `;
                 break;
@@ -1169,9 +1160,8 @@ class MultiTypeSearchManager {
         if (!this.searchInput) return;
         
         const placeholders = {
-            'organization': 'Код или наименование организации',
-            'ministry': 'Наименование министерства',
-            'region': 'Наименование региона'
+            'respondent': 'Наименование/окпо/унп организации',
+            'auditor': 'Наименование',
         };
         
         this.searchInput.placeholder = placeholders[type] || 'Поиск...';
@@ -1179,9 +1169,8 @@ class MultiTypeSearchManager {
         const searchLabel = document.getElementById('search-label');
         if (searchLabel) {
             const labels = {
-                'organization': 'Поиск организации',
-                'ministry': 'Поиск министерства',
-                'region': 'Поиск региона'
+                'respondent': 'Поиск организации',
+                'auditor': 'Поиск',
             };
             searchLabel.textContent = labels[type] || 'Поиск';
         }
@@ -1191,9 +1180,8 @@ class MultiTypeSearchManager {
         if (!this.submitButton) return;
         
         const buttonTexts = {
-            'organization': 'Сохранить организацию',
-            'ministry': 'Сохранить министерство',
-            'region': 'Сохранить регион'
+            'respondent': 'Сохранить организацию',
+            'auditor': 'Сохранить',
         };
         
         const text = buttonTexts[this.selectedItemType] || 'Сохранить изменения';
@@ -1238,9 +1226,8 @@ class MultiTypeSearchManager {
 
     getTypeLabel(type, plural = false) {
         const labels = {
-            'organization': plural ? 'организаций' : 'организация',
-            'ministry': plural ? 'министерств' : 'министерство',
-            'region': plural ? 'регионов' : 'регион'
+            'respondent': plural ? 'организаций' : 'организация',
+            'auditor': plural ? 'министерств' : 'министерство',
         };
         return labels[type] || (plural ? 'данных' : 'данные');
     }
@@ -1363,32 +1350,26 @@ class MultiStepForm {
             step2Selector: '.auth-step-2',
             step3Selector: '.auth-step-3',
             formSelector: '#registration-form',
-            
             nextBtn1Id: 'next-btn-1',
             nextBtn2Id: 'next-btn-2',
             prevBtn2Id: 'prev-btn-2',
             prevBtn3Id: 'prev-btn-3',
             submitBtnId: 'submit-btn',
-            
             minSearchLength: 2,
             debounceDelay: 300,
             perPage: 10,
-            
             endpoints: {
                 organization: '/api/organizations',
-                ministry: '/api/ministries',
-                region: '/api/regions'
+                controlling_body: '/api/controlling-bodies'
             },
-            
             ...options
         };
 
-        this.currentEntityType = 'organization';
+        this.currentEntityType = 'respondent';
         this.selectedItem = null;
         this.searchData = {
             organization: { page: 1, query: '', hasMore: false, loading: false },
-            ministry: { page: 1, query: '', hasMore: false, loading: false },
-            region: { page: 1, query: '', hasMore: false, loading: false }
+            controlling_body: { page: 1, query: '', hasMore: false, loading: false }
         };
         this.debounceTimers = {};
         this.init();
@@ -1416,45 +1397,38 @@ class MultiStepForm {
         this.elements.entityTypeRadioInputs = document.querySelectorAll('input[name="entity_type"]');
         
         this.elements.entityBlocks = {
-            organization: document.getElementById('organization-block'),
-            ministry: document.getElementById('ministry-block'),
-            region: document.getElementById('region-block')
+            respondent: document.getElementById('respondent-block'),
+            auditor: document.getElementById('auditor-block')
         };
         
         this.elements.searchInputs = {
-            organization: document.getElementById('organization-search'),
-            ministry: document.getElementById('ministry-search'),
-            region: document.getElementById('region-search')
+            respondent: document.getElementById('respondent-search'),
+            auditor: document.getElementById('auditor-search')
         };
         
         this.elements.hiddenInputs = {
-            organization: document.getElementById('organization_id'),
-            ministry: document.getElementById('ministry_id'),
-            region: document.getElementById('region_id')
+            respondent: document.getElementById('organization_id'),
+            auditor: document.getElementById('controlling_body_id')
         };
         
         this.elements.dropdowns = {
-            organization: document.getElementById('organization-dropdown'),
-            ministry: document.getElementById('ministry-dropdown'),
-            region: document.getElementById('region-dropdown')
+            respondent: document.getElementById('organization-dropdown'),
+            auditor: document.getElementById('controlling-body-dropdown')
         };
         
         this.elements.lists = {
             organization: document.getElementById('organization-list'),
-            ministry: document.getElementById('ministry-list'),
-            region: document.getElementById('region-list')
+            controlling_body: document.getElementById('controlling-body-list')
         };
         
         this.elements.loadings = {
-            organization: document.getElementById('organization-loading'),
-            ministry: document.getElementById('ministry-loading'),
-            region: document.getElementById('region-loading')
+            respondent: document.getElementById('organization-loading'),
+            auditor: document.getElementById('controlling-body-loading')
         };
         
         this.elements.moreButtons = {
-            organization: document.getElementById('organization-more'),
-            ministry: document.getElementById('ministry-more'),
-            region: document.getElementById('region-more')
+            respondent: document.getElementById('organization-more'),
+            auditor: document.getElementById('controlling-body-more')
         };
     }
 
@@ -1510,6 +1484,24 @@ class MultiStepForm {
         this.setupStep1Validation();
     }
 
+    getApiType(type) {
+        if (type === 'respondent') return 'organization';
+        if (type === 'auditor') return 'controlling_body';
+        return type;
+    }
+
+    getDataKey(type) {
+        if (type === 'respondent') return 'organizations';
+        if (type === 'auditor') return 'controlling_bodies';
+        return `${type}s`;
+    }
+
+    getListKey(type) {
+        if (type === 'respondent') return 'organization';
+        if (type === 'auditor') return 'controlling_body';
+        return type;
+    }
+
     handleEntityTypeChange(e) {
         this.currentEntityType = e.target.value;
         
@@ -1521,17 +1513,25 @@ class MultiStepForm {
     }
 
     updateStep3Content() {
-        Object.values(this.elements.entityBlocks).forEach(block => {
+        const blocks = {
+            respondent: 'respondent-block',
+            auditor: 'auditor-block'
+        };
+        
+        Object.values(blocks).forEach(blockId => {
+            const block = document.getElementById(blockId);
             if (block) block.style.display = 'none';
         });
         
-        const currentBlock = this.elements.entityBlocks[this.currentEntityType];
+        const currentBlockId = blocks[this.currentEntityType];
+        const currentBlock = document.getElementById(currentBlockId);
         if (currentBlock) {
             currentBlock.style.display = 'block';
         }
         
         this.selectedItem = null;
         this.resetHiddenFields();
+        
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = true;
         }
@@ -1576,6 +1576,7 @@ class MultiStepForm {
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = false;
         }
+        
         this.selectedItem = item;
     }
 
@@ -1676,26 +1677,26 @@ class MultiStepForm {
     }
 
     goToStep(stepNumber) {
-        [this.elements.step1, this.elements.step2, this.elements.step3].forEach(step => {
-            if (step) step.style.display = 'none';
-        });
+        if (this.elements.step1) this.elements.step1.style.display = 'none';
+        if (this.elements.step2) this.elements.step2.style.display = 'none';
+        if (this.elements.step3) this.elements.step3.style.display = 'none';
         
         switch(stepNumber) {
             case 1:
                 if (this.elements.step1) {
                     this.elements.step1.style.display = 'block';
                     this.elements.step1.classList.add('active');
-                    this.elements.step2.classList.remove('active');
-                    this.elements.step3.classList.remove('active');
+                    if (this.elements.step2) this.elements.step2.classList.remove('active');
+                    if (this.elements.step3) this.elements.step3.classList.remove('active');
                 }
                 break;
             case 2:
                 if (this.validateStep1()) {
                     if (this.elements.step2) {
                         this.elements.step2.style.display = 'block';
-                        this.elements.step1.classList.remove('active');
+                        if (this.elements.step1) this.elements.step1.classList.remove('active');
                         this.elements.step2.classList.add('active');
-                        this.elements.step3.classList.remove('active');
+                        if (this.elements.step3) this.elements.step3.classList.remove('active');
                     }
                 } else {
                     alert('Пожалуйста, заполните все обязательные поля');
@@ -1708,8 +1709,8 @@ class MultiStepForm {
                 this.updateStep3Content();
                 if (this.elements.step3) {
                     this.elements.step3.style.display = 'block';
-                    this.elements.step1.classList.remove('active');
-                    this.elements.step2.classList.remove('active');
+                    if (this.elements.step1) this.elements.step1.classList.remove('active');
+                    if (this.elements.step2) this.elements.step2.classList.remove('active');
                     this.elements.step3.classList.add('active');
                 }
                 break;
@@ -1720,15 +1721,18 @@ class MultiStepForm {
         const query = e.target.value.trim();
         
         this.selectedItem = null;
+        
         if (this.elements.hiddenInputs[type]) {
             this.elements.hiddenInputs[type].value = '';
         }
+        
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = true;
         }
         
-        this.searchData[type].query = query;
-        this.searchData[type].page = 1;
+        const apiType = this.getApiType(type);
+        this.searchData[apiType].query = query;
+        this.searchData[apiType].page = 1;
         
         if (this.debounceTimers[type]) {
             clearTimeout(this.debounceTimers[type]);
@@ -1745,9 +1749,11 @@ class MultiStepForm {
     }
 
     handleSearchFocus(type) {
-        const query = this.searchData[type].query;
+        const apiType = this.getApiType(type);
+        const query = this.searchData[apiType].query;
         const dropdown = this.elements.dropdowns[type];
-        const list = this.elements.lists[type];
+        const listKey = this.getListKey(type);
+        const list = this.elements.lists[listKey];
         
         if (query && query.length >= this.config.minSearchLength && 
             dropdown && list && list.children.length > 0) {
@@ -1762,7 +1768,8 @@ class MultiStepForm {
     }
 
     handleLoadMore(type) {
-        const data = this.searchData[type];
+        const apiType = this.getApiType(type);
+        const data = this.searchData[apiType];
         if (data.hasMore && data.query && !data.loading) {
             data.page += 1;
             this.searchEntities(data.query, type, data.page, true);
@@ -1783,9 +1790,11 @@ class MultiStepForm {
     }
 
     async searchEntities(query, type, page = 1, append = false) {
-        if (this.searchData[type].loading) return;
+        const apiType = this.getApiType(type);
         
-        this.searchData[type].loading = true;
+        if (this.searchData[apiType].loading) return;
+        
+        this.searchData[apiType].loading = true;
         
         if (!append) {
             this.showLoading(type, true);
@@ -1793,7 +1802,7 @@ class MultiStepForm {
         }
         
         try {
-            const endpoint = this.config.endpoints[type] || `/api/${type}`;
+            const endpoint = this.config.endpoints[apiType] || `/api/${apiType}`;
             const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${page}`;
             
             const response = await fetch(url);
@@ -1803,19 +1812,19 @@ class MultiStepForm {
             }
             
             const data = await response.json();
-            
             this.handleSearchResponse(data, type, append);
         } catch (error) {
             console.error(`Error fetching ${type}:`, error);
             this.showError(type, error.message);
         } finally {
-            this.searchData[type].loading = false;
+            this.searchData[apiType].loading = false;
             this.showLoading(type, false);
         }
     }
 
     handleSearchResponse(data, type, append = false) {
-        const list = this.elements.lists[type];
+        const listKey = this.getListKey(type);
+        const list = this.elements.lists[listKey];
         const dropdown = this.elements.dropdowns[type];
         const moreButton = this.elements.moreButtons[type];
         
@@ -1824,8 +1833,9 @@ class MultiStepForm {
             return;
         }
         
-        const dataKey = `${type}s`;
+        const dataKey = this.getDataKey(type);
         const items = data[dataKey] || [];
+        const apiType = this.getApiType(type);
         
         if (!append) {
             list.innerHTML = '';
@@ -1833,11 +1843,11 @@ class MultiStepForm {
         
         if (items.length > 0) {
             items.forEach(item => {
-                const itemElement = this.createListItem(item, type);
+                const itemElement = this.createListItem(item, apiType);
                 list.appendChild(itemElement);
             });
             
-            this.searchData[type].hasMore = data.has_next || false;
+            this.searchData[apiType].hasMore = data.has_next || false;
             if (moreButton) {
                 moreButton.style.display = data.has_next ? 'block' : 'none';
             }
@@ -1866,20 +1876,18 @@ class MultiStepForm {
                     </div>
                 `;
                 break;
-            case 'ministry':
+            case 'controlling_body':
                 div.innerHTML = `
                     <div class="item-name">${this.escapeHtml(item.name)}</div>
-                `;
-                break;
-            case 'region':
-                div.innerHTML = `
-                    <div class="item-name">${this.escapeHtml(item.name)}</div>
+                    <div class="item-details">
+                        <span class="item-type">${this.escapeHtml(item.type || 'Контролирующий орган')}</span>
+                    </div>
                 `;
                 break;
         }
         
         div.addEventListener('click', () => {
-            this.selectItem(item, type);
+            this.selectItem(item, type === 'organization' ? 'respondent' : 'auditor');
         });
         
         return div;
@@ -1893,7 +1901,8 @@ class MultiStepForm {
     }
 
     clearSearchResults(type) {
-        const list = this.elements.lists[type];
+        const listKey = this.getListKey(type);
+        const list = this.elements.lists[listKey];
         if (list) {
             list.innerHTML = '';
         }
@@ -1911,7 +1920,8 @@ class MultiStepForm {
     }
 
     showError(type, message = 'Ошибка загрузки данных') {
-        const list = this.elements.lists[type];
+        const listKey = this.getListKey(type);
+        const list = this.elements.lists[listKey];
         const dropdown = this.elements.dropdowns[type];
         
         if (list && dropdown) {
@@ -1942,7 +1952,7 @@ class MultiStepForm {
     }
 
     reset() {
-        this.currentEntityType = 'organization';
+        this.currentEntityType = 'respondent';
         this.selectedItem = null;
         this.resetHiddenFields();
         
@@ -1961,11 +1971,6 @@ class MultiStepForm {
         
         Object.values(this.elements.searchInputs).forEach(input => {
             if (input) input.value = '';
-        });
-        
-        Object.keys(this.elements.lists).forEach(type => {
-            this.clearSearchResults(type);
-            this.hideDropdown(type);
         });
         
         this.goToStep(1);

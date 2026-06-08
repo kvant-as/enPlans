@@ -50,13 +50,14 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f'<User {self.email}>'
 
+
 class HigherOrganization(db.Model):
     __tablename__ = 'higherOrganizations'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     
-    organizations = db.relationship("Organization", back_populates="higherOrganization")
+    organizations = db.relationship("Organization", back_populates="higher_organization")
     users = db.relationship("User", back_populates="higher_organization")
     plans = db.relationship("Plan", foreign_keys="Plan.higher_organization_id", back_populates="higher_organization")
 
@@ -67,7 +68,7 @@ class OblispolkomGorispolkom(db.Model):
     name = db.Column(db.String(), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     
-    organizations = db.relationship("Organization", back_populates="oblispolkomGorispolkom")
+    organizations = db.relationship("Organization", back_populates="oblispolkom_gorispolkom")
     users = db.relationship("User", back_populates="oblispolkom_gorispolkom")
     plans = db.relationship("Plan", foreign_keys="Plan.oblispolkom_gorispolkom_id", back_populates="oblispolkom_gorispolkom")
 
@@ -78,6 +79,7 @@ class Region(db.Model):
     name = db.Column(db.String(), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     
+    organizations = db.relationship("Organization", back_populates="region")
     users = db.relationship("User", back_populates="region")
     plans = db.relationship("Plan", foreign_keys="Plan.region_id", back_populates="region")
 
@@ -99,20 +101,26 @@ class Organization(db.Model):
     name = db.Column(db.String(), nullable=False)
     okpo = db.Column(db.String, unique=True, nullable=False)
     ynp = db.Column(db.String(), nullable=True)
+    
     ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
     higher_organization_id = db.Column(db.Integer, db.ForeignKey('higherOrganizations.id'))
     oblispolkom_gorispolkom_id = db.Column(db.Integer, db.ForeignKey('oblispolkomGorispolkoms.id'))
+    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
+    
     is_active = db.Column(db.Boolean, default=True)
     
     ministry = db.relationship("Ministry", back_populates="organizations")
-    higherOrganization = db.relationship("HigherOrganization", back_populates="organizations")
-    oblispolkomGorispolkom = db.relationship("OblispolkomGorispolkom", back_populates="organizations")
+    higher_organization = db.relationship("HigherOrganization", back_populates="organizations")
+    oblispolkom_gorispolkom = db.relationship("OblispolkomGorispolkom", back_populates="organizations")
+    region = db.relationship("Region", back_populates="organizations")
     users = db.relationship("User", back_populates="organization")
     plans = db.relationship("Plan", foreign_keys="Plan.org_id", back_populates="organization")
+
 
 def generate_static_token(length=20):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
 
 class Plan(db.Model):
     __tablename__ = 'plans'
@@ -165,6 +173,7 @@ class Plan(db.Model):
     higher_organization = db.relationship("HigherOrganization", foreign_keys=[higher_organization_id], back_populates="plans")
     oblispolkom_gorispolkom = db.relationship("OblispolkomGorispolkom", foreign_keys=[oblispolkom_gorispolkom_id], back_populates="plans")
 
+
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)
@@ -177,10 +186,12 @@ class Ticket(db.Model):
     plan = db.relationship("Plan", back_populates="tickets")
     user = db.relationship("User", back_populates="tickets")
 
+
 class Unit(db.Model):
     __tablename__ = 'units'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(400), unique=True, nullable=False)
+
 
 class Direction(db.Model):
     __tablename__ = 'directions'
@@ -196,6 +207,7 @@ class Direction(db.Model):
     is_increase = db.Column(db.Boolean)
     
     unit = db.relationship('Unit', backref='directions', foreign_keys=[id_unit])
+
 
 class Event(db.Model):
     __tablename__ = 'events'
@@ -249,6 +261,7 @@ class Event(db.Model):
             'MoneyOther': self.MoneyOther
         }
 
+
 class Indicator(db.Model):
     __tablename__ = 'indicators'
     id = db.Column(db.Integer, primary_key=True)
@@ -268,6 +281,7 @@ class Indicator(db.Model):
     DateEnd = db.Column(db.DateTime, default=None)
     unit = db.relationship('Unit', backref='indicators')
     indicators_usage = db.relationship("IndicatorUsage", back_populates="indicator")
+
 
 class IndicatorUsage(db.Model):
     __tablename__ = 'indicators_usage'
@@ -303,6 +317,7 @@ class IndicatorUsage(db.Model):
             return self.custom_coeff_to_tut
         return self.indicator.CoeffToTut
 
+
 class Notification(db.Model):
     __tablename__ = 'notifications'
     id = db.Column(db.Integer, primary_key=True)
@@ -312,6 +327,7 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, default=TimeByMinsk())
     user = db.relationship('User', back_populates='notifications')
     
+
 class News(db.Model):
     __tablename__ = 'news'
     id = db.Column(db.Integer, primary_key=True)
@@ -322,6 +338,7 @@ class News(db.Model):
     published_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     views_count = db.Column(db.Integer, default=0)
+
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
@@ -334,6 +351,7 @@ class ChatMessage(db.Model):
     
     def __repr__(self):
         return f'<Message {self.id} in chat {self.chat_id}>'
+
 
 class Chat(db.Model):
     __tablename__ = 'chats'

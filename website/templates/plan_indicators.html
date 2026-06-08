@@ -52,7 +52,7 @@
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т. у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
@@ -60,7 +60,7 @@
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т. у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
@@ -68,7 +68,7 @@
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т. у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
         </tr>
@@ -223,13 +223,12 @@
                         <div class="name-section-title">Наименование</div>
                         <div class="name-options">
                           <div class="input-with-icon">
-                            {{ icons.text_icon() }}
+                            
                             <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
                           </div>
                         </div>
                     </div>
 
-                    <!-- Блок выбора категории для кодов 2023 и 2024 -->
                     <div class="category-section" id="category-section" style="display: none;">
                         <div class="category-section-title">Категория топлива</div>
                         <div class="category-options">
@@ -297,13 +296,13 @@
                     </div>
                     
                     <div class="button-auth-area" id="step2-buttons">
-                        <button type="button" class="svg-btn" id="step2-back-btn">
-                            {{ icons.back_icon() }}
-                            <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
                         <button type="submit" class="main-btn main-btn-primary" id="submit-indicator-btn">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Добавить показатель') }}</span>
+                        </button>
+                        <button type="button" class="svg-btn" id="step2-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
                         </button>
                     </div>
                 </div>
@@ -356,7 +355,7 @@
                         <div class="name-section-title">Наименование</div>
                         <div class="name-options">
                           <div class="input-with-icon">
-                            {{ icons.text_icon() }}
+                            
                             <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
                           </div>
                         </div>
@@ -429,7 +428,6 @@
                     </div>
 
                     <div class="button-auth-area">
-                        <div></div>
                         <button type="submit" class="main-btn main-btn-primary" id="edit-submit-btn">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Сохранить изменения') }}</span>

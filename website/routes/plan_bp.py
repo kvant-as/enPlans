@@ -74,16 +74,22 @@ def plan_indicators(token):
         pass
     
     current_plan = g.current_plan
-    indicators_non_madatory = (Indicator.query
-                        .filter_by(IsMandatory=False)
-                        .filter(~Indicator.id.in_(
-                            db.session.query(IndicatorUsage.id_indicator)
-                            .filter(IndicatorUsage.id_plan == current_plan.id)
-                        ))
-                        .all())
+    indicators_non_mandatory = (Indicator.query
+        .filter_by(IsMandatory=False)
+        .filter(
+            db.or_(
+                Indicator.code.in_(['2023', '2024']),
+                ~Indicator.id.in_(
+                    db.session.query(IndicatorUsage.id_indicator)
+                    .filter(IndicatorUsage.id_plan == current_plan.id)
+                )
+            )
+        )
+        .all()
+    )
     return render_template('plan_indicators.html',  
                         plan=current_plan, 
-                        indicators_non_madatory=indicators_non_madatory,
+                        indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,

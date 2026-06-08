@@ -48,6 +48,10 @@
                         {{ icons.icon_help() }}
                         <span class="tooltip-text">{{ _('Помощь') }}</span>
                     </button>
+                    <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='/news'">
+                        {{ icons.icon_news() }}
+                        <span class="tooltip-text">{{ _('Новости') }}</span>
+                    </button>
                     <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('auth.login') }}'">
                         {{ icons.icon_login() }}
                         <span class="tooltip-text">{{ _('Войти') }}</span>
@@ -93,7 +97,7 @@
                     <div class="user-container" id="user-profile-panel-trigger">
                         <div class="avatar-wrapper">
                             <div class="avatar-circle">
-                                {{ current_user.first_name[:1] | upper if current_user.first_name else '' }}{{ current_user.last_name[:1] | upper if current_user.last_name else '' }}
+                                {{ current_user.first_name[:1] | upper if current_user.first_name else 'U' }}{{ current_user.last_name[:1] | upper if current_user.last_name else 'S' }}
                             </div>
                         </div>
                         <span class="chevron-icon">›</span>

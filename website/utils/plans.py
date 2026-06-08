@@ -393,7 +393,10 @@ def other_data_indicatorUpdate(plan_id):
         total = db.session.query(func.sum(Event.EffCurrYear)).filter(
             Event.id_plan == plan.id,
             Event.direction.has(is_econom=True),
-            Event.EffCurrYear.isnot(None)
+            db.or_(
+                Event.is_local == True,
+                Event.is_corrected == True
+            )
         ).scalar() or 0
         
         indicator_9900 = get_indicator_by_code(indicator_usages, '9900')
@@ -592,8 +595,8 @@ def other_data_indicatorUpdate(plan_id):
         commit_changes()
     
     try:
-        update_indicator_1000()
         update_indicator_9900()
+        update_indicator_1000()
         update_indicator_1796()
         update_indicator_1797()
         update_indicator_9910()

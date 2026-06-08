@@ -340,13 +340,13 @@
                         </div>
                     </div>
                     <div class="button-auth-area" id="step2-buttons" style="display: flex; justify-content: space-between;">
-                        <button type="button" class="svg-btn" id="step2-back-btn">
-                            {{ icons.back_icon() }}
-                            <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
                         <button type="button" class="svg-btn" id="step2-next-btn" data-action="next-step-2" disabled>
                             <span class="btn-text">{{ _('Далее') }}</span>
                             {{ icons.next_icon() }}
+                        </button>
+                        <button type="button" class="svg-btn" id="step2-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
                         </button>
                     </div>
                 </div>
@@ -445,13 +445,13 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="event_type" value="{{ event_type }}">
                     <div class="button-auth-area" id="step3-buttons" style="display: flex; justify-content: space-between;">
-                        <button type="button" class="svg-btn" id="step3-back-btn">
-                            {{ icons.back_icon() }}
-                            <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
                         <button type="submit" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Добавить мероприятие') }}</span>
+                        </button>
+                        <button type="button" class="svg-btn" id="step3-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
                         </button>
                     </div>
                 </div>
@@ -641,14 +641,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="button-auth-area" style="display: flex; justify-content: space-between;">
-                            <button type="button" class="svg-btn" id="step2-back-btn">
-                                {{ icons.back_icon() }}
-                                <span class="btn-text">{{ _('Назад') }}</span>
-                            </button>
+                        <div class="button-auth-area">
                             <button type="submit" class="main-btn main-btn-primary">
                                 {{ icons.icon_add() }}
                                 <span class="btn-text">{{ _('Применить изменения') }}</span>
+                            </button>
+                            <button type="button" class="svg-btn" id="step2-back-btn">
+                                {{ icons.back_icon() }}
+                                <span class="btn-text">{{ _('Назад') }}</span>
                             </button>
                         </div>
                     </div>
@@ -669,7 +669,7 @@
                             <input type="text" id="period-EffCurrYear-edit" name="EffCurrYear" placeholder="0,00" class="app-numeric-input">
                         </div>
                     </div>
-                    <div class="button-auth-area" style="display: flex; justify-content: flex-end;">
+                    <div class="button-auth-area">
                         <button type="submit" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Сохранить изменения') }}</span>

@@ -169,6 +169,7 @@ def create_event_record(current_plan, direction, event_data):
     
     display_code = generate_unique_display_code(direction.code, current_plan.id, direction.id)
     is_corrected = current_plan.audit_time is not None
+    is_local = current_plan.audit_time is None
     
     event = Event(
         id_direction=direction.id,
@@ -189,6 +190,7 @@ def create_event_record(current_plan, direction, event_data):
         MoneyOwn=event_data['MoneyOwn'],
         MoneyLoan=event_data['MoneyLoan'],
         MoneyOther=event_data['MoneyOther'],
+        is_local=is_local,
         is_corrected=is_corrected,
         is_econom=event_data['is_econom'],
         is_increase=event_data['is_increase']

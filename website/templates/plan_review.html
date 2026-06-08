@@ -1,5 +1,5 @@
 {% extends "base.html" %} 
-{% block title %}{{ _('Обзор') }} - EnPlans{% endblock%}
+{% block title %}{{ _('Задания') }} - EnPlans{% endblock%}
 {% block content %}
 
 <div class="pers-page">
@@ -348,7 +348,7 @@
             checked
           />
           <div class="radio-org-card" data-type="organization">
-            <span class="radio-org-icon"></span>
+            {{ icons.icon_half() }}
             <div class="radio-org-subtitle">Организация с потреблением</div>
             <div class="radio-org-title">До 25 тыс. т у.т.</div>
           </div>
@@ -362,14 +362,13 @@
             class="radio-org-input"
           />
           <div class="radio-org-card" data-type="organization">
-            <span class="radio-org-icon"></span>
+            {{ icons.icon_half() }}
             <div class="radio-org-subtitle">Организация с потреблением</div>
             <div class="radio-org-title">Более 25 тыс. т у.т.</div>
           </div>
         </label>
       </div>
       <div class="button-auth-area">
-        <a></a>
         <button type="submit" class="no-submit-button blue">
           {{ icons.icon_confirm() }}
           <span class="btn-text">{{ _('Подтвердить') }}</span>
