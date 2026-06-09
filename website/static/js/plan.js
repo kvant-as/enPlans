@@ -2164,6 +2164,7 @@ class PlansLoader {
     constructor(options = {}) {
         this.currentStatus = options.initialStatus || 'all';
         this.currentYear = options.initialYear || 'all';
+        this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchOkpo = '';
         this.currentPage = 1;
@@ -2180,6 +2181,29 @@ class PlansLoader {
         this.init();
     }
     
+    updateUrl() {
+        const params = new URLSearchParams();
+        
+        if (this.currentStatus && this.currentStatus !== 'all') {
+            params.set('status', this.currentStatus);
+        }
+        if (this.currentYear && this.currentYear !== 'all') {
+            params.set('year', this.currentYear);
+        }
+        if (this.currentRegion && this.currentRegion !== 'all') {
+            params.set('region', this.currentRegion);
+        }
+        if (this.currentSearchName) {
+            params.set('search_name', this.currentSearchName);
+        }
+        if (this.currentSearchOkpo) {
+            params.set('search_okpo', this.currentSearchOkpo);
+        }
+        
+        const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        window.history.pushState({}, '', newUrl);
+    }
+    
     async loadPlans(reset = true) {
         if (this.isLoading) return;
         
@@ -2188,11 +2212,13 @@ class PlansLoader {
         const container = document.getElementById(this.containerId);
         
         if (reset && container) {
-            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div> ';
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
         }
         
+        this.updateUrl();
+        
         try {
-            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
@@ -2221,8 +2247,6 @@ class PlansLoader {
                 this.updateLoadMoreButton();
                 this.updateCountsDisplay(data.counts);
                 this.attachCheckboxListeners();
-                this.updateSelectAllButton();
-                this.updateExportButton();
             }
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -2256,6 +2280,50 @@ class PlansLoader {
         if (statApproved) statApproved.textContent = counts.approved || '-';
     }
     
+    attachCheckboxListeners() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.removeEventListener('change', this.handleCheckboxChange);
+            cb.addEventListener('change', this.handleCheckboxChange.bind(this));
+        });
+    }
+    
+    handleCheckboxChange(e) {
+        const checkbox = e.target;
+        const planId = checkbox.value;
+        
+        if (checkbox.checked) {
+            this.selectedPlans.add(planId);
+        } else {
+            this.selectedPlans.delete(planId);
+        }
+        
+        this.updateSelectAllButton();
+        this.updateExportButton();
+    }
+    
+    updateSelectAllButton() {
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        
+        if (selectAllBtn && clearAllBtn) {
+            if (this.selectedPlans && this.selectedPlans.size > 0) {
+                selectAllBtn.style.display = 'none';
+                clearAllBtn.style.display = 'flex';
+            } else {
+                selectAllBtn.style.display = 'flex';
+                clearAllBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    updateExportButton() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.disabled = !(this.selectedPlans && this.selectedPlans.size > 0 && this.selectedFormat);
+        }
+    }
+    
     handleSearch() {
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
@@ -2263,6 +2331,7 @@ class PlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.updateUrl();
             this.loadPlans(true);
         }, 500);
     }
@@ -2280,17 +2349,19 @@ class PlansLoader {
         
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        const regionDropdown = document.querySelector('[data-filter-type="region"]');
         
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
-            const menu = statusDropdown.querySelector('.dropdown-menu-filter');
+            const selectedSpan = document.getElementById('selected-status');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (yearDropdown) yearDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
                     statusDropdown.classList.toggle('active');
                 });
             }
@@ -2300,9 +2371,9 @@ class PlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentStatus = value;
-                    const selectedSpan = document.getElementById('selected-status');
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
+                    this.updateUrl();
                     this.loadPlans(true);
                 });
             });
@@ -2311,13 +2382,14 @@ class PlansLoader {
         if (yearDropdown) {
             const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
             const items = yearDropdown.querySelectorAll('.dropdown-item');
-            const menu = yearDropdown.querySelector('.dropdown-menu-filter');
+            const selectedSpan = document.getElementById('selected-year');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
                     yearDropdown.classList.toggle('active');
                 });
             }
@@ -2327,20 +2399,82 @@ class PlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentYear = value;
-                    const selectedSpan = document.getElementById('selected-year');
-                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    if (selectedSpan) {
+                        if (value === 'all') {
+                            selectedSpan.textContent = 'Год';
+                        } else {
+                            selectedSpan.textContent = value;
+                        }
+                    }
                     yearDropdown.classList.remove('active');
+                    this.updateUrl();
                     this.loadPlans(true);
                 });
             });
         }
         
+        if (regionDropdown) {
+            const toggleBtn = regionDropdown.querySelector('.dropdown-toggle');
+            const items = regionDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-region');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    regionDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentRegion = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    regionDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+
         document.addEventListener('click', (e) => {
             if (statusDropdown && !statusDropdown.contains(e.target)) {
                 statusDropdown.classList.remove('active');
             }
             if (yearDropdown && !yearDropdown.contains(e.target)) {
                 yearDropdown.classList.remove('active');
+            }
+            if (regionDropdown && !regionDropdown.contains(e.target)) {
+                regionDropdown.classList.remove('active');
+            }
+        });
+        
+        window.addEventListener('popstate', (event) => {
+            const params = new URLSearchParams(window.location.search);
+            const newStatus = params.get('status') || 'all';
+            const newYear = params.get('year') || 'all';
+            const newRegion = params.get('region') || 'all';
+            const newSearchName = params.get('search_name') || '';
+            const newSearchOkpo = params.get('search_okpo') || '';
+            
+            if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                
+                this.currentStatus = newStatus;
+                this.currentYear = newYear;
+                this.currentRegion = newRegion;
+                this.currentSearchName = newSearchName;
+                this.currentSearchOkpo = newSearchOkpo;
+                
+                if (searchNameInput) searchNameInput.value = newSearchName;
+                if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
+                
+                this.updateFilterDisplay();
+                this.loadPlans(true);
             }
         });
         
@@ -2350,7 +2484,50 @@ class PlansLoader {
         }
     }
     
+    updateFilterDisplay() {
+        const statusMap = {
+            'all': 'Статус',
+            'draft': 'В редакции',
+            'control': 'Контроль пройден',
+            'sent': 'На рассмотрении',
+            'error': 'С ошибками',
+            'approved': 'Согласованные'
+        };
+        
+        const regionMap = {
+            'all': 'Регион',
+            '1': 'Брестское областное управление',
+            '2': 'Витебское областное управление',
+            '3': 'Гомельское областное управление',
+            '4': 'Гродненское областное управление',
+            '5': 'Управление г. Минск',
+            '6': 'Минское областное управление',
+            '7': 'Могилевское областное управление'
+        };
+        
+        const selectedStatusSpan = document.getElementById('selected-status');
+        if (selectedStatusSpan && statusMap[this.currentStatus]) {
+            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        }
+        
+        const selectedYearSpan = document.getElementById('selected-year');
+        if (selectedYearSpan) {
+            if (this.currentYear === 'all') {
+                selectedYearSpan.textContent = 'Год';
+            } else {
+                selectedYearSpan.textContent = this.currentYear;
+            }
+        }
+        
+        const selectedRegionSpan = document.getElementById('selected-region');
+        if (selectedRegionSpan && regionMap[this.currentRegion]) {
+            selectedRegionSpan.textContent = regionMap[this.currentRegion];
+        }
+    }
+    
     init() {
+        this.selectedPlans = new Set();
+        this.selectedFormat = null;
         this.initFilters();
         this.loadPlans(true);
     }
@@ -2360,6 +2537,7 @@ class ExportPlansLoader {
     constructor(options = {}) {
         this.currentStatus = options.initialStatus || 'all';
         this.currentYear = options.initialYear || 'all';
+        this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchOkpo = '';
         this.currentPage = 1;
@@ -2372,6 +2550,7 @@ class ExportPlansLoader {
         this.exportInProgress = false;
         this.currentTaskId = null;
         this.progressInterval = null;
+        this.isInitialLoad = true;
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
@@ -2384,34 +2563,32 @@ class ExportPlansLoader {
         this.init();
     }
     
-    updateLoadMoreButton() {
-        const loadMoreContainer = document.getElementById('load-more-container');
-        if (loadMoreContainer) {
-            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
-        }
-    }
-    
-    updateButtons() {
-        const selectAllBtn = document.getElementById(this.selectAllId);
-        const clearAllBtn = document.getElementById(this.clearAllId);
+    updateUrl() {
+        const params = new URLSearchParams();
         
-        if (selectAllBtn && clearAllBtn) {
-            if (this.selectedPlans.size > 0) {
-                selectAllBtn.style.display = 'none';
-                clearAllBtn.style.display = 'flex';
-            } else {
-                selectAllBtn.style.display = 'flex';
-                clearAllBtn.style.display = 'none';
-            }
+        if (this.currentStatus && this.currentStatus !== 'all') {
+            params.set('status', this.currentStatus);
+        }
+        if (this.currentYear && this.currentYear !== 'all') {
+            params.set('year', this.currentYear);
+        }
+        if (this.currentRegion && this.currentRegion !== 'all') {
+            params.set('region', this.currentRegion);
+        }
+        if (this.currentSearchName) {
+            params.set('search_name', this.currentSearchName);
+        }
+        if (this.currentSearchOkpo) {
+            params.set('search_okpo', this.currentSearchOkpo);
         }
         
-        this.updateExportButton();
-    }
-    
-    updateExportButton() {
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) {
-            exportBtn.disabled = this.selectedPlans.size === 0 || !this.selectedFormat;
+        const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        
+        if (this.isInitialLoad) {
+            window.history.replaceState({}, '', newUrl);
+            this.isInitialLoad = false;
+        } else {
+            window.history.pushState({}, '', newUrl);
         }
     }
     
@@ -2433,7 +2610,7 @@ class ExportPlansLoader {
         }
         
         try {
-            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}`;
+            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
@@ -2479,6 +2656,13 @@ class ExportPlansLoader {
         }
     }
     
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+        }
+    }
+    
     attachCheckboxListeners() {
         const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
         checkboxes.forEach(cb => {
@@ -2501,6 +2685,30 @@ class ExportPlansLoader {
         
         this.updateButtons();
         this.updateExportButton();
+    }
+    
+    updateButtons() {
+        const selectAllBtn = document.getElementById(this.selectAllId);
+        const clearAllBtn = document.getElementById(this.clearAllId);
+        
+        if (selectAllBtn && clearAllBtn) {
+            if (this.selectedPlans.size > 0) {
+                selectAllBtn.style.display = 'none';
+                clearAllBtn.style.display = 'flex';
+            } else {
+                selectAllBtn.style.display = 'flex';
+                clearAllBtn.style.display = 'none';
+            }
+        }
+        
+        this.updateExportButton();
+    }
+    
+    updateExportButton() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.disabled = this.selectedPlans.size === 0 || !this.selectedFormat;
+        }
     }
     
     selectAll() {
@@ -2536,19 +2744,28 @@ class ExportPlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.updateUrl();
             this.loadPlans(true);
-        }, 300);
+        }, 500);
     }
     
     initFormatSelection() {
         const formatItems = document.querySelectorAll('.export-choose');
         formatItems.forEach(item => {
+            if (item.classList.contains('disabled')) return;
+            
             item.removeEventListener('click', this.formatClickHandler);
             this.formatClickHandler = () => {
                 const format = item.dataset.format;
                 formatItems.forEach(el => el.classList.remove('active'));
                 item.classList.add('active');
                 this.selectedFormat = format;
+                
+                const exportForm = document.getElementById(this.exportFormId);
+                if (exportForm) {
+                    exportForm.action = `/export-to/${format}`;
+                }
+                
                 this.updateExportButton();
             };
             item.addEventListener('click', this.formatClickHandler);
@@ -2568,15 +2785,18 @@ class ExportPlansLoader {
         
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        const regionDropdown = document.querySelector('[data-filter-type="region"]');
         
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-status');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (yearDropdown) yearDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
                     statusDropdown.classList.toggle('active');
                 });
             }
@@ -2584,10 +2804,11 @@ class ExportPlansLoader {
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.currentStatus = item.dataset.value;
-                    const selectedSpan = document.getElementById('selected-status');
+                    const value = item.dataset.value;
+                    this.currentStatus = value;
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
+                    this.updateUrl();
                     this.loadPlans(true);
                 });
             });
@@ -2596,11 +2817,13 @@ class ExportPlansLoader {
         if (yearDropdown) {
             const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
             const items = yearDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-year');
             
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
                     yearDropdown.classList.toggle('active');
                 });
             }
@@ -2608,10 +2831,44 @@ class ExportPlansLoader {
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.currentYear = item.dataset.value;
-                    const selectedSpan = document.getElementById('selected-year');
-                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    const value = item.dataset.value;
+                    this.currentYear = value;
+                    if (selectedSpan) {
+                        if (value === 'all') {
+                            selectedSpan.textContent = 'Год';
+                        } else {
+                            selectedSpan.textContent = value;
+                        }
+                    }
                     yearDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (regionDropdown) {
+            const toggleBtn = regionDropdown.querySelector('.dropdown-toggle');
+            const items = regionDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-region');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    regionDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentRegion = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    regionDropdown.classList.remove('active');
+                    this.updateUrl();
                     this.loadPlans(true);
                 });
             });
@@ -2624,11 +2881,80 @@ class ExportPlansLoader {
             if (yearDropdown && !yearDropdown.contains(e.target)) {
                 yearDropdown.classList.remove('active');
             }
+            if (regionDropdown && !regionDropdown.contains(e.target)) {
+                regionDropdown.classList.remove('active');
+            }
+        });
+        
+        window.addEventListener('popstate', (event) => {
+            const params = new URLSearchParams(window.location.search);
+            const newStatus = params.get('status') || 'all';
+            const newYear = params.get('year') || 'all';
+            const newRegion = params.get('region') || 'all';
+            const newSearchName = params.get('search_name') || '';
+            const newSearchOkpo = params.get('search_okpo') || '';
+            
+            if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                
+                this.currentStatus = newStatus;
+                this.currentYear = newYear;
+                this.currentRegion = newRegion;
+                this.currentSearchName = newSearchName;
+                this.currentSearchOkpo = newSearchOkpo;
+                
+                if (searchNameInput) searchNameInput.value = newSearchName;
+                if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
+                
+                this.updateFilterDisplay();
+                this.loadPlans(true);
+            }
         });
         
         const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
         if (loadMoreBtn) {
             loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+        }
+    }
+    
+    updateFilterDisplay() {
+        const statusMap = {
+            'all': 'Статус',
+            'draft': 'В редакции',
+            'control': 'Контроль пройден',
+            'sent': 'На рассмотрении',
+            'error': 'С ошибками',
+            'approved': 'Согласованные'
+        };
+        
+        const regionMap = {
+            'all': 'Регион',
+            '1': 'Брестское областное управление',
+            '2': 'Витебское областное управление',
+            '3': 'Гомельское областное управление',
+            '4': 'Гродненское областное управление',
+            '5': 'Управление г. Минск',
+            '6': 'Минское областное управление',
+            '7': 'Могилевское областное управление'
+        };
+        
+        const selectedStatusSpan = document.getElementById('selected-status');
+        if (selectedStatusSpan && statusMap[this.currentStatus]) {
+            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        }
+        
+        const selectedYearSpan = document.getElementById('selected-year');
+        if (selectedYearSpan) {
+            if (this.currentYear === 'all') {
+                selectedYearSpan.textContent = 'Год';
+            } else {
+                selectedYearSpan.textContent = this.currentYear;
+            }
+        }
+        
+        const selectedRegionSpan = document.getElementById('selected-region');
+        if (selectedRegionSpan && regionMap[this.currentRegion]) {
+            selectedRegionSpan.textContent = regionMap[this.currentRegion];
         }
     }
     
@@ -2809,13 +3135,85 @@ class ExportPlansLoader {
         
         this.initFormatSelection();
         this.initFormSubmit();
+        this.isInitialLoad = true;
         this.loadPlans(true);
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const selectAllBtn = document.getElementById('selectAllBtn');
+function initEditableHeaders() {
+    const editIcons = document.querySelectorAll('.edit-header-icon');
     
+    editIcons.forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            const th = icon.closest('.colspan-header');
+            const link = th.querySelector('a');
+            const currentText = link.textContent;
+            const configId = icon.dataset.configId;
+            const currentYear = icon.dataset.year;
+            const currentLabel = icon.dataset.label;
+            
+            const select = document.createElement('select');
+            select.className = 'header-edit-input';
+            select.innerHTML = `
+                <option value="отчет" ${currentLabel === 'отчет' ? 'selected' : ''}>отчет</option>
+                <option value="оценка" ${currentLabel === 'оценка' ? 'selected' : ''}>оценка</option>
+                <option value="прогноз" ${currentLabel === 'прогноз' ? 'selected' : ''}>прогноз</option>
+            `;
+            
+            link.textContent = '';
+            link.appendChild(select);
+            select.focus();
+            
+            const saveChanges = async () => {
+                const newLabel = select.value;
+                const newText = `${currentYear} г. ${newLabel}`;
+                
+                if (newLabel !== currentLabel) {
+                    try {
+                        const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                config_id: configId,
+                                label: newLabel
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            link.textContent = newText;
+                            icon.dataset.label = newLabel;
+                        } else {
+                            link.textContent = currentText;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        link.textContent = currentText;
+                    }
+                } else {
+                    link.textContent = currentText;
+                }
+            };
+            
+            select.addEventListener('blur', saveChanges);
+            select.addEventListener('change', saveChanges);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tokencolumnIndicator = document.querySelector('#indicatorsTable')?.dataset?.token;
+    if (tokencolumnIndicator) {
+        window.planToken = tokencolumnIndicator;
+        initEditableHeaders();
+    }
+    
+    const selectAllBtn = document.getElementById('selectAllBtn');
     if (selectAllBtn) {
         window.exportPlansLoader = new ExportPlansLoader({
             initialStatus: window.initialStatus || 'all',

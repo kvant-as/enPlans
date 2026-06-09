@@ -5,7 +5,7 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from ..models import Direction, Organization, Plan, PlanColumnConfig, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -126,6 +126,32 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
     
     return f"{base_code}.{next_number}"
 
+def get_column_configs_for_plan(plan):
+    plan_year = plan.year
+    current_year = TimeByMinsk().year
+    
+    if plan_year > current_year:
+        labels = ['прогноз', 'прогноз', 'прогноз']
+    elif plan_year == current_year:
+        labels = ['отчет', 'оценка', 'прогноз']
+    elif plan_year == current_year - 1:
+        labels = ['отчет', 'отчет', 'оценка']
+    else:
+        labels = ['отчет', 'отчет', 'отчет']
+    
+    configs = []
+    years = [plan_year - 2, plan_year - 1, plan_year]
+    
+    for year, label in zip(years, labels):
+        config = PlanColumnConfig(
+            plan_id=plan.id,
+            year=year,
+            label=label
+        )
+        configs.append(config)
+    
+    return configs
+
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
         new_ticket = Ticket(
@@ -222,50 +248,6 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
     }
     
     return plans, total_count, status_counts
-
-# def get_event_metrics(plan_id, event_type, is_original=True):
-#     query = (db.session.query(
-#         Event.ExpectedQuarter,
-#         func.sum(Event.EffCurrYear).label('total_eff'),
-#         func.sum(Event.VolumeFin).label('total_vol')
-#     )
-#     .join(Direction, Event.id_direction == Direction.id)
-#     .filter(Event.id_plan == plan_id)
-#     )
-    
-#     if event_type == 'saving':
-#         query = query.filter(Direction.is_econom == True)
-#     else:
-#         query = query.filter(Direction.is_increase == True)
-    
-#     if is_original:
-#         query = query.filter(Event.is_corrected == False)
-#     else:
-#         query = query.filter(Event.is_corrected == True)
-
-#     quarterly_results = query.group_by(Event.ExpectedQuarter).all()
-    
-#     cumulative_totals = {
-#         'jan_mar': {'eff_curr_year': 0},
-#         'jan_jun': {'eff_curr_year': 0},
-#         'jan_sep': {'eff_curr_year': 0},
-#         'jan_dec': {'eff_curr_year': 0}
-#     }
-    
-#     quarter_data = {1: {'eff': 0, 'vol': 0}, 2: {'eff': 0, 'vol': 0}, 
-#                    3: {'eff': 0, 'vol': 0}, 4: {'eff': 0, 'vol': 0}}
-    
-#     for quarter, eff_sum, vol_sum in quarterly_results:
-#         if quarter in [1, 2, 3, 4]:
-#             quarter_data[quarter]['eff'] = float(eff_sum) if eff_sum else 0
-#             quarter_data[quarter]['vol'] = float(vol_sum) if vol_sum else 0
-    
-#     cumulative_totals['jan_mar']['eff_curr_year'] = quarter_data[1]['eff']
-#     cumulative_totals['jan_jun']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff']
-#     cumulative_totals['jan_sep']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff']
-#     cumulative_totals['jan_dec']['eff_curr_year'] = (quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff'] + quarter_data[4]['eff'])
-
-#     return cumulative_totals
 
 def other_data_indicatorUpdate(plan_id):
     plan = Plan.query.get(plan_id)

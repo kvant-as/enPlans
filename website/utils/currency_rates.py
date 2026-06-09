@@ -11,9 +11,7 @@ def fetch_usd_rate_from_belarusbank():
         data = response.json()
         
         if not data:
-            error_msg = 'Empty response from BelarusBank API'
-            current_app.logger.error(error_msg)
-            return None, error_msg
+            return None, 'Empty response from BelarusBank API'
 
         for branch in data:
             usd_out_str = branch.get('USD_out')
@@ -21,35 +19,76 @@ def fetch_usd_rate_from_belarusbank():
                 try:
                     usd_rate = Decimal(usd_out_str.replace(',', '.'))
                     usd_rate = usd_rate.quantize(Decimal('0.0001'))
-                    current_app.logger.info(f'USD rate fetched from BelarusBank: {usd_rate}')
                     return usd_rate, None
-                except (ValueError, TypeError) as e:
-                    current_app.logger.warning(f'Could not parse USD_out value: {usd_out_str}')
+                except (ValueError, TypeError):
                     continue
 
-        error_msg = 'USD rate not found in any branch response'
-        current_app.logger.error(error_msg)
-        return None, error_msg
+        return None, 'USD rate not found in any branch response'
 
-    except requests.exceptions.Timeout:
-        error_msg = 'Request to BelarusBank API timed out'
-        current_app.logger.error(error_msg)
-        return None, error_msg
-    except requests.exceptions.ConnectionError as e:
-        error_msg = f'Connection error to BelarusBank API: {str(e)}'
-        current_app.logger.error(error_msg)
-        return None, error_msg
-    except requests.RequestException as e:
-        error_msg = f'Request error fetching USD rate: {str(e)}'
-        current_app.logger.error(error_msg)
-        return None, error_msg
     except Exception as e:
-        error_msg = f'Unexpected error fetching USD rate: {str(e)}'
-        current_app.logger.exception(error_msg)
-        return None, error_msg
+        return None, f'BelarusBank error: {str(e)}'
 
-def get_default_cost_per_toe_usd():
-    return Decimal('260.00')
+def fetch_usd_rate_from_nbrb():
+    try:
+        url = 'https://api.nbrb.by/exrates/rates/431'
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        usd_rate = Decimal(str(data.get('Cur_OfficialRate')))
+        usd_rate = usd_rate.quantize(Decimal('0.0001'))
+        
+        return usd_rate, None
+    except Exception as e:
+        return None, f'NBRB error: {str(e)}'
+
+def fetch_usd_rate_from_national_bank():
+    try:
+        url = 'https://www.nbrb.by/api/exrates/rates/431'
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        usd_rate = Decimal(str(data.get('Cur_OfficialRate')))
+        usd_rate = usd_rate.quantize(Decimal('0.0001'))
+        
+        return usd_rate, None
+    except Exception as e:
+        return None, f'NationalBank error: {str(e)}'
+
+def fetch_usd_rate_from_cbr():
+    try:
+        url = 'https://www.cbr-xml-daily.ru/daily_json.js'
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        usd_rate = Decimal(str(data['Valute']['USD']['Value']))
+        usd_rate = usd_rate.quantize(Decimal('0.0001'))
+        
+        return usd_rate, None
+    except Exception as e:
+        return None, f'CBR error: {str(e)}'
+
+def fetch_usd_rate_from_any_source():
+    sources = [
+        ('BelarusBank', fetch_usd_rate_from_belarusbank),
+        ('NBRB', fetch_usd_rate_from_nbrb),
+        ('NationalBank', fetch_usd_rate_from_national_bank),
+        ('CBR', fetch_usd_rate_from_cbr),
+    ]
+    
+    for source_name, source_func in sources:
+        usd_rate, error = source_func()
+        
+        if usd_rate is not None:
+            current_app.logger.info(f'Successfully fetched USD rate from {source_name}: {usd_rate}')
+            return usd_rate, None
+        else:
+            current_app.logger.warning(f'Failed to fetch from {source_name}: {error}')
+            continue
+    
+    return None, 'All USD rate sources failed'
 
 def update_plan_rates(plan):
     updated = False
@@ -58,7 +97,7 @@ def update_plan_rates(plan):
     cost_result = None
     
     if plan.usd_rate is None or plan.usd_rate <= 0:
-        usd_rate, error = fetch_usd_rate_from_belarusbank()
+        usd_rate, error = fetch_usd_rate_from_any_source()
         
         if usd_rate is None:
             error_message = f'Failed to fetch USD rate: {error}'
@@ -68,11 +107,6 @@ def update_plan_rates(plan):
             plan.usd_rate = usd_rate
             updated = True
             current_app.logger.info(f'USD rate set for plan_id={plan.id}: {usd_rate}')
-    
-    if plan.cost_per_toe_usd is None or plan.cost_per_toe_usd <= 0:
-        plan.cost_per_toe_usd = get_default_cost_per_toe_usd()
-        updated = True
-        current_app.logger.info(f'Cost per toe set for plan_id={plan.id}: {plan.cost_per_toe_usd}')
     
     if updated:
         try:
@@ -96,7 +130,7 @@ def get_usd_rate_with_fallback(plan):
     if plan.usd_rate and float(plan.usd_rate) > 0:
         return float(plan.usd_rate), None
     
-    usd_rate, cost, error = update_plan_rates(plan)
+    usd_rate, error = fetch_usd_rate_from_any_source()
     
     if usd_rate is None:
         return None, error

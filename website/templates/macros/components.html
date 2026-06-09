@@ -135,43 +135,14 @@
 {% macro navigation_header(active_tab='plans', current_user=None) %}
 <div class="header-cont">
     <nav class="navigation-container">
-        {% if current_user.is_admin %}
-            <div class="nav-item {% if active_tab == 'plans' %} active{% endif %}" onclick="window.location.href='/plans'">
-                <div class="nav-icon-wrapper">
-                    {{ icons.icon_plans() }}
-                    {% if active_tab == 'plans' %}<div class="active-indicator"></div>{% endif %}
-                </div>
-                <span class="nav-text">{{ _('Планы') }}</span>
-                <span class="nav-text-mobile">{{ _('Планы') }}</span>
+        <div class="nav-item {% if active_tab == 'plans' %} active{% endif %}" onclick="window.location.href='/plans'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_plans() }}
+                {% if active_tab == 'plans' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <div class="nav-item {% if active_tab == 'plans_audit' %} active{% endif %}" onclick="window.location.href='/plans-audit'">
-                <div class="nav-icon-wrapper">
-                    {{ icons.icon_audit() }}
-                    {% if active_tab == 'plans_audit' %}<div class="active-indicator"></div>{% endif %}
-                </div>
-                <span class="nav-text">{{ _('Планы') }}</span>
-                <span class="nav-text-mobile">{{ _('Планы') }}</span>
-            </div>
-        {% elif current_user.is_auditor %}
-            <div class="nav-item {% if active_tab == 'plans_audit' %} active{% endif %}" onclick="window.location.href='/plans-audit'">
-                <div class="nav-icon-wrapper">
-                    {{ icons.icon_audit() }}
-                    {% if active_tab == 'plans_audit' %}<div class="active-indicator"></div>{% endif %}
-                </div>
-                <span class="nav-text">{{ _('Планы') }}</span>
-                <span class="nav-text-mobile">{{ _('Планы') }}</span>
-            </div>
-        {% else %}
-            <div class="nav-item {% if active_tab == 'plans' %} active{% endif %}" onclick="window.location.href='/plans'">
-                <div class="nav-icon-wrapper">
-                    {{ icons.icon_plans() }}
-                    {% if active_tab == 'plans' %}<div class="active-indicator"></div>{% endif %}
-                </div>
-                <span class="nav-text">{{ _('Планы') }}</span>
-                <span class="nav-text-mobile">{{ _('Планы') }}</span>
-            </div>
-        {% endif %}
-        
+            <span class="nav-text">{{ _('Планы') }}</span>
+            <span class="nav-text-mobile">{{ _('Планы') }}</span>
+        </div>
         {% if current_user and current_user.is_admin == false and current_user.is_auditor == false %}
         <div class="nav-item {% if active_tab == 'create' %} active{% endif %}" onclick="window.location.href='/create-plan'">
             <div class="nav-icon-wrapper">
@@ -256,7 +227,7 @@
                 {{ icons.icon_indicators() }}
                 {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 1</span>
+            <span class="nav-text long-text">{{ _('Часть 1. Показатели использования ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 1</span>
         </div>
 
@@ -266,7 +237,7 @@
                 {{ icons.icon_measure_saving() }}
                 {% if active_plan_tab == 'event-saving' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 2</span>
+            <span class="nav-text long-text">{{ _('Часть 2. Мероприятия по экономии ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 2</span>
         </div> 
 
@@ -276,7 +247,7 @@
                 {{ icons.icon_measure_increase() }}
                 {% if active_plan_tab == 'event-increase' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 3</span>
+            <span class="nav-text long-text">{{ _('Часть 3. Мероприятия по увеличению использования местных ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
         </div>
 
@@ -509,23 +480,36 @@
 </div>
 {% endmacro %}
 
-{% macro filters_section(years, current_user=none, show_search=true, show_status=true, show_year=true, show_regional_search=false) %}
+{% macro filters_section(years, current_user=none, show_search=true, show_status=true, show_year=true, show_regional_search=false, selected_status='all', selected_year='all') %}
 <div class="filters-area">
     {% if show_search %}
     <div class="input-with-icon">
         {{ icons.icon_search() }}
-        <input type="text" placeholder="{{ _('Наим. предприятия') }}" class="app-input" id="search-name"/>
+        <input type="text" placeholder="{{ _('Наим. предприятия') }}" class="app-input" id="search-name" value="{{ request.args.get('search_name', '') }}"/>
     </div>
     <div class="input-with-icon">
         {{ icons.icon_search() }}
-        <input type="text" placeholder="{{ _('ОКПО предприятия') }}" class="app-input" id="search-okpo"/>
+        <input type="text" placeholder="{{ _('ОКПО предприятия') }}" class="app-input" id="search-okpo" value="{{ request.args.get('search_okpo', '') }}"/>
     </div>
     {% endif %}
 
     {% if show_status %}
     <div class="custom-dropdown" data-filter-type="status">
         <button type="button" class="dropdown-toggle">
-            <span class="selected-option" id="selected-status">{{ _('Статус') }}</span>
+            <span class="selected-option" id="selected-status">
+                {% if selected_status == 'all' %}{{ _('Статус') }}
+                {% elif selected_status == 'draft' %}{{ _('В редакции') }}
+                {% elif selected_status == 'control' %}{{ _('Контроль пройден') }}
+                {% elif selected_status == 'sent' %}
+                    {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
+                        {{ _('Не просмотренные') }}
+                    {% else %}
+                        {{ _('На рассмотрении') }}
+                    {% endif %}
+                {% elif selected_status == 'error' %}{{ _('С ошибками') }}
+                {% elif selected_status == 'approved' %}{{ _('Согласованные') }}
+                {% else %}{{ _('Статус') }}{% endif %}
+            </span>
             {{ icons.dropdown_arrow() }}
         </button>
         <div class="dropdown-menu-filter">
@@ -548,7 +532,10 @@
     {% if show_year %}
     <div class="custom-dropdown" data-filter-type="year">
         <button type="button" class="dropdown-toggle">
-            <span class="selected-option" id="selected-year">{{ _('Год') }}</span>
+            <span class="selected-option" id="selected-year">
+                {% if selected_year == 'all' %}{{ _('Год') }}
+                {% else %}{{ selected_year }}{% endif %}
+            </span>
             {{ icons.dropdown_arrow() }}
         </button>
         <div class="dropdown-menu-filter">
@@ -559,5 +546,33 @@
         </div>
     </div>
     {% endif %}
+
+    <div class="custom-dropdown" data-filter-type="region">
+        <button type="button" class="dropdown-toggle">
+            <span class="selected-option" id="selected-region">
+                {% if selected_region == 'all' %}{{ _('Регион') }}
+                {% elif selected_region == '1' %}Брестское областное
+                {% elif selected_region == '2' %}Витебское областное
+                {% elif selected_region == '3' %}Гомельское областное
+                {% elif selected_region == '4' %}Гродненское областное
+                {% elif selected_region == '6' %}Минское областное
+                {% elif selected_region == '7' %}Могилевское областное
+                {% elif selected_region == '5' %}г. Минск
+                {% else %}{{ _('Регион') }}{% endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">{{ _('Все регионы') }}</div>
+            <div class="dropdown-item" data-value="1">Брестское областное</div>
+            <div class="dropdown-item" data-value="2">Витебское областное</div>
+            <div class="dropdown-item" data-value="3">Гомельское областное</div>
+            <div class="dropdown-item" data-value="4">Гродненское областное</div>
+            <div class="dropdown-item" data-value="6">Минское областное</div>
+            <div class="dropdown-item" data-value="7">Могилевское областное</div>
+            <div class="dropdown-item" data-value="5">г. Минск</div>
+        </div>
+    </div>
+
 </div>
 {% endmacro %}

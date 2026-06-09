@@ -71,13 +71,20 @@
       </div>
     </div>
 
-    {{ component.filters_section(years, current_user, show_search=true, show_status=true, show_year=true) }}
+    {{ component.filters_section(
+        years, 
+        current_user, 
+        show_search=true, 
+        show_status=true, 
+        show_year=true,
+        selected_status=selected_status,
+        selected_year=selected_year
+    ) }}
 
     <div id="plans-container"></div>
         <div id="load-more-container">
           <button id="load-more-btn" class="load-more-btn">
             <span class="loading-spinner" style="display: none;"></span>
-            {{ icons.icon_download() }}
             <span class="btn-text">{{ _('Загрузить еще') }}</span>
           </button>
         </div>
@@ -85,8 +92,9 @@
     </div>
 
 <script>
-  window.initialStatus = '{{ request.args.get("status", "all") }}';
-  window.initialYear = '{{ request.args.get("year", "all") }}';
+  window.initialStatus = '{{ selected_status }}';
+  window.initialYear = '{{ selected_year }}';
+  window.isExportPage = false;
 </script>
 
 {% endblock %}

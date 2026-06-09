@@ -122,6 +122,16 @@ def generate_static_token(length=20):
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
+class PlanColumnConfig(db.Model):
+    __tablename__ = 'plan_column_configs'
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    label = db.Column(db.String(50), nullable=False)
+    
+    plan = db.relationship("Plan", back_populates="column_configs")
+
+
 class Plan(db.Model):
     __tablename__ = 'plans'
     id = db.Column(db.Integer, primary_key=True)
@@ -165,6 +175,7 @@ class Plan(db.Model):
     tickets = db.relationship('Ticket', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     events = db.relationship('Event', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     indicators_usage = db.relationship('IndicatorUsage', back_populates='plan', lazy=True, cascade="all, delete-orphan")
+    column_configs = db.relationship('PlanColumnConfig', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     
     user = db.relationship("User", back_populates="plans")
     organization = db.relationship("Organization", foreign_keys=[org_id], back_populates="plans")

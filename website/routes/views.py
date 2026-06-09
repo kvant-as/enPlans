@@ -14,8 +14,8 @@ from flask_login import (
 )
 
 from ..time import TimeByMinsk
-from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
-from website.utils.plans import get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
+from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_usd_rate_from_belarusbank
+from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
 from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
@@ -215,49 +215,59 @@ def edit_plan_type(token):
 @login_required
 @session_required
 def plans():
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
+    
     return render_template(
         'plans.html',
-        years=range(2024, 2056),
+        years=range(2026, 2050),
         current_user=current_user,
-        hide_header=False
+        hide_header=False,
+        selected_status=status,
+        selected_year=year
     )
     
     
-@views.route('/plans-audit', methods=['GET'])
-@user_with_all_params()
-@login_required
-@session_required   
-def plans_audit():
-    status_filter = request.args.get('status', 'all')
-    year_filter = request.args.get('year', 'all')
+# @views.route('/plans-audit', methods=['GET'])
+# @user_with_all_params()
+# @login_required
+# @session_required   
+# def plans_audit():
+#     status_filter = request.args.get('status', 'all')
+#     year_filter = request.args.get('year', 'all')
 
-    plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
+#     plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
 
-    context = {
-        'years': range(2024, 2056),
-        'plans': plans,
-        'status_counts': status_counts,
-        'current_status_filter': status_filter,
-        'current_year_filter': year_filter
-    }
+#     context = {
+#         'years': range(2024, 2056),
+#         'plans': plans,
+#         'status_counts': status_counts,
+#         'current_status_filter': status_filter,
+#         'current_year_filter': year_filter
+#     }
 
-    return render_template(
-        'plans_audit.html',
-        **context,
-        current_user=current_user,
-        hide_header=False
-    ) 
+#     return render_template(
+#         'plans_audit.html',
+#         **context,
+#         current_user=current_user,
+#         hide_header=False
+#     ) 
 
 @views.route('/export', methods=['GET'])
 @user_with_all_params()
 @login_required
 @session_required
 def export():
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
+    
     return render_template(
         'export.html',
-        years=range(2024, 2056),
+        years=range(2026, 2050),
         current_user=current_user,
-        hide_header=False
+        hide_header=False,
+        selected_status=status,
+        selected_year=year
     )
     
 @views.route('/export/start', methods=['POST'])
@@ -387,12 +397,11 @@ def create_plan():
             region_id = current_user.region.id
 
         def get_usd_rate_for_new_plan():
-            usd_rate, error = fetch_usd_rate_from_belarusbank()
+            usd_rate, error = fetch_usd_rate_from_any_source()
             
             if usd_rate is None:
-                current_app.logger.warning(f'Failed to fetch USD rate: {error}')
-                flash('Не удалось получить актуальный курс доллара. Будет использовано значение по умолчанию 2.75', 'warning')
-                return Decimal('2.75')
+                current_app.logger.error(f'Failed to fetch USD rate for new plan: {error}')
+                return None
             
             return usd_rate
         
@@ -448,7 +457,10 @@ def create_plan():
             )
             db.session.add(indicator_usage)
         
+        configs = get_column_configs_for_plan(new_plan)
+        db.session.add_all(configs)
         db.session.commit()
+        
         flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
 

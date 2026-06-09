@@ -153,8 +153,7 @@
           </tr>
         </thead>
         
-        <!-- Оригинальные мероприятия -->
-        <tr class="group-header" data-target="non-local-content">
+        <tr class="group-header" data-target="non-local-content" style="border-top: none !important;">
           <td colspan="18">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
@@ -164,7 +163,7 @@
         </tr>
         <tbody class="rows" id="non-local-content">
           <tr class="no-results-row">
-            <td colspan="18">...</td>
+            <td colspan="18"></td>
           </tr>
         </tbody>
         
@@ -178,11 +177,10 @@
         </tr>
         <tbody class="rows" id="local-content">
           <tr class="no-results-row">
-            <td colspan="18">...</td>
+            <td colspan="18" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
           </tr>
         </tbody>
         
-        <!-- Итого и периоды -->
         <tr class="group-header" data-target="other-content">
           <td colspan="18">
             <div class="group-header-content">
@@ -193,7 +191,7 @@
         </tr>
         <tbody id="other-content" class="rows">
           <tr>
-            <td colspan="18">...</td>
+            <td colspan="18"></td>
           </tr>
         </tbody>
       </table>
@@ -263,7 +261,7 @@
                 </div>
                 <div class="button-auth-area" id="step1-buttons">
                     <div></div>
-                    <button type="button" class="svg-btn" id="step1-next-btn" data-action="directions-next">
+                    <button type="button" class="svg-btn blue" id="step1-next-btn" data-action="directions-next">
                         <span class="btn-text">{{ _('Далее') }}</span>
                         {{ icons.next_icon() }}
                     </button>
@@ -340,7 +338,7 @@
                         </div>
                     </div>
                     <div class="button-auth-area" id="step2-buttons" style="display: flex; justify-content: space-between;">
-                        <button type="button" class="svg-btn" id="step2-next-btn" data-action="next-step-2" disabled>
+                        <button type="button" class="svg-btn blue" id="step2-next-btn" data-action="next-step-2" disabled>
                             <span class="btn-text">{{ _('Далее') }}</span>
                             {{ icons.next_icon() }}
                         </button>
@@ -545,7 +543,7 @@
                         </div>
                         <div class="button-auth-area">
                             <div></div>
-                            <button type="button" class="svg-btn" id="step1-next-btn">
+                            <button type="button" class="svg-btn blue" id="step1-next-btn">
                                 <span class="btn-text">{{ _('Далее') }}</span>
                                 {{ icons.next_icon() }}
                             </button>
