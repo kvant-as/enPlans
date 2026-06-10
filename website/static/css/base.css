@@ -768,7 +768,7 @@ header nav{
 .nav-menu-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   padding: 8px;
 }
 
@@ -2560,13 +2560,11 @@ input::placeholder {
 }
 
 .svg-btn.blue{
-  color: rgb(255, 255, 255);
-  background: linear-gradient(135deg, #00628f 0%, #0084ff 20%) !important;
+
 }
 
 .svg-btn.blue:hover{
-  color: rgb(255, 255, 255);
-  background: linear-gradient(135deg, #0097dd 0%, #188fff 20%) !important;
+
 }
 
 /* .svg-btn.blue svg:hover{
@@ -3034,7 +3032,7 @@ input::placeholder {
   flex-direction: column;
   justify-content: space-between;
   gap: 15px;
-  margin-bottom: 90px;
+  padding-bottom: 90px;
 }
 
 .personal-acc-conteiner .name,
@@ -3075,7 +3073,6 @@ input::placeholder {
   border: none;
   padding: 8px;
   cursor: pointer;
-  border-radius: 8px;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -3084,7 +3081,8 @@ input::placeholder {
 }
 
 .dots-btn:hover {
-  /* background-color: rgba(0, 0, 0, 0.05); */
+  border-radius: 100px;
+  background-color: rgba(0, 0, 0, 0.05);
   box-shadow: none;
   transform: scale(1.1);
 }
@@ -6078,7 +6076,7 @@ input[type="checkbox"]:focus {
   border-radius: 16px;
   border: 1px solid var(--border-color);
   position: relative;
-  max-height: calc(100vh - 320px);
+  max-height: calc(100vh - 120px);
   scroll-behavior: smooth;
   overflow-y: auto;
   overflow-x: auto;

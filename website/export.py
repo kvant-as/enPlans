@@ -1133,20 +1133,20 @@ def export_xlsx_single(plan: Plan):
         ws["A1"].value = "Часть 1. Показатели использования топливно-энергетических ресурсов"
         ws["A1"].font = bold_font_13
         ws["A1"].alignment = center
-        
         ws.merge_cells("A2:G2")
         ws["A2"].value = ""
         ws["A2"].font = bold_font_13
         ws["A2"].alignment = center
 
+        configs = sorted(plan.column_configs, key=lambda x: x.year)
         headers = [
             "№ п/п", 
             "Основные показатели использования ТЭР", 
             "Единица измерения", 
-            f"{plan.year - 2} г. отчет", 
-            f"{plan.year - 1} г. отчет", 
-            f"{plan.year} г. прогноз", 
-            "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. (увеличение + , снижение - )"
+            f"{plan.year - 2} г. {configs[0].label}", 
+            f"{plan.year - 1} г. {configs[1].label}", 
+            f"{plan.year} г. {configs[2].label}", 
+            "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т."
         ]
         
         ws.append(headers)
@@ -1157,6 +1157,22 @@ def export_xlsx_single(plan: Plan):
             cell.alignment = center
             cell.border = thin_border
         
+        def format_value(value, group):
+            if value is None or value == '':
+                return ''
+            
+            try:
+                num = float(value)
+            except (ValueError, TypeError):
+                return value
+            
+            if group == 5:
+                return round(num, 1)
+            elif group in [6, 7, 8]:
+                return round(num, 2)
+            else:
+                return int(round(num))
+        
         previous_group = None
         row_index = 3
 
@@ -1166,32 +1182,45 @@ def export_xlsx_single(plan: Plan):
                 (0, u.indicator.RowN) if u.indicator.RowN is not None else (1, float('-inf'))
             )
         ):
-
-            if usage.indicator.Group != previous_group:
-                if usage.indicator.Group is not None:
+            group = usage.indicator.Group
+            
+            if group != previous_group:
+                if group is not None:
                     try:
-                        group_float = float(usage.indicator.Group)
+                        group_float = float(group)
                         if group_float.is_integer():
                             group_value = int(group_float)
                         else:
-                            group_value = usage.indicator.Group
+                            group_value = group
                     except (ValueError, TypeError):
-                        group_value = usage.indicator.Group
+                        group_value = group
                 else:
                     group_value = ""
             else:
                 group_value = ""
             
-            previous_group = usage.indicator.Group
+            previous_group = group
+            
+            if group in [5, 6]:
+                QYearBeforePrev = 'x'
+                QYearPrev = 'x'
+                QYearCurrent = format_value(usage.QYearCurrent, group)
+                difference = 'x'
+            else:
+                QYearBeforePrev = format_value(usage.QYearBeforePrev, group)
+                QYearPrev = format_value(usage.QYearPrev, group)
+                QYearCurrent = format_value(usage.QYearCurrent, group)
+                difference = format_value((usage.QYearCurrent or 0) - (usage.QYearPrev or 0), group)
             
             row = [
-                group_value, 
-                usage.indicator.name if usage.indicator.name else "-",
+                group_value,
+                (usage.indicator.name if usage.indicator.name else "-") + 
+                (f" ({usage.note})" if usage.note else ""),
                 usage.indicator.unit.name,
-                (usage.QYearBeforePrev or 0),
-                (usage.QYearPrev or 0),
-                (usage.QYearCurrent or 0),
-                (usage.QYearCurrent or 0) - (usage.QYearPrev or 0),
+                QYearBeforePrev,
+                QYearPrev,
+                QYearCurrent,
+                difference,
             ]
             ws.append(row)
             
@@ -1199,9 +1228,10 @@ def export_xlsx_single(plan: Plan):
             
             if group_value in [5, 8]:
                 ws.row_dimensions[row_index].height = 34
-                
-            for col in range(1, len(row)+1):
+            
+            for col in range(1, len(row) + 1):
                 cell = ws.cell(row=row_index, column=col)
+                
                 if group_value != "":
                     cell.font = bold_font_11
                 else:
@@ -1226,9 +1256,20 @@ def export_xlsx_single(plan: Plan):
                     else:
                         cell.number_format = '@'
                 elif col in [4, 5, 6, 7]:
-                    cell.number_format = '0.00'
+                    value = row[col-1]
+                    if value != 'x' and value != '':
+                        if group == 5:
+                            cell.number_format = '0.0'
+                        elif group in [6, 7, 8]:
+                            cell.number_format = '0.00'
+                        else:
+                            cell.number_format = '0'
+                    else:
+                        cell.number_format = '@'
                 else:
                     cell.number_format = '@'
+        
+        return ws
         
         def org_small_signatures_indicators_xlsx(ws, start_row, plan):
             okpo = plan.organization.okpo if plan.organization else None
@@ -1546,7 +1587,7 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
         ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, тыс. руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"
@@ -2134,7 +2175,7 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
         ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемое увеличение использования местных ТЭР от внедрения мероприятий в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, тыс. руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"

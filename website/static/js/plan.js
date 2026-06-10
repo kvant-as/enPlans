@@ -124,6 +124,7 @@ class PlanIndicators {
         const coeff = row.cells[4]?.textContent.trim() || '0';
         const unitName = row.cells[3]?.textContent.trim() || 'ед. изм.';
         const indicatorId = row.cells[0]?.textContent.trim() || '';
+        const group = row.querySelector('td[data-group]')?.getAttribute('data-group') || '';
         
         if (selectedName) {
             selectedName.textContent = `${code} - ${name}`;
@@ -146,6 +147,9 @@ class PlanIndicators {
             span.textContent = unitName;
         });
         
+        const groupNumber = parseFloat(group);
+        this.initAddNumericInputsByGroup(groupNumber);
+        
         if (typeof checkCategoryRequired === 'function') {
             checkCategoryRequired();
         }
@@ -164,6 +168,71 @@ class PlanIndicators {
         }
         
         this.updateTutResults();
+    }
+
+    initAddNumericInputsByGroup(groupNumber) {
+        const inputs = [
+            document.querySelector('#AddIndicatorModal input[data-year="before"]'),
+            document.querySelector('#AddIndicatorModal input[data-year="prev"]'),
+            document.querySelector('#AddIndicatorModal input[data-year="current"]')
+        ];
+        
+        inputs.forEach(input => {
+            if (!input) return;
+            
+            let decimalPlaces = 0;
+            let defaultValue = '0';
+            
+            if (groupNumber === 5) {
+                decimalPlaces = 1;
+                defaultValue = '0,0';
+            } else if (groupNumber === 6 || groupNumber === 7 || groupNumber === 8) {
+                decimalPlaces = 2;
+                defaultValue = '0,00';
+            } else {
+                decimalPlaces = 0;
+                defaultValue = '0';
+            }
+            
+            const settings = {
+                allowNegative: false,
+                decimalPlaces: decimalPlaces,
+                defaultValue: defaultValue
+            };
+            
+            input.removeEventListener('input', input._addInputHandler);
+            input.removeEventListener('focus', input._addFocusHandler);
+            input.removeEventListener('blur', input._addBlurHandler);
+            
+            const inputHandler = (e) => { 
+                NumericInputHandler.handleInput(e, settings);
+                this.updateTutResults();
+            };
+            const focusHandler = (e) => { 
+                NumericInputHandler.handleFocus(e, settings);
+            };
+            const blurHandler = (e) => { 
+                NumericInputHandler.handleBlur(e, settings);
+                this.updateTutResults();
+            };
+            
+            input.addEventListener('input', inputHandler);
+            input.addEventListener('focus', focusHandler);
+            input.addEventListener('blur', blurHandler);
+            input.addEventListener('click', (e) => { e.target.select(); });
+            
+            input._addInputHandler = inputHandler;
+            input._addFocusHandler = focusHandler;
+            input._addBlurHandler = blurHandler;
+            
+            if (decimalPlaces === 0) {
+                input.placeholder = '0';
+            } else if (decimalPlaces === 1) {
+                input.placeholder = '0,0';
+            } else {
+                input.placeholder = '0,00';
+            }
+        });
     }
 
     updateTutResults() {
@@ -200,20 +269,44 @@ class PlanIndicators {
             currentCoeff = 0;
         }
         
+        const activeRow = document.querySelector('[data-action="modal-table-main"] tbody tr.active-row');
+        let groupValue = '';
+        if (activeRow) {
+            const groupDataCell = activeRow.querySelector('td[data-group]');
+            if (groupDataCell) {
+                groupValue = groupDataCell.getAttribute('data-group');
+            }
+        }
+        const groupNumber = parseFloat(groupValue);
+        
+        const formatResultValue = (value, groupId) => {
+            if (value === null || value === undefined || isNaN(value)) return '0';
+            
+            if (groupId === 5) {
+                return value.toFixed(1).replace('.', ',');
+            } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                return value.toFixed(2).replace('.', ',');
+            } else {
+                return Math.round(value).toString().replace('.', ',');
+            }
+        };
+        
         const years = ['before', 'prev', 'current'];
         years.forEach((year) => {
             const input = document.querySelector(`#AddIndicatorModal input[data-year="${year}"]`);
             const resultSpan = document.getElementById(`result-${year}`);
             
             if (input && resultSpan) {
-                let inputValue = input.value.replace(',', '.');
-                let value = parseFloat(inputValue);
-                if (isNaN(value)) {
-                    value = 0;
+                if (input.value) {
+                    let inputValue = input.value.replace(',', '.');
+                    let value = parseFloat(inputValue);
+                    if (isNaN(value)) value = 0;
+                    const tutValue = value * currentCoeff;
+                    let formattedResult = formatResultValue(tutValue, groupNumber);
+                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                } else {
+                    resultSpan.textContent = '= 0 т.у.т.';
                 }
-                const tutValue = value * currentCoeff;
-                let formattedResult = tutValue.toFixed(2).replace('.', ',');
-                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
             }
         });
     }
@@ -249,6 +342,19 @@ class PlanIndicators {
             const tr = document.createElement('tr');
             tr.className = `menu-row ${isNewGroup ? 'group-header-indicator' : ''}`;
             tr.setAttribute('data-id', row.id);
+            
+            const formatValue = (value, groupId) => {
+                if (value === null || value === undefined || isNaN(value)) return '';
+                
+                if (groupId === 5) {
+                    return value.toFixed(1).replace('.', ',');
+                } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                    return value.toFixed(2).replace('.', ',');
+                } else {
+                    return Math.round(value).toString().replace('.', ',');
+                }
+            };
+            
             tr.innerHTML = `
                 <td style="text-align: center; display: none;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
@@ -256,14 +362,14 @@ class PlanIndicators {
                     ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
                 </td>
                 <td style="text-align: start">${this.escapeHtml(row.unit_name)}</td>
-                <td>${row.QYearBeforePrev_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearBeforePrev_tut.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearPrev_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearPrev_tut.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearCurrent_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearCurrent_tut.toFixed(2).replace('.', ',')}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_unit, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_tut, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_unit, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_tut, row.group)}</td>
+                <td>${formatValue(row.QYearCurrent_unit, row.group)}</td>
+                <td>${formatValue(row.QYearCurrent_tut, row.group)}</td>
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
-                    ${row.difference.toFixed(2).replace('.', ',')}
+                    ${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.difference, row.group)}
                 </td>
                 <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
@@ -348,7 +454,7 @@ class PlanIndicators {
     showError(message) {
         const tbody = document.getElementById('indicators-tbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">${message}<tr></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">${message}</td></tr>`;
         }
     }
 }
@@ -374,8 +480,11 @@ function Edit_indicator_modal() {
         groupValue = groupDataCell.getAttribute('data-group');
     }
 
-    const isGroup5 = groupValue === '5.0';
-    const isGroup6 = groupValue === '6.0';
+    const groupNumber = parseFloat(groupValue);
+    const isGroup5 = groupNumber === 5;
+    const isGroup6 = groupNumber === 6;
+    const isGroup7 = groupNumber === 7;
+    const isGroup8 = groupNumber === 8;
     const isSpecialGroup = isGroup5 || isGroup6;
 
     const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
@@ -384,6 +493,75 @@ function Edit_indicator_modal() {
     const editCategorySection = document.getElementById('edit-category-section');
     const editNameSection = document.getElementById('edit-name-section');
     const editNameInput = document.getElementById('edit-name-section-input');
+    
+    const initNumericInput = (inputElement, groupId) => {
+        if (!inputElement) return;
+        
+        let decimalPlaces = 0;
+        let defaultValue = '0';
+        
+        if (groupId === 5) {
+            decimalPlaces = 1;
+            defaultValue = '0,0';
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            decimalPlaces = 2;
+            defaultValue = '0,00';
+        } else {
+            decimalPlaces = 0;
+            defaultValue = '0';
+        }
+        
+        const settings = {
+            allowNegative: false,
+            decimalPlaces: decimalPlaces,
+            defaultValue: defaultValue
+        };
+        
+        const inputHandler = function(e) { 
+            NumericInputHandler.handleInput(e, settings);
+            updateEditTutResults();
+        };
+        const focusHandler = function(e) { 
+            NumericInputHandler.handleFocus(e, settings);
+        };
+        const blurHandler = function(e) { 
+            NumericInputHandler.handleBlur(e, settings);
+            updateEditTutResults();
+        };
+        
+        inputElement.removeEventListener('input', inputElement._inputHandler);
+        inputElement.removeEventListener('focus', inputElement._focusHandler);
+        inputElement.removeEventListener('blur', inputElement._blurHandler);
+        
+        inputElement.addEventListener('input', inputHandler);
+        inputElement.addEventListener('focus', focusHandler);
+        inputElement.addEventListener('blur', blurHandler);
+        inputElement.addEventListener('click', function(e) { e.target.select(); });
+        
+        inputElement._inputHandler = inputHandler;
+        inputElement._focusHandler = focusHandler;
+        inputElement._blurHandler = blurHandler;
+    };
+    
+    const formatDisplayValue = (value, groupId) => {
+        if (value === null || value === undefined || isNaN(value)) return '';
+        
+        if (groupId === 5) {
+            return value.toFixed(1).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(2).replace('.', ',');
+        } else {
+            return Math.round(value).toString().replace('.', ',');
+        }
+    };
+    
+    const beforePrevInput = document.getElementById('QYearBeforePrev-edit');
+    const prevInput = document.getElementById('QYearCurr-edit');
+    const currentInput = document.getElementById('QYearCurrent-edit');
+    
+    initNumericInput(beforePrevInput, groupNumber);
+    initNumericInput(prevInput, groupNumber);
+    initNumericInput(currentInput, groupNumber);
     
     fetch(`/api/get-indicator/${idIndicator}`)
         .then(response => response.json())
@@ -413,7 +591,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -424,7 +601,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -435,7 +611,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = '';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -481,23 +656,34 @@ function Edit_indicator_modal() {
             const usedCoeff = data.used_coeff;
             const coeffValue = usedCoeff ? usedCoeff : data.CoeffToTut;
             
+            const setFormattedValue = (inputId, value, groupId) => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    if (value === null || value === undefined || isNaN(value)) {
+                        input.value = '';
+                    } else {
+                        input.value = formatDisplayValue(value, groupId);
+                    }
+                }
+            };
+            
             if (isCodes9911to9914) {
-                setValueIfExists('QYearBeforePrev-edit', '');
-                setValueIfExists('QYearCurr-edit', '');
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
+                setFormattedValue('QYearCurr-edit', null, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else if (!isSpecialGroup) {
-                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearBeforePrev-edit', valBeforePrev);
-                setValueIfExists('QYearCurr-edit', valPrev);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue) : null;
+                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue) : null;
+                setFormattedValue('QYearBeforePrev-edit', valBeforePrev, groupNumber);
+                setFormattedValue('QYearCurr-edit', valPrev, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else {
-                setValueIfExists('QYearBeforePrev-edit', '');
-                setValueIfExists('QYearCurr-edit', '');
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
+                setFormattedValue('QYearCurr-edit', null, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             }
             
             function validateEditForm() {
@@ -611,12 +797,37 @@ function updateEditTutResults() {
     
     const activeRow = document.querySelector('.rows .active-row');
     let indicatorCode = '';
+    let groupValue = '';
+    
     if (activeRow) {
         const codeCell = activeRow.querySelector('td:nth-child(12)');
         if (codeCell) {
             indicatorCode = codeCell.textContent.trim();
         }
+        const groupDataCell = activeRow.querySelector('td[data-group]');
+        if (groupDataCell) {
+            groupValue = groupDataCell.getAttribute('data-group');
+        }
     }
+    
+    const groupNumber = parseFloat(groupValue);
+    const isGroup5 = groupNumber === 5;
+    const isGroup6 = groupNumber === 6;
+    const isGroup7 = groupNumber === 7;
+    const isGroup8 = groupNumber === 8;
+    const isSpecialGroup = isGroup5 || isGroup6;
+    
+    const formatResultValue = (value, groupId) => {
+        if (value === null || value === undefined || isNaN(value)) return '0';
+        
+        if (groupId === 5) {
+            return value.toFixed(1).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(2).replace('.', ',');
+        } else {
+            return Math.round(value).toString().replace('.', ',');
+        }
+    };
     
     const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
     
@@ -629,8 +840,24 @@ function updateEditTutResults() {
             let value = parseFloat(inputValue);
             if (isNaN(value)) value = 0;
             const tutValue = value * currentCoeff;
-            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            let formattedResult = formatResultValue(tutValue, groupNumber);
             resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        } else if (resultSpan) {
+            resultSpan.textContent = '= 0 т.у.т.';
+        }
+    } else if (isSpecialGroup) {
+        const currentInput = document.getElementById('QYearCurrent-edit');
+        const resultSpan = document.getElementById('edit-result-current');
+        
+        if (currentInput && resultSpan && currentInput.value) {
+            let inputValue = currentInput.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) value = 0;
+            const tutValue = value * currentCoeff;
+            let formattedResult = formatResultValue(tutValue, groupNumber);
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        } else if (resultSpan) {
+            resultSpan.textContent = '= 0 т.у.т.';
         }
     } else {
         const inputs = [
@@ -643,17 +870,128 @@ function updateEditTutResults() {
             const input = document.getElementById(item.id);
             const resultSpan = document.getElementById(item.resultId);
             
-            if (input && resultSpan && input.value && !input.readOnly) {
-                let inputValue = input.value.replace(',', '.');
-                let value = parseFloat(inputValue);
-                if (isNaN(value)) value = 0;
-                const tutValue = value * currentCoeff;
-                let formattedResult = tutValue.toFixed(2).replace('.', ',');
-                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+            if (input && resultSpan) {
+                if (input.value && !input.readOnly) {
+                    let inputValue = input.value.replace(',', '.');
+                    let value = parseFloat(inputValue);
+                    if (isNaN(value)) value = 0;
+                    const tutValue = value * currentCoeff;
+                    let formattedResult = formatResultValue(tutValue, groupNumber);
+                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                } else {
+                    resultSpan.textContent = '= 0 т.у.т.';
+                }
             }
         });
     }
 }
+
+var NumericInputHandler = {
+    init: function(selector, options) {
+        var defaults = {
+            allowNegative: false,
+            decimalPlaces: 2,
+            defaultValue: '0,00'
+        };
+        var settings = Object.assign({}, defaults, options);
+        
+        var inputs = document.querySelectorAll(selector);
+        inputs.forEach(function(input) {
+            input.addEventListener('input', function(e) {
+                NumericInputHandler.handleInput(e, settings);
+            });
+            input.addEventListener('focus', function(e) {
+                NumericInputHandler.handleFocus(e, settings);
+            });
+            input.addEventListener('blur', function(e) {
+                NumericInputHandler.handleBlur(e, settings);
+            });
+            input.addEventListener('click', function(e) {
+                e.target.select();
+            });
+        });
+    },
+    
+    handleInput: function(e, settings) {
+        var input = e.target;
+        var cursorPos = input.selectionStart;
+        var oldValue = input.value;
+        var newValue = oldValue;
+        
+        if (settings.allowNegative) {
+            newValue = oldValue.replace(/[^\d,.-]/g, '');
+            var minusCount = (newValue.match(/-/g) || []).length;
+            if (minusCount > 1) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            } else if (minusCount === 1 && !newValue.startsWith('-')) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            }
+            if (newValue === '-') {
+                input.value = newValue;
+                return;
+            }
+        } else {
+            newValue = oldValue.replace(/[^\d,]/g, '');
+            if (newValue === '') {
+                input.value = '';
+                return;
+            }
+        }
+        
+        if (newValue !== '' && newValue !== '-') {
+            newValue = newValue.replace(',', '.');
+            var parts = newValue.split('.');
+            if (parts.length > 1) {
+                newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
+            }
+
+            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
+                newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
+            }
+            
+            var floatValue = parseFloat(newValue);
+            if (!isNaN(floatValue)) {
+                newValue = floatValue.toFixed(settings.decimalPlaces);
+                newValue = newValue.replace('.', ',');
+            }
+        }
+        
+        if (newValue !== oldValue) {
+            input.value = newValue;
+            var newCursorPos = Math.min(cursorPos, newValue.length);
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+    },
+    
+    handleFocus: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-') {
+            input.value = settings.defaultValue;
+        }
+        var commaIndex = input.value.indexOf(',');
+        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
+            input.setSelectionRange(commaIndex, commaIndex);
+        } else if (settings.decimalPlaces === 0) {
+            input.select();
+        }
+    },
+    
+    handleBlur: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-' || input.value === null) {
+            input.value = settings.defaultValue;
+        } else {
+            var valueWithDot = input.value.replace(',', '.');
+            var num = parseFloat(valueWithDot);
+            if (!isNaN(num)) {
+                var formatted = num.toFixed(settings.decimalPlaces);
+                input.value = formatted.replace('.', ',');
+            } else {
+                input.value = settings.defaultValue;
+            }
+        }
+    }
+};
 
 function setValueIfExists(elementId, value) {
     const element = document.getElementById(elementId);
@@ -1222,18 +1560,20 @@ class TableContextMenu {
     onRowLeftClick(event, row) {
         event.stopPropagation();
         
-        if (row.classList.contains('active-row')) {
-            row.classList.remove('active-row');
-            this.selectedRow = null;
-        } else {
-            if (this.selectedRow && this.selectedRow !== row) {
-                this.selectedRow.classList.remove('active-row');
-            }
-            row.classList.add('active-row');
-            this.selectedRow = row;
+        const hasDataId = row.getAttribute('data-id') && row.getAttribute('data-id') !== 'null';
+        
+        if (!hasDataId) {
+            return;
         }
         
-        const isPeriodRow = row.closest('#other-content') !== null || row.classList.contains('group-header');
+        if (this.selectedRow && this.selectedRow !== row) {
+            this.selectedRow.classList.remove('active-row');
+        }
+        
+        row.classList.add('active-row');
+        this.selectedRow = row;
+        
+        const isPeriodRow = row.closest('#other-content') !== null;
         
         setTimeout(() => {
             if (isPeriodRow) {
@@ -1265,6 +1605,13 @@ class TableContextMenu {
         event.preventDefault();
         event.stopPropagation();
 
+        const hasDataId = row.getAttribute('data-id') && row.getAttribute('data-id') !== 'null';
+        
+        if (!hasDataId) {
+            this.updateButtonsState();
+            return;
+        }
+
         if (this.selectedRow && this.selectedRow !== row) {
             this.selectedRow.classList.remove('active-row');
         }
@@ -1279,7 +1626,7 @@ class TableContextMenu {
             }
         }
         
-        const isPeriodRow = row.closest('#other-content') !== null || row.classList.contains('group-header');
+        const isPeriodRow = row.closest('#other-content') !== null;
         
         if (isPeriodRow) {
             if (typeof Edit_Period_modal === 'function') {

@@ -252,41 +252,42 @@
                             </label>
                         </div>
                     </div>
-                    
+                    {% set configs = plan.column_configs|sort(attribute='year') %}
+
                     <div class="values-section">
                         <div class="values-section-title">Значения показателя</div>
                         <div class="values-grid">
                             <div class="value-card">
-                                <label class="value-label">Отчет {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" value="0,00" name="QYearBeforePrev"
-                                        placeholder="0,00" class="app-numeric-input" data-year="before" required>
+                                    <input type="text" value="0" name="QYearBeforePrev"
+                                        placeholder="0" class="app-numeric-input" data-year="before" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-before">{{ _('ед. изм.') }}</div>
-                                <div class="result-tut" id="result-before">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="result-before">= 0 т.у.т.</div>
                             </div>
                             
                             <div class="value-card">
-                                <label class="value-label">Оценка {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" value="0,00" name="QYearPrev"
-                                        placeholder="0,00" class="app-numeric-input" data-year="prev" required>
+                                    <input type="text" value="0" name="QYearPrev"
+                                        placeholder="0" class="app-numeric-input" data-year="prev" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-prev">{{ _('ед. изм.') }}</div>
-                                <div class="result-tut" id="result-prev">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="result-prev">= 0 т.у.т.</div>
                             </div>
                             
                             <div class="value-card">
-                                <label class="value-label">Прогноз {{ plan.year }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" value="0,00" name="QYearCurrent"
-                                        placeholder="0,00" class="app-numeric-input" data-year="current" required>
+                                    <input type="text" value="0" name="QYearCurrent"
+                                        placeholder="0" class="app-numeric-input" data-year="current" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-current">{{ _('ед. изм.') }}</div>
-                                <div class="result-tut" id="result-current">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="result-current">= 0 т.у.т.</div>
                             </div>
                         </div>
                     </div>
@@ -385,40 +386,41 @@
                         </div>
                     </div>
                     
+                    {% set configs = plan.column_configs|sort(attribute='year') %}
                     <div class="values-section">
                         <div class="values-section-title">Значения показателя</div>
                         <div class="values-grid">
                             <div class="value-card" id="QYearBeforePrev-edit-nodisplay">
-                                <label class="value-label">Отчет {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" id="QYearBeforePrev-edit" value="0,00" name="QYearBeforePrev"
-                                        placeholder="0,00" class="app-numeric-input">
+                                    <input type="text" id="QYearBeforePrev-edit" value="0" name="QYearBeforePrev"
+                                        placeholder="0" class="app-input">
                                 </div>
                                 <div class="value-unit" id="unit-name-before-edit"></div>
-                                <div class="result-tut" id="edit-result-before">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-before">= 0 т.у.т.</div>
                             </div>
                             
                             <div class="value-card" id="QYearCurr-edit-nodisplay">
-                                <label class="value-label">Оценка {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" id="QYearCurr-edit" value="0,00" name="QYearPrev"
-                                        placeholder="0,00" class="app-numeric-input">
+                                    <input type="text" id="QYearCurr-edit" value="0" name="QYearPrev"
+                                        placeholder="0" class="app-input">
                                 </div>
                                 <div class="value-unit" id="unit-name-prev-edit"></div>
-                                <div class="result-tut" id="edit-result-prev">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-prev">= 0 т.у.т.</div>
                             </div>
                             
                             <div class="value-card" id="QYearCurrent-edit-nodisplay">
-                                <label class="value-label">Прогноз {{ plan.year }} {{ _('г.') }}</label>
+                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" id="QYearCurrent-edit" value="0,00" name="QYearCurrent"
-                                        placeholder="0,00" class="app-numeric-input" required>
+                                    <input type="text" id="QYearCurrent-edit" value="0" name="QYearCurrent"
+                                        placeholder="0" class="app-input" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-current-edit"></div>
-                                <div class="result-tut" id="edit-result-current">= 0,00 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-current">= 0 т.у.т.</div>
                             </div>
                         </div>
                     </div>
