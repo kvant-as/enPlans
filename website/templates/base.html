@@ -240,7 +240,7 @@
     </div>    
 
     {% if context_menu %}
-        {% set is_disabled = plan.is_sent or plan.is_approved %}
+        {% set is_disabled = plan.is_sent or plan.is_approved or (plan.user_id != current_user.id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}
@@ -454,7 +454,6 @@
       {% block javascript %} 
         <script src="{{ url_for('static', filename='js/base.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/event-calc.js') }}"></script>
         <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>
         <script>
         document.addEventListener('DOMContentLoaded', () => {

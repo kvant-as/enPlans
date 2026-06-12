@@ -227,31 +227,23 @@ def plans():
         selected_year=year
     )
     
+@views.route('/plans-audit', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+def plans_audit():
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
     
-# @views.route('/plans-audit', methods=['GET'])
-# @user_with_all_params()
-# @login_required
-# @session_required   
-# def plans_audit():
-#     status_filter = request.args.get('status', 'all')
-#     year_filter = request.args.get('year', 'all')
-
-#     plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
-
-#     context = {
-#         'years': range(2024, 2056),
-#         'plans': plans,
-#         'status_counts': status_counts,
-#         'current_status_filter': status_filter,
-#         'current_year_filter': year_filter
-#     }
-
-#     return render_template(
-#         'plans_audit.html',
-#         **context,
-#         current_user=current_user,
-#         hide_header=False
-#     ) 
+    return render_template(
+        'plans.html',
+        years=range(2026, 2050),
+        current_user=current_user,
+        hide_header=False,
+        selected_status=status,
+        selected_year=year,
+        audit_page=True
+    )
 
 @views.route('/export', methods=['GET'])
 @user_with_all_params()
@@ -603,6 +595,10 @@ def get_ticket_details(ticket_id):
 @views.route('/FAQ', methods=['GET'])
 def FAQ_page():    
     return render_template('FAQ.html', active_tab = 'faq')
+
+@views.route('/test', methods=['GET'])
+def test_page():    
+    return render_template('test.html')
 
 @views.route('/', methods=['GET'])
 def begin_page():    

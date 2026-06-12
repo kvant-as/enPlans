@@ -315,6 +315,9 @@
                                 {{ icons.icon_half() }}
                                 <input type="text" value="0,00" name="EffCurrYear" class="app-numeric-input" required>
                             </div>
+                            <div id="eff-curr-year-warning" class="error-message-modern">
+                                {{ _('Эффект в текущем году не может превышать общий эффект') }}
+                            </div>
                         </div>
                     </div>
                     <div class="currency-info">
@@ -519,6 +522,9 @@
                                     {{ icons.icon_half() }}
                                     <input type="text" id="change-EffCurrYear-edit-model" name="EffCurrYear" placeholder="0,00" class="app-numeric-input" required>
                                 </div>
+                                <div id="eff-curr-year-warning" class="error-message-modern" style="display: none;">
+                                    {{ _('Эффект в текущем году не может превышать общий эффект') }}
+                                </div>
                             </div>
                         </div>
                         <div class="currency-info">
@@ -627,7 +633,7 @@
                                 <label>id</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_eco() }}
-                                    <input class="app-input" name="id_direction" data-action="selected-direction" readonly>
+                                    <input class="app-input" id="change-id_direction-edit-model" name="id_direction" data-action="selected-direction" readonly>
                                 </div>
                             </div>
                         </div>
@@ -679,4 +685,6 @@
     </div>
 </div>
 
+
+<script src="{{ url_for('static', filename='js/event-calc.js') }}"></script>
 {% endblock %}

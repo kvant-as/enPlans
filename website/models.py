@@ -25,8 +25,9 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String())
     
     is_admin = db.Column(db.Boolean, default=False)
-    
     is_auditor = db.Column(db.Boolean, default=False)
+    
+    is_region = db.Column(db.Boolean, default=False)
     is_municipal = db.Column(db.Boolean, default=False)
     is_departament = db.Column(db.Boolean, default=False)
     is_higher_organization = db.Column(db.Boolean, default=False)
@@ -151,20 +152,27 @@ class Plan(db.Model):
     usd_rate = db.Column(Numeric(scale=4))
     cost_per_toe_usd = db.Column(Numeric(scale=2))
     
-    is_auditor_approved = db.Column(db.Boolean, default=False)
+    is_region_approved = db.Column(db.Boolean, default=False)
     is_municipal_approved = db.Column(db.Boolean, default=False)
     is_department_approved = db.Column(db.Boolean, default=False)
     is_higher_organization_approved = db.Column(db.Boolean, default=False)
+    
+    region_approved_time = db.Column(db.DateTime, nullable=True)
+    municipal_approved_time = db.Column(db.DateTime, nullable=True)
+    department_approved_time = db.Column(db.DateTime, nullable=True)
+    higher_organization_approved_time = db.Column(db.DateTime, nullable=True)
     
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
     is_error = db.Column(db.Boolean, default=False)
-    
     is_approved = db.Column(db.Boolean, default=False)
     
     plan_type = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # Поле для отслеживания текущего этапа согласования
+    approval_stage = db.Column(db.String(50), default='regional')  # regional, municipal, department, higher
     
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
     ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))

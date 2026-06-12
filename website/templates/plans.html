@@ -1,15 +1,21 @@
-{% extends "base.html" %} {% block title %}{{ _('Планы') }} - EnPlans{% endblock
-%} {% block content %}
+{% extends "base.html" %} {% block title %}{% if audit_page %}{{ _('Просмотр планов') }}{% else %}{{ _('Планы') }}{%endif%} - EnPlans{% endblock%} 
+{% block content %}
 
 <div class="pers-page">
-  {{ component.navigation_header('plans', current_user) }}
+  {% if audit_page %}
+    {{ component.navigation_header('plans-audit', current_user) }}
+  {% else %}
+    {{ component.navigation_header('plans', current_user) }}
+  {%endif%}
+
   <div class="personal-acc-conteiner">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name">{{ _('Планы мероприятий по энергосбережению') }}</a>
+        <a class="name">{% if audit_page %}{{ _('Просмотр планов мероприятий по энергосбережению') }}{% else %}{{ _('Планы мероприятий по энергосбережению') }}{%endif%}</a>
+        
       </div>
       <div class="header-content-right">
-        {% if current_user.is_auditor != true or current_user.is_municipal != true or current_user.is_departament != true or current_user.is_higher_organization != true %}
+        {% if not audit_page %}
           <button
             type="button"
             class="main-btn main-btn-primary"

@@ -202,11 +202,11 @@ def get_plans_by_okpo():
             func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
         ).order_by(Plan.year.asc())
 
-def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", page=1, per_page=5):
-    if user.is_auditor and not user.is_admin:
+def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", region_id=None, page=1, per_page=5):
+    if user.is_auditor:
         base_query = Plan.query.filter(Plan.is_sent == True)
     elif user.is_admin:
-        base_query = Plan.query.filter_by(user_id=user.id)
+        base_query = Plan.query.filter_by()
     else:
         base_query = Plan.query.filter_by(user_id=user.id)
     
@@ -214,7 +214,10 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         base_query = base_query.join(Organization).filter(Organization.name.ilike(f'%{search_name}%'))
     
     if search_okpo:
-        base_query = base_query.join(Organization).filter(Organization.okpo.ilike(f'%{search_okpo}%'))
+        base_query = base_query.join(Organization).filter(Organization.okpo.ilike(f'%{search_okpo}%'))    
+        
+    if region_id:
+        base_query = base_query.join(Organization).filter(Organization.region_id == int(region_id))
     
     status_filters = {
         'draft': Plan.is_draft == True,

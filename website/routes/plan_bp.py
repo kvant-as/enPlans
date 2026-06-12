@@ -624,7 +624,6 @@ def edit_Eventes(id):
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
         return redirect(request.referrer)
 
-
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required

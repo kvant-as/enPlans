@@ -2008,8 +2008,6 @@ function Edit_Period_modal() {
         });
 }
 
-// static/js/event_modal.js
-
 function getPlanToken() {
     const hiddenToken = document.getElementById('plan-token');
     if (hiddenToken && hiddenToken.value) {
@@ -3684,6 +3682,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('[data-modal-trigger="deletePlan"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlan"]',
+            modalId: 'confirmModal2',
+            yesId: 'confirmYes',
+            noId: 'confirmNo',
+            textId: 'modal-text',
+            modalText: 'Вы действительно хотите удалить план?',
+            textSecondId: 'modal-text-second',
+            modalTextSecond: 'Это действие нельзя будет отменить.'
+        });
+    }
+
+    if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
+        initConfirmModal({
+            triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
             modalId: 'confirmModal2',
             yesId: 'confirmYes',
             noId: 'confirmNo',
