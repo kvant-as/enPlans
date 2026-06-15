@@ -7,10 +7,7 @@ endblock %} {% block content %}
       <img src="/static/img/logo.svg" alt="" />
       <a>EnPlans</a>
     </div>
-    <p class="auth-subtitle">
-      {{ _(' Система представления планов энергосберегающих <br />
-      мероприятий') }}
-    </p>
+    <p class="auth-subtitle">{{ _(' Система представления планов энергосберегающих <br/>мероприятий') }}</p>
   </div>
 
   <form
@@ -18,7 +15,6 @@ endblock %} {% block content %}
     method="POST"
     action="{{ url_for('auth.param') }}"
   >
-    <!-- Шаг 1 -->
     <div class="step auth-step-1 active auth-container">
       <div class="auth-container-title">
         {{ _('Заполнение личной информации') }}
@@ -36,7 +32,7 @@ endblock %} {% block content %}
       <div class="auth-form" id="form-part-1">
         <div class="row-form-group">
           <div class="form-group">
-            <label>{{ _('Фамилия') }}</label>
+            <label>{{ _('Фамилия') }} <span class="required-star">*</span></label>
             <input
               type="text"
               name="last_name"
@@ -48,7 +44,7 @@ endblock %} {% block content %}
             />
           </div>
           <div class="form-group">
-            <label>{{ _('Имя') }}</label>
+            <label>{{ _('Имя') }} <span class="required-star">*</span></label>
             <input
               type="text"
               name="first_name"
@@ -61,7 +57,7 @@ endblock %} {% block content %}
           </div>
         </div>
         <div class="form-group">
-          <label>{{ _('Отчество') }}</label>
+          <label>{{ _('Отчество') }} <span class="required-star">*</span></label>
           <input
             type="text"
             name="patronymic_name"
@@ -72,7 +68,7 @@ endblock %} {% block content %}
           />
         </div>
         <div class="form-group">
-          <label for="phone">{{ _('Телефон') }}</label>
+          <label for="phone">{{ _('Телефон') }} <span class="required-star">*</span></label>
           <input
             type="tel"
             name="phone"
@@ -96,7 +92,7 @@ endblock %} {% block content %}
         </div>
         <div class="button-auth-area">
           <div></div>
-          <button type="button" class="svg-btn" id="next-btn-1">
+          <button type="button" class="svg-btn blue" id="next-btn-1">
             <span class="btn-text">{{ _('Далее') }}</span>
             {{ icons.next_icon() }}
           </button>
@@ -104,9 +100,8 @@ endblock %} {% block content %}
       </div>
     </div>
 
-    <!-- Шаг 2: Выбор структуры -->
-    <div class="step auth-step-2 auth-container" style="display: none">
-      <div class="auth-container-title">{{ _('Выбор структуры') }}</div>
+    <div class="step auth-step-2 auth-container" style="display: none;">
+      <div class="auth-container-title">{{ _('Выбор структуры, кто вы?') }}</div>
       <div class="auth-choose" style="justify-content: center" role="tablist">
         <a
           class="auth-tab active wave-effect"
@@ -123,14 +118,14 @@ endblock %} {% block content %}
           <input
             type="radio"
             name="entity_type"
-            value="organization"
+            value="respondent"
             class="radio-org-input"
             checked
           />
-          <div class="radio-org-card" data-type="organization">
-            <span class="radio-org-icon"></span>
-            <div class="radio-org-title">Организация</div>
-            <div class="radio-org-subtitle">Компания или учреждение</div>
+          <div class="radio-org-card" data-type="respondent">
+            {{ icons.icon_profile() }}
+            <div class="radio-org-title">Респондент</div>
+            <div class="radio-org-subtitle">Формирование и подача плана мероприятий по энергосбережению</div>
           </div>
         </label>
 
@@ -138,44 +133,29 @@ endblock %} {% block content %}
           <input
             type="radio"
             name="entity_type"
-            value="ministry"
+            value="auditor"
             class="radio-org-input"
           />
-          <div class="radio-org-card" data-type="ministry">
-            <span class="radio-org-icon"></span>
-            <div class="radio-org-title">Министерство</div>
-            <div class="radio-org-subtitle">Ведомство или орган власти</div>
-          </div>
-        </label>
-
-        <label>
-          <input
-            type="radio"
-            name="entity_type"
-            value="region"
-            class="radio-org-input"
-          />
-          <div class="radio-org-card" data-type="region">
-            <span class="radio-org-icon"></span>
-            <div class="radio-org-title">Регион</div>
-            <div class="radio-org-subtitle">Субъект или территория</div>
+          <div class="radio-org-card" data-type="auditor">
+            {{ icons.icon_profile() }}
+            <div class="radio-org-title">Аудитор</div>
+            <div class="radio-org-subtitle">Согласование отправленных планов мероприятий по энергосбережению</div>
           </div>
         </label>
       </div>
-
+      
       <div class="button-auth-area">
-        <button type="button" class="svg-btn" id="prev-btn-2">
-          {{ icons.back_icon() }}
-          <span class="btn-text">{{ _('Назад') }}</span>
-        </button>
-        <button type="button" class="svg-btn" id="next-btn-2">
+        <button type="button" class="svg-btn blue" id="next-btn-2">
           <span class="btn-text">{{ _('Далее') }}</span>
           {{ icons.next_icon() }}
+        </button>
+        <button type="button" class="svg-btn" id="prev-btn-2">
+          {{ icons.back_icon() }}
+          <span class="btn-text">{{ _('Вернуться назад') }}</span>
         </button>
       </div>
     </div>
 
-    <!-- Шаг 3: Выбор конкретной структуры -->
     <div class="step auth-step-3 auth-container" style="display: none">
       <div class="auth-container-title">
         {{ _('Выбор конкретной структуры') }}
@@ -191,45 +171,27 @@ endblock %} {% block content %}
         </a>
       </div>
 
-      <!-- Блок для организации -->
-      <div class="entity-block" id="organization-block">
+      <div class="entity-block" id="respondent-block">
         <div class="form-group">
-          <label>{{ _('Организация') }} *</label>
+          <label>{{ _('Организация') }} <span class="required-star">*</span></label>
           <div class="input-with-icon search-container">
             {{ icons.icon_search() }}
             <input
               type="text"
               name="organization_search"
               data-type="organization"
-              id="organization-search"
+              id="respondent-search"
               placeholder="{{ _('Наименование или ОКПО') }}"
               class="search-input app-input"
               autocomplete="off"
             />
-
-            <div
-              class="search-dropdown"
-              id="organization-dropdown"
-              style="display: none"
-            >
+            <div class="search-dropdown" id="organization-dropdown" style="display: none">
               <div class="search-list" id="organization-list"></div>
-              <div
-                class="search-loading"
-                id="organization-loading"
-                style="display: none"
-              >
+              <div class="search-loading" id="organization-loading" style="display: none">
                 {{ _('Загрузка...') }}
               </div>
-              <div
-                class="search-more"
-                id="organization-more"
-                style="display: none"
-              >
-                <button
-                  type="button"
-                  class="load-more-btn"
-                  data-type="organization"
-                >
+              <div class="search-more" id="organization-more" style="display: none">
+                <button type="button" class="load-more-btn" data-type="organization">
                   {{ _('Загрузить еще') }}
                 </button>
               </div>
@@ -239,106 +201,46 @@ endblock %} {% block content %}
         </div>
       </div>
 
-      <!-- Блок для министерства -->
-      <div class="entity-block" id="ministry-block" style="display: none">
-        <div class="form-group">
-          <label>{{ _('Министерство') }} *</label>
-          <div class="input-with-icon search-container">
-            {{ icons.icon_search() }}
-            <input
-              type="text"
-              name="ministry_search"
-              data-type="ministry"
-              id="ministry-search"
-              placeholder="{{ _('Название министерства') }}"
-              class="search-input app-input"
-              autocomplete="off"
-            />
-
-            <div
-              class="search-dropdown"
-              id="ministry-dropdown"
-              style="display: none"
-            >
-              <div class="search-list" id="ministry-list"></div>
-              <div
-                class="search-loading"
-                id="ministry-loading"
-                style="display: none"
-              >
-                {{ _('Загрузка...') }}
+      <div class="entity-block" id="auditor-block" style="display: none">
+          <div class="form-group">
+              <label>{{ _('Контролирующий орган') }} *</label>
+              <div class="input-with-icon search-container">
+                  {{ icons.icon_search() }}
+                  <input
+                      type="text"
+                      name="controlling_body_search"
+                      data-type="auditor"
+                      id="auditor-search"
+                      placeholder="{{ _('Название контролирующего органа') }}"
+                      class="search-input app-input"
+                      autocomplete="off"
+                  />
+                  <div class="search-dropdown" id="controlling-body-dropdown" style="display: none">
+                      <div class="search-list" id="controlling-body-list"></div>
+                      <div class="search-loading" id="controlling-body-loading" style="display: none">
+                          {{ _('Загрузка...') }}
+                      </div>
+                      <div class="search-more" id="controlling-body-more" style="display: none">
+                          <button type="button" class="load-more-btn" data-type="auditor">
+                              {{ _('Загрузить еще') }}
+                          </button>
+                      </div>
+                  </div>
               </div>
-              <div class="search-more" id="ministry-more" style="display: none">
-                <button
-                  type="button"
-                  class="load-more-btn"
-                  data-type="ministry"
-                >
-                  {{ _('Загрузить еще') }}
-                </button>
-              </div>
-            </div>
+              <input type="hidden" name="controlling_body_id" id="controlling_body_id" />
           </div>
-          <input type="hidden" name="ministry_id" id="ministry_id" />
-        </div>
-      </div>
-
-      <!-- Блок для региона -->
-      <div class="entity-block" id="region-block" style="display: none">
-        <div class="form-group">
-          <label>{{ _('Регион') }} *</label>
-          <div class="input-with-icon search-container">
-            {{ icons.icon_search() }}
-            <input
-              type="text"
-              name="region_search"
-              data-type="region"
-              id="region-search"
-              placeholder="{{ _('Название региона') }}"
-              class="search-input app-input"
-              autocomplete="off"
-            />
-
-            <div
-              class="search-dropdown"
-              id="region-dropdown"
-              style="display: none"
-            >
-              <div class="search-list" id="region-list"></div>
-              <div
-                class="search-loading"
-                id="region-loading"
-                style="display: none"
-              >
-                {{ _('Загрузка...') }}
-              </div>
-              <div class="search-more" id="region-more" style="display: none">
-                <button type="button" class="load-more-btn" data-type="region">
-                  {{ _('Загрузить еще') }}
-                </button>
-              </div>
-            </div>
-          </div>
-          <input type="hidden" name="region_id" id="region_id" />
-        </div>
       </div>
 
       <div class="button-auth-area">
-        <button type="button" class="svg-btn" id="prev-btn-3">
-          {{ icons.back_icon() }}
-          <span class="btn-text">{{ _('Назад') }}</span>
-        </button>
-        <button
-          type="submit"
-          class="main-btn main-btn-primary"
-          id="submit-btn"
-          disabled
-        >
+        <button type="submit" class="main-btn main-btn-primary" id="submit-btn" disabled>
           {{ icons.icon_login2() }}
           <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
         </button>
+        <button type="button" class="svg-btn" id="prev-btn-3">
+          {{ icons.back_icon() }}
+          <span class="btn-text">{{ _('Вернуться назад') }}</span>
+        </button>
       </div>
-
     </div>
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />

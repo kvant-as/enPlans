@@ -80,7 +80,7 @@
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
-              <a>Объем финансирования в текущем году, руб. {{ icons.icon_sort() }}</a>
+              <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th colspan="7" class="resizable" style="border-right: none;">
@@ -153,8 +153,7 @@
           </tr>
         </thead>
         
-        <!-- Оригинальные мероприятия -->
-        <tr class="group-header" data-target="non-local-content">
+        <tr class="group-header" data-target="non-local-content" style="border-top: none !important;">
           <td colspan="18">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
@@ -164,7 +163,7 @@
         </tr>
         <tbody class="rows" id="non-local-content">
           <tr class="no-results-row">
-            <td colspan="18">...</td>
+            <td colspan="18"></td>
           </tr>
         </tbody>
         
@@ -178,11 +177,10 @@
         </tr>
         <tbody class="rows" id="local-content">
           <tr class="no-results-row">
-            <td colspan="18">...</td>
+            <td colspan="18" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
           </tr>
         </tbody>
         
-        <!-- Итого и периоды -->
         <tr class="group-header" data-target="other-content">
           <td colspan="18">
             <div class="group-header-content">
@@ -193,7 +191,7 @@
         </tr>
         <tbody id="other-content" class="rows">
           <tr>
-            <td colspan="18">...</td>
+            <td colspan="18"></td>
           </tr>
         </tbody>
       </table>
@@ -263,7 +261,7 @@
                 </div>
                 <div class="button-auth-area" id="step1-buttons">
                     <div></div>
-                    <button type="button" class="svg-btn" id="step1-next-btn" data-action="directions-next">
+                    <button type="button" class="svg-btn blue" id="step1-next-btn" data-action="directions-next">
                         <span class="btn-text">{{ _('Далее') }}</span>
                         {{ icons.next_icon() }}
                     </button>
@@ -317,6 +315,9 @@
                                 {{ icons.icon_half() }}
                                 <input type="text" value="0,00" name="EffCurrYear" class="app-numeric-input" required>
                             </div>
+                            <div id="eff-curr-year-warning" class="error-message-modern">
+                                {{ _('Эффект в текущем году не может превышать общий эффект') }}
+                            </div>
                         </div>
                     </div>
                     <div class="currency-info">
@@ -340,13 +341,13 @@
                         </div>
                     </div>
                     <div class="button-auth-area" id="step2-buttons" style="display: flex; justify-content: space-between;">
+                        <button type="button" class="svg-btn blue" id="step2-next-btn" data-action="next-step-2" disabled>
+                            <span class="btn-text">{{ _('Далее') }}</span>
+                            {{ icons.next_icon() }}
+                        </button>
                         <button type="button" class="svg-btn" id="step2-back-btn">
                             {{ icons.back_icon() }}
                             <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
-                        <button type="button" class="svg-btn" id="step2-next-btn" data-action="next-step-2" disabled>
-                            <span class="btn-text">{{ _('Далее') }}</span>
-                            {{ icons.next_icon() }}
                         </button>
                     </div>
                 </div>
@@ -445,13 +446,13 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="event_type" value="{{ event_type }}">
                     <div class="button-auth-area" id="step3-buttons" style="display: flex; justify-content: space-between;">
-                        <button type="button" class="svg-btn" id="step3-back-btn">
-                            {{ icons.back_icon() }}
-                            <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
                         <button type="submit" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Добавить мероприятие') }}</span>
+                        </button>
+                        <button type="button" class="svg-btn" id="step3-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
                         </button>
                     </div>
                 </div>
@@ -521,6 +522,9 @@
                                     {{ icons.icon_half() }}
                                     <input type="text" id="change-EffCurrYear-edit-model" name="EffCurrYear" placeholder="0,00" class="app-numeric-input" required>
                                 </div>
+                                <div id="eff-curr-year-warning" class="error-message-modern" style="display: none;">
+                                    {{ _('Эффект в текущем году не может превышать общий эффект') }}
+                                </div>
                             </div>
                         </div>
                         <div class="currency-info">
@@ -545,7 +549,7 @@
                         </div>
                         <div class="button-auth-area">
                             <div></div>
-                            <button type="button" class="svg-btn" id="step1-next-btn">
+                            <button type="button" class="svg-btn blue" id="step1-next-btn">
                                 <span class="btn-text">{{ _('Далее') }}</span>
                                 {{ icons.next_icon() }}
                             </button>
@@ -629,7 +633,7 @@
                                 <label>id</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_eco() }}
-                                    <input class="app-input" name="id_direction" data-action="selected-direction" readonly>
+                                    <input class="app-input" id="change-id_direction-edit-model" name="id_direction" data-action="selected-direction" readonly>
                                 </div>
                             </div>
                         </div>
@@ -641,14 +645,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="button-auth-area" style="display: flex; justify-content: space-between;">
-                            <button type="button" class="svg-btn" id="step2-back-btn">
-                                {{ icons.back_icon() }}
-                                <span class="btn-text">{{ _('Назад') }}</span>
-                            </button>
+                        <div class="button-auth-area">
                             <button type="submit" class="main-btn main-btn-primary">
                                 {{ icons.icon_add() }}
                                 <span class="btn-text">{{ _('Применить изменения') }}</span>
+                            </button>
+                            <button type="button" class="svg-btn" id="step2-back-btn">
+                                {{ icons.back_icon() }}
+                                <span class="btn-text">{{ _('Назад') }}</span>
                             </button>
                         </div>
                     </div>
@@ -669,7 +673,7 @@
                             <input type="text" id="period-EffCurrYear-edit" name="EffCurrYear" placeholder="0,00" class="app-numeric-input">
                         </div>
                     </div>
-                    <div class="button-auth-area" style="display: flex; justify-content: flex-end;">
+                    <div class="button-auth-area">
                         <button type="submit" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Сохранить изменения') }}</span>
@@ -681,4 +685,6 @@
     </div>
 </div>
 
+
+<script src="{{ url_for('static', filename='js/event-calc.js') }}"></script>
 {% endblock %}

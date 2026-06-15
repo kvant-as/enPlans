@@ -48,6 +48,40 @@
     </div>
   </section>
 
+{% if latest_news %}
+  <section class="latest-news">
+    <div class="news-card-large">
+      <div class="news-card-large-content">
+        <div class="news-badge">
+          Последняя новость
+        </div>
+        <h2>{{ latest_news.title }}</h2>
+        <p>{{ latest_news.content[:200] }}{% if latest_news.content|length > 200 %}...{% endif %}</p>
+        <div class="news-meta">
+          <span class="news-date">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ latest_news.published_at.strftime('%d %B %Y') }}
+          </span>
+          <a href="/news/{{ latest_news.id }}" class="read-more-link">
+            Читать подробнее
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 5l7 7-7 7"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      {% if latest_news.image_url %}
+      <div class="news-card-large-image">
+        <img src="{{ url_for('static', filename='img/news/' + latest_news.image_url) }}" alt="{{ latest_news.title }}">
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+
   <section id="contacts-cont" class="modern-contact">
     <div class="contact-glass">
       <h2 class="contact-title">Контакты</h2>

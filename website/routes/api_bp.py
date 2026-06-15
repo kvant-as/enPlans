@@ -1,59 +1,240 @@
+import datetime
 import logging
 from venv import logger
-from flask import current_app, g, request, jsonify, Blueprint
-from flask_login import login_required
+from flask import current_app, g, render_template, request, jsonify, Blueprint
+from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
 from website.time import TimeByMinsk
+from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Plan, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
 
-@api_bp.route('/news', methods=['GET'])
+from flask import render_template_string
+
+@api_bp.route('/plans', methods=['GET'])
 @login_required
-def get_news():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+def api_get_plans():
+    try:
+        status_filter = request.args.get('status', 'all')
+        year_filter = request.args.get('year', 'all')
+        search_name = request.args.get('search_name', '')
+        search_okpo = request.args.get('search_okpo', '')
+        region = request.args.get('region', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)
+        
+        region_id = None
+        if region and region != 'all':
+            try:
+                region_id = int(region)
+            except (ValueError, TypeError):
+                region_id = None
+        
+        plans, total_count, status_counts = get_filtered_plans(
+            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
+        )
+        
+        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
+            ''',
+            plans=plans,
+            current_user=current_user,
+            show_checkboxes=False,
+            show_actions=True,
+            custom_empty_message=None,
+            compact_view=is_compact
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': html,
+            'counts': status_counts,
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'has_next': page * per_page < total_count
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@api_bp.route('/export-plans', methods=['GET'])
+@login_required
+def api_get_export_plans():
+    try:
+        status_filter = request.args.get('status', 'all')
+        year_filter = request.args.get('year', 'all')
+        search_name = request.args.get('search_name', '')
+        search_okpo = request.args.get('search_okpo', '')
+        region = request.args.get('region', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)
+                
+        region_id = None
+        if region and region != 'all':
+            try:
+                region_id = int(region)
+            except (ValueError, TypeError):
+                region_id = None
+                
+        plans, total_count, status_counts = get_filtered_plans(
+            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
+        )
+        
+        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
+            ''',
+            plans=plans,
+            current_user=current_user,
+            show_checkboxes=True,
+            show_actions=False,
+            custom_empty_message=None,
+            compact_view=is_compact
+        )
+        
+        return jsonify({
+            'success': True,
+            'html': html,
+            'counts': status_counts,
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'has_next': page * per_page < total_count
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@api_bp.route('/api/approve-plan/<token>', methods=['POST'])
+@login_required
+def api_approve_plan(token):
+    plan = Plan.query.filter_by(token=token).first_or_404()
+    data = request.get_json()
+    stage = data.get('stage')
+    current_time = TimeByMinsk()
     
-    news_items = News.query.filter(
-        News.is_published == True,
-        News.published_at <= TimeByMinsk()
-    ).order_by(News.published_at.desc()).paginate(page=page, per_page=per_page)
+    if stage == 'regional':
+        if not current_user.is_region:
+            return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        plan.is_region_approved = True
+        plan.region_approved_time = current_time
+        if plan.plan_type == 'org_large':
+            plan.approval_stage = 'municipal'
+        else:
+            plan.approval_stage = 'department'
+        
+    elif stage == 'municipal':
+        if not current_user.is_municipal:
+            return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        plan.is_municipal_approved = True
+        plan.municipal_approved_time = current_time
+        plan.approval_stage = 'department'
+        
+    elif stage == 'department':
+        if not current_user.is_departament:
+            return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        plan.is_department_approved = True
+        plan.department_approved_time = current_time
+        if plan.plan_type == 'org_large':
+            plan.approval_stage = 'higher'
+        else:
+            plan.approval_stage = 'completed'
+            plan.is_approved = True
+            
+    elif stage == 'higher':
+        if not current_user.is_higher_organization:
+            return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        plan.is_higher_organization_approved = True
+        plan.higher_organization_approved_time = current_time
+        plan.approval_stage = 'completed'
+        plan.is_approved = True
+    
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+@api_bp.route('/news', methods=['GET'])
+def api_news():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 9, type=int)
+    filter_type = request.args.get('filter', 'published')
+    sort_by = request.args.get('sort', 'date')
+    
+    current_time = TimeByMinsk()
+    query = News.query
+    
+    if filter_type == 'published':
+        query = query.filter(News.published_at <= current_time, News.published_at.isnot(None))
+
+    if sort_by == 'date':
+        query = query.order_by(News.published_at.desc().nullslast(), News.created_at.desc())
+    elif sort_by == 'views':
+        query = query.order_by(News.views_count.desc().nullslast(), News.published_at.desc().nullslast())
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
     return jsonify({
+        'success': True,
         'news': [{
-            'id': item.id,
-            'title': item.title,
-            'content': item.content,
-            'image_url': item.image_url,
-            'published_at': item.published_at.isoformat() if item.published_at else None,
-            'views_count': item.views_count
-        } for item in news_items.items],
-        'total': news_items.total,
-        'page': news_items.page,
-        'pages': news_items.pages
+            'id': n.id,
+            'title': n.title,
+            'content': n.content,
+            'image_url': n.image_url,
+            'published_at': n.published_at.isoformat() if n.published_at else n.created_at.isoformat(),
+            'created_at': n.created_at.isoformat(),
+            'views_count': n.views_count or 0,
+            'is_published': n.published_at is not None and n.published_at <= current_time
+        } for n in pagination.items],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page,
+        'total_views': db.session.query(db.func.sum(News.views_count)).scalar() or 0
     })
 
-@api_bp.route('/news/<int:news_id>', methods=['GET'])
-@login_required
-def get_news_detail(news_id):
-    news_item = News.query.get_or_404(news_id)
+@api_bp.route('/news/<int:id>', methods=['GET'])
+def api_news_post(id):
+    current_time = TimeByMinsk()
+    post = News.query.get(id)
+    if not post:
+        return jsonify({'success': False, 'error': 'Новость не найдена'}), 404
     
-    news_item.views_count += 1
+    post.views_count = (post.views_count or 0) + 1
     db.session.commit()
     
     return jsonify({
-        'id': news_item.id,
-        'title': news_item.title,
-        'content': news_item.content,
-        'image_url': news_item.image_url,
-        'published_at': news_item.published_at.isoformat() if news_item.published_at else None,
-        'views_count': news_item.views_count,
-        'created_at': news_item.created_at.isoformat()
+        'success': True,
+        'news': {
+            'id': post.id,
+            'title': post.title,
+            'content': post.content,
+            'image_url': post.image_url,
+            'published_at': post.published_at.isoformat() if post.published_at else post.created_at.isoformat(),
+            'created_at': post.created_at.isoformat(),
+            'views_count': post.views_count or 0,
+            'is_published': post.published_at is not None and post.published_at <= current_time
+        }
     })
 
 @api_bp.route('/organizations')
@@ -306,12 +487,12 @@ def get_events_data(token):
         .order_by(Direction.code.asc())
         .all())
 
-    logger.debug(f"=== DEBUG get_events_data ===")
-    logger.debug(f"event_type: {event_type}")
-    logger.debug(f"plan_id: {current_plan.id}")
-    logger.debug(f"period_events count: {len(period_events)}")
-    for pe in period_events:
-        logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
+    # logger.debug(f"=== DEBUG get_events_data ===")
+    # logger.debug(f"event_type: {event_type}")
+    # logger.debug(f"plan_id: {current_plan.id}")
+    # logger.debug(f"period_events count: {len(period_events)}")
+    # for pe in period_events:
+    #     logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
 
     period_metrics = {}
     for period_event in period_events:

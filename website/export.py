@@ -1,165 +1,16 @@
 import io
-import xml.etree.ElementTree as ET
-from .models import Plan, EconMeasure, Event
-from sqlalchemy.orm import joinedload
-from .routes.views import get_event_metrics
-        
-def export_xml_single(plan: Plan):
-    def build_title_xml(plan):
-        title = ET.Element("title")
+import os
+import zipfile
+from flask import current_app
+from .models import Direction, Indicator, Plan, Event, IndicatorUsage
+from sqlalchemy.orm import sessionmaker, joinedload
 
-        approved = ET.SubElement(title, "approved_by")
-        approved.text = (
-            "СОГЛАСОВАНО: Департамент по энергоэффективности Госстандарта. "
-        )
-
-        ministrystr = plan.organization.ministry or "Министерство (концерн, государственный комитет)"
-        confirmed = ET.SubElement(title, "confirmed_by")
-        confirmed.text = (
-            f"УТВЕРЖДАЮ {ministrystr}. "
-        )
-
-        ET.SubElement(title, "header").text = "ПЛАН МЕРОПРИЯТИЙ ПО ЭНЕРГОСБЕРЕЖЕНИЮ"
-        ET.SubElement(title, "organization_name").text = str(plan.organization.name or "")
-        ET.SubElement(title, "year_label").text = f"на {plan.year} год"
-
-        targets = ET.SubElement(title, "targets")
-        ET.SubElement(targets, "label").text = "Целевые показатели: Целевой показатель энергосбережения"
-        ET.SubElement(targets, "details").text = (
-            f"Целевой показатель энергосбережения - {plan.energy_saving}% "
-            f"(задание по экономии ТЭР - {plan.share_fuel} т у.т.); "
-            f"Целевой показатель по доле местных ТЭР в КПТ - {plan.saving_fuel}%; "
-            f"Целевой показатель по доле местных ТЭР в КПТ - {plan.share_energy}%."
-        )
-        return title
-
-    def build_part1_xml(plan):
-        part1 = ET.Element("part1")
-        
-        ET.SubElement(part1, "title").text = "Часть 1. Показатели использования топливно-энергетических ресурсов"
-        
-        previous_group = None
-        for usage in sorted(plan.indicators_usage, key=lambda u: (u.indicator.Group, u.indicator.RowN)):
-            group_value = usage.indicator.Group if usage.indicator.Group != previous_group else ""
-            previous_group = usage.indicator.Group
-
-            row = ET.SubElement(part1, "row")
-            ET.SubElement(row, "group").text = str(group_value or "")
-            ET.SubElement(row, "name").text = str(usage.indicator.name or "-")
-            ET.SubElement(row, "unit").text = str(getattr(usage.indicator.unit, "name", "") or "")
-            ET.SubElement(row, "prev_year").text = str(usage.QYearBeforePrev or 0)
-            ET.SubElement(row, "curr_year").text = str(usage.QYearPrev or 0)
-            ET.SubElement(row, "next_year").text = str(usage.QYearCurrent or 0)
-            ET.SubElement(row, "change").text = str((usage.QYearCurrent or 0) - (usage.QYearPrev or 0))
-        
-        return part1
-
-    def build_part2_xml(plan):
-        part2 = ET.Element("part2")
-        
-        ET.SubElement(part2, "title").text = f"Часть 2. Мероприятия по реализации основных направлений энергосбережения на {plan.year} год"
-        
-        for idx, measure in enumerate(sorted(plan.econ_measures, key=lambda u: u.direction.code), start=1):
-            row = ET.SubElement(part2, "row")
-            ET.SubElement(row, "number").text = str(idx)
-            ET.SubElement(row, "code").text = str(measure.direction.code or "")
-            ET.SubElement(row, "name").text = str(measure.direction.name or "")
-            ET.SubElement(row, "year_econ").text = str(float(measure.year_econ or 0))
-            ET.SubElement(row, "estim_econ").text = str(float(measure.estim_econ or 0))
-        
-        return part2
-
-    def build_part3_xml(plan, get_event_metrics, Event):
-        part3 = ET.Element("part3")
-        ET.SubElement(part3, "title").text = "Часть 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов"
-
-        local_execs = [e for e in plan.econ_execes if e.is_local]
-        non_local_execs = [e for e in plan.econ_execes if not e.is_local]
-
-        def add_section(title, execs, start_number=1):
-            section = ET.SubElement(part3, "section", {"title": title})
-            for idx, econ in enumerate(execs, start=start_number):
-                row = ET.SubElement(section, "row")
-                ET.SubElement(row, "number").text = str(idx)
-                ET.SubElement(row, "code").text = str(econ.econ_measures.direction.code if econ.econ_measures and econ.econ_measures.direction else "")
-                ET.SubElement(row, "name").text = str(econ.name if hasattr(econ, "name") else "")
-                ET.SubElement(row, "unit").text = str(econ.econ_measures.direction.unit.name if econ.econ_measures and econ.econ_measures.direction and econ.econ_measures.direction.unit else "")
-                ET.SubElement(row, "volume").text = str(getattr(econ, "Volume", 0))
-                ET.SubElement(row, "eff_tut").text = str(getattr(econ, "EffTut", 0))
-                ET.SubElement(row, "eff_rub").text = str(getattr(econ, "EffRub", 0))
-                ET.SubElement(row, "expected_quarter").text = str(getattr(econ, "ExpectedQuarter", ""))
-                ET.SubElement(row, "eff_curr_year").text = str(getattr(econ, "EffCurrYear", 0))
-                ET.SubElement(row, "payback").text = str(getattr(econ, "Payback", 0))
-                ET.SubElement(row, "volume_fin").text = str(getattr(econ, "VolumeFin", 0))
-                ET.SubElement(row, "budget_state").text = str(getattr(econ, "BudgetState", 0))
-                ET.SubElement(row, "budget_rep").text = str(getattr(econ, "BudgetRep", 0))
-                ET.SubElement(row, "budget_loc").text = str(getattr(econ, "BudgetLoc", 0))
-                ET.SubElement(row, "budget_other").text = str(getattr(econ, "BudgetOther", 0))
-                ET.SubElement(row, "money_own").text = str(getattr(econ, "MoneyOwn", 0))
-                ET.SubElement(row, "money_loan").text = str(getattr(econ, "MoneyLoan", 0))
-                ET.SubElement(row, "money_other").text = str(getattr(econ, "MoneyOther", 0))
-            return start_number + len(execs)
-
-        next_number = add_section("Раздел 2.1 Мероприятия по экономии ТЭР (первоначальная ред.)", non_local_execs, 1)
-        add_section("Раздел 3.1. Мероприятия по увеличению использования местных ТЭР (первоначальная ред.)", local_execs, next_number)
-
-        quarters = [
-            ("Январь–Март", "jan_mar"),
-            ("Январь–Июнь", "jan_jun"),
-            ("Январь–Сентябрь", "jan_sep"),
-            ("Январь–Декабрь", "jan_dec")
-        ]
-        events_original = get_event_metrics(plan.id, True)
-        events_included_changes = get_event_metrics(plan.id, False)
-
-        totals_elem = ET.SubElement(part3, "totals")
-        for q_label, q_key in quarters:
-            quarter = ET.SubElement(totals_elem, "quarter", {"name": q_label})
-            ET.SubElement(quarter, "eff_curr_year").text = str(events_original[q_key]["eff_curr_year"] + events_included_changes[q_key]["eff_curr_year"])
-            ET.SubElement(quarter, "volume_fin").text = str(events_original[q_key]["volume_fin"] + events_included_changes[q_key]["volume_fin"])
-
-        return part3
-
-    root = ET.Element("plan", attrib={
-        "id": str(plan.id),
-        "year": str(plan.year or "")
-    })
-
-    root.append(build_title_xml(plan))
-    root.append(build_part1_xml(plan))
-    root.append(build_part2_xml(plan))
-    root.append(build_part3_xml(plan, get_event_metrics, Event))
-
-    def prettify(elem, level=0):
-        indent = "  "
-        i = "\n" + level * indent
-        if len(elem):
-            if not elem.text or not elem.text.strip():
-                elem.text = i + indent
-            for child in elem:
-                prettify(child, level + 1)
-            if not child.tail or not child.tail.strip():
-                child.tail = i
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
-
-    prettify(root)
-
-    xml_content = ET.tostring(root, encoding="utf-8").decode("utf-8")
-
-    file_stream = io.BytesIO()
-    file_stream.write(xml_content.encode("utf-8"))
-    file_stream.seek(0)
-    filename = f"{plan.okpo}_{plan.year}.xml"
-    return file_stream, "application/xml", filename
-    
-def export_pdf_single(plan: Plan):
-    pass
+export_tasks = {}
 
 def type_of_export(plan: Plan) -> str:
     if plan.org_id:
         for indicator_usage in plan.indicators_usage:
-            if indicator_usage.id_indicator == 1 and indicator_usage.QYearCurrent is not None:
+            if indicator_usage.indicator.code == '260' and indicator_usage.QYearCurrent is not None:
                 try:
                     q_year_next = float(indicator_usage.QYearCurrent)
                     if q_year_next >= 25000:
@@ -177,6 +28,73 @@ def type_of_export(plan: Plan) -> str:
         return "region"
     
     raise ValueError("Error for read type of plan")
+
+def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
+    with app.app_context():
+        from website import db
+        Session = sessionmaker(bind=db.engine)
+        session = Session()
+        
+        try:
+            export_tasks[task_id] = {
+                'status': 'processing',
+                'progress': 0,
+                'format': export_format,
+                'user_id': user_id
+            }
+            
+            temp_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', '/tmp'), 'exports', task_id)
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            zip_path = os.path.join(temp_dir, f'plans_export_{task_id}.zip')
+            export_tasks[task_id]['progress'] = 10
+            
+            total_plans = len(plan_ids)
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for idx, plan_id in enumerate(plan_ids):
+                    progress = 10 + int((idx + 1) / total_plans * 80)
+                    export_tasks[task_id]['progress'] = progress
+                    
+                    plan = session.query(Plan).options(
+                        joinedload(Plan.indicators_usage).joinedload(IndicatorUsage.indicator).joinedload(Indicator.unit),
+                        joinedload(Plan.events).joinedload(Event.direction).joinedload(Direction.unit),
+                        joinedload(Plan.organization),
+                        joinedload(Plan.ministry),
+                        joinedload(Plan.region),
+                    ).filter(Plan.id == plan_id).first()
+                    
+                    if not plan:
+                        continue
+                    
+                    if export_format == "xlsx":
+                        file_stream, mime, filename = export_xlsx_single(plan)
+                    elif export_format == "xml":
+                        file_stream, mime, filename = export_xml_single(plan)
+                    else:
+                        continue
+                    
+                    zip_file.writestr(filename, file_stream.getvalue())
+            
+            export_tasks[task_id]['status'] = 'completed'
+            export_tasks[task_id]['progress'] = 100
+            export_tasks[task_id]['file_path'] = zip_path
+            
+        except Exception as e:
+            current_app.logger.error(f"Export error for task {task_id}: {str(e)}", exc_info=True)
+            export_tasks[task_id] = {
+                'status': 'error',
+                'error': str(e),
+                'format': export_format,
+                'user_id': user_id
+            }
+        finally:
+            session.close()
+
+def export_xml_single(plan: Plan):
+        pass
+
+def export_pdf_single(plan: Plan):
+        pass
 
 def export_xlsx_single(plan: Plan):
     from openpyxl import Workbook
@@ -522,7 +440,7 @@ def export_xlsx_single(plan: Plan):
         ws["K28"].value = "%"
         ws["K28"].font = bold_font_11
         ws["K28"].alignment = center
-                     
+      
         page_setttings(ws, print_area = "A1:O32")
         
         return ws
@@ -1188,10 +1106,6 @@ def export_xlsx_single(plan: Plan):
  
     def first_half_xlsx(wb, plan):
         ws = wb.create_sheet("Часть 1")
-    
-        # ===============================
-        # Колонки и строки
-        # ===============================
         columns = [("A", 5.43), ("B", 58), ("C", 14), ("D", 10),
                 ("E", 10), ("F", 10), ("G", 18.29)]
         
@@ -1219,21 +1133,22 @@ def export_xlsx_single(plan: Plan):
         ws["A1"].value = "Часть 1. Показатели использования топливно-энергетических ресурсов"
         ws["A1"].font = bold_font_13
         ws["A1"].alignment = center
-        
         ws.merge_cells("A2:G2")
         ws["A2"].value = ""
         ws["A2"].font = bold_font_13
         ws["A2"].alignment = center
 
+        configs = sorted(plan.column_configs, key=lambda x: x.year)
         headers = [
             "№ п/п", 
             "Основные показатели использования ТЭР", 
             "Единица измерения", 
-            f"{plan.year - 1} г. план", 
-            f"{plan.year} г. оценка", 
-            f"{plan.year + 1} г. прогноз", 
-            "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. (увеличение + , снижение - )"
+            f"{plan.year - 2} г. {configs[0].label}", 
+            f"{plan.year - 1} г. {configs[1].label}", 
+            f"{plan.year} г. {configs[2].label}", 
+            "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т."
         ]
+        
         ws.append(headers)
         
         for col in range(1, len(headers) + 1):
@@ -1241,6 +1156,22 @@ def export_xlsx_single(plan: Plan):
             cell.font = bold_font_11
             cell.alignment = center
             cell.border = thin_border
+        
+        def format_value(value, group):
+            if value is None or value == '':
+                return ''
+            
+            try:
+                num = float(value)
+            except (ValueError, TypeError):
+                return value
+            
+            if group == 5:
+                return round(num, 1)
+            elif group in [6, 7, 8]:
+                return round(num, 2)
+            else:
+                return int(round(num))
         
         previous_group = None
         row_index = 3
@@ -1251,32 +1182,45 @@ def export_xlsx_single(plan: Plan):
                 (0, u.indicator.RowN) if u.indicator.RowN is not None else (1, float('-inf'))
             )
         ):
-
-            if usage.indicator.Group != previous_group:
-                if usage.indicator.Group is not None:
+            group = usage.indicator.Group
+            
+            if group != previous_group:
+                if group is not None:
                     try:
-                        group_float = float(usage.indicator.Group)
+                        group_float = float(group)
                         if group_float.is_integer():
                             group_value = int(group_float)
                         else:
-                            group_value = usage.indicator.Group
+                            group_value = group
                     except (ValueError, TypeError):
-                        group_value = usage.indicator.Group
+                        group_value = group
                 else:
                     group_value = ""
             else:
                 group_value = ""
             
-            previous_group = usage.indicator.Group
+            previous_group = group
+            
+            if group in [5, 6]:
+                QYearBeforePrev = 'x'
+                QYearPrev = 'x'
+                QYearCurrent = format_value(usage.QYearCurrent, group)
+                difference = 'x'
+            else:
+                QYearBeforePrev = format_value(usage.QYearBeforePrev, group)
+                QYearPrev = format_value(usage.QYearPrev, group)
+                QYearCurrent = format_value(usage.QYearCurrent, group)
+                difference = format_value((usage.QYearCurrent or 0) - (usage.QYearPrev or 0), group)
             
             row = [
-                group_value, 
-                usage.indicator.name if usage.indicator.name else "-",
+                group_value,
+                (usage.indicator.name if usage.indicator.name else "-") + 
+                (f" ({usage.note})" if usage.note else ""),
                 usage.indicator.unit.name,
-                (usage.QYearBeforePrev or 0),
-                (usage.QYearPrev or 0),
-                (usage.QYearCurrent or 0),
-                (usage.QYearCurrent or 0) - (usage.QYearPrev or 0),
+                QYearBeforePrev,
+                QYearPrev,
+                QYearCurrent,
+                difference,
             ]
             ws.append(row)
             
@@ -1284,9 +1228,10 @@ def export_xlsx_single(plan: Plan):
             
             if group_value in [5, 8]:
                 ws.row_dimensions[row_index].height = 34
-                
-            for col in range(1, len(row)+1):
+            
+            for col in range(1, len(row) + 1):
                 cell = ws.cell(row=row_index, column=col)
+                
                 if group_value != "":
                     cell.font = bold_font_11
                 else:
@@ -1311,9 +1256,20 @@ def export_xlsx_single(plan: Plan):
                     else:
                         cell.number_format = '@'
                 elif col in [4, 5, 6, 7]:
-                    cell.number_format = '0.00'
+                    value = row[col-1]
+                    if value != 'x' and value != '':
+                        if group == 5:
+                            cell.number_format = '0.0'
+                        elif group in [6, 7, 8]:
+                            cell.number_format = '0.00'
+                        else:
+                            cell.number_format = '0'
+                    else:
+                        cell.number_format = '@'
                 else:
                     cell.number_format = '@'
+        
+        return ws
         
         def org_small_signatures_indicators_xlsx(ws, start_row, plan):
             okpo = plan.organization.okpo if plan.organization else None
@@ -1574,10 +1530,8 @@ def export_xlsx_single(plan: Plan):
 
     def second_half_xlsx(wb, plan):
         ws = wb.create_sheet("Часть 2")
-        # ===============================
-        # Колонки и строки
-        # ===============================
-        columns = [("A", 4), 
+        columns = [
+                ("A", 4), 
                 ("B", 9), 
                 ("C", 15), 
                 ("D", 6),
@@ -1633,7 +1587,7 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
         ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, тыс. руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"
@@ -1659,160 +1613,181 @@ def export_xlsx_single(plan: Plan):
             cell = ws.cell(row=row_index, column=col, value=col)
             cell.alignment = center
             cell.font = regular_font_10
+            
+        PERIOD_CODES = {"0001", "0002", "0003", "0004"}
+        econom_events = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_econom == True,
+                Event.is_corrected == False,
+                Event.display_code.notin_(PERIOD_CODES)
+        ).all()
 
-        econom_events = (Event.query
-            .join(EconMeasure)
-            .join(Plan)
-            .filter(Plan.id == plan.id, Event.is_local == True)
-            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
-            .all()
-        )
-
-        increase_events = (Event.query
-            .join(EconMeasure)
-            .join(Plan)
-            .filter(Plan.id == plan.id, Event.is_local == False)
-            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
-            .all()
-        )
-
+        econom_events_corrected = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_econom == True,
+                Event.is_corrected == True,
+                Event.display_code.notin_(PERIOD_CODES)
+        ).all()
+        
+        econom_events_periods = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_econom == True,
+                Event.display_code.in_(PERIOD_CODES)
+        ).all()
+        
+        current_app.logger.debug(f"Plan {plan.id}: econom_events={len(econom_events)}, econom_events_corrected={len(econom_events_corrected)}, total={Event.query.filter_by(id_plan=plan.id).count()}")
+        
         def add_section(title, execs, start_number=1):
-            nonlocal row_index
-            row_index += 1
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=18)
-            ws.cell(row=row_index, column=1, value=title).font = bold_font_10
-            ws.cell(row=row_index, column=1).alignment = center
-            sum_cols = [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
-            sums = {col: 0 for col in sum_cols}
-            for idx, econ in enumerate(execs, start=start_number):
+                nonlocal row_index
+                
                 row_index += 1
-                row = [
-                    idx,
-                    econ.econ_measures.direction.code if econ.econ_measures and econ.econ_measures.direction else "",
-                    econ.name if hasattr(econ, "name") else "",
-                    econ.econ_measures.direction.unit.name if econ.econ_measures and econ.econ_measures.direction and econ.econ_measures.direction.unit else "",
-                    econ.Volume if hasattr(econ, "Volume") else 0,
-                    econ.EffTut if hasattr(econ, "EffTut") else 0,
-                    econ.EffRub if hasattr(econ, "EffRub") else 0,
-                    econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
-                    econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
-                    econ.Payback if hasattr(econ, "Payback") else 0,
-                    econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
-                    econ.BudgetState if hasattr(econ, "BudgetState") else 0,
-                    econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
-                    econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
-                    econ.BudgetOther if hasattr(econ, "BudgetOther") else 0,
-                    econ.MoneyOwn if hasattr(econ, "MoneyOwn") else 0,
-                    econ.MoneyLoan if hasattr(econ, "MoneyLoan") else 0,
-                    econ.MoneyOther if hasattr(econ, "MoneyOther") else 0
-                ]
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=18)
+                ws.cell(row=row_index, column=1, value=title).font = bold_font_10
+                ws.cell(row=row_index, column=1).alignment = center
+                
+                sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
+                sums = {col: 0 for col in sum_cols}
+                
+                if execs:
+                        for idx, econ in enumerate(execs, start=start_number):
+                                row_index += 1
+                        
+                                unit_name = ""
+                        try:
+                                if econ.direction and econ.direction.unit and econ.direction.unit.name:
+                                        unit_name = econ.direction.unit.name
+                        except Exception:
+                                pass
+                        
+                        row = [
+                                idx,
+                                econ.display_code if econ.display_code else "",
+                                econ.name if hasattr(econ, "name") else "",
+                                unit_name,
+                                econ.Volume if hasattr(econ, "Volume") else 0,
+                                econ.EffTut if hasattr(econ, "EffTut") else 0,
+                                econ.EffRub if hasattr(econ, "EffRub") else 0,
+                                econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
+                                econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
+                                econ.Payback if hasattr(econ, "Payback") else 0,
+                                econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
+                                econ.BudgetState if hasattr(econ, "BudgetState") else 0,
+                                econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
+                                econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
+                                econ.BudgetOther if hasattr(econ, "BudgetOther") else 0,
+                                econ.MoneyOwn if hasattr(econ, "MoneyOwn") else 0,
+                                econ.MoneyLoan if hasattr(econ, "MoneyLoan") else 0,
+                                econ.MoneyOther if hasattr(econ, "MoneyOther") else 0
+                        ]
+                        for col in sum_cols:
+                                try:
+                                        sums[col] += float(row[col-1])
+                                except (TypeError, ValueError):
+                                        pass
+                        ws.append(row)
+                        for col_idx in range(1, 19):
+                                cell = ws.cell(row=row_index, column=col_idx)
+                                cell.alignment = left if col_idx == 3 else center
+                                cell.font = regular_font_10
+                                if col_idx == 6 or col_idx == 9:
+                                        cell.number_format = '0.00'
+                                elif col_idx == 10:
+                                        cell.number_format = '0.0'
+                                elif col_idx in [5, 7, 11, 12, 13, 14, 15, 16, 17, 18]:
+                                        cell.number_format = '0'
+                else:
+                        row_index += 1
+                        empty_row = [''] * 18
+                        ws.append(empty_row)
+                        for col_idx in range(1, 19):
+                                cell = ws.cell(row=row_index, column=col_idx)
+                                cell.alignment = center
+                                cell.font = regular_font_10
+                
+                row_index += 1
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
+                ws.cell(row=row_index, column=1, value="Итого по разделу:").alignment = left
+                ws.cell(row=row_index, column=1).font = regular_font_10_italic
+                
                 for col in sum_cols:
-                    try:
-                        sums[col] += float(row[col-1])
-                    except (TypeError, ValueError):
-                        pass
-                ws.append(row)
-                for col_idx in range(1, 19):
-                    cell = ws.cell(row=row_index, column=col_idx)
-                    cell.alignment = left if col_idx == 3 else center
-                    cell.font = regular_font_10
-                    if col_idx in [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]:
+                        cell = ws.cell(row=row_index, column=col, value=sums[col])
+                        cell.alignment = center
+                        cell.font = regular_font_10_italic
+                        if col == 6 or col == 9:
+                                cell.number_format = '0.00'
+                        elif col == 7 or col == 10:
+                                cell.number_format = '0.0'
+                        else:
+                                cell.number_format = '0'
+                return start_number + len(execs)
+
+
+        def add_totals_and_periods(ws, row_index, econom_events, econom_events_corrected, econom_events_periods):
+                all_events = econom_events + econom_events_corrected
+                sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
+                
+                def get_value(event, col):
+                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFin',
+                                12: 'BudgetState', 13: 'BudgetRep', 14: 'BudgetLoc', 15: 'BudgetOther',
+                                16: 'MoneyOwn', 17: 'MoneyLoan', 18: 'MoneyOther'}
+                        val = getattr(event, attr_map.get(col, ''), 0)
+                        return float(val) if val else 0
+                
+                row_index += 1
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
+                ws.cell(row=row_index, column=1, value="Всего по части 2, в том числе:").font = bold_font_10
+                ws.cell(row=row_index, column=1).alignment = left
+                
+                for col in sum_cols:
+                        total = sum(get_value(e, col) for e in all_events)
+                        cell = ws.cell(row=row_index, column=col, value=total)
+                        cell.alignment = center
+                        cell.font = bold_font_10
+                        if col == 6 or col == 9:
+                                cell.number_format = '0.00'
+                        elif col == 7:
+                                cell.number_format = '0.0'
+                        else:
+                                cell.number_format = '0'
+                
+                PERIOD_CODES = ["0001", "0002", "0003", "0004"]
+                
+                period_events = [e for e in econom_events_periods if e.display_code in PERIOD_CODES]
+                period_events.sort(key=lambda x: PERIOD_CODES.index(x.display_code))
+                
+                for event in period_events:
+                        row_index += 1
+                        
+                        ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=8)
+                        
+                        event_name = event.name if event.name else ""
+                        ws.cell(row=row_index, column=1, value=event_name).font = regular_font_10
+                        ws.cell(row=row_index, column=1).alignment = left
+                        
+                        eff_curr_year = float(event.EffCurrYear) if event.EffCurrYear else 0
+                        cell = ws.cell(row=row_index, column=9, value=eff_curr_year)
+                        cell.alignment = center
+                        cell.font = regular_font_10
                         cell.number_format = '0.00'
-            row_index += 1
-            
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-            ws.cell(row=row_index, column=1, value="Итого по разделу:").alignment = left
-            ws.cell(row=row_index, column=1).font = regular_font_10_italic
-            
-            for col in sum_cols:
-                cell = ws.cell(row=row_index, column=col, value=sums[col])
-                cell.alignment = center
-                cell.font = regular_font_10_italic
-                cell.number_format = '0.00'
-            return start_number + len(execs)
+                        
+                        for col in [10, 11, 12, 13, 14, 15, 16, 17, 18]:
+                                ws.cell(row=row_index, column=col, value="")
+                
+                return row_index
 
-        next_number = add_section("Раздел 2. Мероприятия по экономии топливно-энергетических ресурсов", increase_events, 1)
-        # add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", econom_events, next_number)
-
-        # row_index += 1
-        
-        # ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-        # ws.cell(row=row_index, column=1, value="Всего по части 2:").font = bold_font_10
-        # ws.cell(row=row_index, column=1).alignment = left
-        
-        # sum_cols = [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
-        # total_sums = {col: 0 for col in sum_cols}
-        # for row in ws.iter_rows(min_row=6, max_row=row_index, min_col=3, max_col=18):
-        #     if row[0].value == "Итого по разделу:":
-        #         for col in sum_cols:
-        #             val = ws.cell(row=row[0].row, column=col).value
-        #             try:
-        #                 total_sums[col] += float(val)
-        #             except (TypeError, ValueError):
-        #                 pass
-        # for col in sum_cols:
-        #     cell = ws.cell(row=row_index, column=col, value=total_sums[col])
-        #     cell.alignment = center
-        #     cell.font = regular_font_10_italic
-        #     cell.number_format = '0.00'
-
-        quarters = [
-            ("      январь–март", "jan_mar"),
-            ("      январь–июнь", "jan_jun"),
-            ("      январь–сентябрь", "jan_sep"),
-            ("      январь–декабрь", "jan_dec")
-        ]
-        events_original = get_event_metrics(plan.id, False)
-        
-        events_included_changes = get_event_metrics(plan.id, False)
-        # total_metrics = {
-        #     'jan_mar_eff': events_original['jan_mar']['eff_curr_year'] + events_included_changes['jan_mar']['eff_curr_year'],
-        #     'jan_mar_vol': events_original['jan_mar']['volume_fin'] + events_included_changes['jan_mar']['volume_fin'],
-        #     'jan_jun_eff': events_original['jan_jun']['eff_curr_year'] + events_included_changes['jan_jun']['eff_curr_year'],
-        #     'jan_jun_vol': events_original['jan_jun']['volume_fin'] + events_included_changes['jan_jun']['volume_fin'],
-        #     'jan_sep_eff': events_original['jan_sep']['eff_curr_year'] + events_included_changes['jan_sep']['eff_curr_year'],
-        #     'jan_sep_vol': events_original['jan_sep']['volume_fin'] + events_included_changes['jan_sep']['volume_fin'],
-        #     'jan_dec_eff': events_original['jan_dec']['eff_curr_year'] + events_included_changes['jan_dec']['eff_curr_year'],
-        #     'jan_dec_vol': events_original['jan_dec']['volume_fin'] + events_included_changes['jan_dec']['volume_fin']
-        # }
-        
-        total_metrics = {
-            'jan_mar_eff': events_original['jan_mar']['eff_curr_year'],
-            'jan_mar_vol': events_original['jan_mar']['volume_fin'],
-            'jan_jun_eff': events_original['jan_jun']['eff_curr_year'],
-            'jan_jun_vol': events_original['jan_jun']['volume_fin'],
-            'jan_sep_eff': events_original['jan_sep']['eff_curr_year'],
-            'jan_sep_vol': events_original['jan_sep']['volume_fin'],
-            'jan_dec_eff': events_original['jan_dec']['eff_curr_year'],
-            'jan_dec_vol': events_original['jan_dec']['volume_fin']
-        }
-
-
-        for q_label, q_key in quarters:
-            row_index += 1
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-            ws.cell(row=row_index, column=1, value=q_label).font = regular_font_10
-            ws.cell(row=row_index, column=1).alignment = left
-            
-            for col in range(3, 19):
-                c = ws.cell(row=row_index, column=col)
-                c.alignment = center
-            
-            eff_cell = ws.cell(row=row_index, column=9, value=total_metrics[f"{q_key}_eff"])
-            eff_cell.number_format = '0.00'
-            eff_cell.font = regular_font_10
-            
-            vol_cell = ws.cell(row=row_index, column=11, value=total_metrics[f"{q_key}_vol"])
-            vol_cell.number_format = '0.00'
-            vol_cell.font = regular_font_10 
+        next_number = add_section("Раздел 2.1 Мероприятия по экономии ТЭР (первоначальная редакция)", econom_events, 1)
+        second_number = add_section("Раздел 2.2 Мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)", econom_events_corrected, next_number)
+        row_index = add_totals_and_periods(ws, row_index, econom_events, econom_events_corrected, econom_events_periods)
 
         for row in ws.iter_rows(min_row=3, max_row=row_index, min_col=1, max_col=18):
             for cell in row:
                 cell.border = thin_border
 
         def org_small_signatures_second_half_xlsx(ws, start_row, plan):
-            big_space = " " * 10  
-            text = f"Стоимость 1 т у.т. принята равной{big_space}долларов, при курсе{big_space}руб."
+            plan_usd_rate = plan.usd_rate
+            plan_cost_per_toe_usd = plan.cost_per_toe_usd
+            
+            text = f"Стоимость 1 т у.т. принята равной {plan_cost_per_toe_usd} долларов, при курсе {plan_usd_rate} руб."
 
             set_cell(ws, row_start=start_row, col_start=2, col_end=9, 
                     text=text, font=regular_font_10_italic, row_height=None)
@@ -2143,10 +2118,8 @@ def export_xlsx_single(plan: Plan):
 
     def third_half_xlsx(wb, plan):
         ws = wb.create_sheet("Часть 3")
-        # ===============================
-        # Колонки и строки
-        # ===============================
-        columns = [("A", 4), 
+        columns = [
+                ("A", 4), 
                 ("B", 9), 
                 ("C", 15), 
                 ("D", 6),
@@ -2175,7 +2148,7 @@ def export_xlsx_single(plan: Plan):
             elif row == 4:
                 ws.row_dimensions[row].height = 23.25
             elif row == 5:
-                ws.row_dimensions[row].height = 26
+                ws.row_dimensions[row].height = 19.5
             elif row == 6:
                 ws.row_dimensions[row].height = 159
             else:
@@ -2196,13 +2169,13 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("C3:C6"); ws["C3"].value = "Наименование мероприятия"
         ws.merge_cells("D3:D6"); ws["D3"].value = "Единицы измерения"
         ws.merge_cells("E3:E6"); ws["E3"].value = "Объем внедрения"
-        ws.merge_cells("F3:G5"); ws["F3"].value = "Условно-годовое увеличение использования местных ТЭР "
+        ws.merge_cells("F3:G5"); ws["F3"].value = "Условно-годовое увеличение использо-вания местных ТЭР"
         ws["F6"].value = "т у.т."
         ws["G6"].value = "тыс. руб."
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
-        ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т."
+        ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемое увеличение использования местных ТЭР от внедрения мероприятий в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, тыс. руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"
@@ -2228,139 +2201,171 @@ def export_xlsx_single(plan: Plan):
             cell = ws.cell(row=row_index, column=col, value=col)
             cell.alignment = center
             cell.font = regular_font_10
+            
+        PERIOD_CODES = {"0001", "0002", "0003", "0004"}
+        increase_events = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_increase == True,
+                Event.is_corrected == False,
+                Event.display_code.notin_(PERIOD_CODES)
+        ).all()
 
-        econom_events = (Event.query
-            .join(EconMeasure)
-            .join(Plan)
-            .filter(Plan.id == plan.id, Event.is_local == True)
-            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
-            .all()
-        )
-
-        increase_events = (Event.query
-            .join(EconMeasure)
-            .join(Plan)
-            .filter(Plan.id == plan.id, Event.is_local == False)
-            .options(joinedload(Event.econ_measures).joinedload(EconMeasure.plan))
-            .all()
-        )
-
+        increase_events_corrected = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_increase == True,
+                Event.is_corrected == True,
+                Event.display_code.notin_(PERIOD_CODES)
+        ).all()
+        
+        increase_events_periods = Event.query.filter(
+                Event.id_plan == plan.id,
+                Event.is_increase == True,
+                Event.display_code.in_(PERIOD_CODES)
+        ).all()
+        
+        current_app.logger.debug(f"Plan {plan.id}: increase_events={len(increase_events)}, increase_events_corrected={len(increase_events_corrected)}, total={Event.query.filter_by(id_plan=plan.id).count()}")
+        
         def add_section(title, execs, start_number=1):
-            nonlocal row_index
-            row_index += 1
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=18)
-            ws.cell(row=row_index, column=1, value=title).font = bold_font_10
-            ws.cell(row=row_index, column=1).alignment = center
-            sum_cols = [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
-            sums = {col: 0 for col in sum_cols}
-            for idx, econ in enumerate(execs, start=start_number):
+                nonlocal row_index
+                
                 row_index += 1
-                row = [
-                    idx,
-                    econ.econ_measures.direction.code if econ.econ_measures and econ.econ_measures.direction else "",
-                    econ.name if hasattr(econ, "name") else "",
-                    econ.econ_measures.direction.unit.name if econ.econ_measures and econ.econ_measures.direction and econ.econ_measures.direction.unit else "",
-                    econ.Volume if hasattr(econ, "Volume") else 0,
-                    econ.EffTut if hasattr(econ, "EffTut") else 0,
-                    econ.EffRub if hasattr(econ, "EffRub") else 0,
-                    econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
-                    econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
-                    econ.Payback if hasattr(econ, "Payback") else 0,
-                    econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
-                    econ.BudgetState if hasattr(econ, "BudgetState") else 0,
-                    econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
-                    econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
-                    econ.BudgetOther if hasattr(econ, "BudgetOther") else 0,
-                    econ.MoneyOwn if hasattr(econ, "MoneyOwn") else 0,
-                    econ.MoneyLoan if hasattr(econ, "MoneyLoan") else 0,
-                    econ.MoneyOther if hasattr(econ, "MoneyOther") else 0
-                ]
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=18)
+                ws.cell(row=row_index, column=1, value=title).font = bold_font_10
+                ws.cell(row=row_index, column=1).alignment = center
+                
+                sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
+                sums = {col: 0 for col in sum_cols}
+                
+                if execs:
+                        for idx, econ in enumerate(execs, start=start_number):
+                                row_index += 1
+                        
+                                unit_name = ""
+                        try:
+                                if econ.direction and econ.direction.unit and econ.direction.unit.name:
+                                        unit_name = econ.direction.unit.name
+                        except Exception:
+                                pass
+                        
+                        row = [
+                                idx,
+                                econ.display_code if econ.display_code else "",
+                                econ.name if hasattr(econ, "name") else "",
+                                unit_name,
+                                econ.Volume if hasattr(econ, "Volume") else 0,
+                                econ.EffTut if hasattr(econ, "EffTut") else 0,
+                                econ.EffRub if hasattr(econ, "EffRub") else 0,
+                                econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
+                                econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
+                                econ.Payback if hasattr(econ, "Payback") else 0,
+                                econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
+                                econ.BudgetState if hasattr(econ, "BudgetState") else 0,
+                                econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
+                                econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
+                                econ.BudgetOther if hasattr(econ, "BudgetOther") else 0,
+                                econ.MoneyOwn if hasattr(econ, "MoneyOwn") else 0,
+                                econ.MoneyLoan if hasattr(econ, "MoneyLoan") else 0,
+                                econ.MoneyOther if hasattr(econ, "MoneyOther") else 0
+                        ]
+                        for col in sum_cols:
+                                try:
+                                        sums[col] += float(row[col-1])
+                                except (TypeError, ValueError):
+                                        pass
+                        ws.append(row)
+                        for col_idx in range(1, 19):
+                                cell = ws.cell(row=row_index, column=col_idx)
+                                cell.alignment = left if col_idx == 3 else center
+                                cell.font = regular_font_10
+                                if col_idx == 6 or col_idx == 9:
+                                        cell.number_format = '0.00'
+                                elif col_idx == 10:
+                                        cell.number_format = '0.0'
+                                elif col_idx in [5, 7, 11, 12, 13, 14, 15, 16, 17, 18]:
+                                        cell.number_format = '0'
+                else:
+                        row_index += 1
+                        empty_row = [''] * 18
+                        ws.append(empty_row)
+                        for col_idx in range(1, 19):
+                                cell = ws.cell(row=row_index, column=col_idx)
+                                cell.alignment = center
+                                cell.font = regular_font_10
+                
+                row_index += 1
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
+                ws.cell(row=row_index, column=1, value="Итого по разделу:").alignment = left
+                ws.cell(row=row_index, column=1).font = regular_font_10_italic
+                
                 for col in sum_cols:
-                    try:
-                        sums[col] += float(row[col-1])
-                    except (TypeError, ValueError):
-                        pass
-                ws.append(row)
-                for col_idx in range(1, 19):
-                    cell = ws.cell(row=row_index, column=col_idx)
-                    cell.alignment = left if col_idx == 3 else center
-                    cell.font = regular_font_10
-                    if col_idx in [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]:
+                        cell = ws.cell(row=row_index, column=col, value=sums[col])
+                        cell.alignment = center
+                        cell.font = regular_font_10_italic
+                        if col == 6 or col == 9:
+                                cell.number_format = '0.00'
+                        elif col == 7 or col == 10:
+                                cell.number_format = '0.0'
+                        else:
+                                cell.number_format = '0'
+                return start_number + len(execs)
+
+
+        def add_totals_and_periods(ws, row_index, increase_events, increase_events_corrected, increase_events_periods):
+                all_events = increase_events + increase_events_corrected
+                sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
+                
+                def get_value(event, col):
+                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFin',
+                                12: 'BudgetState', 13: 'BudgetRep', 14: 'BudgetLoc', 15: 'BudgetOther',
+                                16: 'MoneyOwn', 17: 'MoneyLoan', 18: 'MoneyOther'}
+                        val = getattr(event, attr_map.get(col, ''), 0)
+                        return float(val) if val else 0
+                
+                row_index += 1
+                ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
+                ws.cell(row=row_index, column=1, value="Всего по части 3, в том числе:").font = bold_font_10
+                ws.cell(row=row_index, column=1).alignment = left
+                
+                for col in sum_cols:
+                        total = sum(get_value(e, col) for e in all_events)
+                        cell = ws.cell(row=row_index, column=col, value=total)
+                        cell.alignment = center
+                        cell.font = bold_font_10
+                        if col == 6 or col == 9:
+                                cell.number_format = '0.00'
+                        elif col == 7:
+                                cell.number_format = '0.0'
+                        else:
+                                cell.number_format = '0'
+                
+                PERIOD_CODES = ["0001", "0002", "0003", "0004"]
+                
+                period_events = [e for e in increase_events_periods if e.display_code in PERIOD_CODES]
+                period_events.sort(key=lambda x: PERIOD_CODES.index(x.display_code))
+                
+                for event in period_events:
+                        row_index += 1
+                        
+                        ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=8)
+                        
+                        event_name = event.name if event.name else ""
+                        ws.cell(row=row_index, column=1, value=event_name).font = regular_font_10
+                        ws.cell(row=row_index, column=1).alignment = left
+                        
+                        eff_curr_year = float(event.EffCurrYear) if event.EffCurrYear else 0
+                        cell = ws.cell(row=row_index, column=9, value=eff_curr_year)
+                        cell.alignment = center
+                        cell.font = regular_font_10
                         cell.number_format = '0.00'
-            row_index += 1
-            
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-            ws.cell(row=row_index, column=1, value="Итого по разделу:").alignment = left
-            ws.cell(row=row_index, column=1).font = regular_font_10_italic
-            
-            for col in sum_cols:
-                cell = ws.cell(row=row_index, column=col, value=sums[col])
-                cell.alignment = center
-                cell.font = regular_font_10_italic
-                cell.number_format = '0.00'
-            return start_number + len(execs)
+                        
+                        for col in [10, 11, 12, 13, 14, 15, 16, 17, 18]:
+                                ws.cell(row=row_index, column=col, value="")
+                
+                return row_index
 
-        add_section("Раздел 3. Мероприятия по увеличению использования местных топливно-энергетических ресурсов", econom_events, 1)
-
-        # row_index += 1
-        
-        # ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-        # ws.cell(row=row_index, column=1, value="Всего по части 2:").font = bold_font_10
-        # ws.cell(row=row_index, column=1).alignment = left
-        
-        # sum_cols = [5, 6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
-        # total_sums = {col: 0 for col in sum_cols}
-        # for row in ws.iter_rows(min_row=6, max_row=row_index, min_col=3, max_col=18):
-        #     if row[0].value == "Итого по разделу:":
-        #         for col in sum_cols:
-        #             val = ws.cell(row=row[0].row, column=col).value
-        #             try:
-        #                 total_sums[col] += float(val)
-        #             except (TypeError, ValueError):
-        #                 pass
-        # for col in sum_cols:
-        #     cell = ws.cell(row=row_index, column=col, value=total_sums[col])
-        #     cell.alignment = center
-        #     cell.font = regular_font_10_italic
-        #     cell.number_format = '0.00'
-
-        quarters = [
-            ("      январь–март", "jan_mar"),
-            ("      январь–июнь", "jan_jun"),
-            ("      январь–сентябрь", "jan_sep"),
-            ("      январь–декабрь", "jan_dec")
-        ]
-        events_original = get_event_metrics(plan.id, True)
-        events_included_changes = get_event_metrics(plan.id, True)
-        
-        total_metrics = {
-            'jan_mar_eff': events_included_changes['jan_mar']['eff_curr_year'],
-            'jan_mar_vol': events_included_changes['jan_mar']['volume_fin'],
-            'jan_jun_eff': events_included_changes['jan_jun']['eff_curr_year'],
-            'jan_jun_vol': events_included_changes['jan_jun']['volume_fin'],
-            'jan_sep_eff': events_included_changes['jan_sep']['eff_curr_year'],
-            'jan_sep_vol': events_included_changes['jan_sep']['volume_fin'],
-            'jan_dec_eff': events_included_changes['jan_dec']['eff_curr_year'],
-            'jan_dec_vol': events_included_changes['jan_dec']['volume_fin']
-        }
-
-        for q_label, q_key in quarters:
-            row_index += 1
-            ws.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=3)
-            ws.cell(row=row_index, column=1, value=q_label).font = regular_font_10
-            ws.cell(row=row_index, column=1).alignment = left
-            
-            for col in range(3, 19):
-                c = ws.cell(row=row_index, column=col)
-                c.alignment = center
-            
-            eff_cell = ws.cell(row=row_index, column=9, value=total_metrics[f"{q_key}_eff"])
-            eff_cell.number_format = '0.00'
-            eff_cell.font = regular_font_10
-            
-            vol_cell = ws.cell(row=row_index, column=11, value=total_metrics[f"{q_key}_vol"])
-            vol_cell.number_format = '0.00'
-            vol_cell.font = regular_font_10 
+        next_number = add_section("3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)", increase_events, 1)
+        second_number = add_section("3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)", increase_events_corrected, next_number)
+        row_index = add_totals_and_periods(ws, row_index, increase_events, increase_events_corrected, increase_events_periods)
 
         for row in ws.iter_rows(min_row=3, max_row=row_index, min_col=1, max_col=18):
             for cell in row:
@@ -2669,7 +2674,7 @@ def export_xlsx_single(plan: Plan):
             reg_signatures_third_half_xlsx(ws, row_index + 1, plan)
         else:
             ValueError("Erorr export_type 3d half")
-    
+   
         page_setttings(ws, print_area="A1:R32")
         
         return ws
@@ -2696,13 +2701,13 @@ def export_xlsx_single(plan: Plan):
 
     first_half_xlsx(wb, plan)
     
-    econom_events = [exec_item for exec_item in plan.econ_execes if exec_item.is_local]
-    increase_events = [exec_item for exec_item in plan.econ_execes if not exec_item.is_local]
-        
-    if increase_events:
-        second_half_xlsx(wb, plan) 
-        
+    econom_events = [event for event in plan.events if event.is_econom == True]
+    increase_events = [event for event in plan.events if event.is_increase == True]
+                
     if econom_events:
+        second_half_xlsx(wb, plan) 
+
+    if increase_events:
         third_half_xlsx(wb, plan)
 
     file_stream = io.BytesIO()

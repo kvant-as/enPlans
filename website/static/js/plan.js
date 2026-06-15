@@ -124,6 +124,7 @@ class PlanIndicators {
         const coeff = row.cells[4]?.textContent.trim() || '0';
         const unitName = row.cells[3]?.textContent.trim() || 'ед. изм.';
         const indicatorId = row.cells[0]?.textContent.trim() || '';
+        const group = row.querySelector('td[data-group]')?.getAttribute('data-group') || '';
         
         if (selectedName) {
             selectedName.textContent = `${code} - ${name}`;
@@ -146,6 +147,9 @@ class PlanIndicators {
             span.textContent = unitName;
         });
         
+        const groupNumber = parseFloat(group);
+        this.initAddNumericInputsByGroup(groupNumber);
+        
         if (typeof checkCategoryRequired === 'function') {
             checkCategoryRequired();
         }
@@ -164,6 +168,71 @@ class PlanIndicators {
         }
         
         this.updateTutResults();
+    }
+
+    initAddNumericInputsByGroup(groupNumber) {
+        const inputs = [
+            document.querySelector('#AddIndicatorModal input[data-year="before"]'),
+            document.querySelector('#AddIndicatorModal input[data-year="prev"]'),
+            document.querySelector('#AddIndicatorModal input[data-year="current"]')
+        ];
+        
+        inputs.forEach(input => {
+            if (!input) return;
+            
+            let decimalPlaces = 0;
+            let defaultValue = '0';
+            
+            if (groupNumber === 5) {
+                decimalPlaces = 1;
+                defaultValue = '0,0';
+            } else if (groupNumber === 6 || groupNumber === 7 || groupNumber === 8) {
+                decimalPlaces = 2;
+                defaultValue = '0,00';
+            } else {
+                decimalPlaces = 0;
+                defaultValue = '0';
+            }
+            
+            const settings = {
+                allowNegative: false,
+                decimalPlaces: decimalPlaces,
+                defaultValue: defaultValue
+            };
+            
+            input.removeEventListener('input', input._addInputHandler);
+            input.removeEventListener('focus', input._addFocusHandler);
+            input.removeEventListener('blur', input._addBlurHandler);
+            
+            const inputHandler = (e) => { 
+                NumericInputHandler.handleInput(e, settings);
+                this.updateTutResults();
+            };
+            const focusHandler = (e) => { 
+                NumericInputHandler.handleFocus(e, settings);
+            };
+            const blurHandler = (e) => { 
+                NumericInputHandler.handleBlur(e, settings);
+                this.updateTutResults();
+            };
+            
+            input.addEventListener('input', inputHandler);
+            input.addEventListener('focus', focusHandler);
+            input.addEventListener('blur', blurHandler);
+            input.addEventListener('click', (e) => { e.target.select(); });
+            
+            input._addInputHandler = inputHandler;
+            input._addFocusHandler = focusHandler;
+            input._addBlurHandler = blurHandler;
+            
+            if (decimalPlaces === 0) {
+                input.placeholder = '0';
+            } else if (decimalPlaces === 1) {
+                input.placeholder = '0,0';
+            } else {
+                input.placeholder = '0,00';
+            }
+        });
     }
 
     updateTutResults() {
@@ -200,20 +269,44 @@ class PlanIndicators {
             currentCoeff = 0;
         }
         
+        const activeRow = document.querySelector('[data-action="modal-table-main"] tbody tr.active-row');
+        let groupValue = '';
+        if (activeRow) {
+            const groupDataCell = activeRow.querySelector('td[data-group]');
+            if (groupDataCell) {
+                groupValue = groupDataCell.getAttribute('data-group');
+            }
+        }
+        const groupNumber = parseFloat(groupValue);
+        
+        const formatResultValue = (value, groupId) => {
+            if (value === null || value === undefined || isNaN(value)) return '0';
+            
+            if (groupId === 5) {
+                return value.toFixed(1).replace('.', ',');
+            } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                return value.toFixed(2).replace('.', ',');
+            } else {
+                return Math.round(value).toString().replace('.', ',');
+            }
+        };
+        
         const years = ['before', 'prev', 'current'];
         years.forEach((year) => {
             const input = document.querySelector(`#AddIndicatorModal input[data-year="${year}"]`);
             const resultSpan = document.getElementById(`result-${year}`);
             
             if (input && resultSpan) {
-                let inputValue = input.value.replace(',', '.');
-                let value = parseFloat(inputValue);
-                if (isNaN(value)) {
-                    value = 0;
+                if (input.value) {
+                    let inputValue = input.value.replace(',', '.');
+                    let value = parseFloat(inputValue);
+                    if (isNaN(value)) value = 0;
+                    const tutValue = value * currentCoeff;
+                    let formattedResult = formatResultValue(tutValue, groupNumber);
+                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                } else {
+                    resultSpan.textContent = '= 0 т.у.т.';
                 }
-                const tutValue = value * currentCoeff;
-                let formattedResult = tutValue.toFixed(2).replace('.', ',');
-                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
             }
         });
     }
@@ -250,21 +343,33 @@ class PlanIndicators {
             tr.className = `menu-row ${isNewGroup ? 'group-header-indicator' : ''}`;
             tr.setAttribute('data-id', row.id);
             
+            const formatValue = (value, groupId) => {
+                if (value === null || value === undefined || isNaN(value)) return '';
+                
+                if (groupId === 5) {
+                    return value.toFixed(1).replace('.', ',');
+                } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                    return value.toFixed(2).replace('.', ',');
+                } else {
+                    return Math.round(value).toString().replace('.', ',');
+                }
+            };
+            
             tr.innerHTML = `
-                <td style="text-align: center;">${index + 1}</td>
+                <td style="text-align: center; display: none;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
                 <td style="text-align: start">
                     ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
                 </td>
                 <td style="text-align: start">${this.escapeHtml(row.unit_name)}</td>
-                <td>${row.QYearBeforePrev_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearBeforePrev_tut.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearPrev_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearPrev_tut.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearCurrent_unit.toFixed(2).replace('.', ',')}</td>
-                <td>${row.QYearCurrent_tut.toFixed(2).replace('.', ',')}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_unit, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_tut, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_unit, row.group)}</td>
+                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_tut, row.group)}</td>
+                <td>${formatValue(row.QYearCurrent_unit, row.group)}</td>
+                <td>${formatValue(row.QYearCurrent_tut, row.group)}</td>
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
-                    ${row.difference.toFixed(2).replace('.', ',')}
+                    ${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.difference, row.group)}
                 </td>
                 <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
@@ -349,7 +454,7 @@ class PlanIndicators {
     showError(message) {
         const tbody = document.getElementById('indicators-tbody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">${message}<tr></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">${message}</td></tr>`;
         }
     }
 }
@@ -375,8 +480,11 @@ function Edit_indicator_modal() {
         groupValue = groupDataCell.getAttribute('data-group');
     }
 
-    const isGroup5 = groupValue === '5.0';
-    const isGroup6 = groupValue === '6.0';
+    const groupNumber = parseFloat(groupValue);
+    const isGroup5 = groupNumber === 5;
+    const isGroup6 = groupNumber === 6;
+    const isGroup7 = groupNumber === 7;
+    const isGroup8 = groupNumber === 8;
     const isSpecialGroup = isGroup5 || isGroup6;
 
     const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
@@ -385,6 +493,75 @@ function Edit_indicator_modal() {
     const editCategorySection = document.getElementById('edit-category-section');
     const editNameSection = document.getElementById('edit-name-section');
     const editNameInput = document.getElementById('edit-name-section-input');
+    
+    const initNumericInput = (inputElement, groupId) => {
+        if (!inputElement) return;
+        
+        let decimalPlaces = 0;
+        let defaultValue = '0';
+        
+        if (groupId === 5) {
+            decimalPlaces = 1;
+            defaultValue = '0,0';
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            decimalPlaces = 2;
+            defaultValue = '0,00';
+        } else {
+            decimalPlaces = 0;
+            defaultValue = '0';
+        }
+        
+        const settings = {
+            allowNegative: false,
+            decimalPlaces: decimalPlaces,
+            defaultValue: defaultValue
+        };
+        
+        const inputHandler = function(e) { 
+            NumericInputHandler.handleInput(e, settings);
+            updateEditTutResults();
+        };
+        const focusHandler = function(e) { 
+            NumericInputHandler.handleFocus(e, settings);
+        };
+        const blurHandler = function(e) { 
+            NumericInputHandler.handleBlur(e, settings);
+            updateEditTutResults();
+        };
+        
+        inputElement.removeEventListener('input', inputElement._inputHandler);
+        inputElement.removeEventListener('focus', inputElement._focusHandler);
+        inputElement.removeEventListener('blur', inputElement._blurHandler);
+        
+        inputElement.addEventListener('input', inputHandler);
+        inputElement.addEventListener('focus', focusHandler);
+        inputElement.addEventListener('blur', blurHandler);
+        inputElement.addEventListener('click', function(e) { e.target.select(); });
+        
+        inputElement._inputHandler = inputHandler;
+        inputElement._focusHandler = focusHandler;
+        inputElement._blurHandler = blurHandler;
+    };
+    
+    const formatDisplayValue = (value, groupId) => {
+        if (value === null || value === undefined || isNaN(value)) return '';
+        
+        if (groupId === 5) {
+            return value.toFixed(1).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(2).replace('.', ',');
+        } else {
+            return Math.round(value).toString().replace('.', ',');
+        }
+    };
+    
+    const beforePrevInput = document.getElementById('QYearBeforePrev-edit');
+    const prevInput = document.getElementById('QYearCurr-edit');
+    const currentInput = document.getElementById('QYearCurrent-edit');
+    
+    initNumericInput(beforePrevInput, groupNumber);
+    initNumericInput(prevInput, groupNumber);
+    initNumericInput(currentInput, groupNumber);
     
     fetch(`/api/get-indicator/${idIndicator}`)
         .then(response => response.json())
@@ -414,7 +591,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -425,7 +601,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -436,7 +611,6 @@ function Edit_indicator_modal() {
                 if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = '';
                 if (QYearCurrentCard) {
                     QYearCurrentCard.style.display = 'block';
-                    const currentInput = QYearCurrentCard.querySelector('input');
                     if (currentInput) {
                         currentInput.setAttribute('required', 'required');
                         currentInput.removeAttribute('readonly');
@@ -482,23 +656,34 @@ function Edit_indicator_modal() {
             const usedCoeff = data.used_coeff;
             const coeffValue = usedCoeff ? usedCoeff : data.CoeffToTut;
             
+            const setFormattedValue = (inputId, value, groupId) => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    if (value === null || value === undefined || isNaN(value)) {
+                        input.value = '';
+                    } else {
+                        input.value = formatDisplayValue(value, groupId);
+                    }
+                }
+            };
+            
             if (isCodes9911to9914) {
-                setValueIfExists('QYearBeforePrev-edit', '');
-                setValueIfExists('QYearCurr-edit', '');
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
+                setFormattedValue('QYearCurr-edit', null, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else if (!isSpecialGroup) {
-                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearBeforePrev-edit', valBeforePrev);
-                setValueIfExists('QYearCurr-edit', valPrev);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue) : null;
+                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue) : null;
+                setFormattedValue('QYearBeforePrev-edit', valBeforePrev, groupNumber);
+                setFormattedValue('QYearCurr-edit', valPrev, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else {
-                setValueIfExists('QYearBeforePrev-edit', '');
-                setValueIfExists('QYearCurr-edit', '');
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue).toFixed(2).replace('.', ',') : '0,00';
-                setValueIfExists('QYearCurrent-edit', valCurrent);
+                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
+                setFormattedValue('QYearCurr-edit', null, groupNumber);
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             }
             
             function validateEditForm() {
@@ -612,12 +797,37 @@ function updateEditTutResults() {
     
     const activeRow = document.querySelector('.rows .active-row');
     let indicatorCode = '';
+    let groupValue = '';
+    
     if (activeRow) {
         const codeCell = activeRow.querySelector('td:nth-child(12)');
         if (codeCell) {
             indicatorCode = codeCell.textContent.trim();
         }
+        const groupDataCell = activeRow.querySelector('td[data-group]');
+        if (groupDataCell) {
+            groupValue = groupDataCell.getAttribute('data-group');
+        }
     }
+    
+    const groupNumber = parseFloat(groupValue);
+    const isGroup5 = groupNumber === 5;
+    const isGroup6 = groupNumber === 6;
+    const isGroup7 = groupNumber === 7;
+    const isGroup8 = groupNumber === 8;
+    const isSpecialGroup = isGroup5 || isGroup6;
+    
+    const formatResultValue = (value, groupId) => {
+        if (value === null || value === undefined || isNaN(value)) return '0';
+        
+        if (groupId === 5) {
+            return value.toFixed(1).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(2).replace('.', ',');
+        } else {
+            return Math.round(value).toString().replace('.', ',');
+        }
+    };
     
     const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
     
@@ -630,8 +840,24 @@ function updateEditTutResults() {
             let value = parseFloat(inputValue);
             if (isNaN(value)) value = 0;
             const tutValue = value * currentCoeff;
-            let formattedResult = tutValue.toFixed(2).replace('.', ',');
+            let formattedResult = formatResultValue(tutValue, groupNumber);
             resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        } else if (resultSpan) {
+            resultSpan.textContent = '= 0 т.у.т.';
+        }
+    } else if (isSpecialGroup) {
+        const currentInput = document.getElementById('QYearCurrent-edit');
+        const resultSpan = document.getElementById('edit-result-current');
+        
+        if (currentInput && resultSpan && currentInput.value) {
+            let inputValue = currentInput.value.replace(',', '.');
+            let value = parseFloat(inputValue);
+            if (isNaN(value)) value = 0;
+            const tutValue = value * currentCoeff;
+            let formattedResult = formatResultValue(tutValue, groupNumber);
+            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+        } else if (resultSpan) {
+            resultSpan.textContent = '= 0 т.у.т.';
         }
     } else {
         const inputs = [
@@ -644,17 +870,128 @@ function updateEditTutResults() {
             const input = document.getElementById(item.id);
             const resultSpan = document.getElementById(item.resultId);
             
-            if (input && resultSpan && input.value && !input.readOnly) {
-                let inputValue = input.value.replace(',', '.');
-                let value = parseFloat(inputValue);
-                if (isNaN(value)) value = 0;
-                const tutValue = value * currentCoeff;
-                let formattedResult = tutValue.toFixed(2).replace('.', ',');
-                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+            if (input && resultSpan) {
+                if (input.value && !input.readOnly) {
+                    let inputValue = input.value.replace(',', '.');
+                    let value = parseFloat(inputValue);
+                    if (isNaN(value)) value = 0;
+                    const tutValue = value * currentCoeff;
+                    let formattedResult = formatResultValue(tutValue, groupNumber);
+                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                } else {
+                    resultSpan.textContent = '= 0 т.у.т.';
+                }
             }
         });
     }
 }
+
+var NumericInputHandler = {
+    init: function(selector, options) {
+        var defaults = {
+            allowNegative: false,
+            decimalPlaces: 2,
+            defaultValue: '0,00'
+        };
+        var settings = Object.assign({}, defaults, options);
+        
+        var inputs = document.querySelectorAll(selector);
+        inputs.forEach(function(input) {
+            input.addEventListener('input', function(e) {
+                NumericInputHandler.handleInput(e, settings);
+            });
+            input.addEventListener('focus', function(e) {
+                NumericInputHandler.handleFocus(e, settings);
+            });
+            input.addEventListener('blur', function(e) {
+                NumericInputHandler.handleBlur(e, settings);
+            });
+            input.addEventListener('click', function(e) {
+                e.target.select();
+            });
+        });
+    },
+    
+    handleInput: function(e, settings) {
+        var input = e.target;
+        var cursorPos = input.selectionStart;
+        var oldValue = input.value;
+        var newValue = oldValue;
+        
+        if (settings.allowNegative) {
+            newValue = oldValue.replace(/[^\d,.-]/g, '');
+            var minusCount = (newValue.match(/-/g) || []).length;
+            if (minusCount > 1) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            } else if (minusCount === 1 && !newValue.startsWith('-')) {
+                newValue = '-' + newValue.replace(/-/g, '');
+            }
+            if (newValue === '-') {
+                input.value = newValue;
+                return;
+            }
+        } else {
+            newValue = oldValue.replace(/[^\d,]/g, '');
+            if (newValue === '') {
+                input.value = '';
+                return;
+            }
+        }
+        
+        if (newValue !== '' && newValue !== '-') {
+            newValue = newValue.replace(',', '.');
+            var parts = newValue.split('.');
+            if (parts.length > 1) {
+                newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
+            }
+
+            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
+                newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
+            }
+            
+            var floatValue = parseFloat(newValue);
+            if (!isNaN(floatValue)) {
+                newValue = floatValue.toFixed(settings.decimalPlaces);
+                newValue = newValue.replace('.', ',');
+            }
+        }
+        
+        if (newValue !== oldValue) {
+            input.value = newValue;
+            var newCursorPos = Math.min(cursorPos, newValue.length);
+            input.setSelectionRange(newCursorPos, newCursorPos);
+        }
+    },
+    
+    handleFocus: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-') {
+            input.value = settings.defaultValue;
+        }
+        var commaIndex = input.value.indexOf(',');
+        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
+            input.setSelectionRange(commaIndex, commaIndex);
+        } else if (settings.decimalPlaces === 0) {
+            input.select();
+        }
+    },
+    
+    handleBlur: function(e, settings) {
+        var input = e.target;
+        if (input.value === '' || input.value === '-' || input.value === null) {
+            input.value = settings.defaultValue;
+        } else {
+            var valueWithDot = input.value.replace(',', '.');
+            var num = parseFloat(valueWithDot);
+            if (!isNaN(num)) {
+                var formatted = num.toFixed(settings.decimalPlaces);
+                input.value = formatted.replace('.', ',');
+            } else {
+                input.value = settings.defaultValue;
+            }
+        }
+    }
+};
 
 function setValueIfExists(elementId, value) {
     const element = document.getElementById(elementId);
@@ -759,20 +1096,20 @@ class PlanEvents {
             <td style="text-align: center;">${this.escapeHtml(row.display_code || row.direction_code)}</td>
             <td style="text-align: start;">${this.escapeHtml(row.name)}</td>
             <td style="text-align: center;">${this.escapeHtml(row.unit_name)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.Volume)}</td>
+            <td style="text-align: end;">${(row.Volume || 0).toString()}</td>
             <td style="text-align: end;">${this.formatNumber(row.EffTut)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.EffRub)}</td>
-            <td style="text-align: center;">${row.ExpectedQuarter || ''}</td>
+            <td style="text-align: end;">${(row.EffRub || 0).toString()}</td>
+            <td style="text-align: center;">${row.ExpectedQuarter || ''}</td> 
             <td style="text-align: end;">${this.formatNumber(row.EffCurrYear)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.Payback)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.VolumeFin)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetState)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetRep)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetLoc)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.BudgetOther)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyOwn)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyLoan)}</td>
-            <td style="text-align: end;">${this.formatNumber(row.MoneyOther)}</td>
+            <td style="text-align: end;">${(row.Payback || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(row.VolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetState || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetRep || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetLoc || 0).toString()}</td>
+            <td style="text-align: end;">${(row.BudgetOther || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyOwn || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyLoan || 0).toString()}</td>
+            <td style="text-align: end;">${(row.MoneyOther || 0).toString()}</td>
         `;
         
         return tr;
@@ -787,18 +1124,18 @@ class PlanEvents {
             <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffTut').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'EffRub').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'EffRub') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'VolumeFin').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetState').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetRep').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetLoc').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'BudgetOther').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyOwn').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyLoan').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(events, 'MoneyOther').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetState') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'BudgetOther') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
         `;
         tbody.appendChild(totalRow);
     }
@@ -821,20 +1158,20 @@ class PlanEvents {
         totalRow.innerHTML = `
             <td colspan="3">Всего по части ${partNumber}, в том числе:</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'Volume').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffTut').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'EffRub').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'EffRub') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'VolumeFin').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetState').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetRep').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetLoc').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'BudgetOther').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyOwn').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyLoan').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'MoneyOther').toFixed(2).replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
         `;
         otherContent.appendChild(totalRow);
         
@@ -1223,18 +1560,20 @@ class TableContextMenu {
     onRowLeftClick(event, row) {
         event.stopPropagation();
         
-        if (row.classList.contains('active-row')) {
-            row.classList.remove('active-row');
-            this.selectedRow = null;
-        } else {
-            if (this.selectedRow && this.selectedRow !== row) {
-                this.selectedRow.classList.remove('active-row');
-            }
-            row.classList.add('active-row');
-            this.selectedRow = row;
+        const hasDataId = row.getAttribute('data-id') && row.getAttribute('data-id') !== 'null';
+        
+        if (!hasDataId) {
+            return;
         }
         
-        const isPeriodRow = row.closest('#other-content') !== null || row.classList.contains('group-header');
+        if (this.selectedRow && this.selectedRow !== row) {
+            this.selectedRow.classList.remove('active-row');
+        }
+        
+        row.classList.add('active-row');
+        this.selectedRow = row;
+        
+        const isPeriodRow = row.closest('#other-content') !== null;
         
         setTimeout(() => {
             if (isPeriodRow) {
@@ -1266,6 +1605,13 @@ class TableContextMenu {
         event.preventDefault();
         event.stopPropagation();
 
+        const hasDataId = row.getAttribute('data-id') && row.getAttribute('data-id') !== 'null';
+        
+        if (!hasDataId) {
+            this.updateButtonsState();
+            return;
+        }
+
         if (this.selectedRow && this.selectedRow !== row) {
             this.selectedRow.classList.remove('active-row');
         }
@@ -1280,7 +1626,7 @@ class TableContextMenu {
             }
         }
         
-        const isPeriodRow = row.closest('#other-content') !== null || row.classList.contains('group-header');
+        const isPeriodRow = row.closest('#other-content') !== null;
         
         if (isPeriodRow) {
             if (typeof Edit_Period_modal === 'function') {
@@ -1662,8 +2008,6 @@ function Edit_Period_modal() {
         });
 }
 
-// static/js/event_modal.js
-
 function getPlanToken() {
     const hiddenToken = document.getElementById('plan-token');
     if (hiddenToken && hiddenToken.value) {
@@ -1910,40 +2254,6 @@ function setValueIfExists(elementId, value) {
     if (element) {
         element.value = value;
     }
-}
-
-function initExportPage() {
-    const form = document.getElementById("exportForm");
-    const formatInput = document.getElementById("selectedFormat");
-    const checkboxes = document.querySelectorAll('input[name="ids"]');
-    const exportBtn = document.getElementById("exportBtn");
-    const selectAllBtn = document.getElementById("selectAllBtn");
-
-    function updateButtonState() {
-        const formatSelected = !!formatInput.value;
-        const planSelected = Array.from(checkboxes).some(cb => cb.checked);
-        exportBtn.disabled = !(formatSelected && planSelected);
-        form.action = formatSelected ? `/export-to/${formatInput.value}` : "";
-    }
-
-    document.querySelectorAll(".export-choose").forEach(item => {
-        item.addEventListener("click", () => {
-            document.querySelectorAll(".export-choose").forEach(el => el.classList.remove("active"));
-            item.classList.add("active");
-            formatInput.value = item.dataset.format;
-            updateButtonState();
-        });
-    });
-
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener("change", () => {
-            checkboxes.forEach(cb => cb.checked = selectAllBtn.checked);
-            updateButtonState();
-        });
-    }
-
-    checkboxes.forEach(cb => cb.addEventListener("change", updateButtonState));
-    updateButtonState();
 }
 
 function validateAndEnableButton() {
@@ -2195,7 +2505,1084 @@ if (document.getElementById('sentmodal')) {
     new CertificateUploadHandler();
 }
 
+class PlansLoader {
+    constructor(options = {}) {
+        this.currentStatus = options.initialStatus || 'all';
+        this.currentYear = options.initialYear || 'all';
+        this.currentRegion = options.initialRegion || 'all';
+        this.currentSearchName = '';
+        this.currentSearchOkpo = '';
+        this.currentPage = 1;
+        this.isLoading = false;
+        this.hasMore = true;
+        this.searchTimeout = null;
+        this.perPage = options.perPage || 5;
+        
+        this.containerId = options.containerId || 'plans-container';
+        this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
+        this.searchNameId = options.searchNameId || 'search-name';
+        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        
+        this.init();
+    }
+    
+    updateUrl() {
+        const params = new URLSearchParams();
+        
+        if (this.currentStatus && this.currentStatus !== 'all') {
+            params.set('status', this.currentStatus);
+        }
+        if (this.currentYear && this.currentYear !== 'all') {
+            params.set('year', this.currentYear);
+        }
+        if (this.currentRegion && this.currentRegion !== 'all') {
+            params.set('region', this.currentRegion);
+        }
+        if (this.currentSearchName) {
+            params.set('search_name', this.currentSearchName);
+        }
+        if (this.currentSearchOkpo) {
+            params.set('search_okpo', this.currentSearchOkpo);
+        }
+        
+        const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        window.history.pushState({}, '', newUrl);
+    }
+    
+    async loadPlans(reset = true) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        const page = reset ? 1 : this.currentPage + 1;
+        const container = document.getElementById(this.containerId);
+        
+        if (reset && container) {
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
+        }
+        
+        this.updateUrl();
+        
+        try {
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            if (this.currentSearchName) {
+                url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
+            }
+            if (this.currentSearchOkpo) {
+                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (reset) {
+                    if (container) {
+                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
+                    }
+                    this.currentPage = 1;
+                } else {
+                    const plansArea = document.querySelector('.plans-area');
+                    if (plansArea) {
+                        plansArea.insertAdjacentHTML('beforeend', data.html);
+                    }
+                    this.currentPage = page;
+                }
+                
+                this.hasMore = data.pagination.has_next;
+                this.updateLoadMoreButton();
+                this.updateCountsDisplay(data.counts);
+                this.attachCheckboxListeners();
+            }
+        } catch (error) {
+            console.error('Error loading plans:', error);
+        } finally {
+            this.isLoading = false;
+        }
+    }
+    
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+        }
+    }
+    
+    updateCountsDisplay(counts) {
+        if (!counts) return;
+        
+        const statAll = document.querySelector('.stat-number');
+        const statDraft = document.querySelector('.stat-number-redac');
+        const statControl = document.querySelector('.stat-number-control');
+        const statSent = document.querySelector('.stat-number-sent');
+        const statError = document.querySelector('.stat-number-eror');
+        const statApproved = document.querySelector('.stat-number-sub');
+        
+        if (statAll) statAll.textContent = counts.all || '-';
+        if (statDraft) statDraft.textContent = counts.draft || '-';
+        if (statControl) statControl.textContent = counts.control || '-';
+        if (statSent) statSent.textContent = counts.sent || '-';
+        if (statError) statError.textContent = counts.error || '-';
+        if (statApproved) statApproved.textContent = counts.approved || '-';
+    }
+    
+    attachCheckboxListeners() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.removeEventListener('change', this.handleCheckboxChange);
+            cb.addEventListener('change', this.handleCheckboxChange.bind(this));
+        });
+    }
+    
+    handleCheckboxChange(e) {
+        const checkbox = e.target;
+        const planId = checkbox.value;
+        
+        if (checkbox.checked) {
+            this.selectedPlans.add(planId);
+        } else {
+            this.selectedPlans.delete(planId);
+        }
+        
+        this.updateSelectAllButton();
+        this.updateExportButton();
+    }
+    
+    updateSelectAllButton() {
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        
+        if (selectAllBtn && clearAllBtn) {
+            if (this.selectedPlans && this.selectedPlans.size > 0) {
+                selectAllBtn.style.display = 'none';
+                clearAllBtn.style.display = 'flex';
+            } else {
+                selectAllBtn.style.display = 'flex';
+                clearAllBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    updateExportButton() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.disabled = !(this.selectedPlans && this.selectedPlans.size > 0 && this.selectedFormat);
+        }
+    }
+    
+    handleSearch() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        this.searchTimeout = setTimeout(() => {
+            this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
+            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.updateUrl();
+            this.loadPlans(true);
+        }, 500);
+    }
+    
+    initFilters() {
+        const searchNameInput = document.getElementById(this.searchNameId);
+        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        
+        if (searchNameInput) {
+            searchNameInput.addEventListener('input', () => this.handleSearch());
+        }
+        if (searchOkpoInput) {
+            searchOkpoInput.addEventListener('input', () => this.handleSearch());
+        }
+        
+        const statusDropdown = document.querySelector('[data-filter-type="status"]');
+        const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        const regionDropdown = document.querySelector('[data-filter-type="region"]');
+        
+        if (statusDropdown) {
+            const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+            const items = statusDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-status');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
+                    statusDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentStatus = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    statusDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (yearDropdown) {
+            const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
+            const items = yearDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-year');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
+                    yearDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentYear = value;
+                    if (selectedSpan) {
+                        if (value === 'all') {
+                            selectedSpan.textContent = 'Год';
+                        } else {
+                            selectedSpan.textContent = value;
+                        }
+                    }
+                    yearDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (regionDropdown) {
+            const toggleBtn = regionDropdown.querySelector('.dropdown-toggle');
+            const items = regionDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-region');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    regionDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentRegion = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    regionDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (statusDropdown && !statusDropdown.contains(e.target)) {
+                statusDropdown.classList.remove('active');
+            }
+            if (yearDropdown && !yearDropdown.contains(e.target)) {
+                yearDropdown.classList.remove('active');
+            }
+            if (regionDropdown && !regionDropdown.contains(e.target)) {
+                regionDropdown.classList.remove('active');
+            }
+        });
+        
+        window.addEventListener('popstate', (event) => {
+            const params = new URLSearchParams(window.location.search);
+            const newStatus = params.get('status') || 'all';
+            const newYear = params.get('year') || 'all';
+            const newRegion = params.get('region') || 'all';
+            const newSearchName = params.get('search_name') || '';
+            const newSearchOkpo = params.get('search_okpo') || '';
+            
+            if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                
+                this.currentStatus = newStatus;
+                this.currentYear = newYear;
+                this.currentRegion = newRegion;
+                this.currentSearchName = newSearchName;
+                this.currentSearchOkpo = newSearchOkpo;
+                
+                if (searchNameInput) searchNameInput.value = newSearchName;
+                if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
+                
+                this.updateFilterDisplay();
+                this.loadPlans(true);
+            }
+        });
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+        }
+    }
+    
+    updateFilterDisplay() {
+        const statusMap = {
+            'all': 'Статус',
+            'draft': 'В редакции',
+            'control': 'Контроль пройден',
+            'sent': 'На рассмотрении',
+            'error': 'С ошибками',
+            'approved': 'Согласованные'
+        };
+        
+        const regionMap = {
+            'all': 'Регион',
+            '1': 'Брестское областное управление',
+            '2': 'Витебское областное управление',
+            '3': 'Гомельское областное управление',
+            '4': 'Гродненское областное управление',
+            '5': 'Управление г. Минск',
+            '6': 'Минское областное управление',
+            '7': 'Могилевское областное управление'
+        };
+        
+        const selectedStatusSpan = document.getElementById('selected-status');
+        if (selectedStatusSpan && statusMap[this.currentStatus]) {
+            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        }
+        
+        const selectedYearSpan = document.getElementById('selected-year');
+        if (selectedYearSpan) {
+            if (this.currentYear === 'all') {
+                selectedYearSpan.textContent = 'Год';
+            } else {
+                selectedYearSpan.textContent = this.currentYear;
+            }
+        }
+        
+        const selectedRegionSpan = document.getElementById('selected-region');
+        if (selectedRegionSpan && regionMap[this.currentRegion]) {
+            selectedRegionSpan.textContent = regionMap[this.currentRegion];
+        }
+    }
+    
+    init() {
+        this.selectedPlans = new Set();
+        this.selectedFormat = null;
+        this.initFilters();
+        this.loadPlans(true);
+    }
+}
+
+class ExportPlansLoader {
+    constructor(options = {}) {
+        this.currentStatus = options.initialStatus || 'all';
+        this.currentYear = options.initialYear || 'all';
+        this.currentRegion = options.initialRegion || 'all';
+        this.currentSearchName = '';
+        this.currentSearchOkpo = '';
+        this.currentPage = 1;
+        this.isLoading = false;
+        this.hasMore = true;
+        this.searchTimeout = null;
+        this.perPage = options.perPage || 5;
+        this.selectedPlans = new Set();
+        this.selectedFormat = null;
+        this.exportInProgress = false;
+        this.currentTaskId = null;
+        this.progressInterval = null;
+        this.isInitialLoad = true;
+        
+        this.containerId = options.containerId || 'plans-container';
+        this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
+        this.searchNameId = options.searchNameId || 'search-name';
+        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.selectAllId = options.selectAllId || 'selectAllBtn';
+        this.clearAllId = 'clearAllBtn';
+        this.exportFormId = options.exportFormId || 'exportForm';
+        
+        this.init();
+    }
+    
+    updateUrl() {
+        const params = new URLSearchParams();
+        
+        if (this.currentStatus && this.currentStatus !== 'all') {
+            params.set('status', this.currentStatus);
+        }
+        if (this.currentYear && this.currentYear !== 'all') {
+            params.set('year', this.currentYear);
+        }
+        if (this.currentRegion && this.currentRegion !== 'all') {
+            params.set('region', this.currentRegion);
+        }
+        if (this.currentSearchName) {
+            params.set('search_name', this.currentSearchName);
+        }
+        if (this.currentSearchOkpo) {
+            params.set('search_okpo', this.currentSearchOkpo);
+        }
+        
+        const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+        
+        if (this.isInitialLoad) {
+            window.history.replaceState({}, '', newUrl);
+            this.isInitialLoad = false;
+        } else {
+            window.history.pushState({}, '', newUrl);
+        }
+    }
+    
+    async loadPlans(reset = true) {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        const page = reset ? 1 : this.currentPage + 1;
+        const container = document.getElementById(this.containerId);
+        
+        if (reset && container) {
+            container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
+        }
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (!reset && loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span> Загрузка...';
+        }
+        
+        try {
+            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            if (this.currentSearchName) {
+                url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
+            }
+            if (this.currentSearchOkpo) {
+                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                if (reset) {
+                    if (container) {
+                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
+                    }
+                    this.currentPage = 1;
+                    this.selectedPlans.clear();
+                } else {
+                    const plansArea = document.querySelector('.plans-area');
+                    if (plansArea) {
+                        plansArea.insertAdjacentHTML('beforeend', data.html);
+                    }
+                    this.currentPage = page;
+                }
+                
+                this.hasMore = data.pagination.has_next;
+                this.updateLoadMoreButton();
+                this.attachCheckboxListeners();
+                this.updateButtons();
+                this.updateExportButton();
+            }
+        } catch (error) {
+            console.error('Error loading plans:', error);
+            if (reset && container) {
+                container.innerHTML = '<div class="plans-error" style="text-align: center; padding: 40px; color: red;">Ошибка загрузки планов</div>';
+            }
+        } finally {
+            this.isLoading = false;
+            if (!reset && loadMoreBtn) {
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '<span class="btn-text">Загрузить еще</span>';
+            }
+        }
+    }
+    
+    updateLoadMoreButton() {
+        const loadMoreContainer = document.getElementById('load-more-container');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+        }
+    }
+    
+    attachCheckboxListeners() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.removeEventListener('change', this.handleCheckboxChange);
+            cb.addEventListener('change', this.handleCheckboxChange.bind(this));
+        });
+        this.updateButtons();
+        this.updateExportButton();
+    }
+    
+    handleCheckboxChange(e) {
+        const checkbox = e.target;
+        const planId = checkbox.value;
+        
+        if (checkbox.checked) {
+            this.selectedPlans.add(planId);
+        } else {
+            this.selectedPlans.delete(planId);
+        }
+        
+        this.updateButtons();
+        this.updateExportButton();
+    }
+    
+    updateButtons() {
+        const selectAllBtn = document.getElementById(this.selectAllId);
+        const clearAllBtn = document.getElementById(this.clearAllId);
+        
+        if (selectAllBtn && clearAllBtn) {
+            if (this.selectedPlans.size > 0) {
+                selectAllBtn.style.display = 'none';
+                clearAllBtn.style.display = 'flex';
+            } else {
+                selectAllBtn.style.display = 'flex';
+                clearAllBtn.style.display = 'none';
+            }
+        }
+        
+        this.updateExportButton();
+    }
+    
+    updateExportButton() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.disabled = this.selectedPlans.size === 0 || !this.selectedFormat;
+        }
+    }
+    
+    selectAll() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        
+        checkboxes.forEach(cb => {
+            cb.checked = true;
+            const planId = cb.value;
+            this.selectedPlans.add(planId);
+        });
+        
+        this.updateButtons();
+        this.updateExportButton();
+    }
+    
+    clearAll() {
+        const checkboxes = document.querySelectorAll('.plans-area input[type="checkbox"]');
+        
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+            const planId = cb.value;
+            this.selectedPlans.delete(planId);
+        });
+        
+        this.updateButtons();
+        this.updateExportButton();
+    }
+    
+    handleSearch() {
+        if (this.searchTimeout) {
+            clearTimeout(this.searchTimeout);
+        }
+        this.searchTimeout = setTimeout(() => {
+            this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
+            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.updateUrl();
+            this.loadPlans(true);
+        }, 500);
+    }
+    
+    initFormatSelection() {
+        const formatItems = document.querySelectorAll('.export-choose');
+        formatItems.forEach(item => {
+            if (item.classList.contains('disabled')) return;
+            
+            item.removeEventListener('click', this.formatClickHandler);
+            this.formatClickHandler = () => {
+                const format = item.dataset.format;
+                formatItems.forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+                this.selectedFormat = format;
+                
+                const exportForm = document.getElementById(this.exportFormId);
+                if (exportForm) {
+                    exportForm.action = `/export-to/${format}`;
+                }
+                
+                this.updateExportButton();
+            };
+            item.addEventListener('click', this.formatClickHandler);
+        });
+    }
+    
+    initFilters() {
+        const searchNameInput = document.getElementById(this.searchNameId);
+        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        
+        if (searchNameInput) {
+            searchNameInput.addEventListener('input', () => this.handleSearch());
+        }
+        if (searchOkpoInput) {
+            searchOkpoInput.addEventListener('input', () => this.handleSearch());
+        }
+        
+        const statusDropdown = document.querySelector('[data-filter-type="status"]');
+        const yearDropdown = document.querySelector('[data-filter-type="year"]');
+        const regionDropdown = document.querySelector('[data-filter-type="region"]');
+        
+        if (statusDropdown) {
+            const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
+            const items = statusDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-status');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
+                    statusDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentStatus = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    statusDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (yearDropdown) {
+            const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
+            const items = yearDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-year');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (regionDropdown) regionDropdown.classList.remove('active');
+                    yearDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentYear = value;
+                    if (selectedSpan) {
+                        if (value === 'all') {
+                            selectedSpan.textContent = 'Год';
+                        } else {
+                            selectedSpan.textContent = value;
+                        }
+                    }
+                    yearDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        if (regionDropdown) {
+            const toggleBtn = regionDropdown.querySelector('.dropdown-toggle');
+            const items = regionDropdown.querySelectorAll('.dropdown-item');
+            const selectedSpan = document.getElementById('selected-region');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (statusDropdown) statusDropdown.classList.remove('active');
+                    if (yearDropdown) yearDropdown.classList.remove('active');
+                    regionDropdown.classList.toggle('active');
+                });
+            }
+            
+            items.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const value = item.dataset.value;
+                    this.currentRegion = value;
+                    if (selectedSpan) selectedSpan.textContent = item.textContent;
+                    regionDropdown.classList.remove('active');
+                    this.updateUrl();
+                    this.loadPlans(true);
+                });
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (statusDropdown && !statusDropdown.contains(e.target)) {
+                statusDropdown.classList.remove('active');
+            }
+            if (yearDropdown && !yearDropdown.contains(e.target)) {
+                yearDropdown.classList.remove('active');
+            }
+            if (regionDropdown && !regionDropdown.contains(e.target)) {
+                regionDropdown.classList.remove('active');
+            }
+        });
+        
+        window.addEventListener('popstate', (event) => {
+            const params = new URLSearchParams(window.location.search);
+            const newStatus = params.get('status') || 'all';
+            const newYear = params.get('year') || 'all';
+            const newRegion = params.get('region') || 'all';
+            const newSearchName = params.get('search_name') || '';
+            const newSearchOkpo = params.get('search_okpo') || '';
+            
+            if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                
+                this.currentStatus = newStatus;
+                this.currentYear = newYear;
+                this.currentRegion = newRegion;
+                this.currentSearchName = newSearchName;
+                this.currentSearchOkpo = newSearchOkpo;
+                
+                if (searchNameInput) searchNameInput.value = newSearchName;
+                if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
+                
+                this.updateFilterDisplay();
+                this.loadPlans(true);
+            }
+        });
+        
+        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+        }
+    }
+    
+    updateFilterDisplay() {
+        const statusMap = {
+            'all': 'Статус',
+            'draft': 'В редакции',
+            'control': 'Контроль пройден',
+            'sent': 'На рассмотрении',
+            'error': 'С ошибками',
+            'approved': 'Согласованные'
+        };
+        
+        const regionMap = {
+            'all': 'Регион',
+            '1': 'Брестское областное управление',
+            '2': 'Витебское областное управление',
+            '3': 'Гомельское областное управление',
+            '4': 'Гродненское областное управление',
+            '5': 'Управление г. Минск',
+            '6': 'Минское областное управление',
+            '7': 'Могилевское областное управление'
+        };
+        
+        const selectedStatusSpan = document.getElementById('selected-status');
+        if (selectedStatusSpan && statusMap[this.currentStatus]) {
+            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        }
+        
+        const selectedYearSpan = document.getElementById('selected-year');
+        if (selectedYearSpan) {
+            if (this.currentYear === 'all') {
+                selectedYearSpan.textContent = 'Год';
+            } else {
+                selectedYearSpan.textContent = this.currentYear;
+            }
+        }
+        
+        const selectedRegionSpan = document.getElementById('selected-region');
+        if (selectedRegionSpan && regionMap[this.currentRegion]) {
+            selectedRegionSpan.textContent = regionMap[this.currentRegion];
+        }
+    }
+    
+    showExportProgress() {
+        let modal = document.getElementById('export-progress-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'export-progress-modal';
+            modal.className = 'export-progress-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1>Формирование архива</h1>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                    <p class="progress-text">Подготовка файлов... 0%</p>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+    
+    updateExportProgress(percent) {
+        const modal = document.getElementById('export-progress-modal');
+        if (!modal) return;
+        const fill = modal.querySelector('.progress-bar-fill');
+        const text = modal.querySelector('.progress-text');
+        if (fill) fill.style.width = `${percent}%`;
+        if (text) text.textContent = `Подготовка файлов... ${Math.round(percent)}%`;
+    }
+    
+    hideExportProgress() {
+        const modal = document.getElementById('export-progress-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+    
+    showNotification(message, type) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, type);
+        } else {
+            alert(message);
+        }
+    }
+    
+    async startAsyncExport() {
+        if (this.selectedPlans.size === 0 || !this.selectedFormat) {
+            this.showNotification('Выберите планы и формат экспорта', 'warning');
+            return;
+        }
+        
+        if (this.exportInProgress) {
+            this.showNotification('Экспорт уже выполняется', 'warning');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('format', this.selectedFormat);
+        this.selectedPlans.forEach(planId => formData.append('ids', planId));
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+        
+        this.showExportProgress();
+        this.exportInProgress = true;
+        
+        try {
+            const response = await fetch('/export/start', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.currentTaskId = data.task_id;
+                this.pollExportStatus();
+            } else {
+                this.hideExportProgress();
+                this.showNotification(data.error || 'Ошибка при запуске экспорта', 'error');
+                this.exportInProgress = false;
+            }
+        } catch (error) {
+            console.error('Error starting export:', error);
+            this.hideExportProgress();
+            this.showNotification('Ошибка сети при запуске экспорта', 'error');
+            this.exportInProgress = false;
+        }
+    }
+    
+    pollExportStatus() {
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+        }
+        
+        this.progressInterval = setInterval(async () => {
+            if (!this.currentTaskId) {
+                clearInterval(this.progressInterval);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/export/status/${this.currentTaskId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.updateExportProgress(data.progress || 0);
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(this.progressInterval);
+                        window.location.href = `/export/download/${this.currentTaskId}`;
+                        setTimeout(() => {
+                            this.hideExportProgress();
+                            this.exportInProgress = false;
+                            this.currentTaskId = null;
+                        }, 1000);
+                    } else if (data.status === 'error') {
+                        clearInterval(this.progressInterval);
+                        this.hideExportProgress();
+                        this.showNotification(data.error || 'Ошибка при экспорте', 'error');
+                        this.exportInProgress = false;
+                        this.currentTaskId = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+                clearInterval(this.progressInterval);
+                this.hideExportProgress();
+                this.showNotification('Ошибка при проверке статуса экспорта', 'error');
+                this.exportInProgress = false;
+                this.currentTaskId = null;
+            }
+        }, 1000);
+    }
+    
+    initFormSubmit() {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.removeEventListener('click', this.formSubmitHandler);
+            this.formSubmitHandler = (e) => {
+                e.preventDefault();
+                this.startAsyncExport();
+            };
+            exportBtn.addEventListener('click', this.formSubmitHandler);
+        }
+    }
+    
+    init() {
+        const container = document.getElementById(this.containerId);
+        if (!container) return;
+        
+        this.initFilters();
+        
+        const selectAllBtn = document.getElementById(this.selectAllId);
+        if (selectAllBtn) {
+            selectAllBtn.removeEventListener('click', this.selectAllHandler);
+            this.selectAllHandler = () => this.selectAll();
+            selectAllBtn.addEventListener('click', this.selectAllHandler);
+        }
+        
+        const clearAllBtn = document.getElementById(this.clearAllId);
+        if (clearAllBtn) {
+            clearAllBtn.removeEventListener('click', this.clearAllHandler);
+            this.clearAllHandler = () => this.clearAll();
+            clearAllBtn.addEventListener('click', this.clearAllHandler);
+        }
+        
+        this.initFormatSelection();
+        this.initFormSubmit();
+        this.isInitialLoad = true;
+        this.loadPlans(true);
+    }
+}
+
+function initEditableHeaders() {
+    const editIcons = document.querySelectorAll('.edit-header-icon');
+    
+    editIcons.forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            const th = icon.closest('.colspan-header');
+            const link = th.querySelector('a');
+            const currentText = link.textContent;
+            const configId = icon.dataset.configId;
+            const currentYear = icon.dataset.year;
+            const currentLabel = icon.dataset.label;
+            
+            const select = document.createElement('select');
+            select.className = 'header-edit-input';
+            select.innerHTML = `
+                <option value="отчет" ${currentLabel === 'отчет' ? 'selected' : ''}>отчет</option>
+                <option value="оценка" ${currentLabel === 'оценка' ? 'selected' : ''}>оценка</option>
+                <option value="прогноз" ${currentLabel === 'прогноз' ? 'selected' : ''}>прогноз</option>
+            `;
+            
+            link.textContent = '';
+            link.appendChild(select);
+            select.focus();
+            
+            const saveChanges = async () => {
+                const newLabel = select.value;
+                const newText = `${currentYear} г. ${newLabel}`;
+                
+                if (newLabel !== currentLabel) {
+                    try {
+                        const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                config_id: configId,
+                                label: newLabel
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            link.textContent = newText;
+                            icon.dataset.label = newLabel;
+                        } else {
+                            link.textContent = currentText;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        link.textContent = currentText;
+                    }
+                } else {
+                    link.textContent = currentText;
+                }
+            };
+            
+            select.addEventListener('blur', saveChanges);
+            select.addEventListener('change', saveChanges);
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    const tokencolumnIndicator = document.querySelector('#indicatorsTable')?.dataset?.token;
+    if (tokencolumnIndicator) {
+        window.planToken = tokencolumnIndicator;
+        initEditableHeaders();
+    }
+    
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    if (selectAllBtn) {
+        window.exportPlansLoader = new ExportPlansLoader({
+            initialStatus: window.initialStatus || 'all',
+            initialYear: window.initialYear || 'all',
+            perPage: 5,
+            containerId: 'plans-container',
+            loadMoreBtnId: 'load-more-btn',
+            searchNameId: 'search-name',
+            searchOkpoId: 'search-okpo',
+            selectAllId: 'selectAllBtn',
+            exportFormId: 'exportForm'
+        });
+    } else {
+        window.plansLoader = new PlansLoader({
+            initialStatus: window.initialStatus || 'all',
+            initialYear: window.initialYear || 'all',
+            perPage: 5,
+            containerId: 'plans-container',
+            loadMoreBtnId: 'load-more-btn',
+            searchNameId: 'search-name',
+            searchOkpoId: 'search-okpo'
+        });
+    }
+
     const formEventeForm = document.getElementById('editEventeForm');
     if (formEventeForm) {
         formEventeForm.addEventListener('submit', function(e) {
@@ -2233,10 +3620,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (document.getElementById('exportForm')) {
-        initExportPage();
-    }
-
     validateAndEnableButton();
     setInterval(validateAndEnableButton, 300);
     
@@ -2245,10 +3628,6 @@ document.addEventListener('DOMContentLoaded', function() {
             validateAndEnableButton();
         }
     });
-
-    if (document.querySelectorAll('.plan-cont')) {
-        window.initPlansFilter();
-    }
 
     const sentPlanButton = document.getElementById('sentPlanButton');
     const sentmodal = document.getElementById('sentmodal');
@@ -2303,6 +3682,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('[data-modal-trigger="deletePlan"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlan"]',
+            modalId: 'confirmModal2',
+            yesId: 'confirmYes',
+            noId: 'confirmNo',
+            textId: 'modal-text',
+            modalText: 'Вы действительно хотите удалить план?',
+            textSecondId: 'modal-text-second',
+            modalTextSecond: 'Это действие нельзя будет отменить.'
+        });
+    }
+
+    if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
+        initConfirmModal({
+            triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
             modalId: 'confirmModal2',
             yesId: 'confirmYes',
             noId: 'confirmNo',

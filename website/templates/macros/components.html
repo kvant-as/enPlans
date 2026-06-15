@@ -23,24 +23,25 @@
     } %}
     
     {% set config = section_config[section] %}
-    {% set is_disabled = plan.is_sent or plan.is_approved or current_user.is_auditor %}
+    {% set is_disabled = plan.is_sent or plan.is_approved %}
+    {% set is_owner = plan.user_id == current_user.id %}
     
     <div class="plan-menu">
         <div class="menu-conteiner">
             <div class="menu-conteiner-btns">
                 <div class="element add 
-                    {% if is_disabled %}non{% endif %} 
-                    {% if config.is_empty and not is_disabled %}highlight{% endif %}" 
+                    {% if is_disabled or not is_owner %}non{% endif %} 
+                    {% if config.is_empty and not is_disabled and is_owner %}highlight{% endif %}" 
                      id="{{ config.add_button_id }}">
                     <img src="{{ url_for('static', filename='img/icon-add.svg') }}">
                     <span class="element-text">Добавить</span>
                 </div>
                 {% if config.has_data %}
-                <div class="element del {% if is_disabled %}non{% endif %}" id="tableDeleteButton">
+                <div class="element del {% if is_disabled or not is_owner %}non{% endif %}" id="tableDeleteButton">
                     <img src="{{ url_for('static', filename='img/icon-del.svg') }}">
                     <span class="element-text">Удалить</span>
                 </div>
-                <div class="element edit {% if is_disabled %}non{% endif %}" id="tableEditButton">
+                <div class="element edit {% if is_disabled or not is_owner %}non{% endif %}" id="tableEditButton">
                     <img src="{{ url_for('static', filename='img/icon-edit.svg') }}">
                     <span class="element-text">Редактировать</span>
                 </div>
@@ -53,11 +54,12 @@
         
         <div class="menu-conteiner">
             <div class="menu-conteiner-btns">
+                {#
                 <div class="element btn-disabled" id="">
                     <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
                     <span class="element-text">Экспорт</span>
-                </div>
-                <a href="{% if current_user.is_auditor %}/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" 
+                </div>#}
+                <a href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" 
                     class="element" 
                     id="">
                     <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
@@ -142,8 +144,7 @@
             <span class="nav-text">{{ _('Планы') }}</span>
             <span class="nav-text-mobile">{{ _('Планы') }}</span>
         </div>
-        
-        {% if current_user and current_user.is_auditor == false %}
+        {% if current_user.is_auditor == false %}
         <div class="nav-item {% if active_tab == 'create' %} active{% endif %}" onclick="window.location.href='/create-plan'">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_add() }}
@@ -153,7 +154,16 @@
             <span class="nav-text-mobile">{{ _('Создать') }}</span>
         </div>
         {% endif %}
-        
+        {#{% if current_user.is_auditor == true or current_user.is_admin == true%}
+        <div class="nav-item {% if active_tab == 'plans-audit' %} active{% endif %}" onclick="window.location.href='/plans-audit'">
+            <div class="nav-icon-wrapper">
+                {{ icons.icon_eye() }}
+                {% if active_tab == 'plans-audit' %}<div class="active-indicator"></div>{% endif %}
+            </div>
+            <span class="nav-text">{{ _('Просмотр') }}</span>
+            <span class="nav-text-mobile">{{ _('Просмотр') }}</span>
+        </div>
+        {% endif %}#}
         <div class="nav-item disabled-tab">
             <div class="nav-icon-wrapper">
                 {{ icons.icon_stats() }}
@@ -205,11 +215,11 @@
                 {{ icons.icon_view() }}
                 {% if active_plan_tab == 'review' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Обзор') }}</span>
-            <span class="nav-text-mobile">{{ _('Обзор') }}</span>
+            <span class="nav-text">{{ _('Задания') }}</span>
+            <span class="nav-text-mobile">{{ _('Задания') }}</span>
         </div>
         
-        {% if current_user and current_user.is_auditor == True %}
+        {% if current_user.is_auditor == true or current_user.is_admin == true %}
         <div class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}" 
              onclick="window.location.href='/plans/plan/audit/{{plan.token}}'">
             <div class="nav-icon-wrapper">
@@ -227,7 +237,7 @@
                 {{ icons.icon_indicators() }}
                 {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 1</span>
+            <span class="nav-text long-text">{{ _('Часть 1. Показатели использования ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 1</span>
         </div>
 
@@ -237,7 +247,7 @@
                 {{ icons.icon_measure_saving() }}
                 {% if active_plan_tab == 'event-saving' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 2</span>
+            <span class="nav-text long-text">{{ _('Часть 2. Мероприятия по экономии ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 2</span>
         </div> 
 
@@ -247,12 +257,226 @@
                 {{ icons.icon_measure_increase() }}
                 {% if active_plan_tab == 'event-increase' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Часть') }} 3</span>
+            <span class="nav-text long-text">{{ _('Часть 3. Мероприятия по увеличению использования местных ТЭР') }}</span>
             <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
         </div>
 
     </nav>
 </div>
+{% endmacro %}
+
+{% macro plan_agree_slider(plan, current_user) %}
+    {% set is_small = plan.plan_type == 'org_small' %}
+    {% set is_large = plan.plan_type == 'org_large' %}
+    
+    <hr>
+    {% if is_small %}
+        {% set total_steps = 2 %}
+        {% set completed_steps = 0 %}
+        {% if plan.is_region_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% if plan.is_department_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% set progress_width = (completed_steps / total_steps) * 100 %}
+        
+        <h1 class="name">{{ _('Согласование плана (до 25 тыс. т.)') }}</h1>
+        <div class="enplans-approval-slider">
+            <div class="enplans-approval-slider-steps">
+                <div class="enplans-approval-step {% if plan.is_region_approved %}completed{% elif plan.approval_stage == 'regional' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_region_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_region() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Региональное</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.region_approved_time %}
+                            {{ plan.region_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% else %}
+                            Ожидает
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if not plan.is_region_approved and current_user.is_region %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="regional">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="enplans-approval-step {% if plan.is_department_approved %}completed{% elif plan.approval_stage == 'department' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_department_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_department() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Департамент</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.department_approved_time %}
+                            {{ plan.department_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% elif plan.is_region_approved %}
+                            Ожидает
+                        {% else %}
+                            Заблокировано
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if plan.is_region_approved and not plan.is_department_approved and current_user.is_departament %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="department">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="enplans-approval-progress-container">
+                <div class="enplans-approval-progress-line" style="width: {{ progress_width }}%;"></div>
+            </div>
+            <div class="enplans-approval-progress-text">
+                <span>Согласован на {{ completed_steps }} из {{ total_steps }} этапов ({{ progress_width|int }}%)</span>
+            </div>
+        </div>
+    {% elif is_large %}
+        {% set total_steps = 4 %}
+        {% set completed_steps = 0 %}
+        {% if plan.is_region_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% if plan.is_municipal_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% if plan.is_department_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% if plan.is_higher_organization_approved %}
+            {% set completed_steps = completed_steps + 1 %}
+        {% endif %}
+        {% set progress_width = (completed_steps / total_steps) * 100 %}
+        
+        <h1 class="name">{{ _('Согласование плана (свыше 25 тыс. т.)') }}</h1>
+        <div class="enplans-approval-slider">
+            <div class="enplans-approval-slider-steps">
+                <div class="enplans-approval-step {% if plan.is_region_approved %}completed{% elif plan.approval_stage == 'regional' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_region_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_region() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Региональное</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.region_approved_time %}
+                            {{ plan.region_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% else %}
+                            Ожидает
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if not plan.is_region_approved and current_user.is_region %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="regional">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="enplans-approval-step {% if plan.is_municipal_approved %}completed{% elif plan.approval_stage == 'municipal' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_municipal_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_municipal() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Обл/Горисполком</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.municipal_approved_time %}
+                            {{ plan.municipal_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% elif plan.is_region_approved %}
+                            Ожидает
+                        {% else %}
+                            Заблокировано
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if plan.is_region_approved and not plan.is_municipal_approved and current_user.is_municipal %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="municipal">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="enplans-approval-step {% if plan.is_department_approved %}completed{% elif plan.approval_stage == 'department' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_department_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_department() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Департамент</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.department_approved_time %}
+                            {{ plan.department_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% elif plan.is_municipal_approved %}
+                            Ожидает
+                        {% else %}
+                            Заблокировано
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if plan.is_municipal_approved and not plan.is_department_approved and current_user.is_departament %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="department">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="enplans-approval-step {% if plan.is_higher_organization_approved %}completed{% elif plan.approval_stage == 'higher' %}active{% endif %}">
+                    <div class="enplans-approval-step-icon">
+                        {% if plan.is_higher_organization_approved %}
+                            {{ icons.icon_check() }}
+                        {% else %}
+                            {{ icons.icon_higher() }}
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-name">Вышестоящая организация</div>
+                    <div class="enplans-approval-step-time">
+                        {% if plan.higher_organization_approved_time %}
+                            {{ plan.higher_organization_approved_time.strftime('%d.%m.%Y %H:%M') }}
+                        {% elif plan.is_department_approved %}
+                            Ожидает
+                        {% else %}
+                            Заблокировано
+                        {% endif %}
+                    </div>
+                    <div class="enplans-approval-step-actions">
+                        {% if plan.is_department_approved and not plan.is_higher_organization_approved and current_user.is_higher_organization %}
+                            <button class="enplans-approval-btn" data-action="approve" data-stage="higher">
+                                Подтвердить
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="enplans-approval-progress-container">
+                <div class="enplans-approval-progress-line" style="width: {{ progress_width }}%;"></div>
+            </div>
+            <div class="enplans-approval-progress-text">
+                <span>Согласован на {{ completed_steps }} из {{ total_steps }} этапов ({{ progress_width|int }}%)</span>
+            </div>
+        </div>
+    {% endif %}
 {% endmacro %}
 
 {% macro tickets_container(plan, current_user) %}
@@ -324,9 +548,7 @@
 </div>
 {% endmacro %}
 
-
-{% macro plans_list(plans, current_user, show_checkboxes=false, show_actions=true, custom_empty_message=none) %}
-<div class="plans-area">
+{% macro plans_list_items(plans, current_user, show_checkboxes=false, show_actions=true, custom_empty_message=none, compact_view=false) %}
     {% if plans %}
         {% for plan in plans %}
             {% if show_checkboxes %}
@@ -338,73 +560,109 @@
                  data-name="{{ (plan.organization.name if plan.organization else plan.ministry.name if plan.ministry else plan.region.name if plan.region else '') | lower | e }}"
                  data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}">
                 
-                <div class="plan-cont-column">
-                    <div class="plan-cont-column-header">
-                        <a class="plan-info">
-                            {% if current_user.is_auditor %}
+                {% if compact_view %}
+                    <div class="plan-cont-column">
+                        <div class="plan-cont-column-header">
+                            <a class="plan-info">
+                                <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
                                 {% if plan.organization.name %}
-                                    <span class="structure-plan">Организация</span>{{ plan.organization.name | truncate(35, True, '...') }}
+                                    <span class="structure-plan"></span>{{ plan.organization.name | truncate(35, True, '...') }}
                                 {% elif plan.ministry.name %}
                                     <span class="structure-plan">Министерство</span>{{ plan.ministry.name | truncate(35, True, '...') }}
                                 {% elif plan.region.name %}
                                     <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
+                                {% else %}
+                                    {{ _('План на') }}
                                 {% endif %}
-                            {% else %}
-                                {{ _('План на') }}
-                            {% endif %}
-                            <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
-                        </a>
-                        
-                        {{ status_plan(plan, current_user) }}
-                    </div>
-                    
-                    <div class="plan-cont-column-footer">
-                        {% if current_user.is_auditor %}
+                            </a>
+                            {{ status_plan(plan, current_user) }}
+                        </div>
+                        <div class="plan-cont-column-footer">
                             {% if plan.organization.okpo %}
                             <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_org() }}
+                                <div class="date-icon black">
+                                    {{ icons.icon_org() }}
+                                </div>
                                 <a class="plan-info">{{ plan.organization.okpo }}</a>
                             </div>
                             {% endif %}
-                        {% else %}
                             <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_eco() }}
-                                <a class="data-plan" title="Энергосбережение">{{ plan.energy_saving or '0,00' }}</a>
+                                <div class="date-icon black">
+                                    {{ icons.icon_send() }}
+                                </div>
+                                <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
                             </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля ТЭР">{{ plan.share_fuel or '0,00' }}</a>
-                            </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_saving() }}
-                                <a class="data-plan" title="Экономия топлива">{{ plan.saving_fuel or '0,00' }}</a>
-                            </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля энергии">{{ plan.share_energy or '0,00' }}</a>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="plan-cont-column">
-                    <div class="plan-cont-column-header">
-                        {% if not current_user.is_auditor %}
-                        <div class="plan-cont-column-footer-element">
-                            <div class="date-icon black">
-                                {{ icons.icon_calendar() }}
-                            </div>
-                            <a class="plan-info">{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
-                        </div>
-                        {% endif %}
-                        <div class="plan-cont-column-footer-element">
-                            <div class="date-icon black">
-                                {{ icons.icon_send() }}
-                            </div>
-                            <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
                         </div>
                     </div>
-                </div>
+                {% else %}
+                    <div class="plan-cont-column">
+                        <div class="plan-cont-column-header">
+                            {% if current_user.is_admin and plan.user_id != current_user.id %}
+                                <div class="plan-info">
+                                    <div>
+                                        {% if plan.organization.name %}
+                                            <span class="structure-plan"></span>{{ plan.organization.name | truncate(35, True, '...') }}
+                                        {% elif plan.ministry.name %}
+                                            <span class="structure-plan">Министерство</span>{{ plan.ministry.name | truncate(35, True, '...') }}
+                                        {% elif plan.region.name %}
+                                            <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
+                                        {% else %}
+                                            {{ _('План на') }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <a class="plan-info">
+                                    {{ _('План на') }}
+                                    <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
+                                </a>
+                            {% endif %}
+                            {{ status_plan(plan, current_user) }}
+                        </div>
+                        <div class="plan-cont-column-footer">
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_eco() }}
+                                </div>
+                                <a class="data-plan" title="Целевой показатель энергосбережения (%)">{{ plan.energy_saving or '0,0' }}</a>
+                            </div>
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_half() }}
+                                </div>
+                                <a class="data-plan" title="Целевой показатель по доле местных ТЭР в КПТ (%)">{{ plan.share_fuel or '0,0' }}</a>
+                            </div>
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_saving() }}
+                                </div>
+                                <a class="data-plan" title="Целевой показатель по экономии ТЭР (т у.т.)">{{ plan.saving_fuel or '0,0' }}</a>
+                            </div>
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_half() }}
+                                </div>
+                                <a class="data-plan" title="Целевой показатель по доле ВИЭ в КПТ">{{ plan.share_energy or '0,0' }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="plan-cont-column">
+                        <div class="plan-cont-column-header">
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_calendar() }}
+                                </div>
+                                <a class="plan-info">{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
+                            </div>
+                            <div class="plan-cont-column-footer-element">
+                                <div class="date-icon black">
+                                    {{ icons.icon_send() }}
+                                </div>
+                                <a class="plan-info">{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
                 
                 <div class="plan-cont-column">
                     {% if show_checkboxes %}
@@ -416,14 +674,16 @@
                                 <span class="tooltip-text">{{ _('Просмотр') }}</span>
                                 <span class="btn-text">{{ _('Просмотр') }}</span>
                             </button>
-                            {% if not (plan.is_sent or plan.is_approved or current_user.is_auditor) %}
-                            <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button data-modal-trigger="deletePlan" data-plan-id="{{ plan.id }}" type="submit" class="svg-btn delete-button tooltip-btn">
-                                    {{ icons.icon_delete() }}
-                                    <span class="tooltip-text">{{ _('Удалить') }}</span>
-                                </button>
-                            </form>
+                            {% if plan.user_id == current_user.id %}
+                                {% if not (plan.is_sent or plan.is_approved) %}
+                                <form data-modal-form="deletePlanconfirm" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button data-modal-trigger="deletePlanconfirm" data-plan-id="{{ plan.id }}" type="submit" class="svg-btn delete-button tooltip-btn">
+                                        {{ icons.icon_delete() }}
+                                        <span class="tooltip-text">{{ _('Удалить') }}</span>
+                                    </button>
+                                </form>
+                                {% endif %}
                             {% endif %}
                         </div>
                     {% endif %}
@@ -445,11 +705,115 @@
             </div>
         </div>
     {% endif %}
+{% endmacro %}
+
+{% macro plans_list(plans, current_user, show_checkboxes=false, show_actions=true, custom_empty_message=none, compact_view=false) %}
+<div class="plans-area {% if compact_view %}compact-view{% endif %}">
+    {{ plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
 </div>
 {% endmacro %}
 
 {% macro required_legend() %}
-    <div class="required-legend">
-    {{ _('Поля, отмеченные <span class="star">*</span> — обязательны для заполнения') }}
+<div class="required-legend">
+    <span>{{ _('Поля, отмеченные ')|safe }}</span>
+    {{ icons.icon_star() }}
+    <span>{{ _('обязательны для заполнения')|safe }}</span>
+</div>
+{% endmacro %}
+
+{% macro filters_section(years, current_user=none, show_search=true, show_status=true, show_year=true, show_regional_search=false, selected_status='all', selected_year='all') %}
+<div class="filters-area">
+    {% if show_search %}
+    <div class="input-with-icon">
+        {{ icons.icon_search() }}
+        <input type="text" placeholder="{{ _('Наим. предприятия') }}" class="app-input" id="search-name" value="{{ request.args.get('search_name', '') }}"/>
     </div>
+    <div class="input-with-icon">
+        {{ icons.icon_search() }}
+        <input type="text" placeholder="{{ _('ОКПО предприятия') }}" class="app-input" id="search-okpo" value="{{ request.args.get('search_okpo', '') }}"/>
+    </div>
+    {% endif %}
+
+    {% if show_status %}
+    <div class="custom-dropdown" data-filter-type="status">
+        <button type="button" class="dropdown-toggle">
+            <span class="selected-option" id="selected-status">
+                {% if selected_status == 'all' %}{{ _('Статус') }}
+                {% elif selected_status == 'draft' %}{{ _('В редакции') }}
+                {% elif selected_status == 'control' %}{{ _('Контроль пройден') }}
+                {% elif selected_status == 'sent' %}
+                    {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
+                        {{ _('Не просмотренные') }}
+                    {% else %}
+                        {{ _('На рассмотрении') }}
+                    {% endif %}
+                {% elif selected_status == 'error' %}{{ _('С ошибками') }}
+                {% elif selected_status == 'approved' %}{{ _('Согласованные') }}
+                {% else %}{{ _('Статус') }}{% endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
+            <div class="dropdown-item" data-value="draft">{{ _('В редакции') }}</div>
+            <div class="dropdown-item" data-value="control">{{ _('Контроль пройден') }}</div>
+            <div class="dropdown-item" data-value="sent">
+                {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
+                    {{ _('Не просмотренные') }}
+                {% else %}
+                    {{ _('На рассмотрении') }}
+                {% endif %}
+            </div>
+            <div class="dropdown-item" data-value="error">{{ _('С ошибками') }}</div>
+            <div class="dropdown-item" data-value="approved">{{ _('Согласованные') }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if show_year %}
+    <div class="custom-dropdown" data-filter-type="year">
+        <button type="button" class="dropdown-toggle">
+            <span class="selected-option" id="selected-year">
+                {% if selected_year == 'all' %}{{ _('Год') }}
+                {% else %}{{ selected_year }}{% endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">{{ _('Все года') }}</div>
+            {% for year in years %}
+            <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="custom-dropdown" data-filter-type="region">
+        <button type="button" class="dropdown-toggle">
+            <span class="selected-option" id="selected-region">
+                {% if selected_region == 'all' %}{{ _('Регион') }}
+                {% elif selected_region == '1' %}Брестское областное
+                {% elif selected_region == '2' %}Витебское областное
+                {% elif selected_region == '3' %}Гомельское областное
+                {% elif selected_region == '4' %}Гродненское областное
+                {% elif selected_region == '6' %}Минское областное
+                {% elif selected_region == '7' %}Могилевское областное
+                {% elif selected_region == '5' %}г. Минск
+                {% else %}{{ _('Регион') }}{% endif %}
+            </span>
+            {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter">
+            <div class="dropdown-item" data-value="all">{{ _('Все регионы') }}</div>
+            <div class="dropdown-item" data-value="1">Брестское областное</div>
+            <div class="dropdown-item" data-value="2">Витебское областное</div>
+            <div class="dropdown-item" data-value="3">Гомельское областное</div>
+            <div class="dropdown-item" data-value="4">Гродненское областное</div>
+            <div class="dropdown-item" data-value="6">Минское областное</div>
+            <div class="dropdown-item" data-value="7">Могилевское областное</div>
+            <div class="dropdown-item" data-value="5">г. Минск</div>
+        </div>
+    </div>
+
+</div>
 {% endmacro %}

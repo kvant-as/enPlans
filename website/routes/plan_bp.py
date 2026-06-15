@@ -16,7 +16,7 @@ from website.user import send_email
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
-from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, Ticket, Event
+from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanColumnConfig, Ticket, Event
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
@@ -64,41 +64,6 @@ def plan_audit(token):
                         plan=current_plan,     
                         hide_header=False)
 
-# @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
-# @user_with_all_params()
-# @login_required
-# @owner_only
-# @session_required
-# def plan_indicators(token):    
-#     if request.method == 'POST':
-#         pass
-    
-#     current_plan = g.current_plan
-#     indicators_non_madatory = (Indicator.query
-#                         .filter_by(IsMandatory=False)
-#                         .filter(~Indicator.id.in_(
-#                             db.session.query(IndicatorUsage.id_indicator)
-#                             .filter(IndicatorUsage.id_plan == current_plan.id)
-#                         ))
-#                         .all())
-    
-#     current_plan_indicators = (IndicatorUsage.query
-#                 .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
-#                 .filter(IndicatorUsage.id_plan == current_plan.id)
-#                 .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
-#                 .all())
-    
-#     return render_template('plan_indicators.html',  
-#                         plan=current_plan, 
-#                         indicators_non_madatory=indicators_non_madatory,
-#                         current_plan_indicators=current_plan_indicators,
-#                         hide_header=False,
-#                         add_indicator_modal=True,
-#                         edit_indicator_modal=True,
-#                         confirmModal = True,
-#                         sentmodal=current_plan.is_control,
-#                         context_menu = True)
-
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
@@ -109,21 +74,70 @@ def plan_indicators(token):
         pass
     
     current_plan = g.current_plan
-    indicators_non_madatory = (Indicator.query
-                        .filter_by(IsMandatory=False)
-                        .filter(~Indicator.id.in_(
-                            db.session.query(IndicatorUsage.id_indicator)
-                            .filter(IndicatorUsage.id_plan == current_plan.id)
-                        ))
-                        .all())
+    indicators_non_mandatory = (Indicator.query
+        .filter_by(IsMandatory=False)
+        .filter(
+            db.or_(
+                Indicator.code.in_(['2023', '2024']),
+                ~Indicator.id.in_(
+                    db.session.query(IndicatorUsage.id_indicator)
+                    .filter(IndicatorUsage.id_plan == current_plan.id)
+                )
+            )
+        )
+        .all()
+    )
     return render_template('plan_indicators.html',  
                         plan=current_plan, 
-                        indicators_non_madatory=indicators_non_madatory,
+                        indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
                         confirmModal = True,
                         sentmodal=current_plan.is_control,
                         context_menu = True)
 
+@plan_bp.route('/update-column-label/<token>', methods=['POST'])
+@login_required
+def api_update_column_label(token):
+    try:
+        from flask import current_app
+        import logging
+        
+        plan = Plan.query.filter_by(token=token).first_or_404()
+        # current_app.logger.info(f'Plan found: id={plan.id}, year={plan.year}')
+        
+        data = request.get_json()
+        # current_app.logger.debug(f'Request data: {data}')
+        
+        config_id = data.get('config_id')
+        new_label = data.get('label')
+        
+        if not config_id:
+            current_app.logger.error('config_id is missing')
+            return jsonify({'success': False, 'error': 'config_id is required'}), 400
+        
+        if new_label not in ['отчет', 'оценка', 'прогноз']:
+            current_app.logger.error(f'Invalid label value: {new_label}. Expected: отчет, оценка, прогноз')
+            return jsonify({'success': False, 'error': 'Invalid label value'}), 400
+        
+        config = PlanColumnConfig.query.filter_by(id=config_id, plan_id=plan.id).first()
+        if not config:
+            current_app.logger.error(f'Config not found: id={config_id}, plan_id={plan.id}')
+            return jsonify({'success': False, 'error': 'Config not found'}), 404
+        
+        old_label = config.label
+        config.label = new_label
+        
+        db.session.commit()
+        
+        current_app.logger.info(f'Column label updated successfully: config_id={config_id}, old_label={old_label}, new_label={new_label}')
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f'Error updating column label: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
 @plan_bp.route('/create-indicator/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -609,7 +623,6 @@ def edit_Eventes(id):
         current_app.logger.error(f'Error editing event {id}: {str(e)}', exc_info=True)
         flash(f'Ошибка при редактировании мероприятия: {str(e)}', 'error')
         return redirect(request.referrer)
-
 
 @plan_bp.route('/delete-eventes/<int:id>', methods=['POST'])
 @user_with_all_params()

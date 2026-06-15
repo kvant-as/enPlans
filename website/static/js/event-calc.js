@@ -1,5 +1,3 @@
-// static/js/event_modal.js
-
 (function() {
     let planUsdRate = null;
     let costPerToeUsd = null;
@@ -141,6 +139,77 @@
         return null;
     }
 
+    function showEffCurrYearWarning(message) {
+        let warningSpan = document.getElementById('eff-curr-year-warning');
+        
+        if (!warningSpan) {
+            const effCurrYearInput = document.querySelector('#AddEventModal input[name="EffCurrYear"]');
+            if (effCurrYearInput && effCurrYearInput.parentNode) {
+                const parentDiv = effCurrYearInput.parentNode;
+                const relativeDiv = parentDiv.querySelector('.position-relative');
+                
+                if (relativeDiv) {
+                    warningSpan = document.createElement('span');
+                    warningSpan.id = 'eff-curr-year-warning';
+                    warningSpan.className = 'text-danger small mt-1';
+                    warningSpan.style.display = 'none';
+                    warningSpan.style.fontSize = '12px';
+                    warningSpan.style.marginTop = '5px';
+                    relativeDiv.appendChild(warningSpan);
+                } else {
+                    warningSpan = document.createElement('span');
+                    warningSpan.id = 'eff-curr-year-warning';
+                    warningSpan.className = 'text-danger small';
+                    warningSpan.style.display = 'none';
+                    warningSpan.style.fontSize = '12px';
+                    warningSpan.style.marginTop = '5px';
+                    warningSpan.style.color = '#dc3545';
+                    effCurrYearInput.insertAdjacentElement('afterend', warningSpan);
+                }
+            }
+        }
+        
+        if (warningSpan) {
+            warningSpan.textContent = message || 'Эффект в текущем году не может превышать общий эффект';
+            warningSpan.style.display = 'block';
+            
+            setTimeout(() => {
+                if (warningSpan) {
+                    warningSpan.style.display = 'none';
+                }
+            }, 4000);
+        }
+    }
+
+    function validateEffCurrYear() {
+        const effTutInput = document.querySelector('#AddEventModal input[name="EffTut"]');
+        const effCurrYearInput = document.querySelector('#AddEventModal input[name="EffCurrYear"]');
+        
+        if (!effTutInput || !effCurrYearInput) return;
+        
+        const effTut = parseNumber(effTutInput.value);
+        let effCurrYear = parseNumber(effCurrYearInput.value);
+        
+        if (effCurrYear > effTut) {
+            effCurrYear = effTut;
+            effCurrYearInput.value = formatNumber(effCurrYear, 2);
+            
+            const warningMessage = `Эффект в текущем году (${formatNumber(effCurrYear, 2)} т.у.т.) не может превышать общий эффект (${formatNumber(effTut, 2)} т.у.т.)`;
+            showEffCurrYearWarning(warningMessage);
+            
+            effCurrYearInput.classList.add('is-invalid');
+            setTimeout(() => {
+                effCurrYearInput.classList.remove('is-invalid');
+            }, 7000);
+        } else {
+            const warningSpan = document.getElementById('eff-curr-year-warning');
+            if (warningSpan) {
+                warningSpan.style.display = 'none';
+            }
+            effCurrYearInput.classList.remove('is-invalid');
+        }
+    }
+
     function updateFinancingFieldsReadonly(isDouble, eventType) {
         const budgetFields = ['BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther', 'MoneyOwn', 'MoneyLoan', 'MoneyOther'];
         const volumeFinInput = document.querySelector('#AddEventModal input[name="VolumeFin"]');
@@ -195,6 +264,8 @@
             return;
         }
 
+        validateEffCurrYear();
+
         const eventTypeInput = document.querySelector('#AddEventModal input[name="event_type"]');
         const eventType = eventTypeInput ? eventTypeInput.value : null;
         const directionType = getSelectedDirectionType();
@@ -223,7 +294,8 @@
         if (volumeFinInput) volumeFinInput.value = formatNumber(volumeFin, 0);
         
         const effTut = parseNumber(document.querySelector('#AddEventModal input[name="EffTut"]')?.value);
-        const effRub = Math.round(effTut * costPerToeUsd * planUsdRate);
+        
+        let effRub = Math.round(effTut * costPerToeUsd * planUsdRate);
         const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
         if (effRubInput) effRubInput.value = formatNumber(effRub, 0);
         
@@ -236,6 +308,7 @@
     function bindEventCalculations() {
         const fieldsToWatch = [
             '#AddEventModal input[name="EffTut"]',
+            '#AddEventModal input[name="EffCurrYear"]',
             '#AddEventModal input[name="BudgetState"]',
             '#AddEventModal input[name="BudgetRep"]',
             '#AddEventModal input[name="BudgetLoc"]',

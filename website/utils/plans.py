@@ -5,7 +5,7 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from ..models import Direction, Organization, Plan, PlanColumnConfig, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -126,6 +126,32 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
     
     return f"{base_code}.{next_number}"
 
+def get_column_configs_for_plan(plan):
+    plan_year = plan.year
+    current_year = TimeByMinsk().year
+    
+    if plan_year > current_year:
+        labels = ['прогноз', 'прогноз', 'прогноз']
+    elif plan_year == current_year:
+        labels = ['отчет', 'оценка', 'прогноз']
+    elif plan_year == current_year - 1:
+        labels = ['отчет', 'отчет', 'оценка']
+    else:
+        labels = ['отчет', 'отчет', 'отчет']
+    
+    configs = []
+    years = [plan_year - 2, plan_year - 1, plan_year]
+    
+    for year, label in zip(years, labels):
+        config = PlanColumnConfig(
+            plan_id=plan.id,
+            year=year,
+            label=label
+        )
+        configs.append(config)
+    
+    return configs
+
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
         new_ticket = Ticket(
@@ -175,15 +201,24 @@ def get_plans_by_okpo():
             status_filter,
             func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
         ).order_by(Plan.year.asc())
-        
-def get_filtered_plans(user, status_filter="all", year_filter="all"):
+
+def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", region_id=None, page=1, per_page=5):
     if user.is_auditor:
-        base_query = get_plans_by_okpo()
+        base_query = Plan.query.filter(Plan.is_sent == True)
+    elif user.is_admin:
+        base_query = Plan.query.filter_by()
     else:
         base_query = Plan.query.filter_by(user_id=user.id)
     
-    display_query = base_query
-
+    if search_name:
+        base_query = base_query.join(Organization).filter(Organization.name.ilike(f'%{search_name}%'))
+    
+    if search_okpo:
+        base_query = base_query.join(Organization).filter(Organization.okpo.ilike(f'%{search_okpo}%'))    
+        
+    if region_id:
+        base_query = base_query.join(Organization).filter(Organization.region_id == int(region_id))
+    
     status_filters = {
         'draft': Plan.is_draft == True,
         'control': Plan.is_control == True,
@@ -191,21 +226,21 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
         'error': Plan.is_error == True,
         'approved': Plan.is_approved == True
     }
-
+    
+    filtered_query = base_query
     if status_filter != 'all' and status_filter in status_filters:
-        display_query = display_query.filter(status_filters[status_filter])
-
+        filtered_query = filtered_query.filter(status_filters[status_filter])
+    
     if year_filter != 'all':
-        display_query = display_query.filter(Plan.year == int(year_filter))
-
-    plans = display_query.all()
-
+        filtered_query = filtered_query.filter(Plan.year == int(year_filter))
+    
+    total_count = filtered_query.count()
+    plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
     count_query = base_query
     if year_filter != 'all':
         count_query = count_query.filter(Plan.year == int(year_filter))
-    if status_filter != 'all' and status_filter in status_filters:
-        count_query = count_query.filter(status_filters[status_filter])
-
+    
     status_counts = {
         'all': count_query.count(),
         'draft': count_query.filter(Plan.is_draft == True).count(),
@@ -214,51 +249,8 @@ def get_filtered_plans(user, status_filter="all", year_filter="all"):
         'error': count_query.filter(Plan.is_error == True).count(),
         'approved': count_query.filter(Plan.is_approved == True).count()
     }
-    return plans, status_counts
-
-# def get_event_metrics(plan_id, event_type, is_original=True):
-#     query = (db.session.query(
-#         Event.ExpectedQuarter,
-#         func.sum(Event.EffCurrYear).label('total_eff'),
-#         func.sum(Event.VolumeFin).label('total_vol')
-#     )
-#     .join(Direction, Event.id_direction == Direction.id)
-#     .filter(Event.id_plan == plan_id)
-#     )
     
-#     if event_type == 'saving':
-#         query = query.filter(Direction.is_econom == True)
-#     else:
-#         query = query.filter(Direction.is_increase == True)
-    
-#     if is_original:
-#         query = query.filter(Event.is_corrected == False)
-#     else:
-#         query = query.filter(Event.is_corrected == True)
-
-#     quarterly_results = query.group_by(Event.ExpectedQuarter).all()
-    
-#     cumulative_totals = {
-#         'jan_mar': {'eff_curr_year': 0},
-#         'jan_jun': {'eff_curr_year': 0},
-#         'jan_sep': {'eff_curr_year': 0},
-#         'jan_dec': {'eff_curr_year': 0}
-#     }
-    
-#     quarter_data = {1: {'eff': 0, 'vol': 0}, 2: {'eff': 0, 'vol': 0}, 
-#                    3: {'eff': 0, 'vol': 0}, 4: {'eff': 0, 'vol': 0}}
-    
-#     for quarter, eff_sum, vol_sum in quarterly_results:
-#         if quarter in [1, 2, 3, 4]:
-#             quarter_data[quarter]['eff'] = float(eff_sum) if eff_sum else 0
-#             quarter_data[quarter]['vol'] = float(vol_sum) if vol_sum else 0
-    
-#     cumulative_totals['jan_mar']['eff_curr_year'] = quarter_data[1]['eff']
-#     cumulative_totals['jan_jun']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff']
-#     cumulative_totals['jan_sep']['eff_curr_year'] = quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff']
-#     cumulative_totals['jan_dec']['eff_curr_year'] = (quarter_data[1]['eff'] + quarter_data[2]['eff'] + quarter_data[3]['eff'] + quarter_data[4]['eff'])
-
-#     return cumulative_totals
+    return plans, total_count, status_counts
 
 def other_data_indicatorUpdate(plan_id):
     plan = Plan.query.get(plan_id)
@@ -386,7 +378,10 @@ def other_data_indicatorUpdate(plan_id):
         total = db.session.query(func.sum(Event.EffCurrYear)).filter(
             Event.id_plan == plan.id,
             Event.direction.has(is_econom=True),
-            Event.EffCurrYear.isnot(None)
+            db.or_(
+                Event.is_local == True,
+                Event.is_corrected == True
+            )
         ).scalar() or 0
         
         indicator_9900 = get_indicator_by_code(indicator_usages, '9900')
@@ -585,8 +580,8 @@ def other_data_indicatorUpdate(plan_id):
         commit_changes()
     
     try:
-        update_indicator_1000()
         update_indicator_9900()
+        update_indicator_1000()
         update_indicator_1796()
         update_indicator_1797()
         update_indicator_9910()
@@ -655,18 +650,92 @@ def handle_draft_status(plan):
     return "Статус переведен в редактирование."
 
 def handle_control_status(plan):
-    indicator_usage = next(
+    errors = []
+    
+    indicator_9999 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9999'), 
+        None
+    )
+    indicator_9900 = next(
         (iu for iu in plan.indicators_usage if iu.indicator.code == '9900'), 
         None
-    ) # № п/п = 5
+    )
+    indicator_9911 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9911'), 
+        None
+    )
+    indicator_9912 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9912'), 
+        None
+    )
+    indicator_9913 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9913'), 
+        None
+    )
+    indicator_9914 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9914'), 
+        None
+    )
+    indicator_9915 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9915'), 
+        None
+    )
+    indicator_9916 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9916'), 
+        None
+    )
+    indicator_9917 = next(
+        (iu for iu in plan.indicators_usage if iu.indicator.code == '9917'), 
+        None
+    )
     
-    if indicator_usage and indicator_usage.QYearCurrent != 0:
-        plan.is_control = True
-        plan.is_draft = plan.is_sent = plan.is_error = plan.is_approved = False
-        plan.afch = False
-        return "План прошел проверку на контроль."
-    else:
-        return {"error": "Ожидаемая экономия ТЭР от внедрения в текущем году не может быть равна 0."}
+    if indicator_9999 and indicator_9900:
+        if indicator_9999.QYearCurrent != indicator_9900.QYearCurrent:
+            errors.append("Годовая экономия ТЭР от энергосберегающих мероприятий всего должна быть равна ожидаемой экономии ТЭР от внедрения мероприятий в текущем году.")
+        
+        if indicator_9999.QYearCurrent < (indicator_9914.QYearCurrent if indicator_9914 else 0):
+            errors.append("Годовая экономия ТЭР от энергосберегающих мероприятий всего должна быть больше или равна экономии ТЭР от мероприятий предыдущего года внедрения (январь-декабрь).")
+    
+    if indicator_9911 and indicator_9912 and indicator_9913 and indicator_9914:
+        if indicator_9914.QYearCurrent < indicator_9913.QYearCurrent:
+            errors.append("Экономия ТЭР за январь-декабрь должна быть больше или равна экономии за январь-сентябрь.")
+        
+        if indicator_9913.QYearCurrent < indicator_9912.QYearCurrent:
+            errors.append("Экономия ТЭР за январь-сентябрь должна быть больше или равна экономии за январь-июнь.")
+        
+        if indicator_9912.QYearCurrent < indicator_9911.QYearCurrent:
+            errors.append("Экономия ТЭР за январь-июнь должна быть больше или равна экономии за январь-март.")
+    
+    
+    if indicator_9915 and plan.energy_saving:
+        if indicator_9915.QYearCurrent > plan.energy_saving:
+            errors.append(f"Целевой показатель энергосбережения ({indicator_9915.QYearCurrent}%) не должен превышать задание ({plan.energy_saving}%).")
+    
+    if indicator_9900 and plan.saving_fuel:
+        if indicator_9900.QYearCurrent < plan.saving_fuel:
+            errors.append(f"Ожидаемая экономия ТЭР ({indicator_9900.QYearCurrent} т у.т.) должна быть больше или равна заданию ({plan.saving_fuel} т у.т.).")
+        
+    if indicator_9916 and plan.share_fuel:
+        if indicator_9916.QYearCurrent < plan.share_fuel:
+            errors.append(f"Целевой показатель по доле местных ТЭР в КПТ ({indicator_9916.QYearCurrent}%) должен быть больше или равен заданию ({plan.share_fuel}%).")
+    
+    if indicator_9917 and plan.share_energy:
+        if indicator_9917.QYearCurrent < plan.share_energy:
+            errors.append(f"Целевой показатель по доле ВИЭ в КПТ ({indicator_9917.QYearCurrent}%) должен быть больше или равен заданию ({plan.share_energy}%).")
+    
+    if errors:
+        return {"error": "\n".join(errors)}
+    
+    plan.is_control = True
+    plan.is_draft = plan.is_sent = plan.is_error = plan.is_approved = False
+    plan.afch = False
+    
+    return "План прошел проверку на контроль."
+    
+    
+    
+    
+    
  
 def handle_sent_status(plan):
     if plan.audit_time and (TimeByMinsk() - plan.audit_time) > timedelta(hours=1):

@@ -34,6 +34,7 @@ class JSONFormatter(logging.Formatter):
         
         return json.dumps(log_data, ensure_ascii=False)
 
+
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         'DEBUG': '\033[36m',
@@ -56,12 +57,15 @@ class ColoredFormatter(logging.Formatter):
         
         return log_line
 
+
 def setup_logging(app):
     log_level = app.config.get('LOG_LEVEL', 'INFO').upper()
     log_static = app.config.get('LOG_STATIC_REQUESTS', False)
     
+    numeric_level = getattr(logging, log_level)
+    
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, log_level))
+    root_logger.setLevel(numeric_level)
     root_logger.handlers.clear()
     
     use_json = app.config.get('LOG_JSON', False)
@@ -76,12 +80,13 @@ def setup_logging(app):
     if not log_static:
         console_handler.addFilter(WerkzeugFilter())
     
-    console_handler.setLevel(getattr(logging, log_level))
+    console_handler.setLevel(numeric_level)
     root_logger.addHandler(console_handler)
     
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
     
     app.logger.handlers.clear()
+    app.logger.setLevel(numeric_level)
     app.logger.propagate = True
     
     app.logger.info("=" * 60)
@@ -90,6 +95,7 @@ def setup_logging(app):
     app.logger.info(f"JSON format: {use_json}")
     app.logger.info(f"Log static requests: {log_static}")
     app.logger.info("=" * 60)
+
 
 def log_with_extra(logger, level, message, **extra_fields):
     log_method = getattr(logger, level.lower(), logger.info)

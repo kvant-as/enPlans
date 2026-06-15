@@ -1,9 +1,11 @@
 from decimal import Decimal
-import io
-import zipfile
 from flask import (
-    Blueprint, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
+    Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
+
+import uuid
+import threading
+import zipfile
 
 from sqlalchemy import select
 
@@ -11,8 +13,9 @@ from flask_login import (
     current_user, login_required
 )
 
-from website.utils.currency_rates import fetch_usd_rate_from_belarusbank
-from website.utils.plans import get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
+from ..time import TimeByMinsk
+from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_usd_rate_from_belarusbank
+from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
 from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
@@ -212,24 +215,34 @@ def edit_plan_type(token):
 @login_required
 @session_required
 def plans():
-    status_filter = request.args.get('status', 'all')
-    year_filter = request.args.get('year', 'all')
-
-    plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
-
-    context = {
-        'years': range(2024, 2056),
-        'plans': plans,
-        'status_counts': status_counts,
-        'current_status_filter': status_filter,
-        'current_year_filter': year_filter
-    }
-
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
+    
     return render_template(
         'plans.html',
-        **context,
+        years=range(2026, 2050),
         current_user=current_user,
-        hide_header=False
+        hide_header=False,
+        selected_status=status,
+        selected_year=year
+    )
+    
+@views.route('/plans-audit', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+def plans_audit():
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
+    
+    return render_template(
+        'plans.html',
+        years=range(2026, 2050),
+        current_user=current_user,
+        hide_header=False,
+        selected_status=status,
+        selected_year=year,
+        audit_page=True
     )
 
 @views.route('/export', methods=['GET'])
@@ -237,118 +250,109 @@ def plans():
 @login_required
 @session_required
 def export():
-    status_filter = request.args.get('status', 'all')
-    year_filter = request.args.get('year', 'all')
-
-    plans, status_counts = get_filtered_plans(current_user, status_filter, year_filter)
-
-    context = {
-        'years': range(2024, 2056),
-        'plans': plans,
-        'status_counts': status_counts,
-        'current_status_filter': status_filter,
-        'current_year_filter': year_filter
-    }
-
+    status = request.args.get('status', 'all')
+    year = request.args.get('year', 'all')
+    
     return render_template(
         'export.html',
-        **context,
+        years=range(2026, 2050),
         current_user=current_user,
-        hide_header=False
+        hide_header=False,
+        selected_status=status,
+        selected_year=year
     )
     
-# @views.route('/news', methods=['GET'])
-# def news_page():
-#     return render_template(
-#         'news.html',
-#         current_user=current_user,
-#         hide_header=False
-#     )
-    
-# @views.route('/news/<int:news_id>', methods=['GET'])
-# def news_detail_page(news_id):
-#     news_item = News.query.get_or_404(news_id)
-    
-#     news_item.views_count += 1
-#     db.session.commit()
-    
-#     return render_template(
-#         'news_detail.html',
-#         current_user=current_user,
-#         news_item=news_item,
-#         hide_header=False
-#     )
+@views.route('/export/start', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def start_export():
+    try:
+        export_format = request.form.get('format', '').lower()
+        plan_ids = request.form.getlist('ids')
+        
+        if not plan_ids:
+            return jsonify({'success': False, 'error': 'Не выбраны планы'})
+        
+        plan_ids = [int(pid) for pid in plan_ids]
+        
+        if export_format not in ['xlsx', 'xml', 'pdf']:
+            return jsonify({'success': False, 'error': 'Неверный формат'})
+        
+        task_id = str(uuid.uuid4())
+        
+        from ..export import create_export_archive_async
+        from flask import current_app
+        
+        thread = threading.Thread(
+            target=create_export_archive_async,
+            args=(export_format, task_id, current_user.id, plan_ids, current_app._get_current_object())
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({'success': True, 'task_id': task_id})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
-@views.route('/news/<int:id>', methods=['GET'])
-def news_post(id):
-    post = News.query.filter_by(id = id).first()
-    return render_template(f'news_id.html', 
-        current_user=current_user,
-        post=post
+@views.route('/export/status/<task_id>', methods=['GET'])
+@login_required
+def export_status(task_id):
+    from ..export import export_tasks
+    if task_id not in export_tasks:
+        return jsonify({'success': False, 'error': 'Задача не найдена'})
+    
+    task = export_tasks[task_id]
+    return jsonify({
+        'success': True,
+        'status': task['status'],
+        'progress': task.get('progress', 0),
+        'error': task.get('error', '')
+    })
+
+@views.route('/export/download/<task_id>', methods=['GET'])
+@login_required
+def download_export(task_id):
+    from ..export import export_tasks
+    if task_id not in export_tasks:
+        flash('Файл не найден', 'error')
+        return redirect(request.referrer or url_for('views.export_page'))
+    
+    task = export_tasks[task_id]
+    
+    if task['status'] != 'completed':
+        flash('Архив еще не готов', 'error')
+        return redirect(request.referrer or url_for('views.export_page'))
+    
+    return send_file(
+        task['file_path'],
+        as_attachment=True,
+        download_name=f'plans_export_{task_id[:8]}.zip',
+        mimetype='application/zip'
     )
 
 @views.route('/news', methods=['GET'])
 def news():
-    all_news = News.query.order_by(News.created_at.desc()).all()
-    return render_template('news.html', 
+    return render_template('news.html', current_user=current_user)
+
+@views.route('/news/<int:id>', methods=['GET'])
+def news_post(id):
+    post = News.query.get(id)
+    if not post:
+        abort(404)
+    
+    if post.published_at is None:
+        post.published_at = post.created_at
+    
+    post.views_count = (post.views_count or 0) + 1
+    db.session.commit()
+    
+    return render_template('news_id.html', 
         current_user=current_user,
-        all_news=all_news
+        post=post
     )
     
-@views.route('/export-to/<string:format>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def export_to(format):
-    ids = request.form.getlist("ids")
-    if not ids:
-        flash("Не выбраны планы.", "error")
-        return redirect(request.url)
-
-    plans = Plan.query.filter(Plan.id.in_(ids)).all()
-    if not plans:
-        flash("Не найдены выбранные планы.", "error")
-        return redirect(request.url)
-    
-    from ..export import (
-        export_pdf_single, 
-        export_xlsx_single,
-        export_xml_single
-        
-    )
-    if len(plans) == 1:
-        plan = plans[0]
-        if format == "xml":
-            file_stream, mime, filename = export_xml_single(plan)
-        elif format == "xlsx":
-            file_stream, mime, filename = export_xlsx_single(plan)
-        elif format == "pdf":
-            file_stream, mime, filename = export_pdf_single(plan)
-        else:
-            flash("Неизвестный формат.", "error")
-            return redirect(request.url)
-        return send_file(file_stream, as_attachment=True, download_name=filename, mimetype=mime)
-    
-    zip_stream = io.BytesIO()
-    with zipfile.ZipFile(zip_stream, "w") as zip_file:
-        for plan in plans:
-            if format == "xml":
-                f_stream, _, fname = export_xml_single(plan)
-            elif format == "xlsx":
-                f_stream, _, fname = export_xlsx_single(plan)
-            elif format == "pdf":
-                f_stream, _, fname = export_pdf_single(plan)
-            else:
-                flash("Неизвестный формат.", "error")
-                return redirect(request.url)
-
-            zip_file.writestr(fname, f_stream.getvalue())
-
-    zip_stream.seek(0)
-    return send_file(zip_stream, as_attachment=True, download_name="plans.zip", mimetype="application/zip")
-
-from sqlalchemy import select
-
 @views.route('/create-plan', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
@@ -385,12 +389,11 @@ def create_plan():
             region_id = current_user.region.id
 
         def get_usd_rate_for_new_plan():
-            usd_rate, error = fetch_usd_rate_from_belarusbank()
+            usd_rate, error = fetch_usd_rate_from_any_source()
             
             if usd_rate is None:
-                current_app.logger.warning(f'Failed to fetch USD rate: {error}')
-                flash('Не удалось получить актуальный курс доллара. Будет использовано значение по умолчанию 2.75', 'warning')
-                return Decimal('2.75')
+                current_app.logger.error(f'Failed to fetch USD rate for new plan: {error}')
+                return None
             
             return usd_rate
         
@@ -400,8 +403,9 @@ def create_plan():
             elif year == 2027:
                 return to_decimal_2('270.00')
             else:
-                flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
-                return None
+                return to_decimal_2('270.00')
+                # flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
+                # return None
 
         usd_rate_value = get_usd_rate_for_new_plan()
         cost_per_toe_value = get_cost_per_toe_for_new_plan(year)
@@ -445,7 +449,10 @@ def create_plan():
             )
             db.session.add(indicator_usage)
         
+        configs = get_column_configs_for_plan(new_plan)
+        db.session.add_all(configs)
         db.session.commit()
+        
         flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
 
@@ -548,20 +555,6 @@ def stats():
         pass
     return render_template('stats.html', 
                         hide_header=False)
-    
-# @views.route('/news', methods=['GET', 'POST'])
-# @user_with_all_params()
-# @login_required
-# @session_required
-# def news():
-#     if request.method == 'POST':
-#         pass
-#     return render_template('news.html', 
-#                         hide_header=False)
-    
-
-
-
 
 @views.route('/api/ticket/<int:ticket_id>/details')
 @login_required
@@ -603,17 +596,28 @@ def get_ticket_details(ticket_id):
 def FAQ_page():    
     return render_template('FAQ.html', active_tab = 'faq')
 
+@views.route('/test', methods=['GET'])
+def test_page():    
+    return render_template('test.html')
+
 @views.route('/', methods=['GET'])
 def begin_page():    
     user_data = User.query.count()
     organization_data = Organization.query.count()
     plan_data = Plan.query.count()
+    
+    latest_news = News.query.filter(
+        News.published_at <= TimeByMinsk(),
+        News.published_at.isnot(None)
+    ).order_by(News.published_at.desc()).first()
+    
     return render_template('begin.html',
-            user_data=user_data,
-            organization_data=organization_data,
-            plan_data=plan_data,
-            active_tab = 'begin'
-            )
+        user_data=user_data,
+        organization_data=organization_data,
+        plan_data=plan_data,
+        latest_news=latest_news,
+        active_tab='begin'
+    )
 
 @views.route('/api/notifications', methods=['GET'])
 @user_with_all_params()
