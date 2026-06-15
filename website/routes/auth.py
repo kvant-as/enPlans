@@ -161,7 +161,7 @@ def resend_code():
 
 @auth.route('/param', methods=['GET', 'POST'])
 @login_required
-@user_without_param()
+# @user_without_param()
 def param():
     if request.method == 'GET':
         return render_template('param.html')

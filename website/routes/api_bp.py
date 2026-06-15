@@ -127,7 +127,7 @@ def api_get_export_plans():
             'error': str(e)
         }), 500
         
-@api_bp.route('/api/approve-plan/<token>', methods=['POST'])
+@api_bp.route('/approve-plan/<token>', methods=['POST'])
 @login_required
 def api_approve_plan(token):
     plan = Plan.query.filter_by(token=token).first_or_404()
