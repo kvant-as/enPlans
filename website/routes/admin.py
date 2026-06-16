@@ -572,7 +572,7 @@ class EventView(SecureModelView):
     can_export = True
 
     form_columns = ['plan', 'name', 'Volume', 'EffTut', 'EffRub',
-                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFin',
+                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFinCurrentYear',
                     'BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther',
                     'MoneyOwn', 'MoneyLoan', 'MoneyOther', 'is_local', 'is_corrected', 'order']
 

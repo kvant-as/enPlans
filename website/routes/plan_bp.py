@@ -553,7 +553,7 @@ def edit_Eventes(id):
             
             if is_double_effect and current_event.is_econom:
                 BudgetState = BudgetRep = BudgetLoc = BudgetOther = MoneyOwn = MoneyLoan = MoneyOther = 0
-                VolumeFin = 0
+                VolumeFinCurrentYear = 0
                 
                 USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
                 COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
@@ -570,19 +570,19 @@ def edit_Eventes(id):
                 MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
                 MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
                 
-                VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+                VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
                 
                 USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
                 COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
                 EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
                 
                 if EffRub > 0:
-                    payback_value = float(VolumeFin) / float(EffRub)
+                    payback_value = float(VolumeFinCurrentYear) / float(EffRub)
                     Payback = to_decimal_1(payback_value)
                 else:
                     Payback = None
                 
-                current_app.logger.info(f'Regular event calculation: VolumeFin={VolumeFin}, EffRub={EffRub}, Payback={Payback}')
+                current_app.logger.info(f'Regular event calculation: VolumeFinCurrentYear={VolumeFinCurrentYear}, EffRub={EffRub}, Payback={Payback}')
 
             Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
             ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value and ExpectedQuarter_value.strip() else None
@@ -594,7 +594,7 @@ def edit_Eventes(id):
             current_event.EffRub = EffRub
             current_event.EffCurrYear = EffCurrYear
             current_event.Payback = Payback
-            current_event.VolumeFin = VolumeFin
+            current_event.VolumeFinCurrentYear = VolumeFinCurrentYear
             current_event.BudgetState = BudgetState
             current_event.BudgetRep = BudgetRep
             current_event.BudgetLoc = BudgetLoc

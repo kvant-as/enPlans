@@ -1587,7 +1587,7 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
         ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования в текущем году, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"
@@ -1670,7 +1670,7 @@ def export_xlsx_single(plan: Plan):
                                 econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
                                 econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
                                 econ.Payback if hasattr(econ, "Payback") else 0,
-                                econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
+                                econ.VolumeFinCurrentYear if hasattr(econ, "VolumeFinCurrentYear") else 0,
                                 econ.BudgetState if hasattr(econ, "BudgetState") else 0,
                                 econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
                                 econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
@@ -1727,7 +1727,7 @@ def export_xlsx_single(plan: Plan):
                 sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
                 
                 def get_value(event, col):
-                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFin',
+                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFinCurrentYear',
                                 12: 'BudgetState', 13: 'BudgetRep', 14: 'BudgetLoc', 15: 'BudgetOther',
                                 16: 'MoneyOwn', 17: 'MoneyLoan', 18: 'MoneyOther'}
                         val = getattr(event, attr_map.get(col, ''), 0)
@@ -2175,7 +2175,7 @@ def export_xlsx_single(plan: Plan):
         ws.merge_cells("H3:H6"); ws["H3"].value = "Ожидаемый срок внедрения мероприятия, квартал"
         ws.merge_cells("I3:I6"); ws["I3"].value = "Ожидаемое увеличение использования местных ТЭР от внедрения мероприятий в текущем году, т у.т."
         ws.merge_cells("J3:J6"); ws["J3"].value = "Срок окупаемости, лет"
-        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования, руб."
+        ws.merge_cells("K3:K6"); ws["K3"].value = "Объем финансирования в текущем году, руб."
         ws.merge_cells("L3:R3"); ws["L3"].value = "источники финансирования, руб."
         ws.merge_cells("L4:O4"); ws["L4"].value = "бюджетные"
         ws.merge_cells("L5:L6"); ws["L5"].value = "республиканский бюджет на финансирование госпрограммы"
@@ -2258,7 +2258,7 @@ def export_xlsx_single(plan: Plan):
                                 econ.ExpectedQuarter if hasattr(econ, "ExpectedQuarter") else 0,
                                 econ.EffCurrYear if hasattr(econ, "EffCurrYear") else 0,
                                 econ.Payback if hasattr(econ, "Payback") else 0,
-                                econ.VolumeFin if hasattr(econ, "VolumeFin") else 0,
+                                econ.VolumeFinCurrentYear if hasattr(econ, "VolumeFinCurrentYear") else 0,
                                 econ.BudgetState if hasattr(econ, "BudgetState") else 0,
                                 econ.BudgetRep if hasattr(econ, "BudgetRep") else 0,
                                 econ.BudgetLoc if hasattr(econ, "BudgetLoc") else 0,
@@ -2315,7 +2315,7 @@ def export_xlsx_single(plan: Plan):
                 sum_cols = [6, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18]
                 
                 def get_value(event, col):
-                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFin',
+                        attr_map = {6: 'EffTut', 7: 'EffRub', 9: 'EffCurrYear', 11: 'VolumeFinCurrentYear',
                                 12: 'BudgetState', 13: 'BudgetRep', 14: 'BudgetLoc', 15: 'BudgetOther',
                                 16: 'MoneyOwn', 17: 'MoneyLoan', 18: 'MoneyOther'}
                         val = getattr(event, attr_map.get(col, ''), 0)

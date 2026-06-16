@@ -1074,7 +1074,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving'
                 ? 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)'
                 : 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="19">${emptyMessage}</tr>`;
             return;
         }
         
@@ -1102,7 +1102,8 @@ class PlanEvents {
             <td style="text-align: center;">${row.ExpectedQuarter || ''}</td> 
             <td style="text-align: end;">${this.formatNumber(row.EffCurrYear)}</td>
             <td style="text-align: end;">${(row.Payback || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(row.VolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.ObchVolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.VolumeFinCurrentYear || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetState || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetRep || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetLoc || 0).toString()}</td>
@@ -1128,7 +1129,8 @@ class PlanEvents {
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'ObchVolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetState') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
@@ -1164,7 +1166,8 @@ class PlanEvents {
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'ObchVolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
@@ -1197,7 +1200,7 @@ class PlanEvents {
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
                 <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
-                <td colspan="9"></td>
+                <td colspan="10"></td>
             `;
             
             otherContent.appendChild(row);
@@ -2158,7 +2161,7 @@ function Edit_Evente_modal() {
         setValueIfExists('change-ExpectedQuarter-edit-model', eventData.ExpectedQuarter || '');
         setValueIfExists('change-EffCurrYear-edit-model', eventData.EffCurrYear || '');
         setValueIfExists('change-Payback-edit-model', eventData.Payback || '');
-        setValueIfExists('change-VolumeFin-edit-model', eventData.VolumeFin || '');
+        setValueIfExists('change-VolumeFinCurrentYear-edit-model', eventData.VolumeFinCurrentYear || '');
         setValueIfExists('change-BudgetState-edit-model', eventData.BudgetState || '0');
         setValueIfExists('change-BudgetRep-edit-model', eventData.BudgetRep || '0');
         setValueIfExists('change-BudgetLoc-edit-model', eventData.BudgetLoc || '0');
@@ -2215,9 +2218,9 @@ function initEditCalculations(usdRate, costPerToe) {
         const moneyLoan = parseEditNumber(document.getElementById('change-MoneyLoan-edit-model')?.value);
         const moneyOther = parseEditNumber(document.getElementById('change-MoneyOther-edit-model')?.value);
         
-        const volumeFin = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-        const volumeFinInput = document.getElementById('change-VolumeFin-edit-model');
-        if (volumeFinInput) volumeFinInput.value = formatEditNumber(volumeFin, 0);
+        const VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+        const VolumeFinCurrentYearInput = document.getElementById('change-VolumeFinCurrentYear-edit-model');
+        if (VolumeFinCurrentYearInput) VolumeFinCurrentYearInput.value = formatEditNumber(VolumeFinCurrentYear, 0);
         
         const effTut = parseEditNumber(document.getElementById('change-EffTut-edit-model')?.value);
         const effRub = Math.round(effTut * costPerToe * usdRate);
@@ -2225,7 +2228,7 @@ function initEditCalculations(usdRate, costPerToe) {
         if (effRubInput) effRubInput.value = formatEditNumber(effRub, 0);
         
         let payback = 0;
-        if (effRub > 0) payback = volumeFin / effRub;
+        if (effRub > 0) payback = VolumeFinCurrentYear / effRub;
         const paybackInput = document.getElementById('change-Payback-edit-model');
         if (paybackInput) paybackInput.value = formatEditNumber(payback, 1);
     }

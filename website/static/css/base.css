@@ -5711,10 +5711,10 @@ input[type="checkbox"]:focus {
 .no-results-row td {
   font-style: italic;
   text-align: center;
-  color: gray;
-  font-weight: 600 !important;
-  font-size: 13px !important;
-  padding: 20px 0 !important;
+  /* color: gray !important; */
+  font-weight: 500 !important;
+  font-size: 11px !important;
+  padding: 30px 0 !important;
 }
 
 .no-info-conteiner td{    

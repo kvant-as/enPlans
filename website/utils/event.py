@@ -48,7 +48,8 @@ def process_event_data(current_plan, direction, event_type, form_data):
                 'ExpectedQuarter': ExpectedQuarter,
                 'EffCurrYear': EffCurrYear,
                 'Payback': None,
-                'VolumeFin': 0,
+                'ObchVolumeFin': 0,
+                'VolumeFinCurrentYear': 0,
                 'BudgetState': 0,
                 'BudgetRep': 0,
                 'BudgetLoc': 0,
@@ -61,6 +62,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
                 'is_double_effect': True
             }
         
+        ObchVolumeFin = int(form_data.get('ObchVolumeFin')) if form_data.get('ObchVolumeFin') else 0
         BudgetState = int(form_data.get('BudgetState')) if form_data.get('BudgetState') else 0
         BudgetRep = int(form_data.get('BudgetRep')) if form_data.get('BudgetRep') else 0
         BudgetLoc = int(form_data.get('BudgetLoc')) if form_data.get('BudgetLoc') else 0
@@ -69,11 +71,11 @@ def process_event_data(current_plan, direction, event_type, form_data):
         MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
         MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
         
-        VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+        VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
         
         Payback = None
         if EffRub > 0:
-            payback_value = VolumeFin / EffRub
+            payback_value = VolumeFinCurrentYear / EffRub
             if payback_value < 0.1 and payback_value > 0:
                 payback_value = 0.1
             Payback = to_decimal_1(payback_value)
@@ -86,7 +88,8 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'ExpectedQuarter': ExpectedQuarter,
             'EffCurrYear': EffCurrYear,
             'Payback': Payback,
-            'VolumeFin': VolumeFin,
+            'ObchVolumeFin': ObchVolumeFin,
+            'VolumeFinCurrentYear': VolumeFinCurrentYear,
             'BudgetState': BudgetState,
             'BudgetRep': BudgetRep,
             'BudgetLoc': BudgetLoc,
@@ -109,7 +112,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
             MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
             MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
             
-            VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+            VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
             EffRub = int(EffTut * COST_PER_TOE_USD * USD_RATE)
             
             return {
@@ -120,7 +123,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
                 'ExpectedQuarter': ExpectedQuarter,
                 'EffCurrYear': EffCurrYear,
                 'Payback': None,
-                'VolumeFin': VolumeFin,
+                'VolumeFinCurrentYear': VolumeFinCurrentYear,
                 'BudgetState': BudgetState,
                 'BudgetRep': BudgetRep,
                 'BudgetLoc': BudgetLoc,
@@ -141,12 +144,12 @@ def process_event_data(current_plan, direction, event_type, form_data):
         MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
         MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
         
-        VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+        VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
         EffRub = int(EffTut * COST_PER_TOE_USD * USD_RATE)
         
         Payback = None
         if EffRub > 0:
-            payback_value = VolumeFin / EffRub
+            payback_value = VolumeFinCurrentYear / EffRub
             if payback_value < 0.1 and payback_value > 0:
                 payback_value = 0.1
             Payback = to_decimal_1(payback_value)
@@ -159,7 +162,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'ExpectedQuarter': ExpectedQuarter,
             'EffCurrYear': EffCurrYear,
             'Payback': Payback,
-            'VolumeFin': VolumeFin,
+            'VolumeFinCurrentYear': VolumeFinCurrentYear,
             'BudgetState': BudgetState,
             'BudgetRep': BudgetRep,
             'BudgetLoc': BudgetLoc,
@@ -190,7 +193,8 @@ def create_event_record(current_plan, direction, event_data):
         ExpectedQuarter=event_data['ExpectedQuarter'],
         EffCurrYear=event_data['EffCurrYear'],
         Payback=event_data['Payback'],
-        VolumeFin=event_data['VolumeFin'],
+        ObchVolumeFin=event_data['ObchVolumeFin'],
+        VolumeFinCurrentYear=event_data['VolumeFinCurrentYear'],
         BudgetState=event_data['BudgetState'],
         BudgetRep=event_data['BudgetRep'],
         BudgetLoc=event_data['BudgetLoc'],
@@ -239,12 +243,12 @@ def update_double_effect_payback(plan_id, direction_id):
         return
     
     current_app.logger.info(f'Found saving_event: EffRub={saving_event.EffRub}')
-    current_app.logger.info(f'Found increase_event: EffRub={increase_event.EffRub}, VolumeFin={increase_event.VolumeFin}')
+    current_app.logger.info(f'Found increase_event: EffRub={increase_event.EffRub}, VolumeFinCurrentYear={increase_event.VolumeFinCurrentYear}')
     
     total_eff_rub = (saving_event.EffRub or 0) + (increase_event.EffRub or 0)
-    volume_fin = increase_event.VolumeFin or 0
+    volume_fin = increase_event.VolumeFinCurrentYear or 0
     
-    current_app.logger.info(f'Total EffRub: {total_eff_rub}, VolumeFin: {volume_fin}')
+    current_app.logger.info(f'Total EffRub: {total_eff_rub}, VolumeFinCurrentYear: {volume_fin}')
     
     MIN_PAYBACK = 0.1
     

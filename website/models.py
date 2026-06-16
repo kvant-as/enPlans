@@ -241,8 +241,12 @@ class Event(db.Model):
     EffRub = db.Column(db.Integer)
     ExpectedQuarter = db.Column(db.Integer)
     EffCurrYear = db.Column(Numeric(scale=2))
+    
+    
     Payback = db.Column(Numeric(scale=1))
-    VolumeFin = db.Column(db.Integer)
+    
+    ObchVolumeFin = db.Column(db.Integer)
+    VolumeFinCurrentYear = db.Column(db.Integer)
     BudgetState = db.Column(db.Integer)
     BudgetRep = db.Column(db.Integer)
     BudgetLoc = db.Column(db.Integer)
@@ -270,7 +274,7 @@ class Event(db.Model):
             'ExpectedQuarter': self.ExpectedQuarter,
             'EffCurrYear': self.EffCurrYear,
             'Payback': self.Payback,
-            'VolumeFin': self.VolumeFin,
+            'VolumeFinCurrentYear': self.VolumeFinCurrentYear,
             'BudgetState': self.BudgetState,
             'BudgetRep': self.BudgetRep,
             'BudgetLoc': self.BudgetLoc,

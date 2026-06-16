@@ -212,7 +212,7 @@
 
     function updateFinancingFieldsReadonly(isDouble, eventType) {
         const budgetFields = ['BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther', 'MoneyOwn', 'MoneyLoan', 'MoneyOther'];
-        const volumeFinInput = document.querySelector('#AddEventModal input[name="VolumeFin"]');
+        const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
         const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
         
         if (isDouble && eventType === 'saving') {
@@ -224,9 +224,9 @@
                     input.disabled = true;
                 }
             });
-            if (volumeFinInput) {
-                volumeFinInput.value = '0';
-                volumeFinInput.readOnly = true;
+            if (VolumeFinCurrentYearInput) {
+                VolumeFinCurrentYearInput.value = '0';
+                VolumeFinCurrentYearInput.readOnly = true;
             }
             if (paybackInput) {
                 paybackInput.value = '0,0';
@@ -240,7 +240,7 @@
                     input.disabled = false;
                 }
             });
-            if (volumeFinInput) volumeFinInput.readOnly = true;
+            if (VolumeFinCurrentYearInput) VolumeFinCurrentYearInput.readOnly = true;
             if (paybackInput) paybackInput.readOnly = true;
         } else {
             budgetFields.forEach(fieldName => {
@@ -250,7 +250,7 @@
                     input.disabled = false;
                 }
             });
-            if (volumeFinInput) volumeFinInput.readOnly = true;
+            if (VolumeFinCurrentYearInput) VolumeFinCurrentYearInput.readOnly = true;
             if (paybackInput) paybackInput.readOnly = true;
         }
     }
@@ -289,9 +289,9 @@
         const moneyLoan = parseNumber(document.querySelector('#AddEventModal input[name="MoneyLoan"]')?.value);
         const moneyOther = parseNumber(document.querySelector('#AddEventModal input[name="MoneyOther"]')?.value);
         
-        const volumeFin = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-        const volumeFinInput = document.querySelector('#AddEventModal input[name="VolumeFin"]');
-        if (volumeFinInput) volumeFinInput.value = formatNumber(volumeFin, 0);
+        const VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+        const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
+        if (VolumeFinCurrentYearInput) VolumeFinCurrentYearInput.value = formatNumber(VolumeFinCurrentYear, 0);
         
         const effTut = parseNumber(document.querySelector('#AddEventModal input[name="EffTut"]')?.value);
         
@@ -300,7 +300,10 @@
         if (effRubInput) effRubInput.value = formatNumber(effRub, 0);
         
         let payback = 0;
-        if (effRub > 0) payback = volumeFin / effRub;
+        if (effRub > 0) payback = VolumeFinCurrentYear / effRub;
+        if (payback < 0.1 && payback > 0) {
+            payback = 0.1;
+        }
         const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
         if (paybackInput) paybackInput.value = formatNumber(payback, 1);
     }
