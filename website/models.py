@@ -265,15 +265,17 @@ class Event(db.Model):
     direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])
 
     def as_dict(self):
+        is_double_effect = self.direction.is_econom and self.direction.is_increase if self.direction else False
+        
         return {
             'id': self.id,
             'name': self.name,
             'Volume': self.Volume,
-            'EffTut': self.EffTut,
+            'EffTut': float(self.EffTut) if self.EffTut else None,
             'EffRub': self.EffRub,
             'ExpectedQuarter': self.ExpectedQuarter,
-            'EffCurrYear': self.EffCurrYear,
-            'Payback': self.Payback,
+            'EffCurrYear': float(self.EffCurrYear) if self.EffCurrYear else None,
+            'Payback': float(self.Payback) if self.Payback else None,
             'VolumeFinCurrentYear': self.VolumeFinCurrentYear,
             'BudgetState': self.BudgetState,
             'BudgetRep': self.BudgetRep,
@@ -281,9 +283,13 @@ class Event(db.Model):
             'BudgetOther': self.BudgetOther,
             'MoneyOwn': self.MoneyOwn,
             'MoneyLoan': self.MoneyLoan,
-            'MoneyOther': self.MoneyOther
+            'MoneyOther': self.MoneyOther,
+            'is_econom': self.is_econom,
+            'is_increase': self.is_increase,
+            'is_double_effect': is_double_effect,
+            'direction_code': self.direction.code if self.direction else None,
+            'direction_name': self.direction.name if self.direction else None
         }
-
 
 class Indicator(db.Model):
     __tablename__ = 'indicators'

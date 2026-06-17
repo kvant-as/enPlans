@@ -386,7 +386,7 @@ def other_data_indicatorUpdate(plan_id):
         
         indicator_9900 = get_indicator_by_code(indicator_usages, '9900')
         if indicator_9900:
-            indicator_9900.QYearCurrent = to_decimal_2(total)
+            indicator_9900.QYearCurrent = to_decimal_1(total)
             commit_changes()
     
     def update_indicator_9910():

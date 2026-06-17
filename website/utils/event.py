@@ -7,6 +7,18 @@ from .. import db
 
 logger = logging.getLogger(__name__)
 
+def parse_number_with_comma(value):
+    """Преобразует строку с запятой в число"""
+    if not value:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    try:
+        cleaned = str(value).replace(',', '.')
+        return int(float(cleaned))
+    except (ValueError, TypeError):
+        return 0
+
 def process_event_data(current_plan, direction, event_type, form_data):
     usd_rate, error = get_usd_rate_with_fallback(current_plan)
     
@@ -62,14 +74,14 @@ def process_event_data(current_plan, direction, event_type, form_data):
                 'is_double_effect': True
             }
         
-        ObchVolumeFin = int(form_data.get('ObchVolumeFin')) if form_data.get('ObchVolumeFin') else 0
-        BudgetState = int(form_data.get('BudgetState')) if form_data.get('BudgetState') else 0
-        BudgetRep = int(form_data.get('BudgetRep')) if form_data.get('BudgetRep') else 0
-        BudgetLoc = int(form_data.get('BudgetLoc')) if form_data.get('BudgetLoc') else 0
-        BudgetOther = int(form_data.get('BudgetOther')) if form_data.get('BudgetOther') else 0
-        MoneyOwn = int(form_data.get('MoneyOwn')) if form_data.get('MoneyOwn') else 0
-        MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
-        MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
+        ObchVolumeFin = parse_number_with_comma(form_data.get('ObchVolumeFin'))
+        BudgetState = parse_number_with_comma(form_data.get('BudgetState'))
+        BudgetRep = parse_number_with_comma(form_data.get('BudgetRep'))
+        BudgetLoc = parse_number_with_comma(form_data.get('BudgetLoc'))
+        BudgetOther = parse_number_with_comma(form_data.get('BudgetOther'))
+        MoneyOwn = parse_number_with_comma(form_data.get('MoneyOwn'))
+        MoneyLoan = parse_number_with_comma(form_data.get('MoneyLoan'))
+        MoneyOther = parse_number_with_comma(form_data.get('MoneyOther'))
         
         VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
         
@@ -103,49 +115,17 @@ def process_event_data(current_plan, direction, event_type, form_data):
         }
     
     if event_type == 'increase':
-        if is_double_effect:
-            BudgetState = int(form_data.get('BudgetState')) if form_data.get('BudgetState') else 0
-            BudgetRep = int(form_data.get('BudgetRep')) if form_data.get('BudgetRep') else 0
-            BudgetLoc = int(form_data.get('BudgetLoc')) if form_data.get('BudgetLoc') else 0
-            BudgetOther = int(form_data.get('BudgetOther')) if form_data.get('BudgetOther') else 0
-            MoneyOwn = int(form_data.get('MoneyOwn')) if form_data.get('MoneyOwn') else 0
-            MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
-            MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
-            
-            VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
-            EffRub = int(EffTut * COST_PER_TOE_USD * USD_RATE)
-            
-            return {
-                'name': name,
-                'Volume': Volume,
-                'EffTut': to_decimal_2(EffTut),
-                'EffRub': EffRub,
-                'ExpectedQuarter': ExpectedQuarter,
-                'EffCurrYear': EffCurrYear,
-                'Payback': None,
-                'VolumeFinCurrentYear': VolumeFinCurrentYear,
-                'BudgetState': BudgetState,
-                'BudgetRep': BudgetRep,
-                'BudgetLoc': BudgetLoc,
-                'BudgetOther': BudgetOther,
-                'MoneyOwn': MoneyOwn,
-                'MoneyLoan': MoneyLoan,
-                'MoneyOther': MoneyOther,
-                'is_econom': False,
-                'is_increase': True,
-                'is_double_effect': True
-            }
+        BudgetState = parse_number_with_comma(form_data.get('BudgetState'))
+        BudgetRep = parse_number_with_comma(form_data.get('BudgetRep'))
+        BudgetLoc = parse_number_with_comma(form_data.get('BudgetLoc'))
+        BudgetOther = parse_number_with_comma(form_data.get('BudgetOther'))
+        MoneyOwn = parse_number_with_comma(form_data.get('MoneyOwn'))
+        MoneyLoan = parse_number_with_comma(form_data.get('MoneyLoan'))
+        MoneyOther = parse_number_with_comma(form_data.get('MoneyOther'))
         
-        BudgetState = int(form_data.get('BudgetState')) if form_data.get('BudgetState') else 0
-        BudgetRep = int(form_data.get('BudgetRep')) if form_data.get('BudgetRep') else 0
-        BudgetLoc = int(form_data.get('BudgetLoc')) if form_data.get('BudgetLoc') else 0
-        BudgetOther = int(form_data.get('BudgetOther')) if form_data.get('BudgetOther') else 0
-        MoneyOwn = int(form_data.get('MoneyOwn')) if form_data.get('MoneyOwn') else 0
-        MoneyLoan = int(form_data.get('MoneyLoan')) if form_data.get('MoneyLoan') else 0
-        MoneyOther = int(form_data.get('MoneyOther')) if form_data.get('MoneyOther') else 0
-        
+        ObchVolumeFin = parse_number_with_comma(form_data.get('ObchVolumeFin'))
         VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
-        EffRub = int(EffTut * COST_PER_TOE_USD * USD_RATE)
+        EffRub = parse_number_with_comma(form_data.get('EffRub'))
         
         Payback = None
         if EffRub > 0:
@@ -162,6 +142,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'ExpectedQuarter': ExpectedQuarter,
             'EffCurrYear': EffCurrYear,
             'Payback': Payback,
+            'ObchVolumeFin': ObchVolumeFin,
             'VolumeFinCurrentYear': VolumeFinCurrentYear,
             'BudgetState': BudgetState,
             'BudgetRep': BudgetRep,

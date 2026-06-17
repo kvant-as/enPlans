@@ -2352,10 +2352,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('.auth-step-1') && document.querySelector('.auth-step-2')) {
         formSteps.init();
     }
-    
-    if (document.querySelector('.plan-cont')) {
-        initStatusProgress();
-    }
 
     new DirectionsTable({
         searchSelector: "search-directions",
