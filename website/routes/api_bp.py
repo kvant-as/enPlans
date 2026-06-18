@@ -10,7 +10,7 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, HigherOrganization, Indicator, IndicatorUsage, Ministry, News, OblispolkomGorispolkom, Organization, Plan, Region, Event
+from ..models import Direction, HigherOrganization, Indicator, IndicatorUsage, Ministry, News, Notification, OblispolkomGorispolkom, Organization, Plan, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -662,3 +662,54 @@ def refresh_plan_rates(token):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+
+@api_bp.route('/notifications', methods=['GET'])
+@user_with_all_params()
+@login_required
+def api_notifications():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 3, type=int)
+    
+    notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(Notification.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'notifications': [
+            {
+                'id': n.id,
+                'message': n.message,
+                'is_read': n.is_read,
+                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S') if n.created_at else None
+            }
+            for n in notifications.items
+        ],
+        'page': notifications.page,
+        'per_page': notifications.per_page,
+        'total': notifications.total,
+        'has_next': notifications.has_next
+    })
+
+
+@api_bp.route('/notifications/mark-all-read', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def mark_all_notifications_read():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'message': 'Все уведомления отмечены как прочитанные'})
+
+
+@api_bp.route('/notifications/mark-read/<int:notification_id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.filter_by(id=notification_id, user_id=current_user.id).first()
+    if notification:
+        notification.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Уведомление не найдено'}), 404

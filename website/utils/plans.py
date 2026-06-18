@@ -756,6 +756,7 @@ def handle_error_status(plan):
         luck=True,
         is_owner = True,
         plan_id=plan.id,
+        created_at=TimeByMinsk(),
     )
     db.session.add(new_ticket)
 
@@ -773,7 +774,7 @@ def handle_approved_status(plan):
     plan.afch = False 
 
     new_ticket = Ticket(
-        note="План был одобрен, статус был изменен на Одобрен.",
+        note="План был Согласован, статус был изменен на Согласован.",
         luck=True,
         is_owner = True,
         plan_id=plan.id,
@@ -782,10 +783,11 @@ def handle_approved_status(plan):
 
     notification = Notification(
         user_id=plan.user_id,
-        message=f"План на {plan.year} год был одобрен."
+        message=f"План на {plan.year} год был Согласован.",
+        created_at=TimeByMinsk()
     )
     db.session.add(notification)
-    return "План одобрен."
+    return "План Согласован."
 
 
 status_handlers = {

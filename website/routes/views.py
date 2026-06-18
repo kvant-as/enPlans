@@ -473,8 +473,11 @@ def create_plan():
         
         flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
+    
+    current_time = TimeByMinsk()
+    next_year = current_time.year + 1
 
-    return render_template('create_plan.html', hide_header=False)
+    return render_template('create_plan.html', hide_header=False, next_year=next_year)
     
 @views.route('/plans/plan-edit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -636,27 +639,3 @@ def begin_page():
         latest_news=latest_news,
         active_tab='begin'
     )
-
-@views.route('/api/notifications', methods=['GET'])
-@user_with_all_params()
-@login_required
-def api_notifications():
-    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
-    return jsonify([
-        {
-            'id': n.id,
-            'message': n.message,
-            'is_read': n.is_read,
-            'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        }
-        for n in notifications
-    ])
-
-@views.route('/api/notifications/mark-all-read', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def mark_all_notifications_read():
-    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
-    db.session.commit()
-    return jsonify({'message': 'Все уведомления отмечены как прочитанные'})

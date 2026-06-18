@@ -352,7 +352,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     message = db.Column(db.String(140), nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=TimeByMinsk())
+    created_at = db.Column(db.DateTime)
     user = db.relationship('User', back_populates='notifications')
     
 

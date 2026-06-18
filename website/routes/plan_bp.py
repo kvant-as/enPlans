@@ -6,6 +6,7 @@ from flask_login import (
     current_user, login_required 
 )
 
+from website.time import TimeByMinsk
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
@@ -752,14 +753,15 @@ def api_change_plan_status(token):
             note="План возвращен в статус 'На рассмотрении'.",
             luck=True,
             is_owner = True,
-            plan_id=plan.id,
+            plan_id=plan.id
         )
         db.session.add(new_ticket) 
         
         
         notification = Notification(
             user_id=plan.user_id,
-            message=f"План {plan.year} возвращен в статус 'На рассмотрении'."
+            message=f"План {plan.year} возвращен в статус 'На рассмотрении'.",
+            created_at=TimeByMinsk()
         )
         db.session.add(notification)       
         db.session.commit()

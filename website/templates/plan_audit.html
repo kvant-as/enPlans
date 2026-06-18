@@ -116,132 +116,130 @@
     <hr>
     {% endif %}
 
-    {% if current_user.is_auditor == true or current_user.is_admin == true %}
-      <h1 class="name">{{ _('Предприятие') }}</h1>
+    <h1 class="name">{{ _('Предприятие') }}</h1>
 
-      {% set org = none %}
-      {% set ministry = none %}
-      {% set region = none %}
-      
-      {% if plan.organization %}
-        {% set org = plan.organization.name %}
-      {% endif %}
-      {% if plan.ministry %}
-        {% set ministry = plan.ministry.name %}
-      {% endif %}
-      {% if plan.region %}
-        {% set region = plan.region.name %}
-      {% endif %}
-      
-      {% if org or ministry or region %}
-        {% if org %}
-          <div class="app-group">
-            <label>{{ _('Наименование') }}</label>
-            <div class="input-with-icon">
-              {{ icons.icon_org() }}
-              <input type="text" value="{{ org }}" class="app-input" />
-            </div>
+    {% set org = none %}
+    {% set ministry = none %}
+    {% set region = none %}
+    
+    {% if plan.organization %}
+      {% set org = plan.organization.name %}
+    {% endif %}
+    {% if plan.ministry %}
+      {% set ministry = plan.ministry.name %}
+    {% endif %}
+    {% if plan.region %}
+      {% set region = plan.region.name %}
+    {% endif %}
+    
+    {% if org or ministry or region %}
+      {% if org %}
+        <div class="app-group">
+          <label>{{ _('Наименование') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_org() }}
+            <input type="text" value="{{ org }}" class="app-input" />
           </div>
-          <div class="row-app-group">
-            <div class="app-group">
-              <label>{{ _('ОКПО') }}</label>
-              <div class="input-with-icon">
-                {{ icons.icon_org() }}
-                <input
-                  type="text"
-                  value="{{ plan.user.organization.okpo }}"
-                  class="app-input"
-                />
-              </div>
-            </div>
-            <div class="app-group">
-              <label>{{ _('УНП') }}</label>
-              <div class="input-with-icon">
-                {{ icons.icon_org() }}
-                <input
-                  type="text"
-                  value="{{ plan.user.organization.ynp }}"
-                  placeholder="Унп организации"
-                  class="app-input"
-                />
-              </div>
-            </div>
-          </div>
-        {% elif ministry %}
+        </div>
+        <div class="row-app-group">
           <div class="app-group">
-            <label>{{ _('Министерство') }}</label>
+            <label>{{ _('ОКПО') }}</label>
             <div class="input-with-icon">
               {{ icons.icon_org() }}
               <input
                 type="text"
-                value="{{ ministry }}"
+                value="{{ plan.user.organization.okpo }}"
                 class="app-input"
               />
             </div>
           </div>
-        {% elif region %}
           <div class="app-group">
-            <label>{{ _('Регион') }}</label>
+            <label>{{ _('УНП') }}</label>
             <div class="input-with-icon">
               {{ icons.icon_org() }}
               <input
                 type="text"
-                value="{{ region }}"
+                value="{{ plan.user.organization.ynp }}"
+                placeholder="Унп организации"
                 class="app-input"
               />
             </div>
           </div>
-        {% endif %}
+        </div>
+      {% elif ministry %}
+        <div class="app-group">
+          <label>{{ _('Министерство') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_org() }}
+            <input
+              type="text"
+              value="{{ ministry }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+      {% elif region %}
+        <div class="app-group">
+          <label>{{ _('Регион') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_org() }}
+            <input
+              type="text"
+              value="{{ region }}"
+              class="app-input"
+            />
+          </div>
+        </div>
       {% endif %}
-      
-      <hr>
-      <h1 class="name">{{ _('Респондент') }}</h1>
+    {% endif %}
+    
+    <hr>
+    <h1 class="name">{{ _('Респондент') }}</h1>
 
 
+    <div class="app-group">
+      <label>{{ _('ФИО') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_profile() }}
+        <input
+          type="text"
+          id="secondname"
+          maxlength="15"
+          value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
+          placeholder="{{ _('ФИО') }}"
+          class="app-input"
+        />
+      </div>
+    </div>
+    <div class="row-app-group">
       <div class="app-group">
-        <label>{{ _('ФИО') }}</label>
+        <label>{{ _('Email') }}</label>
         <div class="input-with-icon">
-          {{ icons.icon_profile() }}
+          {{ icons.icon_email() }}
           <input
             type="text"
-            id="secondname"
             maxlength="15"
-            value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
-            placeholder="{{ _('ФИО') }}"
+            value="{{ plan.user.email }}"
+            placeholder="{{ _('demo@example.com') }}"
             class="app-input"
           />
         </div>
       </div>
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Email') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_email() }}
-            <input
-              type="text"
-              maxlength="15"
-              value="{{ plan.user.email }}"
-              placeholder="{{ _('demo@example.com') }}"
-              class="app-input"
-            />
-          </div>
-        </div>
-        <div class="app-group">
-          <label>{{ _('Телефон') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_contacts() }}
-            <input
-              type="text"
-              maxlength="15"
-              value="{{ plan.user.phone }}"
-              placeholder="+375.."
-              class="app-input"
-            />
-          </div>
+      <div class="app-group">
+        <label>{{ _('Телефон') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_contacts() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.phone }}"
+            placeholder="+375.."
+            class="app-input"
+          />
         </div>
       </div>
-      <hr>
-    {% endif %}
+    </div>
+    <hr>
 
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
