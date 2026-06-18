@@ -36,9 +36,12 @@
             <th colspan="2" class="resizable colspan-header" style="max-width: 200px">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                     <a>{{ config.year }} г. {{ config.label }}</a>
-                    <span class="edit-header-icon" data-config-id="{{ config.id }}" data-year="{{ config.year }}" data-label="{{ config.label }}" style="cursor: pointer; opacity: 0.5; transition: opacity 0.2s;">
-                        {{ icons.icon_dots() }}
-                    </span>
+                    {% if not plan.is_draft or (plan.user_id != current_user.id)%}
+                    {%else%}
+                        <span class="edit-header-icon" data-config-id="{{ config.id }}" data-year="{{ config.year }}" data-label="{{ config.label }}" style="cursor: pointer; opacity: 0.5; transition: opacity 0.2s;">
+                            {{ icons.icon_dots() }}
+                        </span>
+                    {% endif %}
                 </div>
                 <div class="resizer"></div>
             </th>
@@ -117,10 +120,6 @@
             9
             <div class="resizer"></div>
           </th>
-          <!-- <th class="resizable" style="border-right: none;">
-            10
-            <div class="resizer"></div>
-          </th> -->
         </tr>
       </thead>
       <tbody class="rows" id="indicators-tbody">

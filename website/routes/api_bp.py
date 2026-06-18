@@ -10,7 +10,7 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Plan, Region, Event
+from ..models import Direction, HigherOrganization, Indicator, IndicatorUsage, Ministry, News, OblispolkomGorispolkom, Organization, Plan, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -344,6 +344,70 @@ def get_regions_api():
         })
     except Exception as e:
         logging.error(f"Error fetching regions: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+ 
+@api_bp.route('/higher-organizations')
+@login_required
+def get_higher_organizations_api():
+    try:
+        page = request.args.get("page", 1, type=int)
+        search_query = request.args.get("q", "", type=str).strip()
+
+        query = HigherOrganization.query.filter(HigherOrganization.is_active == True)
+        if search_query:
+            query = query.filter(HigherOrganization.name.ilike(f"%{search_query}%"))
+
+        query = query.order_by(HigherOrganization.name)
+        per_page = 10
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "higher_organizations": [
+                {
+                    "id": org.id,
+                    "name": org.name
+                }
+                for org in pagination.items
+            ],
+            "page": pagination.page,
+            "has_next": pagination.has_next,
+            "total_pages": pagination.pages,
+            "total_items": pagination.total
+        })
+    except Exception as e:
+        logging.error(f"Error fetching higher organizations: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@api_bp.route('/oblispolkom-gorispolkoms')
+@login_required
+def get_oblispolkom_gorispolkoms_api():
+    try:
+        page = request.args.get("page", 1, type=int)
+        search_query = request.args.get("q", "", type=str).strip()
+
+        query = OblispolkomGorispolkom.query.filter(OblispolkomGorispolkom.is_active == True)
+        if search_query:
+            query = query.filter(OblispolkomGorispolkom.name.ilike(f"%{search_query}%"))
+
+        query = query.order_by(OblispolkomGorispolkom.name)
+        per_page = 10
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "oblispolkom_gorispolkoms": [
+                {
+                    "id": org.id,
+                    "name": org.name
+                }
+                for org in pagination.items
+            ],
+            "page": pagination.page,
+            "has_next": pagination.has_next,
+            "total_pages": pagination.pages,
+            "total_items": pagination.total
+        })
+    except Exception as e:
+        logging.error(f"Error fetching oblispolkom gorispolkoms: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
     
 @api_bp.route('/get-event/<int:id>', methods=['GET'])

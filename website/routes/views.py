@@ -18,7 +18,7 @@ from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_u
 from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import Ministry, News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import HigherOrganization, Ministry, News, OblispolkomGorispolkom, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
 from .. import db
 
 from functools import wraps
@@ -82,12 +82,12 @@ def profile():
 @user_with_all_params()
 @login_required
 @session_required
-def profile_edit():
+def edit_profile():
     if request.method == 'POST':
         pass
     else:
 
-        return render_template('profile_edit.html', 
+        return render_template('edit_profile.html', 
                             hide_header=False,
                             current_user=current_user)
 
@@ -116,24 +116,41 @@ def edit_user_org():
                 return redirect(request.referrer)
             
             current_user.organization_id = selected_item.id
-            current_user.ministry_id = None 
-            current_user.region_id = None   
+            current_user.higher_organization_id = None
+            current_user.oblispolkom_gorispolkom_id = None
+            current_user.region_id = None
             
             flash(f'Организация изменена на: {selected_item.name}', 'success')
             
-        elif item_type == 'ministry':
-            selected_item = Ministry.query.filter_by(id=item_id).first()
+        elif item_type == 'higher_organization':
+            selected_item = HigherOrganization.query.filter_by(id=item_id).first()
             
             if not selected_item:
-                flash('Министерство не найдено!', 'error')
+                flash('Вышестоящая организация не найдена!', 'error')
                 return redirect(request.referrer)
             
-            current_user.plan_type = 'ministry'
-            current_user.ministry_id = selected_item.id
-            current_user.organization_id = None 
-            current_user.region_id = None    
+            current_user.plan_type = 'higher_organization'
+            current_user.higher_organization_id = selected_item.id
+            current_user.organization_id = None
+            current_user.oblispolkom_gorispolkom_id = None
+            current_user.region_id = None
             
-            flash(f'Министерство изменено на: {selected_item.name}', 'success')
+            flash(f'Вышестоящая организация изменена на: {selected_item.name}', 'success')
+            
+        elif item_type == 'oblispolkom_gorispolkom':
+            selected_item = OblispolkomGorispolkom.query.filter_by(id=item_id).first()
+            
+            if not selected_item:
+                flash('Обл/Горисполком не найден!', 'error')
+                return redirect(request.referrer)
+            
+            current_user.plan_type = 'oblispolkom_gorispolkom'
+            current_user.oblispolkom_gorispolkom_id = selected_item.id
+            current_user.organization_id = None
+            current_user.higher_organization_id = None
+            current_user.region_id = None
+            
+            flash(f'Обл/Горисполком изменен на: {selected_item.name}', 'success')
             
         elif item_type == 'region':
             selected_item = Region.query.filter_by(id=item_id).first()
@@ -141,11 +158,12 @@ def edit_user_org():
             if not selected_item:
                 flash('Регион не найден!', 'error')
                 return redirect(request.referrer)
-
+            
             current_user.plan_type = 'region'
             current_user.region_id = selected_item.id
-            current_user.organization_id = None 
-            current_user.ministry_id = None    
+            current_user.organization_id = None
+            current_user.higher_organization_id = None
+            current_user.oblispolkom_gorispolkom_id = None
             
             flash(f'Регион изменен на: {selected_item.name}', 'success')
             
@@ -502,7 +520,7 @@ def edit_plan(token):
         plan = g.current_plan
         
         return render_template(
-            'plan_edit.html',
+            'edit_plan.html',
             current_user=current_user,
             plan=plan
         )   

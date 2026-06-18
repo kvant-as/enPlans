@@ -859,7 +859,9 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            auditorOrganizationsApiUrl: '/api/ministries',
+            higherOrganizationsApiUrl: '/api/higher-organizations',
+            oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
+            regionsApiUrl: '/api/regions',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -870,7 +872,7 @@ class MultiTypeSearchManager {
         this.totalPages = 1;
         this.totalItems = 0;
         this.currentQuery = '';
-        this.selectedItemType = 'respondent';
+        this.selectedItemType = 'organization';
         this.selectedItemId = null;
         this.init();
     }
@@ -892,6 +894,7 @@ class MultiTypeSearchManager {
         this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
+        this.highlightActiveTypeButton();
     }
 
     bindEvents() {
@@ -977,20 +980,23 @@ class MultiTypeSearchManager {
         try {
             this.showLoading();
 
-            let apiUrl, dataKey;
+            let apiUrl;
             
             switch(this.selectedItemType) {
-                case 'respondent':
+                case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'respondent';
                     break;
-                case 'auditor':
-                    apiUrl = this.config.auditorOrganizationsApiUrl;
-                    dataKey = 'auditor';
+                case 'higher_organization':
+                    apiUrl = this.config.higherOrganizationsApiUrl;
+                    break;
+                case 'oblispolkom_gorispolkom':
+                    apiUrl = this.config.oblispolkomGorispolkomApiUrl;
+                    break;
+                case 'region':
+                    apiUrl = this.config.regionsApiUrl;
                     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'respondent';
             }
 
             const url = `${apiUrl}?q=${encodeURIComponent(this.currentQuery)}&page=${this.currentPage}`;
@@ -1006,7 +1012,7 @@ class MultiTypeSearchManager {
                 throw new Error(data.error);
             }
             
-            const items = data[dataKey] || [];
+            const items = this.extractItems(data, this.selectedItemType);
             this.totalPages = data.total_pages || 1;
             this.totalItems = data.total_items || 0;
             
@@ -1018,6 +1024,21 @@ class MultiTypeSearchManager {
             this.showError(`Ошибка загрузки ${this.getTypeLabel(this.selectedItemType, true)}`);
         } finally {
             this.hideLoading();
+        }
+    }
+
+    extractItems(data, type) {
+        switch(type) {
+            case 'organization':
+                return data.organizations || [];
+            case 'higher_organization':
+                return data.higher_organizations || [];
+            case 'oblispolkom_gorispolkom':
+                return data.oblispolkom_gorispolkoms || [];
+            case 'region':
+                return data.regions || [];
+            default:
+                return [];
         }
     }
 
@@ -1049,23 +1070,38 @@ class MultiTypeSearchManager {
             let html = `<td style="display: none;">${this.escapeHtml(item.id)}</td>`;
             
             switch(this.selectedItemType) {
-                case 'respondent':
+                case 'organization':
                     html += `
                         <td>${this.escapeHtml(item.name)}</td>
                         <td style="text-align: center;">${this.escapeHtml(item.ynp || '-')}</td>
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                case 'auditor':
+                case 'higher_organization':
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                        <td style="width: 100%;">${this.escapeHtml(item.type)}</td>
+                        <td style="text-align: center;"></td>
+                        <td style="text-align: center;"></td>
+                    `;
+                    break;
+                case 'oblispolkom_gorispolkom':
+                    html += `
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
+                        <td style="text-align: center;"></td>
+                    `;
+                    break;
+                case 'region':
+                    html += `
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
                         <td style="text-align: center;"></td>
                     `;
                     break;
                 default:
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
                         <td style="text-align: center;"></td>
                     `;
             }
@@ -1109,16 +1145,31 @@ class MultiTypeSearchManager {
         `;
         
         switch(this.selectedItemType) {
-            case 'respondent':
+            case 'organization':
                 headersHTML += `
                     <th>Наименование предприятия</th>
                     <th style="text-align: center;">УНП</th>
                     <th style="text-align: center;">ОКПО</th>
                 `;
                 break;
-            case 'auditor':
+            case 'higher_organization':
                 headersHTML += `
-                    <th>Наименование</th>
+                    <th style="width: 100%;">Наименование вышестоящей организации</th>
+                    <th style="text-align: center;"></th>
+                    <th style="text-align: center;"></th>
+                `;
+                break;
+            case 'oblispolkom_gorispolkom':
+                headersHTML += `
+                    <th style="width: 100%;">Наименование обл/горисполкома</th>
+                    <th style="text-align: center;"></th>
+                    <th style="text-align: center;"></th>
+                `;
+                break;
+            case 'region':
+                headersHTML += `
+                    <th style="width: 100%;">Наименование региона</th>
+                    <th style="text-align: center;"></th>
                     <th style="text-align: center;"></th>
                 `;
                 break;
@@ -1144,6 +1195,7 @@ class MultiTypeSearchManager {
         
         this.updateSearchPlaceholder(type);
         this.updateSubmitButtonText();
+        this.updateModalTitle(type);
         
         if (this.searchInput) {
             this.searchInput.value = '';
@@ -1160,8 +1212,10 @@ class MultiTypeSearchManager {
         if (!this.searchInput) return;
         
         const placeholders = {
-            'respondent': 'Наименование/окпо/унп организации',
-            'auditor': 'Наименование',
+            'organization': 'Наименование/окпо/унп организации',
+            'higher_organization': 'Наименование вышестоящей организации',
+            'oblispolkom_gorispolkom': 'Наименование обл/горисполкома',
+            'region': 'Наименование региона',
         };
         
         this.searchInput.placeholder = placeholders[type] || 'Поиск...';
@@ -1169,8 +1223,10 @@ class MultiTypeSearchManager {
         const searchLabel = document.getElementById('search-label');
         if (searchLabel) {
             const labels = {
-                'respondent': 'Поиск организации',
-                'auditor': 'Поиск',
+                'organization': 'Поиск организации',
+                'higher_organization': 'Поиск вышестоящей организации',
+                'oblispolkom_gorispolkom': 'Поиск обл/горисполкома',
+                'region': 'Поиск региона',
             };
             searchLabel.textContent = labels[type] || 'Поиск';
         }
@@ -1180,8 +1236,10 @@ class MultiTypeSearchManager {
         if (!this.submitButton) return;
         
         const buttonTexts = {
-            'respondent': 'Сохранить организацию',
-            'auditor': 'Сохранить',
+            'organization': 'Сохранить организацию',
+            'higher_organization': 'Сохранить вышестоящую организацию',
+            'oblispolkom_gorispolkom': 'Сохранить обл/горисполком',
+            'region': 'Сохранить регион',
         };
         
         const text = buttonTexts[this.selectedItemType] || 'Сохранить изменения';
@@ -1190,6 +1248,28 @@ class MultiTypeSearchManager {
         if (btnTextSpan) {
             btnTextSpan.textContent = text;
         }
+    }
+
+    updateModalTitle(type) {
+        const modalTitle = document.getElementById('modal-title');
+        if (!modalTitle) return;
+        
+        const titles = {
+            'organization': 'Выберите организацию',
+            'higher_organization': 'Выберите вышестоящую организацию',
+            'oblispolkom_gorispolkom': 'Выберите обл/горисполком',
+            'region': 'Выберите регион',
+        };
+        
+        modalTitle.textContent = titles[type] || 'Выберите элемент';
+    }
+
+    highlightActiveTypeButton() {
+        this.typeButtons.forEach(btn => {
+            if (btn.dataset.type === this.selectedItemType) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     selectItem(row) {
@@ -1226,8 +1306,10 @@ class MultiTypeSearchManager {
 
     getTypeLabel(type, plural = false) {
         const labels = {
-            'respondent': plural ? 'организаций' : 'организация',
-            'auditor': plural ? 'министерств' : 'министерство',
+            'organization': plural ? 'организаций' : 'организация',
+            'higher_organization': plural ? 'вышестоящих организаций' : 'вышестоящая организация',
+            'oblispolkom_gorispolkom': plural ? 'обл/горисполкомов' : 'обл/горисполком',
+            'region': plural ? 'регионов' : 'регион',
         };
         return labels[type] || (plural ? 'данных' : 'данные');
     }
@@ -1976,7 +2058,6 @@ class MultiStepForm {
         this.goToStep(1);
     }
 }
-
 
 class TicketInfo {
     constructor(options = {}) {
