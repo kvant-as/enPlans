@@ -14,7 +14,7 @@ class User(db.Model, UserMixin):
     first_name = db.Column(db.String())
     patronymic_name = db.Column(db.String())
     post = db.Column(db.String())
-    phone = db.Column(db.String(), unique=True)
+    phone = db.Column(db.String())
     
     organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
     ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
@@ -152,28 +152,27 @@ class Plan(db.Model):
     usd_rate = db.Column(Numeric(scale=4))
     cost_per_toe_usd = db.Column(Numeric(scale=2))
     
-    is_region_approved = db.Column(db.Boolean, default=False)
-    is_municipal_approved = db.Column(db.Boolean, default=False)
-    is_department_approved = db.Column(db.Boolean, default=False)
-    is_higher_organization_approved = db.Column(db.Boolean, default=False)
-    
-    region_approved_time = db.Column(db.DateTime, nullable=True)
-    municipal_approved_time = db.Column(db.DateTime, nullable=True)
-    department_approved_time = db.Column(db.DateTime, nullable=True)
-    higher_organization_approved_time = db.Column(db.DateTime, nullable=True)
-    
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
     is_error = db.Column(db.Boolean, default=False)
+    
+    is_region_approved = db.Column(db.Boolean, default=False)
+    is_municipal_approved = db.Column(db.Boolean, default=False)
+    is_department_approved = db.Column(db.Boolean, default=False)
+    is_higher_organization_approved = db.Column(db.Boolean, default=False)
+
     is_approved = db.Column(db.Boolean, default=False)
     
     plan_type = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    # Поле для отслеживания текущего этапа согласования
+    region_approved_time = db.Column(db.DateTime, nullable=True)
+    municipal_approved_time = db.Column(db.DateTime, nullable=True)
+    department_approved_time = db.Column(db.DateTime, nullable=True)
+    higher_organization_approved_time = db.Column(db.DateTime, nullable=True)
     approval_stage = db.Column(db.String(50), default='regional')  # regional, municipal, department, higher
-    
+
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
     ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
@@ -241,8 +240,12 @@ class Event(db.Model):
     EffRub = db.Column(db.Integer)
     ExpectedQuarter = db.Column(db.Integer)
     EffCurrYear = db.Column(Numeric(scale=2))
+    
+    
     Payback = db.Column(Numeric(scale=1))
-    VolumeFin = db.Column(db.Integer)
+    
+    ObchVolumeFin = db.Column(db.Integer)
+    VolumeFinCurrentYear = db.Column(db.Integer)
     BudgetState = db.Column(db.Integer)
     BudgetRep = db.Column(db.Integer)
     BudgetLoc = db.Column(db.Integer)
@@ -261,25 +264,31 @@ class Event(db.Model):
     direction = db.relationship('Direction', backref='events', foreign_keys=[id_direction])
 
     def as_dict(self):
+        is_double_effect = self.direction.is_econom and self.direction.is_increase if self.direction else False
+        
         return {
             'id': self.id,
             'name': self.name,
             'Volume': self.Volume,
-            'EffTut': self.EffTut,
+            'EffTut': float(self.EffTut) if self.EffTut else None,
             'EffRub': self.EffRub,
             'ExpectedQuarter': self.ExpectedQuarter,
-            'EffCurrYear': self.EffCurrYear,
-            'Payback': self.Payback,
-            'VolumeFin': self.VolumeFin,
+            'EffCurrYear': float(self.EffCurrYear) if self.EffCurrYear else None,
+            'Payback': float(self.Payback) if self.Payback else None,
+            'VolumeFinCurrentYear': self.VolumeFinCurrentYear,
             'BudgetState': self.BudgetState,
             'BudgetRep': self.BudgetRep,
             'BudgetLoc': self.BudgetLoc,
             'BudgetOther': self.BudgetOther,
             'MoneyOwn': self.MoneyOwn,
             'MoneyLoan': self.MoneyLoan,
-            'MoneyOther': self.MoneyOther
+            'MoneyOther': self.MoneyOther,
+            'is_econom': self.is_econom,
+            'is_increase': self.is_increase,
+            'is_double_effect': is_double_effect,
+            'direction_code': self.direction.code if self.direction else None,
+            'direction_name': self.direction.name if self.direction else None
         }
-
 
 class Indicator(db.Model):
     __tablename__ = 'indicators'
@@ -343,7 +352,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     message = db.Column(db.String(140), nullable=False)
     is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=TimeByMinsk())
+    created_at = db.Column(db.DateTime)
     user = db.relationship('User', back_populates='notifications')
     
 

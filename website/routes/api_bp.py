@@ -10,7 +10,7 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, Ministry, News, Organization, Plan, Region, Event
+from ..models import Direction, HigherOrganization, Indicator, IndicatorUsage, Ministry, News, Notification, OblispolkomGorispolkom, Organization, Plan, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -127,7 +127,7 @@ def api_get_export_plans():
             'error': str(e)
         }), 500
         
-@api_bp.route('/api/approve-plan/<token>', methods=['POST'])
+@api_bp.route('/approve-plan/<token>', methods=['POST'])
 @login_required
 def api_approve_plan(token):
     plan = Plan.query.filter_by(token=token).first_or_404()
@@ -345,6 +345,70 @@ def get_regions_api():
     except Exception as e:
         logging.error(f"Error fetching regions: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+ 
+@api_bp.route('/higher-organizations')
+@login_required
+def get_higher_organizations_api():
+    try:
+        page = request.args.get("page", 1, type=int)
+        search_query = request.args.get("q", "", type=str).strip()
+
+        query = HigherOrganization.query.filter(HigherOrganization.is_active == True)
+        if search_query:
+            query = query.filter(HigherOrganization.name.ilike(f"%{search_query}%"))
+
+        query = query.order_by(HigherOrganization.name)
+        per_page = 10
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "higher_organizations": [
+                {
+                    "id": org.id,
+                    "name": org.name
+                }
+                for org in pagination.items
+            ],
+            "page": pagination.page,
+            "has_next": pagination.has_next,
+            "total_pages": pagination.pages,
+            "total_items": pagination.total
+        })
+    except Exception as e:
+        logging.error(f"Error fetching higher organizations: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@api_bp.route('/oblispolkom-gorispolkoms')
+@login_required
+def get_oblispolkom_gorispolkoms_api():
+    try:
+        page = request.args.get("page", 1, type=int)
+        search_query = request.args.get("q", "", type=str).strip()
+
+        query = OblispolkomGorispolkom.query.filter(OblispolkomGorispolkom.is_active == True)
+        if search_query:
+            query = query.filter(OblispolkomGorispolkom.name.ilike(f"%{search_query}%"))
+
+        query = query.order_by(OblispolkomGorispolkom.name)
+        per_page = 10
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            "oblispolkom_gorispolkoms": [
+                {
+                    "id": org.id,
+                    "name": org.name
+                }
+                for org in pagination.items
+            ],
+            "page": pagination.page,
+            "has_next": pagination.has_next,
+            "total_pages": pagination.pages,
+            "total_items": pagination.total
+        })
+    except Exception as e:
+        logging.error(f"Error fetching oblispolkom gorispolkoms: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
     
 @api_bp.route('/get-event/<int:id>', methods=['GET'])
 @user_with_all_params()
@@ -528,7 +592,8 @@ def get_events_data(token):
             'ExpectedQuarter': event.ExpectedQuarter,
             'EffCurrYear': float(event.EffCurrYear) if event.EffCurrYear else None,
             'Payback': float(event.Payback) if event.Payback else None,
-            'VolumeFin': float(event.VolumeFin) if event.VolumeFin else None,
+            'ObchVolumeFin': float(event.ObchVolumeFin) if event.ObchVolumeFin else None,
+            'VolumeFinCurrentYear': float(event.VolumeFinCurrentYear) if event.VolumeFinCurrentYear else None,
             'BudgetState': float(event.BudgetState) if event.BudgetState else None,
             'BudgetRep': float(event.BudgetRep) if event.BudgetRep else None,
             'BudgetLoc': float(event.BudgetLoc) if event.BudgetLoc else None,
@@ -597,3 +662,54 @@ def refresh_plan_rates(token):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+
+@api_bp.route('/notifications', methods=['GET'])
+@user_with_all_params()
+@login_required
+def api_notifications():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 3, type=int)
+    
+    notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(Notification.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'notifications': [
+            {
+                'id': n.id,
+                'message': n.message,
+                'is_read': n.is_read,
+                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M:%S') if n.created_at else None
+            }
+            for n in notifications.items
+        ],
+        'page': notifications.page,
+        'per_page': notifications.per_page,
+        'total': notifications.total,
+        'has_next': notifications.has_next
+    })
+
+
+@api_bp.route('/notifications/mark-all-read', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def mark_all_notifications_read():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'message': 'Все уведомления отмечены как прочитанные'})
+
+
+@api_bp.route('/notifications/mark-read/<int:notification_id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def mark_notification_read(notification_id):
+    notification = Notification.query.filter_by(id=notification_id, user_id=current_user.id).first()
+    if notification:
+        notification.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Уведомление не найдено'}), 404

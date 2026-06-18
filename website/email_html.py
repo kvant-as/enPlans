@@ -2,7 +2,6 @@ def build_html(message_body, email_type):
     if email_type == "code":
         content = f"""
         <div style="padding: 24px 32px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #1e293b;">Подтверждение входа</h2>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Кто-то пытается войти в <strong style="color: #00798f;">EnPlans</strong> используя вашу электронную почту.</p>
             <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #334155;">Ваш код активации:</p>
@@ -15,21 +14,20 @@ def build_html(message_body, email_type):
     elif email_type == "plan":
         status = message_body
         if status == "В редакции":
-            color = "#64748b"  # status-draft
+            color = "#64748b"  # status-sent
         elif status == "Есть ошибки":
             color = "#ef4444"  # status-error
         elif status == "Контроль пройден":
             color = "#8b5cf6"  # status-control
         elif status == "На рассмотрении" or status == "Не просмотрен":
-            color = "#3b82f6"  # status-pending
-        elif status == "Одобрен":
+            color = "#3b82f6"  # status-sent
+        elif status == "Согласован":
             color = "#10b981"  # status-approved
         else:
             color = "#00798f"  # цвет по умолчанию (EnPlans green)
         
         content = f"""
         <div style="padding: 24px 32px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #1e293b;">Изменение статуса плана</h2>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
             <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #334155;">Статус вашего плана энергосбережения изменен на:</p>
             <div style="text-align: center; margin: 24px 0;">
@@ -41,7 +39,6 @@ def build_html(message_body, email_type):
     elif email_type == "reset_link":
         content = f"""
         <div style="padding: 24px 32px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #1e293b;">Сброс пароля</h2>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Вы запросили сброс пароля для вашей учетной записи в <strong style="color: #00798f;">EnPlans</strong>.</p>
             <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.5; color: #334155;">Для сброса пароля нажмите на кнопку ниже:</p>
@@ -57,7 +54,6 @@ def build_html(message_body, email_type):
     elif email_type == "registration":
         content = f"""
         <div style="padding: 24px 32px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #1e293b; text-align: center;">Добро пожаловать в EnPlans!</h2>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте, {message_body}!</p>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Вы успешно зарегистрировались в системе <strong style="color: #00798f;">EnPlans</strong> — платформе для планирования и контроля энергосберегающих мероприятий.</p>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Теперь вы можете:</p>
@@ -70,7 +66,6 @@ def build_html(message_body, email_type):
     elif email_type == "notification":
         content = f"""
         <div style="padding: 24px 32px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 600; color: #1e293b;">Уведомление</h2>
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
             <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; margin: 20px 0;">
                 <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #334155;">{message_body}</p>
@@ -183,11 +178,6 @@ def build_html(message_body, email_type):
     </head>
     <body>
         <div class="email-container">
-            <div class="email-header">
-                <h1>EnPlans</h1>
-                <p>Формирование планов
-мероприятий по энергосбережению</p>
-            </div>
             <div class="email-content">
                 {content}
             </div>

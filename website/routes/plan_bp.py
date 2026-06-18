@@ -6,6 +6,7 @@ from flask_login import (
     current_user, login_required 
 )
 
+from website.time import TimeByMinsk
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
@@ -553,7 +554,7 @@ def edit_Eventes(id):
             
             if is_double_effect and current_event.is_econom:
                 BudgetState = BudgetRep = BudgetLoc = BudgetOther = MoneyOwn = MoneyLoan = MoneyOther = 0
-                VolumeFin = 0
+                VolumeFinCurrentYear = 0
                 
                 USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
                 COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
@@ -570,19 +571,19 @@ def edit_Eventes(id):
                 MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
                 MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
                 
-                VolumeFin = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
+                VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
                 
                 USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
                 COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
                 EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
                 
                 if EffRub > 0:
-                    payback_value = float(VolumeFin) / float(EffRub)
+                    payback_value = float(VolumeFinCurrentYear) / float(EffRub)
                     Payback = to_decimal_1(payback_value)
                 else:
                     Payback = None
                 
-                current_app.logger.info(f'Regular event calculation: VolumeFin={VolumeFin}, EffRub={EffRub}, Payback={Payback}')
+                current_app.logger.info(f'Regular event calculation: VolumeFinCurrentYear={VolumeFinCurrentYear}, EffRub={EffRub}, Payback={Payback}')
 
             Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
             ExpectedQuarter = int(float(ExpectedQuarter_value)) if ExpectedQuarter_value and ExpectedQuarter_value.strip() else None
@@ -594,7 +595,7 @@ def edit_Eventes(id):
             current_event.EffRub = EffRub
             current_event.EffCurrYear = EffCurrYear
             current_event.Payback = Payback
-            current_event.VolumeFin = VolumeFin
+            current_event.VolumeFinCurrentYear = VolumeFinCurrentYear
             current_event.BudgetState = BudgetState
             current_event.BudgetRep = BudgetRep
             current_event.BudgetLoc = BudgetLoc
@@ -752,14 +753,15 @@ def api_change_plan_status(token):
             note="План возвращен в статус 'На рассмотрении'.",
             luck=True,
             is_owner = True,
-            plan_id=plan.id,
+            plan_id=plan.id
         )
         db.session.add(new_ticket) 
         
         
         notification = Notification(
             user_id=plan.user_id,
-            message=f"План {plan.year} возвращен в статус 'На рассмотрении'."
+            message=f"План {plan.year} возвращен в статус 'На рассмотрении'.",
+            created_at=TimeByMinsk()
         )
         db.session.add(notification)       
         db.session.commit()

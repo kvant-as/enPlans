@@ -18,13 +18,13 @@
   {% set section_title = '3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)' %}
   {% set section_changes_title = '3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)' %}
   {% set eff_label = 'Условно-годовое увеличение использования местных ТЭР' %}
-  {% set eff_curr_label = 'Ожидаемое увеличение использования местных ТЭР, т у.т.' %}
+  {% set eff_curr_label = 'Ожидаемое увеличение использования местных ТЭР в текущем году, т у.т.' %}
   {% set empty_message = 'Нет мероприятий по увеличению использования местных ТЭР' %}
   {% set empty_changes_message = 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)' %}
   {% set nav_active = 'event-increase' %}
 
   {% set yslovno67 = 'Условно-годовое увеличение использования местных ТЭР' %}
-  {% set expected9 = 'Ожидаемое увеличение использования местных ТЭР' %}
+  {% set expected9 = 'Ожидаемое увеличение использования местных ТЭР в текущем году' %}
 
 {% endif %}
 
@@ -43,8 +43,8 @@
       <table class="main-table" id="eventTable" data-token="{{ plan.token }}" data-event-type="{{ event_type }}">
         <thead class="main-table-titels">
           <tr>
-            <th rowspan="3" class="resizable">
-              <a>№</a>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>№ п/п</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
@@ -80,7 +80,11 @@
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
-              <a>Объем финансирования, руб. {{ icons.icon_sort() }}</a>
+              <a>Общий объем финансирования в текущем году, руб. {{ icons.icon_sort() }}</a>
+              <div class="resizer"></div>
+            </th>
+            <th rowspan="3" class="resizable vertical-text">
+              <a>Обьем финансирования в текущем году, руб {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th colspan="7" class="resizable" style="border-right: none;">
@@ -149,12 +153,13 @@
             <th class="resizable">15<div class="resizer"></div></th>
             <th class="resizable">16<div class="resizer"></div></th>
             <th class="resizable">17<div class="resizer"></div></th>
-            <th class="resizable" style="border-right: none;">18</th>
+            <th class="resizable">18<div class="resizer"></div></th>
+            <th class="resizable" style="border-right: none;">19</th>
           </tr>
         </thead>
         
         <tr class="group-header" data-target="non-local-content" style="border-top: none !important;">
-          <td colspan="18">
+          <td colspan="19">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_title }}</span>
@@ -163,12 +168,12 @@
         </tr>
         <tbody class="rows" id="non-local-content">
           <tr class="no-results-row">
-            <td colspan="18"></td>
+            <td colspan="19"></td>
           </tr>
         </tbody>
         
         <tr class="group-header" data-target="local-content" >
-          <td colspan="18">
+          <td colspan="19">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_changes_title }}</span>
@@ -177,12 +182,12 @@
         </tr>
         <tbody class="rows" id="local-content">
           <tr class="no-results-row">
-            <td colspan="18" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
+            <td colspan="19" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
           </tr>
         </tbody>
         
         <tr class="group-header" data-target="other-content">
-          <td colspan="18">
+          <td colspan="19">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>Другое</span>
@@ -191,7 +196,7 @@
         </tr>
         <tbody id="other-content" class="rows">
           <tr>
-            <td colspan="18"></td>
+            <td colspan="19"></td>
           </tr>
         </tbody>
       </table>
@@ -296,7 +301,7 @@
                             <label>[7] {{ yslovno67 }}{{ _(', руб.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" name="EffRub" class="app-input" value="0" readonly>
+                                <input type="text" name="EffRub" class="app-numeric-input-integer" value="0" readonly>
                             </div>
                         </div>
                     </div>
@@ -340,7 +345,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="button-auth-area" id="step2-buttons" style="display: flex; justify-content: space-between;">
+                    <div class="button-auth-area" id="step2-buttons">
                         <button type="button" class="svg-btn blue" id="step2-next-btn" data-action="next-step-2" disabled>
                             <span class="btn-text">{{ _('Далее') }}</span>
                             {{ icons.next_icon() }}
@@ -362,69 +367,78 @@
                             </div>
                         </div> 
                         <div class="app-group">
-                            <label>[11] {{ _('Объем финансирования, руб.') }}</label>
+                            <label>[11] {{ _('Общий объем финансирования в текущем году, руб.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
-                                <input type="text" name="VolumeFin" class="app-input" value="0" readonly>
+                                <input type="text" value="0" name="ObchVolumeFin" class="app-numeric-input-integer">
                             </div>
                         </div>
                     </div>
                     <div class="row-app-group">
                         <div class="app-group">
-                            <label>[12] {{ _('республиканский бюджет на финансирование госпрограммы') }}</label>
+                            <label>[12] {{ _('Объем финансирования в текущем году, руб.') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_half() }}
+                                <input type="text" name="VolumeFinCurrentYear" class="app-input" value="0" readonly>
+                            </div>
+                        </div>
+                        <div class="app-group">
+                            <label>[13] {{ _('республиканский бюджет на финансирование госпрограммы') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="BudgetState" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
+                    </div>
+                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[13] {{ _('республиканский бюджет') }}</label>
+                            <label>[14] {{ _('республиканский бюджет') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="BudgetRep" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
-                    </div> 
-                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[14] {{ _('местный бюджет') }}</label>
+                            <label>[15] {{ _('местный бюджет') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="BudgetLoc" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
+                    </div> 
+                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[15] {{ _('другие') }}</label>
+                            <label>[16] {{ _('другие') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="BudgetOther" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
-                    </div>
-                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[16] {{ _('собственные средства организации') }}</label>
+                            <label>[17] {{ _('собственные средства организации') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="MoneyOwn" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
-                        </div> 
+                        </div>
+                    </div>
+                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[17] {{ _('кредиты банков, займы') }}</label>
+                            <label>[18] {{ _('кредиты банков, займы') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="MoneyLoan" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
-                    </div>
-                    <div class="row-app-group">
                         <div class="app-group">
-                            <label>[18] {{ _('Иные') }}</label>
+                            <label>[19] {{ _('Иные') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="MoneyOther" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                             </div>
                         </div>
+                    </div>
+                    <div class="row-app-group">
                         <div class="app-group" style="display: none;">
                             <label>id</label>
                             <div class="input-with-icon">
@@ -433,7 +447,6 @@
                             </div>
                         </div>
                     </div>
-                    
                     <div class="currency-info">
                         <div class="currency-info-content">
                             <div class="auto-hint">
@@ -504,8 +517,11 @@
                                 <label>[7] {{ yslovno67 }}{{ _(', руб.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" id="change-EffRub-edit-model" name="EffRub" placeholder="0" class="app-input" readonly>
+                                    <input type="text" id="change-EffRub-edit-model" name="EffRub" placeholder="0" class="app-numeric-input-integer">
                                 </div>
+                                <small class="form-text text-muted" id="eff-rub-hint" style="display: none; font-size: 12px; color: #6c757d;">
+                                    {{ _('Для типа "increase" поле редактируется. Для "saving" - авторасчет.') }}
+                                </small>
                             </div>
                         </div>
                         <div class="row-app-group">
@@ -566,69 +582,78 @@
                                 </div>
                             </div>
                             <div class="app-group">
-                                <label>[11] {{ _('Объем финансирования, руб.') }}</label>
+                                <label>[11] {{ _('Общий объем финансирования в текущем году, руб.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
-                                    <input type="text" id="change-VolumeFin-edit-model" name="VolumeFin" placeholder="0" class="app-input" readonly>
+                                    <input type="text" id="change-ObchVolumeFin-edit-model" name="ObchVolumeFin" placeholder="0" class="app-numeric-input-integer" value="0">
                                 </div>
                             </div>
                         </div>
                         <div class="row-app-group">
                             <div class="app-group">
-                                <label>[12] {{ _('республиканский бюджет на финансирование госпрограммы') }}</label>
+                                <label>[12] {{ _('Объем финансирования в текущем году, руб.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" id="change-VolumeFinCurrentYear-edit-model" name="VolumeFinCurrentYear" placeholder="0" class="app-input" readonly>
+                                </div>
+                            </div>
+                            <div class="app-group">
+                                <label>[13] {{ _('республиканский бюджет на финансирование госпрограммы') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-BudgetState-edit-model" name="BudgetState" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[13] {{ _('республиканский бюджет') }}</label>
+                                <label>[14] {{ _('республиканский бюджет') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-BudgetRep-edit-model" name="BudgetRep" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
-                        </div> 
-                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[14] {{ _('местный бюджет') }}</label>
+                                <label>[15] {{ _('местный бюджет') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-BudgetLoc-edit-model" name="BudgetLoc" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
+                        </div> 
+                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[15] {{ _('другие') }}</label>
+                                <label>[16] {{ _('другие') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-BudgetOther-edit-model" name="BudgetOther" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
-                        </div> 
-                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[16] {{ _('собственные средства организации') }}</label>
+                                <label>[17] {{ _('собственные средства организации') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-MoneyOwn-edit-model" name="MoneyOwn" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[17] {{ _('кредиты банков, займы') }}</label>
+                                <label>[18] {{ _('кредиты банков, займы') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-MoneyLoan-edit-model" name="MoneyLoan" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
-                        </div>
-                        <div class="row-app-group">
                             <div class="app-group">
-                                <label>[18] {{ _('Иные') }}</label>
+                                <label>[19] {{ _('Иные') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-MoneyOther-edit-model" name="MoneyOther" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row-app-group">
                             <div class="app-group" style="display: none;">
                                 <label>id</label>
                                 <div class="input-with-icon">

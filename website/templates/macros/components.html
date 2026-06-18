@@ -81,7 +81,7 @@
         {% if plan.is_draft %}status-draft
         {% elif plan.is_error %}status-error
         {% elif plan.is_control %}status-control
-        {% elif plan.is_sent %}status-pending
+        {% elif plan.is_sent %}status-sent
         {% elif plan.is_approved %}status-approved
         {% endif %}">
         
@@ -105,7 +105,7 @@
             </span>
         {% elif plan.is_approved %}
             {{ icons.approved_icon() }}
-            <span>{{ _('Одобрен') }}</span>
+            <span>{{ _('Согласован') }}</span>
         {% endif %}
     </a>
 {% endmacro %}
@@ -226,8 +226,8 @@
                 {{ icons.icon_audit() }}
                 {% if active_plan_tab == 'audit' %}<div class="active-indicator"></div>{% endif %}
             </div>
-            <span class="nav-text">{{ _('Аудит') }}</span>
-            <span class="nav-text-mobile">{{ _('Аудит') }}</span>
+            <span class="nav-text">{{ _('Проверка') }}</span>
+            <span class="nav-text-mobile">{{ _('Проверка') }}</span>
         </div>
         {% endif %}
         

@@ -180,19 +180,50 @@ const NotificationPopup = {
     }
 };
 
-// notif in header modal load
+
 const Notifications = {
     notifListEl: null,
     notifCountEl: null,
     markAllBtn: null,
+    loadMoreBtn: null,
+    page: 1,
+    perPage: 3,
+    hasMore: true,
+    isLoading: false,
+    allNotifications: [],
 
-    async load() {
+    async load(reset = true) {
+        if (this.isLoading) return;
+        if (!reset && !this.hasMore) return;
+        
+        this.isLoading = true;
+        
+        if (reset) {
+            this.page = 1;
+            this.allNotifications = [];
+            this.hasMore = true;
+            this.notifListEl.innerHTML = '';
+        }
+        
         try {
-            const response = await fetch("/api/notifications");
+            const response = await fetch(`/api/notifications?page=${this.page}&per_page=${this.perPage}`);
             const data = await response.json();
-            this.render(data);
+            
+            this.hasMore = data.has_next;
+            this.allNotifications = reset ? data.notifications : [...this.allNotifications, ...data.notifications];
+            
+            this.render(this.allNotifications);
+            
+            if (this.hasMore) {
+                this.showLoadMore();
+            } else {
+                this.hideLoadMore();
+            }
+            
         } catch (err) {
             console.error("Ошибка загрузки уведомлений:", err);
+        } finally {
+            this.isLoading = false;
         }
     },
 
@@ -202,6 +233,7 @@ const Notifications = {
         if (!data || data.length === 0) {
             this.notifListEl.innerHTML = "<div class='notif empty'>Нет уведомлений</div>";
             this.hideCounter();
+            this.hideLoadMore();
             return;
         }
 
@@ -215,15 +247,98 @@ const Notifications = {
                 unreadCount++;
             }
 
+            const formattedTime = this.formatNotificationTime(n.created_at);
+            
             notif.innerHTML = `
                 <div class="notif-message">${n.message}</div>
-                <div class="notif-time">${n.created_at}</div>
+                <div class="notif-time">${formattedTime}</div>
                 <div class="notif-divider-line"></div>
             `;
+            
+            notif.addEventListener('click', () => {
+                if (!n.is_read) {
+                    this.markAsRead(n.id);
+                }
+            });
+            
             this.notifListEl.appendChild(notif);
         });
 
         this.updateCounter(unreadCount);
+    },
+
+    formatNotificationTime(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMin = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMin < 1) {
+            return 'Только что';
+        } else if (diffMin < 60) {
+            return `${diffMin} мин. назад`;
+        } else if (diffHours < 24) {
+            return `${diffHours} ч. назад`;
+        } else if (diffDays < 7) {
+            return `${diffDays} дн. назад`;
+        } else {
+            const options = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('ru-RU', options);
+        }
+    },
+
+    async markAsRead(notificationId) {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+            
+            const response = await fetch(`/api/notifications/mark-read/${notificationId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                }
+            });
+            
+            if (response.ok) {
+                const notification = this.allNotifications.find(n => n.id === notificationId);
+                if (notification) {
+                    notification.is_read = true;
+                    this.render(this.allNotifications);
+                }
+            }
+        } catch (err) {
+            console.error("Ошибка при отметке уведомления:", err);
+        }
+    },
+
+    async loadMore() {
+        this.page++;
+        await this.load(false);
+    },
+
+    showLoadMore() {
+        if (!this.loadMoreBtn) {
+            this.loadMoreBtn = document.createElement("button");
+            this.loadMoreBtn.className = "load-more-notifications";
+            this.loadMoreBtn.textContent = "Загрузить предыдущие";
+            this.loadMoreBtn.addEventListener("click", () => this.loadMore());
+            this.notifListEl.parentNode.appendChild(this.loadMoreBtn);
+        }
+        this.loadMoreBtn.style.display = "block";
+    },
+
+    hideLoadMore() {
+        if (this.loadMoreBtn) {
+            this.loadMoreBtn.style.display = "none";
+        }
     },
 
     updateCounter(count) {
@@ -253,16 +368,16 @@ const Notifications = {
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": csrfToken 
-                },
-                body: "{}"
+                }
             });
 
             if (!response.ok) throw new Error("Ошибка запроса");
 
             const result = await response.json();
-            console.log(result.message);
-
-            this.load();
+            
+            this.allNotifications.forEach(n => n.is_read = true);
+            this.render(this.allNotifications);
+            
         } catch (err) {
             console.error("Ошибка при отметке уведомлений:", err);
         }
@@ -271,7 +386,7 @@ const Notifications = {
     init() {
         this.notifListEl = document.getElementById("notifList");
         this.notifCountEl = document.getElementById("notifCount");
-        this.markAllBtn  = document.getElementById("markAllRead");
+        this.markAllBtn = document.getElementById("markAllRead");
 
         if (this.markAllBtn) {
             this.markAllBtn.addEventListener("click", () => this.markAllRead());
@@ -859,7 +974,9 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            auditorOrganizationsApiUrl: '/api/ministries',
+            higherOrganizationsApiUrl: '/api/higher-organizations',
+            oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
+            regionsApiUrl: '/api/regions',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -870,7 +987,7 @@ class MultiTypeSearchManager {
         this.totalPages = 1;
         this.totalItems = 0;
         this.currentQuery = '';
-        this.selectedItemType = 'respondent';
+        this.selectedItemType = 'organization';
         this.selectedItemId = null;
         this.init();
     }
@@ -892,6 +1009,7 @@ class MultiTypeSearchManager {
         this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
+        this.highlightActiveTypeButton();
     }
 
     bindEvents() {
@@ -977,20 +1095,23 @@ class MultiTypeSearchManager {
         try {
             this.showLoading();
 
-            let apiUrl, dataKey;
+            let apiUrl;
             
             switch(this.selectedItemType) {
-                case 'respondent':
+                case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'respondent';
                     break;
-                case 'auditor':
-                    apiUrl = this.config.auditorOrganizationsApiUrl;
-                    dataKey = 'auditor';
+                case 'higher_organization':
+                    apiUrl = this.config.higherOrganizationsApiUrl;
+                    break;
+                case 'oblispolkom_gorispolkom':
+                    apiUrl = this.config.oblispolkomGorispolkomApiUrl;
+                    break;
+                case 'region':
+                    apiUrl = this.config.regionsApiUrl;
                     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
-                    dataKey = 'respondent';
             }
 
             const url = `${apiUrl}?q=${encodeURIComponent(this.currentQuery)}&page=${this.currentPage}`;
@@ -1006,7 +1127,7 @@ class MultiTypeSearchManager {
                 throw new Error(data.error);
             }
             
-            const items = data[dataKey] || [];
+            const items = this.extractItems(data, this.selectedItemType);
             this.totalPages = data.total_pages || 1;
             this.totalItems = data.total_items || 0;
             
@@ -1018,6 +1139,21 @@ class MultiTypeSearchManager {
             this.showError(`Ошибка загрузки ${this.getTypeLabel(this.selectedItemType, true)}`);
         } finally {
             this.hideLoading();
+        }
+    }
+
+    extractItems(data, type) {
+        switch(type) {
+            case 'organization':
+                return data.organizations || [];
+            case 'higher_organization':
+                return data.higher_organizations || [];
+            case 'oblispolkom_gorispolkom':
+                return data.oblispolkom_gorispolkoms || [];
+            case 'region':
+                return data.regions || [];
+            default:
+                return [];
         }
     }
 
@@ -1049,23 +1185,38 @@ class MultiTypeSearchManager {
             let html = `<td style="display: none;">${this.escapeHtml(item.id)}</td>`;
             
             switch(this.selectedItemType) {
-                case 'respondent':
+                case 'organization':
                     html += `
                         <td>${this.escapeHtml(item.name)}</td>
                         <td style="text-align: center;">${this.escapeHtml(item.ynp || '-')}</td>
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                case 'auditor':
+                case 'higher_organization':
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                        <td style="width: 100%;">${this.escapeHtml(item.type)}</td>
+                        <td style="text-align: center;"></td>
+                        <td style="text-align: center;"></td>
+                    `;
+                    break;
+                case 'oblispolkom_gorispolkom':
+                    html += `
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
+                        <td style="text-align: center;"></td>
+                    `;
+                    break;
+                case 'region':
+                    html += `
+                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
                         <td style="text-align: center;"></td>
                     `;
                     break;
                 default:
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                        <td style="text-align: center;"></td>
                         <td style="text-align: center;"></td>
                     `;
             }
@@ -1109,16 +1260,31 @@ class MultiTypeSearchManager {
         `;
         
         switch(this.selectedItemType) {
-            case 'respondent':
+            case 'organization':
                 headersHTML += `
                     <th>Наименование предприятия</th>
                     <th style="text-align: center;">УНП</th>
                     <th style="text-align: center;">ОКПО</th>
                 `;
                 break;
-            case 'auditor':
+            case 'higher_organization':
                 headersHTML += `
-                    <th>Наименование</th>
+                    <th style="width: 100%;">Наименование вышестоящей организации</th>
+                    <th style="text-align: center;"></th>
+                    <th style="text-align: center;"></th>
+                `;
+                break;
+            case 'oblispolkom_gorispolkom':
+                headersHTML += `
+                    <th style="width: 100%;">Наименование обл/горисполкома</th>
+                    <th style="text-align: center;"></th>
+                    <th style="text-align: center;"></th>
+                `;
+                break;
+            case 'region':
+                headersHTML += `
+                    <th style="width: 100%;">Наименование региона</th>
+                    <th style="text-align: center;"></th>
                     <th style="text-align: center;"></th>
                 `;
                 break;
@@ -1144,6 +1310,7 @@ class MultiTypeSearchManager {
         
         this.updateSearchPlaceholder(type);
         this.updateSubmitButtonText();
+        this.updateModalTitle(type);
         
         if (this.searchInput) {
             this.searchInput.value = '';
@@ -1160,8 +1327,10 @@ class MultiTypeSearchManager {
         if (!this.searchInput) return;
         
         const placeholders = {
-            'respondent': 'Наименование/окпо/унп организации',
-            'auditor': 'Наименование',
+            'organization': 'Наименование/окпо/унп организации',
+            'higher_organization': 'Наименование вышестоящей организации',
+            'oblispolkom_gorispolkom': 'Наименование обл/горисполкома',
+            'region': 'Наименование региона',
         };
         
         this.searchInput.placeholder = placeholders[type] || 'Поиск...';
@@ -1169,8 +1338,10 @@ class MultiTypeSearchManager {
         const searchLabel = document.getElementById('search-label');
         if (searchLabel) {
             const labels = {
-                'respondent': 'Поиск организации',
-                'auditor': 'Поиск',
+                'organization': 'Поиск организации',
+                'higher_organization': 'Поиск вышестоящей организации',
+                'oblispolkom_gorispolkom': 'Поиск обл/горисполкома',
+                'region': 'Поиск региона',
             };
             searchLabel.textContent = labels[type] || 'Поиск';
         }
@@ -1180,8 +1351,10 @@ class MultiTypeSearchManager {
         if (!this.submitButton) return;
         
         const buttonTexts = {
-            'respondent': 'Сохранить организацию',
-            'auditor': 'Сохранить',
+            'organization': 'Сохранить организацию',
+            'higher_organization': 'Сохранить вышестоящую организацию',
+            'oblispolkom_gorispolkom': 'Сохранить обл/горисполком',
+            'region': 'Сохранить регион',
         };
         
         const text = buttonTexts[this.selectedItemType] || 'Сохранить изменения';
@@ -1190,6 +1363,28 @@ class MultiTypeSearchManager {
         if (btnTextSpan) {
             btnTextSpan.textContent = text;
         }
+    }
+
+    updateModalTitle(type) {
+        const modalTitle = document.getElementById('modal-title');
+        if (!modalTitle) return;
+        
+        const titles = {
+            'organization': 'Выберите организацию',
+            'higher_organization': 'Выберите вышестоящую организацию',
+            'oblispolkom_gorispolkom': 'Выберите обл/горисполком',
+            'region': 'Выберите регион',
+        };
+        
+        modalTitle.textContent = titles[type] || 'Выберите элемент';
+    }
+
+    highlightActiveTypeButton() {
+        this.typeButtons.forEach(btn => {
+            if (btn.dataset.type === this.selectedItemType) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     selectItem(row) {
@@ -1226,8 +1421,10 @@ class MultiTypeSearchManager {
 
     getTypeLabel(type, plural = false) {
         const labels = {
-            'respondent': plural ? 'организаций' : 'организация',
-            'auditor': plural ? 'министерств' : 'министерство',
+            'organization': plural ? 'организаций' : 'организация',
+            'higher_organization': plural ? 'вышестоящих организаций' : 'вышестоящая организация',
+            'oblispolkom_gorispolkom': plural ? 'обл/горисполкомов' : 'обл/горисполком',
+            'region': plural ? 'регионов' : 'регион',
         };
         return labels[type] || (plural ? 'данных' : 'данные');
     }
@@ -1977,7 +2174,6 @@ class MultiStepForm {
     }
 }
 
-
 class TicketInfo {
     constructor(options = {}) {
         this.options = {
@@ -2062,13 +2258,13 @@ class TicketInfo {
                     </div>
                     <div class="ticket-info-item">
                         <span class="ticket-info-label">ФИО</span>
-                        <span class="ticket-info-value">${data.user_fio || 'Не указано'}</span>
+                        <span class="ticket-info-value">${data.user_fio || '---'}</span>
                     </div>
                     <div class="ticket-info-item">
                         <span class="ticket-info-label">Email</span>
                         <span class="ticket-info-value">
                             <a href="mailto:${data.user_email}" class="ticket-info-link">
-                                ${data.user_email || 'Не указано'}
+                                ${data.user_email || '---'}
                             </a>
                         </span>
                     </div>
@@ -2076,7 +2272,7 @@ class TicketInfo {
                         <span class="ticket-info-label">Телефон</span>
                         <span class="ticket-info-value">
                             <a href="tel:${data.user_phone}" class="ticket-info-link">
-                                ${data.user_phone || 'Не указано'}
+                                ${data.user_phone || '---'}
                             </a>
                         </span>
                     </div>
@@ -2351,10 +2547,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (document.querySelector('.auth-step-1') && document.querySelector('.auth-step-2')) {
         formSteps.init();
-    }
-    
-    if (document.querySelector('.plan-cont')) {
-        initStatusProgress();
     }
 
     new DirectionsTable({

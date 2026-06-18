@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Изменение email') }} - EnPlans{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-text-upper">
+        <div class="auth-title" onclick="window.location.href = '/profile'">
+            <img src="/static/img/logo.svg" alt="" />
+            <a>EnPlans</a>
+        </div>
+        <p class="auth-subtitle">
+            {{ _('Система представления планов энергосберегающих <br />мероприятий') }}
+        </p>
+    </div>
+
+    <div class="auth-container">
+        <div class="auth-container-title">{{ _('Смена электронного адреса') }}</div>
+        <div class="auth-choose" style="justify-content: center" role="tablist">
+            <a class="auth-tab active" href="/login" role="tab" style="width: 100%; gap: 10px;" aria-selected="true">
+                {{ icons.icon_email() }}
+                <span>{{ _('Изменение почты') }}</span>
+            </a>
+        </div>
+
+        {% if session.get('new_email') %}
+            <div class="auth-form">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                    <p style="margin: 0; font-size: 14px; color: #166534;">
+                        <strong>{{ _('Код отправлен на:') }}</strong> {{ session.get('new_email') }}
+                    </p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">
+                        {{ _('Код действителен 10 минут') }}
+                    </p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.change_email') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group">
+                        <label for="code">{{ _('Код подтверждения') }}</label>
+                        <div class="input-with-icon">
+                            {{ icons.icon_code() }}
+                            <input type="text" 
+                                   id="code" 
+                                   name="code" 
+                                   class="auth-input" 
+                                   style="padding-left: 40px;"
+                                   placeholder="{{ _('Введите код из письма') }}"
+                                   maxlength="6"
+                                   required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="main-btn main-btn-primary">
+                        {{ icons.icon_confirm() }}
+                        <span class="btn-text">{{ _('Подтвердить') }}</span>
+                    </button>
+                </form>
+
+                <div class="auth-footer" style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                    <form method="POST" action="{{ url_for('auth.resend_email_code') }}" id="resendCodeForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="forgot-password" id="resendCodeBtn" style="background: none; border: none; cursor: pointer; padding: 0;">
+                            {{ _('Отправить код повторно') }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('auth.change_email') }}" class="forgot-password" id="changeEmailLink">{{ _('Изменить email') }}</a>
+                </div>
+            </div>
+        {% else %}
+            <form class="auth-form" method="POST" action="{{ url_for('auth.change_email') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group">
+                    <label for="new_email">{{ _('Новый email') }}</label>
+                    <div class="input-with-icon">
+                        {{ icons.icon_email() }}
+                        <input type="email" 
+                               id="new_email" 
+                               name="new_email" 
+                               class="auth-input" 
+                               style="padding-left: 40px;"
+                               placeholder="{{ _('Введите новый email') }}"
+                               required>
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                        {{ _('На этот email будет отправлен код подтверждения') }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">{{ _('Текущий пароль') }}</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" 
+                               id="password" 
+                               name="password" 
+                               class="auth-input" 
+                               placeholder="{{ _('Введите текущий пароль') }}"
+                               required>
+                        <button type="button" class="toggle-password" aria-label="Показать пароль">
+                            {{ icons.eye_open() }} {{ icons.eye_closed() }}
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="main-btn main-btn-primary">
+                    {{ icons.icon_code() }}
+                    <span class="btn-text">{{ _('Отправить код') }}</span>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <a href="{{ url_for('views.profile') }}" class="forgot-password">{{ _('Вернуться в профиль') }}</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{{ affects.bg_effect() }}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const resendBtn = document.getElementById('resendCodeBtn');
+        const resendForm = document.getElementById('resendCodeForm');
+        const changeEmailLink = document.getElementById('changeEmailLink');
+        
+        if (resendBtn) {
+            let timer = 60;
+            let intervalId = null;
+            
+            function startTimer() {
+                resendBtn.disabled = true;
+                resendBtn.textContent = 'Отправить код повторно (' + timer + 'с)';
+                
+                intervalId = setInterval(function() {
+                    timer--;
+                    if (timer > 0) {
+                        resendBtn.textContent = 'Отправить код повторно (' + timer + 'с)';
+                    } else {
+                        clearInterval(intervalId);
+                        resendBtn.disabled = false;
+                        resendBtn.textContent = 'Отправить код повторно';
+                        timer = 60;
+                    }
+                }, 1000);
+            }
+            
+            resendForm.addEventListener('submit', function(e) {
+                if (resendBtn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                startTimer();
+            });
+            
+            if (resendBtn && !resendBtn.disabled) {
+                startTimer();
+            }
+        }
+        
+        if (changeEmailLink) {
+            changeEmailLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                fetch('{{ url_for("auth.clear_email_session") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '{{ url_for("auth.change_email") }}';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    window.location.href = '{{ url_for("auth.change_email") }}';
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -88,14 +88,14 @@
     ) }}
 
     <div id="plans-container"></div>
-        <div id="load-more-container">
-          <button id="load-more-btn" class="load-more-btn">
-            <span class="loading-spinner" style="display: none;"></span>
-            <span class="btn-text">{{ _('Загрузить еще') }}</span>
-          </button>
-        </div>
+      <div id="load-more-container">
+        <button id="load-more-btn" class="load-more-btn">
+          <span class="loading-spinner" style="display: none;"></span>
+          <span class="btn-text">{{ _('Загрузить еще') }}</span>
+        </button>
       </div>
     </div>
+  </div>
 
 <script>
   window.initialStatus = '{{ selected_status }}';
@@ -103,4 +103,5 @@
   window.isExportPage = false;
 </script>
 
+  {{ affects.bg_effect() }}
 {% endblock %}

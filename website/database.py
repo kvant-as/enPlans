@@ -163,14 +163,14 @@ def filling_database(db):
             ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 6443),
             ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 7947),
 
-            ('', os.getenv('auditoremailBrestTEST'), 'Иванов1', 'Иван', 'Иванович', '+1', False, True, 7940),
-            ('', os.getenv('auditoremailVitebskTEST'), 'Иванов2', 'Иван', 'Иванович', '+2', False, True, 7941),
-            ('', os.getenv('auditoremailGomelTEST'), 'Иванов3', 'Иван', 'Иванович', '+3', False, True, 7942),
-            ('', os.getenv('auditoremailGrodnoTEST'), 'Иванов4', 'Иван', 'Иванович', '+4', False, True, 7943),
-            ('', os.getenv('auditoremailMinskoblTEST'), 'Иванов5', 'Иван', 'Иванович', '+5', False, True, 7945),
-            ('', os.getenv('auditoremailMogilevTEST'), 'Иванов6', 'Иван', 'Иванович', '+6', False, True, 7946),
-            ('', os.getenv('auditoremailMinskTEST'), 'Иванов7', 'Иван', 'Иванович', '+7', False, True, 7944),
-            ('', os.getenv('auditoremailNadzorTEST'), 'Иванов8', 'Иван', 'Иванович', '+8', False, True, 7947),
+            # ('', os.getenv('auditoremailBrestTEST'), 'Иванов1', 'Иван', 'Иванович', '+1', False, True, 7940),
+            # ('', os.getenv('auditoremailVitebskTEST'), 'Иванов2', 'Иван', 'Иванович', '+2', False, True, 7941),
+            # ('', os.getenv('auditoremailGomelTEST'), 'Иванов3', 'Иван', 'Иванович', '+3', False, True, 7942),
+            # ('', os.getenv('auditoremailGrodnoTEST'), 'Иванов4', 'Иван', 'Иванович', '+4', False, True, 7943),
+            # ('', os.getenv('auditoremailMinskoblTEST'), 'Иванов5', 'Иван', 'Иванович', '+5', False, True, 7945),
+            # ('', os.getenv('auditoremailMogilevTEST'), 'Иванов6', 'Иван', 'Иванович', '+6', False, True, 7946),
+            # ('', os.getenv('auditoremailMinskTEST'), 'Иванов7', 'Иван', 'Иванович', '+7', False, True, 7944),
+            # ('', os.getenv('auditoremailNadzorTEST'), 'Иванов8', 'Иван', 'Иванович', '+8', False, True, 7947),
         ]
 
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:

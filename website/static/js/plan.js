@@ -1074,7 +1074,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving'
                 ? 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)'
                 : 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="19">${emptyMessage}</tr>`;
             return;
         }
         
@@ -1102,7 +1102,8 @@ class PlanEvents {
             <td style="text-align: center;">${row.ExpectedQuarter || ''}</td> 
             <td style="text-align: end;">${this.formatNumber(row.EffCurrYear)}</td>
             <td style="text-align: end;">${(row.Payback || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(row.VolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.ObchVolumeFin || 0).toString()}</td>
+            <td style="text-align: end;">${(row.VolumeFinCurrentYear || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetState || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetRep || 0).toString()}</td>
             <td style="text-align: end;">${(row.BudgetLoc || 0).toString()}</td>
@@ -1128,7 +1129,8 @@ class PlanEvents {
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'ObchVolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(events, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetState') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
@@ -1164,7 +1166,8 @@ class PlanEvents {
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'ObchVolumeFin') || 0).toString().replace('.', ',')}</td>
+            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
@@ -1197,7 +1200,7 @@ class PlanEvents {
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
                 <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
-                <td colspan="9"></td>
+                <td colspan="10"></td>
             `;
             
             otherContent.appendChild(row);
@@ -1872,15 +1875,16 @@ const TableCollapseManager = (function() {
     };
 })();
 
-const STATUS_CONFIG = {
-    'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)' },
-    'plan-cont-control': { width: '40%', color: 'var(--color-controled)' },
-    'plan-cont-sent': { width: '60%', color: 'var(--color-sented)' },
-    'plan-cont-eror': { width: '80%', color: 'var(--color-erorsed)' },
-    'plan-cont-sub': { width: '100%', color: 'var(--color-submited)' }
-};
 
 function initStatusProgress() {
+    const STATUS_CONFIG = {
+        'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)' },
+        'plan-cont-control': { width: '40%', color: 'var(--color-controled)' },
+        'plan-cont-sent': { width: '60%', color: 'var(--color-sented)' },
+        'plan-cont-eror': { width: '80%', color: 'var(--color-erorsed)' },
+        'plan-cont-sub': { width: '100%', color: 'var(--color-submited)' }
+    };
+
     const planConts = document.querySelectorAll('.plan-cont');
     const progressLine = document.querySelector('.progress-line-active');
     const dots = document.querySelectorAll('.status-dot');
@@ -1922,435 +1926,12 @@ function initStatusProgress() {
     });
 }
 
-function Edit_Period_modal() {
-    const EditEventModal = document.getElementById('EditEventModal');
-    if (!EditEventModal) {
-        console.log('Edit_Period_modal: EditEventModal не найден, выход');
-        return;
-    }
 
-    const activeRow = document.querySelector('.active-row');
-    if (!activeRow) {
-        console.log('Edit_Period_modal: activeRow не найден, выход');
-        return;
-    }
-    
-    const periodCode = activeRow.getAttribute('data-period-code');
-    if (!periodCode || !['0001', '0002', '0003', '0004'].includes(periodCode)) {
-        return;
-    }
-    
-    const idEvent = activeRow.getAttribute('data-id');
-    if (!idEvent) {
-        console.log('Edit_Period_modal: idEvent не найден, выход');
-        return;
-    }
 
-    const modalTitle = document.getElementById('modal-title');
-    const stepsedit = document.getElementById('steps-edit');
-    const periodStep = document.getElementById('period-step');
-    const editTypeInput = document.getElementById('edit-event-type');
-    if (stepsedit) stepsedit.style.display = 'none';
-    
-    if (periodStep) periodStep.style.display = 'block';
-    
-    if (editTypeInput) {
-        editTypeInput.value = 'period';
-    }
-    
-    const periodName = activeRow.getAttribute('data-period-name') || 
-                      activeRow.querySelector('td:first-child')?.textContent.trim() || 
-                      getPeriodNameByCode(periodCode);
-    
-    const periodNameDisplay = document.getElementById('period-name-display');
-    if (periodNameDisplay) {
-        periodNameDisplay.textContent = periodName;
-    }
-    
-    fetch(`/api/get-event/${idEvent}`)
-        .then(response => {
-            // console.log('Edit_Period_modal: fetch ответ получен, status =', response.status);
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-    
-            const effCurrYearInput = document.getElementById('period-EffCurrYear-edit');
-            if (effCurrYearInput) {
-                let value = data.EffCurrYear || 0;
-                value = parseFloat(value);
-                if (isNaN(value)) value = 0;
-                effCurrYearInput.value = value.toFixed(2).replace('.', ',');
-            }
-            
-            const form = document.getElementById('editEventeForm');
-            if (form) {
-                form.action = `/plans/plan/edit-event/${idEvent}`;
-                
-                const allInputs = form.querySelectorAll('#steps-edit input, #steps-edit select, #steps-edit textarea');
-                
-                allInputs.forEach(input => {
-                    input.disabled = true;
-                });
-                
-                const periodInputs = form.querySelectorAll('#period-step input, #period-step select, #period-step textarea');
-                periodInputs.forEach(input => {
-                    input.disabled = false;
-                });
-            }
 
-        })
-        .catch(error => {
-            console.error('Edit_Period_modal: ОШИБКА:', error);
-            alert('Ошибка при загрузке данных периода: ' + error.message);
-        });
-}
 
-function getPlanToken() {
-    const hiddenToken = document.getElementById('plan-token');
-    if (hiddenToken && hiddenToken.value) {
-        console.log('Token from hidden input:', hiddenToken.value);
-        return hiddenToken.value;
-    }
-    
-    const eventTable = document.getElementById('eventTable');
-    if (eventTable && eventTable.dataset.token) {
-        console.log('Token from #eventTable:', eventTable.dataset.token);
-        return eventTable.dataset.token;
-    }
-    
-    const modalForm = document.querySelector('#AddEventModal form');
-    if (modalForm) {
-        const actionUrl = modalForm.getAttribute('action');
-        if (actionUrl) {
-            const match = actionUrl.match(/\/create-event\/([a-zA-Z0-9]+)/);
-            if (match && match[1]) {
-                console.log('Token from form action:', match[1]);
-                return match[1];
-            }
-        }
-    }
-    
-    console.error('Could not find plan token in DOM');
-    return null;
-}
 
-async function fetchEditPlanRates() {
-    try {
-        const token = getPlanToken();
-        
-        if (!token) {
-            console.error('No token found for edit rates');
-            return false;
-        }
 
-        const response = await fetch(`/api/plan-rates/${token}`);
-        
-        if (!response.ok) {
-            console.error('Failed to fetch edit plan rates:', response.status);
-            return false;
-        }
-        
-        const data = await response.json();
-
-        if (data.success) {
-            const usdDisplay = document.getElementById('edit-usd-rate-display');
-            const costDisplay = document.getElementById('edit-cost-per-toe-display');
-            
-            if (data.usd_rate && data.usd_rate > 0) {
-                if (usdDisplay) {
-                    usdDisplay.textContent = data.usd_rate.toFixed(4).replace('.', ',');
-                }
-            } else {
-                if (usdDisplay) usdDisplay.textContent = '--';
-            }
-            
-            if (data.cost_per_toe_usd && data.cost_per_toe_usd > 0) {
-                if (costDisplay) {
-                    costDisplay.textContent = data.cost_per_toe_usd.toFixed(2).replace('.', ',');
-                }
-            } else {
-                if (costDisplay) costDisplay.textContent = '--';
-            }
-            
-            return { usdRate: data.usd_rate, costPerToe: data.cost_per_toe_usd };
-        }
-        return false;
-    } catch (error) {
-        console.error('Error fetching edit plan rates:', error);
-        return false;
-    }
-}
-
-function Edit_Evente_modal() {
-    const EditEventModal = document.getElementById('EditEventModal');
-    if (!EditEventModal) return;
-
-    let activeRow = document.querySelector('.rows .active-row');
-    
-    if (!activeRow) {
-        const allRowsContainers = document.querySelectorAll('.rows');
-        for (const container of allRowsContainers) {
-            const row = container.querySelector('.active-row');
-            if (row) {
-                activeRow = row;
-                break;
-            }
-        }
-    }
-    
-    if (!activeRow) return;
-    
-    const idEvent = activeRow.getAttribute('data-id');
-    if (!idEvent) return;
-
-    const periodCode = activeRow.getAttribute('data-period-code');
-    const isPeriod = periodCode && ['0001', '0002', '0003', '0004'].includes(periodCode);
-    
-    if (isPeriod) {
-        Edit_Period_modal();
-        return;
-    }
-    
-    const modalTitle = document.getElementById('modal-title');
-    const step1 = document.getElementById('step1');
-    const step2 = document.getElementById('step2');
-    const periodStep = document.getElementById('period-step');
-    const editType = document.getElementById('edit-event-type');
-    const nextButton = document.getElementById('step1-next-btn');
-    const progressBarContainer = document.querySelector('.progress-modal-bar-container');
-    const modalProgressBar = document.getElementById('modal-progress-bar');
-    const stepsedit = document.getElementById('steps-edit');
-    
-    if (modalTitle) modalTitle.textContent = 'Редактирование мероприятия';
-    
-    if (stepsedit) stepsedit.style.display = 'block';
-    if (step1) step1.style.display = 'block';
-    if (step2) step2.style.display = 'none';
-    if (periodStep) periodStep.style.display = 'none';
-    if (progressBarContainer) progressBarContainer.style.display = '';
-    if (modalProgressBar) modalProgressBar.style.width = '50%';
-    
-    if (editType) editType.value = 'full';
-    
-    const form = document.getElementById('editEventeForm');
-    if (form) {
-        const allInputs = form.querySelectorAll('#steps-edit input, #steps-edit select, #steps-edit textarea');
-        allInputs.forEach(input => {
-            input.disabled = false;
-        });
-    }
-    
-    if (nextButton) nextButton.disabled = true;
-    
-    Promise.all([
-        fetch(`/api/get-event/${idEvent}`).then(r => r.json()),
-        fetchEditPlanRates()
-    ]).then(([eventData, rates]) => {
-        if (eventData.error) throw new Error(eventData.error);
-        
-        setValueIfExists('change-name-edit-model', eventData.name || '');
-        setValueIfExists('change-Volume-edit-model', eventData.Volume || '');
-        setValueIfExists('change-EffTut-edit-model', eventData.EffTut || '');
-        setValueIfExists('change-EffRub-edit-model', eventData.EffRub || '');
-        setValueIfExists('change-ExpectedQuarter-edit-model', eventData.ExpectedQuarter || '');
-        setValueIfExists('change-EffCurrYear-edit-model', eventData.EffCurrYear || '');
-        setValueIfExists('change-Payback-edit-model', eventData.Payback || '');
-        setValueIfExists('change-VolumeFin-edit-model', eventData.VolumeFin || '');
-        setValueIfExists('change-BudgetState-edit-model', eventData.BudgetState || '0');
-        setValueIfExists('change-BudgetRep-edit-model', eventData.BudgetRep || '0');
-        setValueIfExists('change-BudgetLoc-edit-model', eventData.BudgetLoc || '0');
-        setValueIfExists('change-BudgetOther-edit-model', eventData.BudgetOther || '0');
-        setValueIfExists('change-MoneyOwn-edit-model', eventData.MoneyOwn || '0');
-        setValueIfExists('change-MoneyLoan-edit-model', eventData.MoneyLoan || '0');
-        setValueIfExists('change-MoneyOther-edit-model', eventData.MoneyOther || '0');
-        
-        if (form) {
-            form.action = `/plans/plan/edit-event/${idEvent}`;
-        }
-        
-        if (nextButton) nextButton.disabled = false;
-        
-        if (rates && rates.usdRate && rates.costPerToe) {
-            initEditCalculations(rates.usdRate, rates.costPerToe);
-        }
-    }).catch(error => {
-        console.error('Error fetching Event data:', error);
-        alert('Ошибка при загрузке данных мероприятия: ' + error.message);
-        if (nextButton) nextButton.disabled = false;
-    });
-}
-
-function initEditCalculations(usdRate, costPerToe) {
-    function parseEditNumber(value) {
-        if (!value) return 0;
-        const str = value.toString().trim();
-        if (str === '') return 0;
-        return parseFloat(str.replace(',', '.')) || 0;
-    }
-    
-    function formatEditNumber(value, decimalPlaces = 2) {
-        if (isNaN(value) || value === null || value === '') {
-            if (decimalPlaces === 0) return '0';
-            if (decimalPlaces === 1) return '0,0';
-            return '0,00';
-        }
-        if (decimalPlaces === 0) {
-            return Math.round(value).toString();
-        }
-        if (decimalPlaces === 1) {
-            return value.toFixed(1).replace('.', ',');
-        }
-        return value.toFixed(2).replace('.', ',');
-    }
-    
-    function updateEditCalculations() {
-        const budgetState = parseEditNumber(document.getElementById('change-BudgetState-edit-model')?.value);
-        const budgetRep = parseEditNumber(document.getElementById('change-BudgetRep-edit-model')?.value);
-        const budgetLoc = parseEditNumber(document.getElementById('change-BudgetLoc-edit-model')?.value);
-        const budgetOther = parseEditNumber(document.getElementById('change-BudgetOther-edit-model')?.value);
-        const moneyOwn = parseEditNumber(document.getElementById('change-MoneyOwn-edit-model')?.value);
-        const moneyLoan = parseEditNumber(document.getElementById('change-MoneyLoan-edit-model')?.value);
-        const moneyOther = parseEditNumber(document.getElementById('change-MoneyOther-edit-model')?.value);
-        
-        const volumeFin = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-        const volumeFinInput = document.getElementById('change-VolumeFin-edit-model');
-        if (volumeFinInput) volumeFinInput.value = formatEditNumber(volumeFin, 0);
-        
-        const effTut = parseEditNumber(document.getElementById('change-EffTut-edit-model')?.value);
-        const effRub = Math.round(effTut * costPerToe * usdRate);
-        const effRubInput = document.getElementById('change-EffRub-edit-model');
-        if (effRubInput) effRubInput.value = formatEditNumber(effRub, 0);
-        
-        let payback = 0;
-        if (effRub > 0) payback = volumeFin / effRub;
-        const paybackInput = document.getElementById('change-Payback-edit-model');
-        if (paybackInput) paybackInput.value = formatEditNumber(payback, 1);
-    }
-    
-    const editFields = [
-        'change-EffTut-edit-model',
-        'change-BudgetState-edit-model', 'change-BudgetRep-edit-model',
-        'change-BudgetLoc-edit-model', 'change-BudgetOther-edit-model',
-        'change-MoneyOwn-edit-model', 'change-MoneyLoan-edit-model',
-        'change-MoneyOther-edit-model'
-    ];
-    
-    editFields.forEach(fieldId => {
-        const input = document.getElementById(fieldId);
-        if (input) {
-            input.removeEventListener('input', updateEditCalculations);
-            input.addEventListener('input', updateEditCalculations);
-        }
-    });
-    
-    updateEditCalculations();
-}
-
-function setValueIfExists(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.value = value;
-    }
-}
-
-function validateAndEnableButton() {
-    const addModal = document.getElementById('AddEventModal');
-    if (addModal && addModal.style.display !== 'none') {
-        const addFields = addModal.querySelectorAll('#step2 [name="name"], #step2 [name="Volume"], #step2 [name="ExpectedQuarter"]');
-        const addButton = addModal.querySelector('#step2-next-btn[data-action="next-step-2"]');
-        
-        if (addFields.length === 3 && addButton) {
-            const allFilled = Array.from(addFields).every(field => {
-                const value = field.value.trim();
-                if (field.name === 'name') return value !== '';
-                if (field.name === 'Volume') return value !== '' && parseFloat(value) > 0;
-                if (field.name === 'ExpectedQuarter') return value !== '' && parseInt(value) >= 1 && parseInt(value) <= 4;
-                return false;
-            });
-            addButton.disabled = !allFilled;
-        }
-    }
-    
-    const editModal = document.getElementById('EditEventModal');
-    if (editModal && editModal.style.display !== 'none') {
-        const editType = document.getElementById('edit-event-type')?.value;
-        
-        if (editType === 'period') {
-            const editButton = editModal.querySelector('#step1-next-btn');
-            if (editButton) {
-                editButton.disabled = false;
-            }
-            return;
-        }
-        
-        const editFields = editModal.querySelectorAll('#step1 [name="name"], #step1 [name="Volume"], #step1 [name="ExpectedQuarter"]');
-        const editButton = editModal.querySelector('#step1-next-btn');
-        
-        if (editFields.length === 3 && editButton) {
-            const allFilled = Array.from(editFields).every(field => {
-                const value = field.value.trim();
-                if (field.name === 'name') return value !== '';
-                if (field.name === 'Volume') return value !== '' && parseFloat(value) > 0;
-                if (field.name === 'ExpectedQuarter') return value !== '' && parseInt(value) >= 1 && parseInt(value) <= 4;
-                return false;
-            });
-            editButton.disabled = !allFilled;
-        }
-    }
-}
-
-function checkCategoryRequired() {
-    const selectedIndicatorName = document.getElementById('selected-indicator-name');
-    const categorySection = document.getElementById('category-section');
-    const nameSection = document.getElementById('name-section');
-    const submitBtn = document.getElementById('submit-indicator-btn');
-    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
-    const nameInput = document.getElementById('name-section-input');
-    
-    if (!selectedIndicatorName || !categorySection || !nameSection) return;
-    
-    const indicatorText = selectedIndicatorName.textContent;
-    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
-    
-    function validateForm() {
-        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
-        const isNameFilled = nameInput && nameInput.value.trim() !== '';
-        
-        if (submitBtn) {
-            if (isCategoryRequired) {
-                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
-            } else {
-                submitBtn.disabled = false;
-            }
-        }
-    }
-    
-    if (isCategoryRequired) {
-        categorySection.style.display = 'block';
-        nameSection.style.display = 'block';
-        
-        categoryRadios.forEach(radio => {
-            radio.removeEventListener('change', validateForm);
-            radio.addEventListener('change', validateForm);
-        });
-        
-        if (nameInput) {
-            nameInput.removeEventListener('input', validateForm);
-            nameInput.addEventListener('input', validateForm);
-        }
-        
-        validateForm();
-    } else {
-        categorySection.style.display = 'none';
-        nameSection.style.display = 'none';
-        if (submitBtn) {
-            submitBtn.disabled = false;
-        }
-    }
-}
 
 class CertificateUploadHandler {
     constructor() {
@@ -2498,11 +2079,6 @@ class CertificateUploadHandler {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
     }
-}
-
-
-if (document.getElementById('sentmodal')) {
-    new CertificateUploadHandler();
 }
 
 class PlansLoader {
@@ -3552,6 +3128,10 @@ function initEditableHeaders() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('sentmodal')) {
+        new CertificateUploadHandler();
+    }
+
     const tokencolumnIndicator = document.querySelector('#indicatorsTable')?.dataset?.token;
     if (tokencolumnIndicator) {
         window.planToken = tokencolumnIndicator;
@@ -3620,14 +3200,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    validateAndEnableButton();
-    setInterval(validateAndEnableButton, 300);
-    
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('[name="name"], [name="Volume"], [name="ExpectedQuarter"]')) {
-            validateAndEnableButton();
-        }
-    });
 
     const sentPlanButton = document.getElementById('sentPlanButton');
     const sentmodal = document.getElementById('sentmodal');

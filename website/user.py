@@ -119,10 +119,10 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     # else:
     #     normalized_phone = ''.join(filter(str.isdigit, normalized_phone))
     
-    existing_user = User.query.filter_by(phone=normalized_phone).first()
-    if existing_user and existing_user.id != current_user.id:
-        flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
-        return redirect(url_for('auth.param'))
+    # existing_user = User.query.filter_by(phone=normalized_phone).first()
+    # if existing_user and existing_user.id != current_user.id:
+    #     flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
+    #     return redirect(url_for('auth.param'))
     
     current_user.first_name = first_name.strip()
     current_user.last_name = last_name.strip()

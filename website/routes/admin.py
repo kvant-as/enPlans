@@ -279,8 +279,8 @@ class UserView(SecureModelView):
 
     column_formatters = {
         'organization': lambda v, c, m, p: m.organization.name if m.organization else 'Не назначена',
-        'is_admin': lambda v, c, m, p: '✅ Да' if m.is_admin else '❌ Нет',
-        'is_auditor': lambda v, c, m, p: '✅ Да' if m.is_auditor else '❌ Нет',
+        'is_admin': lambda v, c, m, p: '✅' if m.is_admin else '❌',
+        'is_auditor': lambda v, c, m, p: '✅' if m.is_auditor else '❌',
         'last_active': lambda v, c, m, p: m.last_active.strftime('%d.%m.%Y %H:%M') if m.last_active else '',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else ''
     }
@@ -362,7 +362,7 @@ class OrganizationView(SecureModelView):
     column_searchable_list = ['name', 'okpo', 'ynp', 'ministry_id']
     column_filters = ['id', 'is_active', 'ministry_id']
     column_formatters = {
-        'is_active': lambda v, c, m, p: '✅ Да' if m.is_active else '❌ Нет',
+        'is_active': lambda v, c, m, p: '✅' if m.is_active else '❌',
         'users': lambda v, c, m, p: f'{len(m.users)} пользователей' if m.users else 'Нет пользователей'
     }
 
@@ -441,7 +441,7 @@ class TicketView(SecureModelView):
     column_filters = ['id', 'luck', 'is_owner', 'plan_id']
 
     column_formatters = {
-        'luck': lambda v, c, m, p: '✅ Да' if m.luck else '❌ Нет',
+        'luck': lambda v, c, m, p: '✅' if m.luck else '❌',
         'is_owner': lambda v, c, m, p: '👤 Да' if m.is_owner else '👥 Нет',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else '',
         'plan': lambda v, c, m, p: f"План #{m.plan.id} ({m.plan.organization.name})" if m.plan else ''
@@ -572,7 +572,7 @@ class EventView(SecureModelView):
     can_export = True
 
     form_columns = ['plan', 'name', 'Volume', 'EffTut', 'EffRub',
-                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFin',
+                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFinCurrentYear',
                     'BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther',
                     'MoneyOwn', 'MoneyLoan', 'MoneyOther', 'is_local', 'is_corrected', 'order']
 
@@ -638,7 +638,7 @@ class IndicatorView(SecureModelView):
     column_filters = ['id', 'IsMandatory', 'Group']
 
     column_formatters = {
-        'IsMandatory': lambda v, c, m, p: '✅ Да' if m.IsMandatory else '❌ Нет',
+        'IsMandatory': lambda v, c, m, p: '✅' if m.IsMandatory else '❌',
         # 'IsSummary': lambda v, c, m, p: '📊 Да' if m.IsSummary else '📈 Нет',
         # 'IsSendRealUnit': lambda v, c, m, p: '📤 Да' if m.IsSendRealUnit else '📥 Нет',
         # 'IsSelfProd': lambda v, c, m, p: '🏭 Да' if m.IsSelfProd else '🏢 Нет',
@@ -709,7 +709,7 @@ class NotificationView(SecureModelView):
     column_searchable_list = ['message']
     column_filters = ['id', 'is_read', 'user_id']
     column_formatters = {
-        'is_read': lambda v, c, m, p: '✅ Да' if m.is_read else '❌ Нет',
+        'is_read': lambda v, c, m, p: '✅' if m.is_read else '❌',
         'created_at': lambda v, c, m, p: m.created_at.strftime('%d.%m.%Y %H:%M') if m.created_at else '',
         'user': lambda v, c, m, p: f"{m.user.email}" if m.user else ''
     }
