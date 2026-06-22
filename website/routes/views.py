@@ -18,7 +18,7 @@ from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_u
 from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import HigherOrganization, Ministry, News, OblispolkomGorispolkom, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
 from .. import db
 
 from functools import wraps
@@ -116,56 +116,56 @@ def edit_user_org():
                 return redirect(request.referrer)
             
             current_user.organization_id = selected_item.id
-            current_user.higher_organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
-            current_user.region_id = None
+            # current_user.higher_organization_id = None
+            # current_user.oblispolkom_gorispolkom_id = None
+            # current_user.region_id = None
             
             flash(f'Организация изменена на: {selected_item.name}', 'success')
             
-        elif item_type == 'higher_organization':
-            selected_item = HigherOrganization.query.filter_by(id=item_id).first()
+        # elif item_type == 'higher_organization':
+        #     selected_item = HigherOrganization.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Вышестоящая организация не найдена!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Вышестоящая организация не найдена!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'higher_organization'
-            current_user.higher_organization_id = selected_item.id
-            current_user.organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
-            current_user.region_id = None
+        #     current_user.plan_type = 'higher_organization'
+        #     current_user.higher_organization_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.oblispolkom_gorispolkom_id = None
+        #     current_user.region_id = None
             
-            flash(f'Вышестоящая организация изменена на: {selected_item.name}', 'success')
+        #     flash(f'Вышестоящая организация изменена на: {selected_item.name}', 'success')
             
-        elif item_type == 'oblispolkom_gorispolkom':
-            selected_item = OblispolkomGorispolkom.query.filter_by(id=item_id).first()
+        # elif item_type == 'oblispolkom_gorispolkom':
+        #     selected_item = OblispolkomGorispolkom.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Обл/Горисполком не найден!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Обл/Горисполком не найден!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'oblispolkom_gorispolkom'
-            current_user.oblispolkom_gorispolkom_id = selected_item.id
-            current_user.organization_id = None
-            current_user.higher_organization_id = None
-            current_user.region_id = None
+        #     current_user.plan_type = 'oblispolkom_gorispolkom'
+        #     current_user.oblispolkom_gorispolkom_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.higher_organization_id = None
+        #     current_user.region_id = None
             
-            flash(f'Обл/Горисполком изменен на: {selected_item.name}', 'success')
+        #     flash(f'Обл/Горисполком изменен на: {selected_item.name}', 'success')
             
-        elif item_type == 'region':
-            selected_item = Region.query.filter_by(id=item_id).first()
+        # elif item_type == 'region':
+        #     selected_item = Region.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Регион не найден!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Регион не найден!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'region'
-            current_user.region_id = selected_item.id
-            current_user.organization_id = None
-            current_user.higher_organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
+        #     current_user.plan_type = 'region'
+        #     current_user.region_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.higher_organization_id = None
+        #     current_user.oblispolkom_gorispolkom_id = None
             
-            flash(f'Регион изменен на: {selected_item.name}', 'success')
+        #     flash(f'Регион изменен на: {selected_item.name}', 'success')
             
         else:
             flash('Неизвестный тип элемента!', 'error')
@@ -394,17 +394,9 @@ def create_plan():
         share_energy = to_decimal_1(request.form.get('share_energy'))
 
         org_id = None
-        ministry_id = None
-        region_id = None
 
         if hasattr(current_user, 'organization') and current_user.organization:
             org_id = current_user.organization.id
-        
-        if hasattr(current_user, 'ministry') and current_user.ministry:
-            ministry_id = current_user.ministry.id
-        
-        if hasattr(current_user, 'region') and current_user.region:
-            region_id = current_user.region.id
 
         def get_usd_rate_for_new_plan():
             usd_rate, error = fetch_usd_rate_from_any_source()
@@ -433,8 +425,6 @@ def create_plan():
 
         new_plan = Plan(
             org_id=org_id,
-            ministry_id=ministry_id,
-            region_id=region_id,
             year=year,
             user_id=current_user.id,
             energy_saving=energy_saving,

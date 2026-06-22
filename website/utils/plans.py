@@ -203,54 +203,70 @@ def get_plans_by_okpo():
         ).order_by(Plan.year.asc())
 
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", region_id=None, page=1, per_page=5):
-    if user.is_auditor:
-        base_query = Plan.query.filter(Plan.is_sent == True)
-    elif user.is_admin:
-        base_query = Plan.query.filter_by()
-    else:
-        base_query = Plan.query.filter_by(user_id=user.id)
-    
-    if search_name:
-        base_query = base_query.join(Organization).filter(Organization.name.ilike(f'%{search_name}%'))
-    
-    if search_okpo:
-        base_query = base_query.join(Organization).filter(Organization.okpo.ilike(f'%{search_okpo}%'))    
+    try:
+        current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         
-    if region_id:
-        base_query = base_query.join(Organization).filter(Organization.region_id == int(region_id))
-    
-    status_filters = {
-        'draft': Plan.is_draft == True,
-        'control': Plan.is_control == True,
-        'sent': Plan.is_sent == True,
-        'error': Plan.is_error == True,
-        'approved': Plan.is_approved == True
-    }
-    
-    filtered_query = base_query
-    if status_filter != 'all' and status_filter in status_filters:
-        filtered_query = filtered_query.filter(status_filters[status_filter])
-    
-    if year_filter != 'all':
-        filtered_query = filtered_query.filter(Plan.year == int(year_filter))
-    
-    total_count = filtered_query.count()
-    plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
-    
-    count_query = base_query
-    if year_filter != 'all':
-        count_query = count_query.filter(Plan.year == int(year_filter))
-    
-    status_counts = {
-        'all': count_query.count(),
-        'draft': count_query.filter(Plan.is_draft == True).count(),
-        'control': count_query.filter(Plan.is_control == True).count(),
-        'sent': count_query.filter(Plan.is_sent == True).count(),
-        'error': count_query.filter(Plan.is_error == True).count(),
-        'approved': count_query.filter(Plan.is_approved == True).count()
-    }
-    
-    return plans, total_count, status_counts
+        if user.is_auditor:
+            base_query = Plan.query.filter(Plan.is_sent == True)
+        elif user.is_admin:
+            base_query = Plan.query
+        else:
+            base_query = Plan.query.filter_by(user_id=user.id)
+        
+        # Проверяем, нужно ли делать join
+        needs_join = bool(search_name or search_okpo or region_id)
+        
+        if needs_join:
+            base_query = base_query.join(Organization, Plan.org_id == Organization.id)
+            
+            if search_name:
+                base_query = base_query.filter(Organization.name.ilike(f'%{search_name}%'))
+            
+            if search_okpo:
+                base_query = base_query.filter(Organization.okpo.ilike(f'%{search_okpo}%'))
+            
+            if region_id:
+                base_query = base_query.filter(Organization.region_id == region_id)
+        
+        status_filters = {
+            'draft': Plan.is_draft == True,
+            'control': Plan.is_control == True,
+            'sent': Plan.is_sent == True,
+            'error': Plan.is_error == True,
+            'approved': Plan.is_approved == True
+        }
+        
+        filtered_query = base_query
+        if status_filter != 'all' and status_filter in status_filters:
+            filtered_query = filtered_query.filter(status_filters[status_filter])
+        
+        if year_filter != 'all':
+            filtered_query = filtered_query.filter(Plan.year == int(year_filter))
+        
+        total_count = filtered_query.count()
+        current_app.logger.debug(f'total_count={total_count}')
+        
+        plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        current_app.logger.debug(f'plans count={len(plans)}')
+        
+        count_query = base_query
+        if year_filter != 'all':
+            count_query = count_query.filter(Plan.year == int(year_filter))
+        
+        status_counts = {
+            'all': count_query.count(),
+            'draft': count_query.filter(Plan.is_draft == True).count(),
+            'control': count_query.filter(Plan.is_control == True).count(),
+            'sent': count_query.filter(Plan.is_sent == True).count(),
+            'error': count_query.filter(Plan.is_error == True).count(),
+            'approved': count_query.filter(Plan.is_approved == True).count()
+        }
+        
+        return plans, total_count, status_counts
+        
+    except Exception as e:
+        current_app.logger.error(f'Error in get_filtered_plans: {str(e)}', exc_info=True)
+        raise
 
 def other_data_indicatorUpdate(plan_id):
     plan = Plan.query.get(plan_id)

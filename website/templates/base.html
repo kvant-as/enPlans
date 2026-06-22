@@ -259,12 +259,12 @@
     <div id="orgUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h1 id="modal-title">{{ _('Выберите отчитывающийся субъект') }}</h1>
+                <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
                 {{ icons.icon_close() }}  
             </div>
 
-            <div class="telegram-type-selector">
-                <button type="button" 
+             <!--  <div class="telegram-type-selector">
+              <button type="button" 
                         class="spravoch-btn active" 
                         data-action="select-type" 
                         data-type="organization">
@@ -287,8 +287,8 @@
                         data-action="select-type" 
                         data-type="region">
                     {{ _('Регионы') }}
-                </button>
-            </div>
+                </button> 
+            </div>-->
             <div class="modal-body">
                 <div id="step1" class="modal-step">
                     <div class="app-group">
@@ -296,7 +296,7 @@
                         <div class="input-with-icon">
                             {{ icons.icon_search() }}
                             <input type="text" data-action="search-organization" 
-                                placeholder="{{ _('Код или наименование') }}" 
+                                placeholder="{{ _('ОКПО или наименование') }}" 
                                 class="app-input" required>
                         </div>
                     </div>
@@ -315,7 +315,7 @@
                             </table>
                         </div>             
                     </div> 
-                    <!-- Пагинация -->
+
                     <div class="pagination-area" id="paginationArea" style="display: none;">
                         <div class="pagination-container">
                             <button id="prevPageBtn" class="pagination-btn prev-btn" aria-label="Предыдущая страница">
@@ -347,7 +347,7 @@
                             <div></div>
                             <button type="submit" class="main-btn main-btn-primary" data-action="submit">
                                 {{ icons.icon_confirm() }}
-                                <span class="btn-text">{{ _('Сохранить изменения') }}</span>
+                                <span class="btn-text">{{ _('Сохранить организацию') }}</span>
                             </button>
                         </div>
                     </form>

@@ -1,4 +1,3 @@
-import datetime
 import os
 from dbfread import DBF
 from flask import current_app
@@ -15,9 +14,9 @@ def create_database(app, db):
         filling_database(db)
 
 def is_db_empty():
-    from .models import Organization
+    from .models import User
     return all([
-        Organization.query.count() == 0,
+        User.query.count() == 0,
     ])
 
 def read_dbf(file_path, columns):
@@ -29,128 +28,181 @@ def read_dbf(file_path, columns):
 
 def filling_database(db):
     if is_db_empty():
-        from .models import User, Organization, Unit, Direction, Indicator, Ministry, Region, News
-        from sqlalchemy.exc import IntegrityError
+        from .models import User, Organization, Unit, Direction, Indicator, Region, News
         current_app.logger.debug('Filling is in progress...')
 
-        ### ORGANIZATION DATA ###
-        website_path = os.path.dirname(os.path.abspath(__file__))
-
-        Brest_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Брест.dbf')
-        Vitebsk_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Витебск.dbf')
-        Gomel_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Гомель.dbf')
-        Grodno_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Гродно.dbf')
-        Minsk_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Минск.dbf')
-        MinskRegion_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Минск_область.dbf')
-        Migilev_org_data_path = os.path.join(website_path, 'static/files/organizations', 'Могилев.dbf')
-
-        columns_org = ['OKPO', 'NAME', 'MIN', 'UNP']
-
-        Brest_org_data = read_dbf(Brest_org_data_path, columns_org)
-        Vitebsk_org_data = read_dbf(Vitebsk_org_data_path, columns_org)
-        Gomel_org_data = read_dbf(Gomel_org_data_path, columns_org)
-        Grodno_org_data = read_dbf(Grodno_org_data_path, columns_org)
-        Minsk_org_data = read_dbf(Minsk_org_data_path, columns_org)
-        MinskRegion_org_data = read_dbf(MinskRegion_org_data_path, columns_org)
-        Migilev_org_data = read_dbf(Migilev_org_data_path, columns_org)
-
-        city_all_data = pd.concat([
-            pd.DataFrame(Brest_org_data, columns=columns_org),
-            pd.DataFrame(Vitebsk_org_data, columns=columns_org),
-            pd.DataFrame(Gomel_org_data, columns=columns_org),
-            pd.DataFrame(Grodno_org_data, columns=columns_org),
-            pd.DataFrame(Minsk_org_data, columns=columns_org),
-            pd.DataFrame(MinskRegion_org_data, columns=columns_org),
-            pd.DataFrame(Migilev_org_data, columns=columns_org)
-        ], ignore_index=True)
-
-        MinskRegion_min_data_path = os.path.join(website_path, 'static/files/ministerstvo', 'MinskReg_min.dbf')
-        columns_min = ['MIN', 'NAME']
-        MinskRegion_min_data = read_dbf(MinskRegion_min_data_path, columns_min)
-
-        min_all_data = pd.DataFrame(MinskRegion_min_data, columns=columns_min)
-
-        ministries_dict = {}
-
-        for _, row in min_all_data.drop_duplicates('MIN').iterrows():
-            ministry = Ministry.query.filter_by(id=row['MIN']).first()
-
-            if not ministry:
-                ministry = Ministry(
-                    id=row['MIN'],
-                    name=row['NAME']
-                )
-                db.session.add(ministry)
-
-            ministries_dict[row['MIN']] = ministry
-
-        db.session.commit()
-
-        for _, row in city_all_data.iterrows():
-            organization_name = ' '.join(filter(None, [
-                row['NAME']
-            ]))
-
-            existing_org = Organization.query.filter_by(okpo=row['OKPO']).first()
-
-            if not existing_org:
-                organization = Organization(
-                    okpo=row['OKPO'],
-                    name=organization_name,
-                    ministry_id=row['MIN'],
-                    ynp=row['UNP']
-                )
-                db.session.add(organization)
-
-        try:
-            db.session.commit()
-            current_app.logger.debug("The data has been successfully added to the database")
-        except IntegrityError as e:
-            db.session.rollback()
-            current_app.logger.error(f"Data integrity error: {e}")
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"An error has occurred: {e}")
-
-        dop_org_data = [
-            ('Брестское областное управление', '100000001000'),
-            ('Витебское областное управление', '200000002000'),
-            ('Гомельское областное управление', '300000003000'),
-            ('Гродненское областное управление', '400000004000'),
-            ('Управление г. Минск', '500000005000'),
-            ('Минское областное управление', '600000006000'),
-            ('Могилевское областное управление', '700000007000'),
-            ('Департамент по энергоэффективности', '800000008000'),
-        ]
-
-        for name, okpo in dop_org_data:
-            dop_org = Organization(name=name, okpo=str(okpo))
-            db.session.add(dop_org)
-        db.session.commit()
-        ### ----------- ###
 
         ### REGION DATA ###
         region_data = [
-            ('Брестская область'),
-            ('Витебская область'),
-            ('Гомельская область'),
-            ('Гродненская область'),
-            ('г. Минск'),
-            ('Минская область'),
-            ('Могилевская область'),
+            (1, 'Брестская область'),
+            (2, 'Витебская область'),
+            (3, 'Гомельская область'),
+            (4, 'Гродненская область'),
+            (5, 'г. Минск'),
+            (6, 'Минская область'),
+            (7, 'Могилевская область'),
         ]
 
-        for name in region_data:
-            new_region = Region(name=name)
+        for number, name in region_data:
+            new_region = Region(number=number, name=name)
             db.session.add(new_region)
 
         db.session.commit()
         ### ----------- ###
 
+        ### ORGANIZATION DATA ###
+        def load_organizations_from_excel():
+            base_path = os.path.join('website', 'static', 'files', 'spravochniki')
+            
+            files = {
+                'regular': os.path.join(base_path, 'Список юр.лиц.xlsx'),
+                'coordinator': os.path.join(base_path, 'Список согласовывающих.xlsx'),
+                'approver': os.path.join(base_path, 'Список утвержающих.xlsx')
+            }
+            
+            existing_orgs = {}
+            skipped_duplicates = 0
+            
+            for org_type, file_path in files.items():
+                try:
+                    if not os.path.exists(file_path):
+                        current_app.logger.warning(f'Файл не найден: {file_path}')
+                        continue
+                    
+                    df = pd.read_excel(file_path, header=3)
+                    df.columns = ['num', 'ynp', 'okpo', 'name']
+                    df = df.dropna(subset=['ynp', 'name'])
+                    df['ynp'] = df['ynp'].astype(str).str.strip()
+                    
+                    if 'okpo' in df.columns:
+                        df['okpo'] = df['okpo'].apply(lambda x: str(int(x)) if pd.notna(x) and x != '' else '')
+                    
+                    for _, row in df.iterrows():
+                        ynp = str(row['ynp']).strip()
+                        name = str(row['name']).strip()
+                        okpo = str(row['okpo']).strip() if pd.notna(row['okpo']) and str(row['okpo']).strip() != '' else ''
+                        
+                        if not okpo or okpo == '' or okpo == 'nan':
+                            skipped_duplicates += 1
+                            continue
+                        
+                        existing_org_by_okpo = Organization.query.filter_by(okpo=okpo).first()
+                        if existing_org_by_okpo:
+                            if ynp in existing_orgs:
+                                org = existing_orgs[ynp]
+                            else:
+                                org = existing_org_by_okpo
+                                existing_orgs[ynp] = org
+                            
+                            if org_type == 'regular':
+                                org.is_regular = True
+                            elif org_type == 'coordinator':
+                                org.is_coordinator = True
+                            elif org_type == 'approver':
+                                org.is_approver = True
+                            skipped_duplicates += 1
+                            continue
+                        
+                        if ynp in existing_orgs:
+                            org = existing_orgs[ynp]
+                            if org_type == 'regular':
+                                org.is_regular = True
+                            elif org_type == 'coordinator':
+                                org.is_coordinator = True
+                            elif org_type == 'approver':
+                                org.is_approver = True
+                            continue
+                        
+                        org = Organization(
+                            name=name,
+                            ynp=ynp if ynp and ynp != 'nan' else None,
+                            okpo=okpo if okpo and okpo != 'nan' else None,
+                            is_active=True,
+                            region_id=None
+                        )
+                        
+                        if org_type == 'regular':
+                            org.is_regular = True
+                            org.is_coordinator = False
+                            org.is_approver = False
+                        elif org_type == 'coordinator':
+                            org.is_regular = False
+                            org.is_coordinator = True
+                            org.is_approver = False
+                        elif org_type == 'approver':
+                            org.is_regular = False
+                            org.is_coordinator = False
+                            org.is_approver = True
+                        
+                        db.session.add(org)
+                        existing_orgs[ynp] = org
+                        
+                except Exception as e:
+                    current_app.logger.error(f'Ошибка при загрузке файла {file_path}: {str(e)}')
+                    continue
+            
+            db.session.commit()
+            current_app.logger.info(f'Загружено {len(existing_orgs)} уникальных организаций, пропущено дубликатов: {skipped_duplicates}')
+        
+        def assign_regions_to_organizations():
+            try:
+                organizations = Organization.query.filter_by(region_id=None).all()
+                
+                assigned_count = 0
+                skipped_count = 0
+                deleted_count = 0
+                
+                for org in organizations:
+                    if not org.okpo or org.okpo == '' or org.okpo == 'nan':
+                        db.session.delete(org)
+                        deleted_count += 1
+                        continue
+                    
+                    okpo_str = str(org.okpo).strip()
+                    
+                    if len(okpo_str) < 4:
+                        db.session.delete(org)
+                        deleted_count += 1
+                        continue
+                    
+                    try:
+                        region_number = int(okpo_str[-4])
+                    except ValueError:
+                        db.session.delete(org)
+                        deleted_count += 1
+                        continue
+                    
+                    region = Region.query.filter_by(number=region_number).first()
+                    if region:
+                        org.region_id = region.id
+                        assigned_count += 1
+                    else:
+                        db.session.delete(org)
+                        deleted_count += 1
+                
+                db.session.commit()
+                current_app.logger.info(f'Регионы назначены для {assigned_count} организаций, удалено {deleted_count}')
+            except Exception as e:
+                current_app.logger.error(f'Ошибка при назначении регионов: {str(e)}')
+                db.session.rollback()
+
+        def org_migration():
+            try:
+                load_organizations_from_excel()
+                assign_regions_to_organizations()
+                current_app.logger.info('Миграция организаций успешно завершена')
+            except Exception as e:
+                current_app.logger.error(f'Ошибка при миграции: {str(e)}')
+                db.session.rollback()
+                
+        ### ----------- ###
+        
+        org_migration()
+
         ### USER DATA ###
         users_data = [
-            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 14),
-            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, 6471),
+            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 54),
+            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, None),
 
             # ('', os.getenv('auditoremailBrest'), 'Иванов1', 'Иван', 'Иванович', '+11', False, True, 7940),
             # ('', os.getenv('auditoremailVitebsk'), 'Иванов2', 'Иван', 'Иванович', '+22', False, True, 7941),
@@ -160,8 +212,8 @@ def filling_database(db):
             # ('', os.getenv('auditoremailMogilev'), 'Иванов6', 'Иван', 'Иванович', '+66', False, True, 7946),
             # ('', os.getenv('auditoremailMinsk'), 'Иванов7', 'Иван', 'Иванович', '+77', False, True, 7944),
             
-            ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 6443),
-            ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 7947),
+            ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 413),
+            ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 124),
 
             # ('', os.getenv('auditoremailBrestTEST'), 'Иванов1', 'Иван', 'Иванович', '+1', False, True, 7940),
             # ('', os.getenv('auditoremailVitebskTEST'), 'Иванов2', 'Иван', 'Иванович', '+2', False, True, 7941),
@@ -460,11 +512,6 @@ def filling_database(db):
             )
             db.session.add(news)
         db.session.commit()
-        
-        
-        
-        
-        
         
         current_app.logger.debug('The filling is finished!')
     else:

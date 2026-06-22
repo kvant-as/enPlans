@@ -21,11 +21,11 @@ def type_of_export(plan: Plan) -> str:
                     return "org_small"
         return "org_small"
     
-    if plan.ministry_id:
-        return "ministry"
+    # if plan.ministry_id:
+    #     return "ministry"
     
-    if plan.region_id:
-        return "region"
+    # if plan.region_id:
+    #     return "region"
     
     raise ValueError("Error for read type of plan")
 
@@ -59,7 +59,6 @@ def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
                         joinedload(Plan.indicators_usage).joinedload(IndicatorUsage.indicator).joinedload(Indicator.unit),
                         joinedload(Plan.events).joinedload(Event.direction).joinedload(Direction.unit),
                         joinedload(Plan.organization),
-                        joinedload(Plan.ministry),
                         joinedload(Plan.region),
                     ).filter(Plan.id == plan_id).first()
                     

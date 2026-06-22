@@ -151,6 +151,25 @@
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
       <div class="dates-list">
+        
+        <div class="date-item" data-type="saving">
+          <div class="date-icon">
+              {{ icons.icon_measure_saving() }}
+          </div>
+          <div class="date-content">
+              <div class="date-info">
+                  <span class="date-label">{{ _('Потребление') }}</span>
+                  {% if plan.plan_type == 'org_small' %}
+                      <span class="date-day" style="color: var(--green-main);">До 25 тыс. т.</span>
+                  {% elif plan.plan_type == 'org_large' %}
+                      <span class="date-day" style="color: var(--green-main);">Более 25 тыс. т.</span>
+                  {% else %}
+                      <span class="date-empty">—</span>
+                  {% endif %}
+              </div>
+          </div>
+        </div>
+
         <div class="date-item" data-type="created">
           <div class="date-icon">
             {{ icons.icon_calendar() }}
@@ -199,25 +218,6 @@
                 <span class="date-empty">{{ _('Не отправлен') }}</span>
               {% endif %}
             </div>
-          </div>
-        </div>
-
-        
-        <div class="date-item" data-type="created">
-          <div class="date-icon">
-              {{ icons.icon_measure_saving() }}
-          </div>
-          <div class="date-content">
-              <div class="date-info">
-                  <span class="date-label">{{ _('Потребление') }}</span>
-                  {% if plan.plan_type == 'org_small' %}
-                      <span class="date-day" style="color: var(--green-main);">До 25 тыс. т.</span>
-                  {% elif plan.plan_type == 'org_large' %}
-                      <span class="date-day" style="color: var(--green-main);">Более 25 тыс. т.</span>
-                  {% else %}
-                      <span class="date-empty">—</span>
-                  {% endif %}
-              </div>
           </div>
         </div>
       </div>

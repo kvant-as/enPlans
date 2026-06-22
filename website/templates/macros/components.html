@@ -557,7 +557,7 @@
             
             <div class="plan-cont {% if plan.is_draft %}plan-cont-redac {% elif plan.is_error %}plan-cont-eror {% elif plan.is_control %}plan-cont-control {% elif plan.is_sent %}plan-cont-sent {% elif plan.is_approved %}plan-cont-sub {% endif %}"
                  data-plan="choose"
-                 data-name="{{ (plan.organization.name if plan.organization else plan.ministry.name if plan.ministry else plan.region.name if plan.region else '') | lower | e }}"
+                 data-name="{{ (plan.organization.name if plan.organization else '') | lower | e }}"
                  data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}">
                 
                 {% if compact_view %}
@@ -567,10 +567,6 @@
                                 <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
                                 {% if plan.organization.name %}
                                     <span class="structure-plan"></span>{{ plan.organization.name | truncate(35, True, '...') }}
-                                {% elif plan.ministry.name %}
-                                    <span class="structure-plan">Министерство</span>{{ plan.ministry.name | truncate(35, True, '...') }}
-                                {% elif plan.region.name %}
-                                    <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
                                 {% else %}
                                     {{ _('План на') }}
                                 {% endif %}
@@ -602,10 +598,6 @@
                                     <div>
                                         {% if plan.organization.name %}
                                             <span class="structure-plan"></span>{{ plan.organization.name | truncate(35, True, '...') }}
-                                        {% elif plan.ministry.name %}
-                                            <span class="structure-plan">Министерство</span>{{ plan.ministry.name | truncate(35, True, '...') }}
-                                        {% elif plan.region.name %}
-                                            <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
                                         {% else %}
                                             {{ _('План на') }}
                                         {% endif %}

@@ -40,9 +40,7 @@ def user_without_param():
             )
             
             has_entity = (
-                current_user.organization_id or
-                current_user.ministry_id or
-                current_user.region_id
+                current_user.organization_id
             )
             
             if has_required_fields and has_entity:
@@ -71,17 +69,13 @@ def user_with_all_params():
                 return redirect(url_for('auth.param'))
             
             entity_fields = [
-                current_user.organization_id,
-                current_user.ministry_id,
-                current_user.region_id,
-                current_user.higher_organization_id,
-                current_user.oblispolkom_gorispolkom_id
+                current_user.organization_id
             ]
             
             filled_entities = [field for field in entity_fields if field is not None]
             
             if len(filled_entities) == 0:
-                flash("Необходимо выбрать принадлежность", "error")
+                flash("Необходимо выбрать предприятие", "error")
                 return redirect(url_for('auth.param'))
             
             if len(filled_entities) > 1:
@@ -176,10 +170,9 @@ def param():
         phone = request.form.get('phone')
         post = request.form.get('post')
         organization_id = request.form.get('organization_id')
-        ministry_id = request.form.get('ministry_id')
-        region_id = request.form.get('region_id')
+        user_type = request.form.get('entity_type')
         from ..user import add_param
-        return add_param(first_name, last_name, patronymic_name, phone, organization_id, ministry_id, region_id, post)
+        return add_param(first_name, last_name, patronymic_name, phone, organization_id, user_type, post)
     
 @auth.route('/edit-param', methods=['POST'])
 def edit_param():
