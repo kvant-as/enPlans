@@ -59,7 +59,6 @@ def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
                         joinedload(Plan.indicators_usage).joinedload(IndicatorUsage.indicator).joinedload(Indicator.unit),
                         joinedload(Plan.events).joinedload(Event.direction).joinedload(Direction.unit),
                         joinedload(Plan.organization),
-                        joinedload(Plan.region),
                     ).filter(Plan.id == plan_id).first()
                     
                     if not plan:

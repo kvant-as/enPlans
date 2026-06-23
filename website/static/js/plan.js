@@ -170,6 +170,7 @@ class PlanIndicators {
         this.updateTutResults();
     }
 
+
     initAddNumericInputsByGroup(groupNumber) {
         const inputs = [
             document.querySelector('#AddIndicatorModal input[data-year="before"]'),
@@ -1927,11 +1928,188 @@ function initStatusProgress() {
 }
 
 
+function checkCategoryRequired() {
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const categorySection = document.getElementById('category-section');
+    const nameSection = document.getElementById('name-section');
+    const submitBtn = document.getElementById('submit-indicator-btn');
+    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    const nameInput = document.getElementById('name-section-input');
+    
+    if (!selectedIndicatorName || !categorySection || !nameSection) return;
+    
+    const indicatorText = selectedIndicatorName.textContent;
+    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    
+    function validateForm() {
+        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
+        const isNameFilled = nameInput && nameInput.value.trim() !== '';
+        
+        if (submitBtn) {
+            if (isCategoryRequired) {
+                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
+            } else {
+                submitBtn.disabled = false;
+            }
+        }
+    }
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        nameSection.style.display = 'block';
+        
+        categoryRadios.forEach(radio => {
+            radio.removeEventListener('change', validateForm);
+            radio.addEventListener('change', validateForm);
+        });
+        
+        if (nameInput) {
+            nameInput.removeEventListener('input', validateForm);
+            nameInput.addEventListener('input', validateForm);
+        }
+        
+        validateForm();
+    } else {
+        categorySection.style.display = 'none';
+        nameSection.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
+}
 
 
 
+class SendModalPreview {
+    constructor(modalId) {
+        this.modal = document.getElementById(modalId);
+        if (!this.modal) return;
 
+        this.progressBar = this.modal.querySelector('#modal-progress-bar');
 
+        this.stepEls = Array.from(this.modal.querySelectorAll('[id^="step"]'))
+            .filter(el => /^step\d+$/.test(el.id))
+            .sort((a, b) => parseInt(a.id.slice(4), 10) - parseInt(b.id.slice(4), 10));
+
+        this.totalSteps = this.stepEls.length || 1;
+        this.currentStep = 1;
+
+        this.buttons = {
+            step1Next: this.modal.querySelector('#step1-next-btn'),
+            step2Back: this.modal.querySelector('#step2-back-btn'),
+            step2Next: this.modal.querySelector('#step2-next-btn'),
+            step3Back: this.modal.querySelector('#step3-back-btn')
+        };
+
+        this.submitButton = this.modal.querySelector('#submit-sent-button');
+
+        this.init();
+        this.updateButtonsState();
+    }
+
+    init() {
+        this.buttons.step1Next?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.validateStep1()) {
+                this.nextStep();
+            }
+        });
+
+        this.buttons.step2Back?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.prevStep();
+        });
+
+        this.buttons.step2Next?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.validateStep2()) {
+                this.nextStep();
+            }
+        });
+
+        this.buttons.step3Back?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.prevStep();
+        });
+
+        this.updateButtonsState();
+    }
+
+    activeStepEl() {
+        return this.stepEls[this.currentStep - 1];
+    }
+
+    updateProgressBar() {
+        if (!this.progressBar) return;
+        const progress = (this.currentStep / this.totalSteps) * 100;
+        this.progressBar.style.width = progress + '%';
+    }
+
+    nextStep() {
+        if (this.currentStep >= this.totalSteps) return;
+        this.activeStepEl().style.display = 'none';
+        this.currentStep++;
+        this.activeStepEl().style.display = 'block';
+        this.updateProgressBar();
+        this.updateButtonsState();
+    }
+
+    prevStep() {
+        if (this.currentStep <= 1) return;
+        this.activeStepEl().style.display = 'none';
+        this.currentStep--;
+        this.activeStepEl().style.display = 'block';
+        this.updateProgressBar();
+        this.updateButtonsState();
+    }
+
+    updateButtonsState() {
+        if (this.buttons.step1Next) {
+            const hasSelectedIndicator = document.querySelector('#selected-indicator-display')?.style.display !== 'none';
+            this.buttons.step1Next.disabled = !hasSelectedIndicator;
+        }
+        if (this.buttons.step2Next) {
+            this.buttons.step2Next.disabled = false;
+        }
+        if (this.submitButton) {
+            const hasCertificate = document.querySelector('#drop-certificate-area.has-file') !== null;
+            this.submitButton.disabled = !hasCertificate;
+        }
+    }
+
+    validateStep1() {
+        const selectedDisplay = document.querySelector('#selected-indicator-display');
+        if (selectedDisplay && selectedDisplay.style.display === 'none') {
+            alert('Пожалуйста, выберите индикатор');
+            return false;
+        }
+        return true;
+    }
+
+    validateStep2() {
+        return true;
+    }
+
+    submitForm() {
+        const form = this.modal.querySelector('#sentForm');
+        if (form) {
+            form.submit();
+        }
+    }
+
+    close() {
+        this.modal.style.display = 'none';
+    }
+
+    resetForm() {
+        this.stepEls.forEach((el, i) => {
+            el.style.display = i === 0 ? 'block' : 'none';
+        });
+        this.currentStep = 1;
+        this.updateProgressBar();
+        this.updateButtonsState();
+    }
+}
 
 class CertificateUploadHandler {
     constructor() {
@@ -3128,7 +3306,7 @@ function initEditableHeaders() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('sentmodal')) {
+    if (document.getElementById('SendModal')) {
         new CertificateUploadHandler();
     }
 
@@ -3200,11 +3378,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-
     const sentPlanButton = document.getElementById('sentPlanButton');
-    const sentmodal = document.getElementById('sentmodal');
-    if (sentmodal && sentPlanButton) {
-        handleModal(sentmodal, sentPlanButton, sentmodal.querySelector('.close'));
+    const SendModal = document.getElementById('SendModal');
+    if (SendModal && sentPlanButton) {
+        handleModal(SendModal, sentPlanButton, SendModal.querySelector('.close'));
+        
+    
+        window.sendModalInstance = new SendModalPreview('SendModal');
+        
+   
+        sentPlanButton.addEventListener('click', function() {
+            if (window.sendModalInstance) {
+                window.sendModalInstance.resetForm();
+            }
+        });
     }
 
     if (document.getElementById('editPlanButton')) {
@@ -3392,6 +3579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         customSmoothScroll(ticketsContainer, ticketsContainer.scrollHeight);
     }
 
+    
     const addEventModal = document.getElementById('AddEventModal');
     const addEventModal1 = new EventModal('AddEventModal');
     if (addEventModal && addEventModal1) {

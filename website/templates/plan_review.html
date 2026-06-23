@@ -228,11 +228,11 @@
 <div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
   <div class="modal-content" style="width: fit-content">
     <div class="modal-header">
-      <a id="modal-title">{{ _('Выберите тип плана') }}</a>
+      <a id="modal-title">{{ _('Какое у вас потребление?') }}</a>
     </div>
-    <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST">
+    <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST" class="radio-org-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="radio-org-container">
+      <div class="radio-org-container two-col">
         <label>
           <input
             type="radio"
@@ -256,7 +256,7 @@
             class="radio-org-input"
           />
           <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_half() }}
+            {{ icons.icon_half_2() }}
             <div class="radio-org-subtitle">Организация с потреблением</div>
             <div class="radio-org-title">Более 25 тыс. т у.т.</div>
           </div>
@@ -273,6 +273,98 @@
 </div>
 
 {{ affects.bg_effect() }} 
+
+{% if SendModal %}
+<div id="SendModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1 id="modal-title">{{ _('Отправка плана') }}</h1>
+            {{ icons.icon_close() }}
+        </div>
+        <div class="modal-body">
+            
+            <div class="progress-modal-bar-container">
+                <div class="progress-modal-bar" id="modal-progress-bar" style="width: 33%"></div>
+            </div>
+            <div id="step1" class="modal-step">
+              
+              <div class="button-auth-area" id="step1-buttons">
+                    <div></div>
+                    <button type="button" class="svg-btn blue" id="step1-next-btn">
+                        <span class="btn-text">{{ _('Далее') }}</span>
+                        {{ icons.next_icon() }}
+                    </button>
+                </div>
+            </div>
+            <div id="step2" class="modal-step" style="display: none;">
+
+
+
+              <div class="button-auth-area" id="step2-buttons">
+                  <button type="button" class="svg-btn blue" id="step2-next-btn" data-action="next-step-2">
+                      <span class="btn-text">{{ _('Далее') }}</span>
+                      {{ icons.next_icon() }}
+                  </button>
+                  <button type="button" class="svg-btn" id="step2-back-btn">
+                      {{ icons.back_icon() }}
+                      <span class="btn-text">{{ _('Назад') }}</span>
+                  </button>
+              </div>
+            </div>
+
+            <div id="step3" class="modal-step" style="display: none;">
+              <div class="button-auth-area" id="step3-buttons">
+                <!-- <button type="submit" class="main-btn main-btn-primary">
+                    {{ icons.icon_add() }}
+                    <span class="btn-text">{{ _('Добавить мероприятие') }}</span>
+                </button> -->
+
+                <div class="modal-subtext">
+                    <p class="first-child">{{ _('Вы действительно хотите отправить план?') }}</p>
+                    <p>
+                        {{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }} 
+                        <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
+                    </p>
+                </div>
+                <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="sent">
+                    
+                    <div class="drop-certificate-container">
+                        <div id="drop-certificate-area" class="drop-certificate-area">
+                            <div class="drop-certificate-content">
+                                <div class="drop-certificate-icon">
+                                    {{ icons.icon_add() }}
+                                </div>
+                                <p class="drop-certificate-text">
+                                    {{ _('Перетащите файл сертификата сюда или') }} 
+                                    <label for="certificate-to-check" class="drop-certificate-label">{{ _('нажмите для выбора') }}</label>
+                                </p>
+                                <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+                            </div>
+                            <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input">
+                        </div>
+                    </div>
+                    
+                    <div class="button-auth-area">
+                        <button type="submit" class="main-btn main-btn-delete" id="submit-sent-button" disabled>
+                            {{ icons.icon_confirm() }}
+                            <span class="btn-text">{{ _('Да, отправить план') }}</span>
+                        </button>
+                        <button type="button" class="svg-btn" id="step3-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
+                        </button>
+                    </div>
+                </form>
+
+            
+              </div>
+          </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {

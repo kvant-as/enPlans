@@ -1034,7 +1034,14 @@ header nav{
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   margin: 20px 0;
+}
 
+.radio-org-container.two-col{
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.radio-org-form{
+  max-width: 400px;
 }
 
 .radio-org-card {
@@ -1054,6 +1061,13 @@ header nav{
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+.radio-org-card * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .radio-org-card:hover {
@@ -1083,32 +1097,28 @@ header nav{
   border-radius: 50%;
   border: 2px solid #ccc;
   padding: 4px;
-  margin-bottom: 12px;
+
   transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   position: relative;
   z-index: 1;
 }
 
 .radio-org-input:checked + .radio-org-card svg {
-  border-color: var(--green-light);
-  background-color: var(--green-light);
+  border: 2px solid var(--green-main);
   transform: scale(0.8);
-  opacity: 0;
+  color: var(--green-main);
 }
 
 .radio-org-input:checked + .radio-org-card svg path {
-  opacity: 0;
+  background: white;
+
 }
 
 .radio-org-input:checked + .radio-org-card::before {
   content: '';
   position: absolute;
   top: 22px;
-  left: 50%;
-  transform: translateX(-50%) scale(0);
-  width: 22px;
-  height: 22px;
-  background: var(--green-light);
+
   border-radius: 50%;
   animation: magicPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   z-index: 2;
@@ -1139,7 +1149,7 @@ header nav{
 .radio-org-subtitle {
   font-size: 11px;
   color: #666;
-  margin-top: 4px;
+  margin: 4px 0;
   opacity: 0.8;
 }
 
@@ -3555,6 +3565,7 @@ input::placeholder {
 }
 
 .employee-position{
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-subtitle2);
   overflow: hidden;
@@ -3669,10 +3680,9 @@ hr {
 }
 
 .coeff-section {
-  background: #f8f9fa;
+  // background: #f8f9fa;
   border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 10px;
+  padding: 10px 0;
 }
 
 .coeff-section-title {
@@ -3832,7 +3842,11 @@ hr {
   background: #f8f9fa;
   border-radius: 12px;
   padding: 20px;
-  margin-bottom: 10px;
+
+}
+
+.name-section input{
+  padding: 9px 16px;
 }
 
 .name-section-title {
@@ -3847,10 +3861,16 @@ hr {
 }
 
 .category-section {
-  background: #f8f9fa;
   border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 10px;
+  padding: 10px 0;
+  padding-bottom: 0;
+}
+
+.category-section hr{
+  margin: 15px 0 !important;
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb 20%, #e5e7eb 80%, transparent);
 }
 
 .category-section-title {

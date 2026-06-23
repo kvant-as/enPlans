@@ -17,7 +17,7 @@ from website.user import send_email
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
-from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanColumnConfig, Ticket, Event
+from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanColumnConfig, Ticket, Event, Organization
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
@@ -45,11 +45,16 @@ def plan_review(token):
         current_user.organization is not None
     )
 
+    coordinator_organizations = Organization.query.filter_by(is_coordinator=True).all()
+    approver_organizations = Organization.query.filter_by(is_approver=True).all()
+
     return render_template('plan_review.html', 
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
-                        hide_header=False,
-                        sentmodal=current_plan.is_control)
+                        SendModal=current_plan.is_control, 
+                        coordinator_organizations=coordinator_organizations,
+                        approver_organizations=approver_organizations
+                        )
 
 @plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -93,7 +98,7 @@ def plan_indicators(token):
                         indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
                         confirmModal = True,
-                        sentmodal=current_plan.is_control,
+                        # SendModal=current_plan.is_control,
                         context_menu = True)
 
 @plan_bp.route('/update-column-label/<token>', methods=['POST'])
@@ -417,7 +422,7 @@ def plan_event(event_type, token):
                         hide_header=False,
                         confirmModal=True,
                         directions=directions,
-                        sentmodal=current_plan.is_control,
+                        # SendModal=current_plan.is_control,
                         context_menu=True,
                         has_events=has_events
                     )

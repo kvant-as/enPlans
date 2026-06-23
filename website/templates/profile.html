@@ -268,7 +268,17 @@
           </div>
           <div class="date-content">
             <div class="date-info">
-              <span class="date-label">{{ _('Id пользователя') }}: demo-{{ current_user.id }}</span>
+              {% if current_user.is_admin %}
+                <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_auditor %}
+                <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_approver %}
+                <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_reader %}
+                <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
+              {% else %}
+                <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+              {% endif %}
             </div>
           </div>
         </div>

@@ -5,9 +5,8 @@ from sqlalchemy import func
 from website import db
 from website.email import send_email
 from website.models import User
-import logging
 from flask import request, flash, redirect, session, url_for
-
+import logging
 import re
 
 from flask_login import (
@@ -16,6 +15,8 @@ from flask_login import (
 
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash
+
+logger = logging.getLogger(__name__)
 
 def gener_password():
     length=5
@@ -125,17 +126,17 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     if user_type == 'respondent':
         current_user.is_auditor = False
         current_user.is_approver = False
-        current_app.logging.info(f'User {current_user.id} set as respondent')
+        current_app.logger.info(f'User {current_user.id} set as respondent')
     elif user_type == 'auditor':
         current_user.is_auditor = True
         current_user.is_approver = False
-        current_app.logging.info(f'User {current_user.id} set as auditor')
+        current_app.logger.info(f'User {current_user.id} set as auditor')
     elif user_type == 'approver':
         current_user.is_auditor = False
         current_user.is_approver = True
-        current_app.logging.info(f'User {current_user.id} set as approver')
+        current_app.logger.info(f'User {current_user.id} set as approver')
     else:
-        current_app.logging.warning(f'Unknown user_type: {user_type} for user {current_user.id}')
+        current_app.logger.warning(f'Unknown user_type: {user_type} for user {current_user.id}')
         flash(f'Такого типа пользователя не существует: {str(e)}', 'error')
         return redirect(url_for('auth.param'))
         

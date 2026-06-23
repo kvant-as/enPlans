@@ -74,10 +74,14 @@
 }
 
 .categories-modern {
-  background-color: white !important;
   border-radius: 16px;
   border: 1px solid var(--faq-border);
   overflow: hidden;
+
+  background: var(--faq-card-bg);
+  overflow: hidden;
+  box-shadow: var(--faq-shadow);
+
 }
 
 .category-modern {
@@ -111,7 +115,7 @@
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.4s ease;
-  background: #fafafa;
+  // background: #fafafa;
 }
 
 .category-modern.active .questions-list-modern {
@@ -184,9 +188,9 @@
 
 
 .answer-header-modern {
-    padding: 28px 24px 20px;
-    border-bottom: 1px solid var(--faq-border);
-    margin: 0 auto;
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--faq-border);
+  margin: 0 auto;
 }
 
 .answer-title-modern {
@@ -821,13 +825,22 @@ h3 {
   color: #000000; 
 }
 
+.status-draft .status-icon{
+  background: var(--background-redaced);
+}
+
+.status-draft .status-badge { 
+  background: rgba(112, 96, 255, 0.2);
+  color: rgb(38, 22, 68)
+}
+
 .status-control .status-icon { 
   background: rgba(96, 255, 228, 0.2);
 }
 
 .status-control .status-badge { 
   background: rgba(96, 255, 228, 0.2);
-  color: rgb(59, 179, 159)
+  color: rgb(37, 108, 96)
 }
 
 .status-sent .status-icon { 
@@ -845,7 +858,7 @@ h3 {
 
 .status-error .status-badge { 
   background: var(--background-erorsed);
-  color: #dc3545; 
+  color: #932631; 
 }
 
 .status-approved .status-icon { 
