@@ -320,6 +320,26 @@ def get_regions_api():
         logging.error(f"Error fetching regions: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
  
+@api_bp.route('/plan-approval-slider/<token>')
+@login_required
+def get_plan_approval_slider(token):
+    from flask import render_template_string
+    from app.macros import plan_agree_slider
+    
+    plan = Plan.query.filter_by(token=token).first_or_404()
+    
+    html = render_template_string(
+        '{{ plan_agree_slider(plan, current_user) }}',
+        plan=plan,
+        current_user=current_user,
+        plan_agree_slider=plan_agree_slider
+    )
+    
+    return jsonify({
+        'success': True,
+        'html': html
+    })
+
 # @api_bp.route('/higher-organizations')
 # @login_required
 # def get_higher_organizations_api():

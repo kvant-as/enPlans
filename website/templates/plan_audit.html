@@ -125,39 +125,38 @@
     {% endif %}
     
     {% if org %}
-      {% if org %}
+      <div class="app-group">
+        <label>{{ _('Наименование') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_org() }}
+          <input type="text" value="{{ org }}" class="app-input" />
+        </div>
+      </div>
+      <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Наименование') }}</label>
+          <label>{{ _('ОКПО') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_org() }}
-            <input type="text" value="{{ org }}" class="app-input" />
+            <input
+              type="text"
+              value="{{ plan.user.organization.okpo }}"
+              class="app-input"
+            />
           </div>
         </div>
-        <div class="row-app-group">
-          <div class="app-group">
-            <label>{{ _('ОКПО') }}</label>
-            <div class="input-with-icon">
-              {{ icons.icon_org() }}
-              <input
-                type="text"
-                value="{{ plan.user.organization.okpo }}"
-                class="app-input"
-              />
-            </div>
-          </div>
-          <div class="app-group">
-            <label>{{ _('УНП') }}</label>
-            <div class="input-with-icon">
-              {{ icons.icon_org() }}
-              <input
-                type="text"
-                value="{{ plan.user.organization.ynp }}"
-                placeholder="Унп организации"
-                class="app-input"
-              />
-            </div>
+        <div class="app-group">
+          <label>{{ _('УНП') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_org() }}
+            <input
+              type="text"
+              value="{{ plan.user.organization.ynp }}"
+              placeholder="Унп организации"
+              class="app-input"
+            />
           </div>
         </div>
+      </div>
     {% endif %}
     
     <hr>

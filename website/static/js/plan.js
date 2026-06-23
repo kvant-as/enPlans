@@ -1982,17 +1982,38 @@ function checkCategoryRequired() {
 
 class SendModalPreview {
     constructor(modalId) {
+        console.log('[SendModalPreview] Constructor called with modalId:', modalId);
+        
         this.modal = document.getElementById(modalId);
-        if (!this.modal) return;
+        if (!this.modal) {
+            console.error('[SendModalPreview] Modal element not found:', modalId);
+            return;
+        }
 
         this.progressBar = this.modal.querySelector('#modal-progress-bar');
-
         this.stepEls = Array.from(this.modal.querySelectorAll('[id^="step"]'))
             .filter(el => /^step\d+$/.test(el.id))
             .sort((a, b) => parseInt(a.id.slice(4), 10) - parseInt(b.id.slice(4), 10));
 
         this.totalSteps = this.stepEls.length || 1;
         this.currentStep = 1;
+
+        this.selectedCoordinators = new Set();
+        this.selectedApprover = null;
+
+        this.coordinatorSearch = this.modal.querySelector('#coordinator-search');
+        this.approverSearch = this.modal.querySelector('#approver-search');
+        this.coordinatorTbody = this.modal.querySelector('#coordinator-tbody');
+        this.approverTbody = this.modal.querySelector('#approver-tbody');
+        this.selectedCoordinatorsContainer = this.modal.querySelector('#selected-coordinators');
+        this.selectedApproverContainer = this.modal.querySelector('#selected-approver');
+        this.summaryCoordinators = this.modal.querySelector('#summary-coordinators');
+        this.summaryApprover = this.modal.querySelector('#summary-approver');
+        this.coordinatorIdsInput = this.modal.querySelector('#coordinator-ids-input');
+        this.approverIdInput = this.modal.querySelector('#approver-id-input');
+        this.coordinatorCount = this.modal.querySelector('#coordinator-count');
+        this.approverCount = this.modal.querySelector('#approver-count');
+        this.approvalSliderContainer = this.modal.querySelector('#approval-slider-container');
 
         this.buttons = {
             step1Next: this.modal.querySelector('#step1-next-btn'),
@@ -2003,11 +2024,433 @@ class SendModalPreview {
 
         this.submitButton = this.modal.querySelector('#submit-sent-button');
 
+        this.coordinatorPage = 1;
+        this.approverPage = 1;
+        this.coordinatorHasMore = true;
+        this.approverHasMore = true;
+        this.coordinatorLoading = false;
+        this.approverLoading = false;
+        this.coordinatorSearchQuery = '';
+        this.approverSearchQuery = '';
+        this.coordinatorSearchTimeout = null;
+        this.approverSearchTimeout = null;
+
+        this.regionName = window.regionName || 'Регион';
+
         this.init();
         this.updateButtonsState();
     }
 
     init() {
+        this.loadCoordinators();
+        this.loadApprovers();
+        this.initSearch();
+        this.initNavigation();
+        this.initScrollLoading();
+        this.initSliderDrag();
+        this.updateButtonsState();
+    }
+
+    async loadCoordinators(reset = true) {
+        if (this.coordinatorLoading) return;
+        
+        if (reset) {
+            this.coordinatorPage = 1;
+            this.coordinatorHasMore = true;
+            this.coordinatorTbody.innerHTML = '';
+        }
+        
+        if (!this.coordinatorHasMore) {
+            this.removeLoading(this.coordinatorTbody);
+            return;
+        }
+
+        this.coordinatorLoading = true;
+        this.showLoading(this.coordinatorTbody, 3);
+
+        try {
+            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}`;
+            console.log('[SendModalPreview] Loading coordinators, page:', this.coordinatorPage);
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                console.error('Error loading coordinators:', data.error);
+                this.coordinatorLoading = false;
+                this.removeLoading(this.coordinatorTbody);
+                return;
+            }
+
+            this.removeLoading(this.coordinatorTbody);
+            
+            if (data.organizations && data.organizations.length > 0) {
+                this.renderOrganizations(this.coordinatorTbody, data.organizations, 'coordinator');
+            }
+            
+            this.coordinatorHasMore = data.has_next || false;
+            this.coordinatorPage = data.page + 1;
+
+            console.log('[SendModalPreview] Coordinators loaded:', data.organizations?.length || 0, 'Has more:', this.coordinatorHasMore);
+
+            if (!this.coordinatorHasMore) {
+                this.removeLoading(this.coordinatorTbody);
+                this.showEndMessage(this.coordinatorTbody, 3);
+            }
+        } catch (error) {
+            console.error('Error loading coordinators:', error);
+            this.removeLoading(this.coordinatorTbody);
+        } finally {
+            this.coordinatorLoading = false;
+        }
+    }
+
+    async loadApprovers(reset = true) {
+        if (this.approverLoading) return;
+        
+        if (reset) {
+            this.approverPage = 1;
+            this.approverHasMore = true;
+            this.approverTbody.innerHTML = '';
+        }
+        
+        if (!this.approverHasMore) {
+            this.removeLoading(this.approverTbody);
+            return;
+        }
+
+        this.approverLoading = true;
+        this.showLoading(this.approverTbody, 3);
+
+        try {
+            const url = `/api/organizations?type=approver&page=${this.approverPage}&per_page=10&q=${encodeURIComponent(this.approverSearchQuery)}`;
+            console.log('[SendModalPreview] Loading approvers, page:', this.approverPage);
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                console.error('Error loading approvers:', data.error);
+                this.approverLoading = false;
+                this.removeLoading(this.approverTbody);
+                return;
+            }
+
+            this.removeLoading(this.approverTbody);
+            
+            if (data.organizations && data.organizations.length > 0) {
+                this.renderOrganizations(this.approverTbody, data.organizations, 'approver');
+            }
+            
+            this.approverHasMore = data.has_next || false;
+            this.approverPage = data.page + 1;
+
+            console.log('[SendModalPreview] Approvers loaded:', data.organizations?.length || 0, 'Has more:', this.approverHasMore);
+
+            if (!this.approverHasMore) {
+                this.removeLoading(this.approverTbody);
+                this.showEndMessage(this.approverTbody, 3);
+            }
+        } catch (error) {
+            console.error('Error loading approvers:', error);
+            this.removeLoading(this.approverTbody);
+        } finally {
+            this.approverLoading = false;
+        }
+    }
+
+    renderOrganizations(tbody, organizations, type) {
+        if (!tbody) return;
+
+        if (!organizations || organizations.length === 0) {
+            return;
+        }
+
+        organizations.forEach(org => {
+            const row = document.createElement('tr');
+            row.className = 'org-row';
+            row.dataset.id = org.id;
+            row.dataset.name = org.name;
+
+            const isCoordinator = type === 'coordinator';
+            const checkboxType = isCoordinator ? 'coordinator-checkbox' : 'approver-checkbox';
+
+            row.innerHTML = `
+                <td style="text-align: center;">
+                    <input type="checkbox" class="${checkboxType}" value="${org.id}" data-name="${this.escapeHtml(org.name)}">
+                </td>
+                <td>${this.escapeHtml(org.name)}</td>
+                <td>${this.escapeHtml(org.ynp || '')}</td>
+            `;
+
+            tbody.appendChild(row);
+
+            if (isCoordinator) {
+                const checkbox = row.querySelector('.coordinator-checkbox');
+                this.initCoordinatorRow(row, checkbox);
+            } else {
+                const checkbox = row.querySelector('.approver-checkbox');
+                this.initApproverRow(row, checkbox);
+            }
+        });
+    }
+
+    initCoordinatorRow(row, checkbox) {
+        if (!checkbox) return;
+
+        row.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+        });
+
+        checkbox.addEventListener('change', (e) => {
+            const id = e.target.value;
+            if (e.target.checked) {
+                this.selectedCoordinators.add(id);
+                row.classList.add('active-row');
+            } else {
+                this.selectedCoordinators.delete(id);
+                row.classList.remove('active-row');
+            }
+            this.updateSelectedCoordinators();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+
+        if (this.selectedCoordinators.has(checkbox.value)) {
+            checkbox.checked = true;
+            row.classList.add('active-row');
+        }
+    }
+
+    initApproverRow(row, checkbox) {
+        if (!checkbox) return;
+
+        row.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const isChecked = !checkbox.checked;
+            
+            this.approverTbody.querySelectorAll('tr.org-row').forEach(r => {
+                const cb = r.querySelector('.approver-checkbox');
+                if (cb) {
+                    cb.checked = false;
+                    r.classList.remove('active-row');
+                }
+            });
+            
+            if (isChecked) {
+                checkbox.checked = true;
+                row.classList.add('active-row');
+                this.selectedApprover = checkbox.value;
+            } else {
+                checkbox.checked = false;
+                row.classList.remove('active-row');
+                this.selectedApprover = null;
+            }
+            
+            this.updateSelectedApprover();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+
+        checkbox.addEventListener('change', (e) => {
+            const id = e.target.value;
+            
+            if (e.target.checked) {
+                this.approverTbody.querySelectorAll('tr.org-row').forEach(r => {
+                    const cb = r.querySelector('.approver-checkbox');
+                    if (cb && cb !== e.target) {
+                        cb.checked = false;
+                        r.classList.remove('active-row');
+                    }
+                });
+                this.selectedApprover = id;
+                row.classList.add('active-row');
+            } else {
+                this.selectedApprover = null;
+                row.classList.remove('active-row');
+            }
+            
+            this.updateSelectedApprover();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+
+        if (this.selectedApprover === checkbox.value) {
+            checkbox.checked = true;
+            row.classList.add('active-row');
+        }
+    }
+
+    showLoading(tbody, colspan = 3) {
+        if (!tbody) return;
+        
+        let loadingRow = tbody.querySelector('.loading-row');
+        if (!loadingRow) {
+            loadingRow = document.createElement('tr');
+            loadingRow.className = 'loading-row';
+            loadingRow.innerHTML = `
+                <td colspan="${colspan}" style="text-align: center; padding: 20px;">
+                    <span class="loading-spinner"></span> Загрузка...
+                </td>
+            `;
+            tbody.appendChild(loadingRow);
+        }
+        loadingRow.style.display = '';
+    }
+
+    removeLoading(tbody) {
+        if (!tbody) return;
+        const loadingRow = tbody.querySelector('.loading-row');
+        if (loadingRow) {
+            loadingRow.remove();
+        }
+    }
+
+    showEndMessage(tbody, colspan = 3) {
+        if (!tbody) return;
+        
+        const endRow = tbody.querySelector('.end-message-row');
+        if (endRow) return;
+        
+        const row = document.createElement('tr');
+        row.className = 'end-message-row';
+        row.innerHTML = `
+            <td colspan="${colspan}" style="text-align: center; padding: 15px; color: #999; font-size: 13px;">
+                Все организации загружены
+            </td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    initScrollLoading() {
+        const coordinatorContainer = this.modal.querySelector('#step1 .modal-table-conteiner');
+        const approverContainer = this.modal.querySelector('#step2 .modal-table-conteiner');
+        
+        console.log('[SendModalPreview] Containers found:', {
+            coordinatorContainer: !!coordinatorContainer,
+            approverContainer: !!approverContainer
+        });
+
+        if (coordinatorContainer) {
+            coordinatorContainer.addEventListener('scroll', (e) => {
+                const container = e.target;
+                const scrollTop = container.scrollTop;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+
+                const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+
+                if (isNearBottom && !this.coordinatorLoading && this.coordinatorHasMore) {
+                    console.log('[SendModalPreview] Coordinator scroll: loading more...');
+                    this.loadCoordinators(false);
+                }
+            });
+        }
+
+        if (approverContainer) {
+            approverContainer.addEventListener('scroll', (e) => {
+                const container = e.target;
+                const scrollTop = container.scrollTop;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+
+                const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+
+                if (isNearBottom && !this.approverLoading && this.approverHasMore) {
+                    console.log('[SendModalPreview] Approver scroll: loading more...');
+                    this.loadApprovers(false);
+                }
+            });
+        }
+    }
+
+    initSliderDrag() {
+        const container = this.approvalSliderContainer;
+        if (!container) return;
+
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        container.addEventListener('mousedown', (e) => {
+            isDown = true;
+            container.style.cursor = 'grabbing';
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+            container.style.userSelect = 'none';
+        });
+
+        container.addEventListener('mouseleave', () => {
+            if (isDown) {
+                isDown = false;
+                container.style.cursor = 'grab';
+                container.style.userSelect = '';
+            }
+        });
+
+        container.addEventListener('mouseup', () => {
+            isDown = false;
+            container.style.cursor = 'grab';
+            container.style.userSelect = '';
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            container.scrollLeft = scrollLeft - walk;
+        });
+
+        // Для touch устройств
+        let touchStartX = 0;
+        let touchScrollLeft = 0;
+
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].pageX - container.offsetLeft;
+            touchScrollLeft = container.scrollLeft;
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            const x = e.touches[0].pageX - container.offsetLeft;
+            const walk = (x - touchStartX) * 1.5;
+            container.scrollLeft = touchScrollLeft - walk;
+        });
+    }
+
+    initSearch() {
+        if (this.coordinatorSearch) {
+            this.coordinatorSearch.addEventListener('input', (e) => {
+                clearTimeout(this.coordinatorSearchTimeout);
+                this.coordinatorSearchTimeout = setTimeout(() => {
+                    const newQuery = e.target.value.trim();
+                    if (newQuery !== this.coordinatorSearchQuery) {
+                        this.coordinatorSearchQuery = newQuery;
+                        this.coordinatorHasMore = true;
+                        this.loadCoordinators(true);
+                    }
+                }, 300);
+            });
+        }
+
+        if (this.approverSearch) {
+            this.approverSearch.addEventListener('input', (e) => {
+                clearTimeout(this.approverSearchTimeout);
+                this.approverSearchTimeout = setTimeout(() => {
+                    const newQuery = e.target.value.trim();
+                    if (newQuery !== this.approverSearchQuery) {
+                        this.approverSearchQuery = newQuery;
+                        this.approverHasMore = true;
+                        this.loadApprovers(true);
+                    }
+                }, 300);
+            });
+        }
+    }
+
+    initNavigation() {
         this.buttons.step1Next?.addEventListener('click', (e) => {
             e.preventDefault();
             if (this.validateStep1()) {
@@ -2023,6 +2466,7 @@ class SendModalPreview {
         this.buttons.step2Next?.addEventListener('click', (e) => {
             e.preventDefault();
             if (this.validateStep2()) {
+                this.updateSummary();
                 this.nextStep();
             }
         });
@@ -2032,7 +2476,230 @@ class SendModalPreview {
             this.prevStep();
         });
 
-        this.updateButtonsState();
+        this.modal.querySelector('#sentForm')?.addEventListener('submit', (e) => {
+            if (this.coordinatorIdsInput) {
+                this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators).join(',');
+            }
+            if (this.approverIdInput) {
+                this.approverIdInput.value = this.selectedApprover;
+            }
+        });
+    }
+
+    updateSelectedCoordinators() {
+        if (!this.selectedCoordinatorsContainer) return;
+        
+        const container = this.selectedCoordinatorsContainer;
+        container.innerHTML = '';
+        
+        if (this.coordinatorCount) {
+            this.coordinatorCount.textContent = this.selectedCoordinators.size;
+        }
+        
+        if (this.selectedCoordinators.size === 0) {
+            container.innerHTML = '<span class="empty-message">Ничего не выбрано</span>';
+            return;
+        }
+        
+        this.selectedCoordinators.forEach(id => {
+            const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
+            const name = row ? row.dataset.name : `ID: ${id}`;
+            const tag = document.createElement('span');
+            tag.className = 'selected-tag';
+            tag.innerHTML = `
+                <span class="tag-text">${this.escapeHtml(name)}</span>
+                <button class="remove-tag" data-id="${id}" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            tag.querySelector('.remove-tag').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const checkbox = this.coordinatorTbody?.querySelector(`.coordinator-checkbox[value="${id}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+            container.appendChild(tag);
+        });
+    }
+
+    updateSelectedApprover() {
+        if (!this.selectedApproverContainer) return;
+        
+        const container = this.selectedApproverContainer;
+        container.innerHTML = '';
+        
+        if (this.approverCount) {
+            this.approverCount.textContent = this.selectedApprover ? '1' : '0';
+        }
+        
+        if (!this.selectedApprover) {
+            container.innerHTML = '<span class="empty-message">Ничего не выбрано</span>';
+            return;
+        }
+        
+        const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${this.selectedApprover}"]`);
+        const name = row ? row.dataset.name : `ID: ${this.selectedApprover}`;
+        const tag = document.createElement('span');
+        tag.className = 'selected-tag approver-tag';
+        tag.innerHTML = `
+            <span class="tag-text">${this.escapeHtml(name)}</span>
+            <button class="remove-tag" data-id="${this.selectedApprover}" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        tag.querySelector('.remove-tag').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const checkbox = this.approverTbody?.querySelector(`.approver-checkbox[value="${this.selectedApprover}"]`);
+            if (checkbox) {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        });
+        container.appendChild(tag);
+    }
+
+    updateSummary() {
+        if (this.summaryCoordinators) {
+            this.summaryCoordinators.innerHTML = '';
+            if (this.selectedCoordinators.size > 0) {
+                this.selectedCoordinators.forEach(id => {
+                    const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
+                    const name = row ? row.dataset.name : `ID: ${id}`;
+                    const tag = document.createElement('span');
+                    tag.className = 'summary-tag';
+                    tag.textContent = name;
+                    this.summaryCoordinators.appendChild(tag);
+                });
+            } else {
+                this.summaryCoordinators.innerHTML = '<span class="empty-message">Не выбрано</span>';
+            }
+        }
+        
+        if (this.summaryApprover) {
+            this.summaryApprover.innerHTML = '';
+            if (this.selectedApprover) {
+                const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${this.selectedApprover}"]`);
+                const name = row ? row.dataset.name : `ID: ${this.selectedApprover}`;
+                const tag = document.createElement('span');
+                tag.className = 'summary-tag approver-tag';
+                tag.textContent = name;
+                this.summaryApprover.appendChild(tag);
+            } else {
+                this.summaryApprover.innerHTML = '<span class="empty-message">Не выбрано</span>';
+            }
+        }
+
+        this.updateApprovalPath();
+    }
+
+    updateApprovalPath() {
+        const container = this.approvalSliderContainer;
+        if (!container) return;
+
+        const regionName = this.regionName;
+        const coordinators = [];
+        const approver = this.selectedApprover;
+
+        this.selectedCoordinators.forEach(id => {
+            const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
+            if (row) {
+                coordinators.push(row.dataset.name);
+            }
+        });
+
+        let approverName = '';
+        if (approver) {
+            const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${approver}"]`);
+            if (row) {
+                approverName = row.dataset.name;
+            }
+        }
+
+        const allSteps = [regionName, ...coordinators];
+        if (approverName) {
+            allSteps.push(approverName);
+        }
+
+        if (allSteps.length === 1) {
+            container.innerHTML = `
+                <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
+                    Выберите организации для отображения пути согласования
+                </div>
+            `;
+            return;
+        }
+
+        const totalSteps = allSteps.length;
+        const completedSteps = 0;
+        const progressWidth = 0;
+
+        let stepsHtml = allSteps.map((name, index) => {
+            const isFirst = index === 0;
+            const statusClass = isFirst ? 'active' : 'pending';
+            
+            return `
+                <div class="enplans-approval-step ${statusClass}">
+                    <div class="enplans-approval-step-icon">
+                        ${this.getStepIcon(index, allSteps.length)}
+                    </div>
+                    <div class="enplans-approval-step-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</div>
+                    <div class="enplans-approval-step-time">
+                        ${isFirst ? 'Ожидает' : 'Ожидает'}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="enplans-approval-slider">
+                <div class="enplans-approval-slider-steps">
+                    ${stepsHtml}
+                </div>
+                <div class="enplans-approval-progress-container">
+                    <div class="enplans-approval-progress-line" style="width: ${progressWidth}%;"></div>
+                </div>
+                <div class="enplans-approval-progress-text">
+                    <span>Согласован на ${completedSteps} из ${totalSteps} этапов (${progressWidth}%)</span>
+                </div>
+            </div>
+        `;
+    }
+
+    getStepIcon(index, total) {
+        const isFirst = index === 0;
+        const isLast = index === total - 1;
+        
+        if (isFirst) {
+            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5" fill="currentColor"/>
+            </svg>`;
+        } else if (isLast) {
+            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+            </svg>`;
+        } else {
+            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v8M8 12h8"/>
+            </svg>`;
+        }
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     activeStepEl() {
@@ -2052,6 +2719,21 @@ class SendModalPreview {
         this.activeStepEl().style.display = 'block';
         this.updateProgressBar();
         this.updateButtonsState();
+        
+        if (this.currentStep === 2) {
+            const rows = this.approverTbody?.querySelectorAll('tr.org-row') || [];
+            if (rows.length === 0) {
+                this.approverHasMore = true;
+                this.loadApprovers(true);
+            }
+        }
+        
+        if (this.currentStep === 3) {
+            this.updateApprovalPath();
+            setTimeout(() => {
+                this.initSliderDrag();
+            }, 100);
+        }
     }
 
     prevStep() {
@@ -2065,12 +2747,13 @@ class SendModalPreview {
 
     updateButtonsState() {
         if (this.buttons.step1Next) {
-            const hasSelectedIndicator = document.querySelector('#selected-indicator-display')?.style.display !== 'none';
-            this.buttons.step1Next.disabled = !hasSelectedIndicator;
+            this.buttons.step1Next.disabled = this.selectedCoordinators.size === 0;
         }
+
         if (this.buttons.step2Next) {
-            this.buttons.step2Next.disabled = false;
+            this.buttons.step2Next.disabled = !this.selectedApprover;
         }
+
         if (this.submitButton) {
             const hasCertificate = document.querySelector('#drop-certificate-area.has-file') !== null;
             this.submitButton.disabled = !hasCertificate;
@@ -2078,23 +2761,19 @@ class SendModalPreview {
     }
 
     validateStep1() {
-        const selectedDisplay = document.querySelector('#selected-indicator-display');
-        if (selectedDisplay && selectedDisplay.style.display === 'none') {
-            alert('Пожалуйста, выберите индикатор');
+        if (this.selectedCoordinators.size === 0) {
+            alert('Пожалуйста, выберите хотя бы одну организацию для согласования');
             return false;
         }
         return true;
     }
 
     validateStep2() {
-        return true;
-    }
-
-    submitForm() {
-        const form = this.modal.querySelector('#sentForm');
-        if (form) {
-            form.submit();
+        if (!this.selectedApprover) {
+            alert('Пожалуйста, выберите организацию для утверждения');
+            return false;
         }
+        return true;
     }
 
     close() {
@@ -2102,6 +2781,48 @@ class SendModalPreview {
     }
 
     resetForm() {
+        this.selectedCoordinators.clear();
+        this.selectedApprover = null;
+        
+        this.coordinatorTbody?.querySelectorAll('tr.org-row').forEach(row => {
+            const cb = row.querySelector('.coordinator-checkbox');
+            if (cb) {
+                cb.checked = false;
+                row.classList.remove('active-row');
+            }
+        });
+        
+        this.approverTbody?.querySelectorAll('tr.org-row').forEach(row => {
+            const cb = row.querySelector('.approver-checkbox');
+            if (cb) {
+                cb.checked = false;
+                row.classList.remove('active-row');
+            }
+        });
+        
+        if (this.coordinatorCount) {
+            this.coordinatorCount.textContent = '0';
+        }
+        
+        if (this.approverCount) {
+            this.approverCount.textContent = '0';
+        }
+        
+        this.coordinatorSearchQuery = '';
+        this.approverSearchQuery = '';
+        if (this.coordinatorSearch) this.coordinatorSearch.value = '';
+        if (this.approverSearch) this.approverSearch.value = '';
+        
+        this.coordinatorHasMore = true;
+        this.approverHasMore = true;
+        
+        this.updateSelectedCoordinators();
+        this.updateSelectedApprover();
+        this.updateSummary();
+        
+        this.loadCoordinators(true);
+        this.loadApprovers(true);
+        
         this.stepEls.forEach((el, i) => {
             el.style.display = i === 0 ? 'block' : 'none';
         });

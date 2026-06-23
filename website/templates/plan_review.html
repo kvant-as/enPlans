@@ -278,88 +278,190 @@
 <div id="SendModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h1 id="modal-title">{{ _('Отправка плана') }}</h1>
+            <h1 id="modal-title">{{ _('Отправка плана на согласование') }}</h1>
             {{ icons.icon_close() }}
         </div>
         <div class="modal-body">
-            
             <div class="progress-modal-bar-container">
                 <div class="progress-modal-bar" id="modal-progress-bar" style="width: 33%"></div>
             </div>
+          
             <div id="step1" class="modal-step">
-              
-              <div class="button-auth-area" id="step1-buttons">
+                <div class="step-description">
+                    <p>{{ _('Выберите организации для согласования плана (можно выбрать несколько)') }}</p>
+                </div>
+
+                <div class="input-with-icon">
+                    {{ icons.icon_search() }}
+                    <input type="text" id="coordinator-search" placeholder="{{ _('Поиск организаций...') }}" class="app-input">
+                </div>
+                
+                <div class="modal-table-conteiner"> 
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
+                            <tr>
+                                <th style="width: 40px; text-align: center;">{{ _('Выбор') }}</th>
+                                <th>{{ _('Наименование организации') }}</th>
+                                <th style="max-width: 20px;">{{ _('УНП') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coordinator-tbody">
+                            <tr class="loading-row">
+                                <td colspan="3" style="text-align: center; padding: 20px;">
+                                    <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="selected-organizations">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        {{ _('Выбранные организации для согласования:') }}
+                        <span id="coordinator-count" class="selected-count">0</span>
+                    </h4>
+                    <div id="selected-coordinators" class="selected-tags">
+                        <span class="empty-message">{{ _('Ничего не выбрано') }}</span>
+                    </div>
+                </div>
+                
+                <div class="button-auth-area">
                     <div></div>
-                    <button type="button" class="svg-btn blue" id="step1-next-btn">
+                    <button type="button" class="svg-btn blue" id="step1-next-btn" disabled>
                         <span class="btn-text">{{ _('Далее') }}</span>
                         {{ icons.next_icon() }}
                     </button>
                 </div>
             </div>
-            <div id="step2" class="modal-step" style="display: none;">
-
-
-
-              <div class="button-auth-area" id="step2-buttons">
-                  <button type="button" class="svg-btn blue" id="step2-next-btn" data-action="next-step-2">
-                      <span class="btn-text">{{ _('Далее') }}</span>
-                      {{ icons.next_icon() }}
-                  </button>
-                  <button type="button" class="svg-btn" id="step2-back-btn">
-                      {{ icons.back_icon() }}
-                      <span class="btn-text">{{ _('Назад') }}</span>
-                  </button>
-              </div>
-            </div>
-
-            <div id="step3" class="modal-step" style="display: none;">
-              <div class="button-auth-area" id="step3-buttons">
-                <!-- <button type="submit" class="main-btn main-btn-primary">
-                    {{ icons.icon_add() }}
-                    <span class="btn-text">{{ _('Добавить мероприятие') }}</span>
-                </button> -->
-
-                <div class="modal-subtext">
-                    <p class="first-child">{{ _('Вы действительно хотите отправить план?') }}</p>
-                    <p>
-                        {{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }} 
-                        <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
-                    </p>
-                </div>
-                <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="sent">
-                    
-                    <div class="drop-certificate-container">
-                        <div id="drop-certificate-area" class="drop-certificate-area">
-                            <div class="drop-certificate-content">
-                                <div class="drop-certificate-icon">
-                                    {{ icons.icon_add() }}
-                                </div>
-                                <p class="drop-certificate-text">
-                                    {{ _('Перетащите файл сертификата сюда или') }} 
-                                    <label for="certificate-to-check" class="drop-certificate-label">{{ _('нажмите для выбора') }}</label>
-                                </p>
-                                <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
-                            </div>
-                            <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input">
-                        </div>
-                    </div>
-                    
-                    <div class="button-auth-area">
-                        <button type="submit" class="main-btn main-btn-delete" id="submit-sent-button" disabled>
-                            {{ icons.icon_confirm() }}
-                            <span class="btn-text">{{ _('Да, отправить план') }}</span>
-                        </button>
-                        <button type="button" class="svg-btn" id="step3-back-btn">
-                            {{ icons.back_icon() }}
-                            <span class="btn-text">{{ _('Назад') }}</span>
-                        </button>
-                    </div>
-                </form>
-
             
+            <div id="step2" class="modal-step" style="display: none;">
+                <div class="step-description">
+                    <p>{{ _('Выберите организацию для утверждения плана (только одна)') }}</p>
+                </div>
+                
+                <div class="input-with-icon">
+                    {{ icons.icon_search() }}
+                    <input type="text" id="approver-search" placeholder="{{ _('Поиск организаций...') }}" class="app-input">
+                </div>
+
+                <div class="modal-table-conteiner"> 
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
+                            <tr>
+                                <th style="width: 40px; text-align: center;">{{ _('Выбор') }}</th>
+                                <th>{{ _('Наименование организации') }}</th>
+                                <th style="min-width: 40px;">{{ _('УНП') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approver-tbody">
+                            <tr class="loading-row">
+                                <td colspan="3" style="text-align: center; padding: 20px;">
+                                    <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="selected-organizations">
+                    <h4>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                        {{ _('Выбранная организация для утверждения:') }}
+                        <span id="approver-count" class="selected-count">0</span>
+                    </h4>
+                    <div id="selected-approver" class="selected-tags">
+                        <span class="empty-message">{{ _('Ничего не выбрано') }}</span>
+                    </div>
+                </div>
+                
+                <div class="button-auth-area">
+                    <button type="button" class="svg-btn blue" id="step2-next-btn" disabled>
+                        <span class="btn-text">{{ _('Далее') }}</span>
+                        {{ icons.next_icon() }}
+                    </button>
+                    <button type="button" class="svg-btn" id="step2-back-btn">
+                        {{ icons.back_icon() }}
+                        <span class="btn-text">{{ _('Назад') }}</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="step3" class="modal-step" style="display: none;">
+              <div class="step-description">
+                  <p>{{ _('Подтвердите отправку плана') }}</p>
               </div>
+              
+              <!-- <div class="summary-info">
+                  <div class="summary-item">
+                      <strong>{{ _('Согласующие организации:') }}</strong>
+                      <div id="summary-coordinators" class="summary-tags">
+                          <span class="empty-message">{{ _('Не выбрано') }}</span>
+                      </div>
+                  </div>
+                  <div class="summary-item">
+                      <strong>{{ _('Утверждающая организация:') }}</strong>
+                      <div id="summary-approver" class="summary-tags">
+                          <span class="empty-message">{{ _('Не выбрано') }}</span>
+                      </div>
+                  </div>
+              </div> -->
+
+              <div class="plan-approval-path">
+                  <!-- <h4>{{ _('Путь согласования плана:') }}</h4> -->
+                  <div id="approval-slider-container">
+                      <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
+                          {{ _('Выберите организации для отображения пути согласования') }}
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="modal-subtext">
+                  <p class="first-child">{{ _('Вы действительно хотите отправить план на согласование и утверждение?') }}</p>
+                  <p>
+                      {{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }} 
+                      <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
+                  </p>
+              </div>
+              
+              <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="status" value="sent">
+                  <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="">
+                  <input type="hidden" name="approver_id" id="approver-id-input" value="">
+                  
+                  <div class="drop-certificate-container">
+                      <div id="drop-certificate-area" class="drop-certificate-area">
+                          <div class="drop-certificate-content">
+                              <div class="drop-certificate-icon">
+                                  {{ icons.icon_add() }}
+                              </div>
+                              <p class="drop-certificate-text">
+                                  {{ _('Перетащите файл сертификата сюда или') }} 
+                                  <label for="certificate-to-check" class="drop-certificate-label">{{ _('нажмите для выбора') }}</label>
+                              </p>
+                              <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+                          </div>
+                          <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input">
+                      </div>
+                  </div>
+                  
+                  <div class="button-auth-area">
+                      <button type="button" class="svg-btn" id="step3-back-btn">
+                          {{ icons.back_icon() }}
+                          <span class="btn-text">{{ _('Назад') }}</span>
+                      </button>
+                      <button type="submit" class="main-btn main-btn-delete" id="submit-sent-button" disabled>
+                          {{ icons.icon_confirm() }}
+                          <span class="btn-text">{{ _('Да, отправить план') }}</span>
+                      </button>
+                  </div>
+              </form>
           </div>
         </div>
     </div>
@@ -369,6 +471,8 @@
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     window.ticketInfoInstance = new window.TicketInfo();
+
+    window.regionName = '{{ plan.organization.region.name if plan.organization.region else "Регион" }}';
   });
 
   function toggleTicketInfo(ticketId) {

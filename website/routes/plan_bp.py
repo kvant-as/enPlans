@@ -45,15 +45,10 @@ def plan_review(token):
         current_user.organization is not None
     )
 
-    coordinator_organizations = Organization.query.filter_by(is_coordinator=True).all()
-    approver_organizations = Organization.query.filter_by(is_approver=True).all()
-
     return render_template('plan_review.html', 
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
-                        SendModal=current_plan.is_control, 
-                        coordinator_organizations=coordinator_organizations,
-                        approver_organizations=approver_organizations
+                        SendModal=current_plan.is_control
                         )
 
 @plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
