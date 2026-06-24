@@ -15,7 +15,7 @@
         
       </div>
       <div class="header-content-right">
-        {% if not audit_page %}
+        {% if current_user.is_auditor==False %}
           <button
             type="button"
             class="main-btn main-btn-primary"
@@ -52,7 +52,7 @@
         <div class="stat-and-dot">
           <div class="stat">
             <a class="stat-number-sent" id="stat-sent">-</a>
-            <a class="word-numb">{{ _('На рассмотрении') }}</a>
+            <a class="word-numb">{{ _('На согласовании') }}</a>
           </div>
           <div class="status-dot"></div>
         </div>
@@ -66,7 +66,7 @@
         <div class="stat-and-dot">
           <div class="stat">
             <a class="stat-number-sub" id="stat-approved">-</a>
-            <a class="word-numb">{{ _('Согласованные') }}</a>
+            <a class="word-numb">{{ _('Одобренные') }}</a>
           </div>
           <div class="status-dot"></div>
         </div>

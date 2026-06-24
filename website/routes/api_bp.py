@@ -243,9 +243,13 @@ def get_organizations_api():
     try:
         page = request.args.get("page", 1, type=int)
         search_query = request.args.get("q", "", type=str).strip()
-        org_type = request.args.get("type", "", type=str).strip()  # respondent, auditor, approver
+        org_type = request.args.get("type", "", type=str).strip()
+        hide_region_management = request.args.get("hide_rm", "false", type=str).lower() == "true"
 
         query = Organization.query.filter_by(is_active=True)
+
+        if hide_region_management:
+            query = query.filter(Organization.is_region_management == False)
 
         if org_type == 'respondent':
             query = query.filter(Organization.is_regular == True)

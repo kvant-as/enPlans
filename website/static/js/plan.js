@@ -2078,7 +2078,7 @@ class SendModalPreview {
         this.showLoading(this.coordinatorTbody, 3);
 
         try {
-            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}`;
+            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}&hide_rm=true`;
             console.log('[SendModalPreview] Loading coordinators, page:', this.coordinatorPage);
             
             const response = await fetch(url);
@@ -2617,13 +2617,13 @@ class SendModalPreview {
         const approver = this.selectedApprover;
 
         const regionNames = {
-            1: 'Брестское областное управление',
-            2: 'Витебское областное управление',
-            3: 'Гомельское областное управление',
-            4: 'Гродненское областное управление',
-            5: 'Управление г. Минск',
-            6: 'Минское областное управление',
-            7: 'Могилевское областное управление'
+            1: 'Брестское областное управление по надзору за рациональным использованием ТЭР',
+            2: 'Витебское областное управление по надзору за рациональным использованием ТЭР',
+            3: 'Гомельское областное управление по надзору за рациональным использованием ТЭР',
+            4: 'Гродненское областное управление по надзору за рациональным использованием ТЭР',
+            5: 'Управление г. Минск по надзору за рациональным использованием ТЭР',
+            6: 'Минское областное управление по надзору за рациональным использованием ТЭР',
+            7: 'Могилевское областное управление по надзору за рациональным использованием ТЭР'
         };
 
         const regionName = regionNames[regionNumber] || 'Регион';
@@ -3344,7 +3344,7 @@ class PlansLoader {
             'all': 'Статус',
             'draft': 'В редакции',
             'control': 'Контроль пройден',
-            'sent': 'На рассмотрении',
+            'sent': 'На согласовании',
             'error': 'С ошибками',
             'approved': 'Согласованные'
         };
@@ -3777,7 +3777,7 @@ class ExportPlansLoader {
             'all': 'Статус',
             'draft': 'В редакции',
             'control': 'Контроль пройден',
-            'sent': 'На рассмотрении',
+            'sent': 'На согласовании',
             'error': 'С ошибками',
             'approved': 'Согласованные'
         };

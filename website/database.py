@@ -55,9 +55,9 @@ def filling_database(db):
             base_path = os.path.join('website', 'static', 'files', 'spravochniki')
             
             files = {
-                'regular': os.path.join(base_path, 'Список юр.лиц.xlsx'),
-                'coordinator': os.path.join(base_path, 'Список согласовывающих.xlsx'),
-                'approver': os.path.join(base_path, 'Список утвержающих.xlsx')
+                'regular': os.path.join(base_path, 'regulars.xlsx'),
+                'coordinator': os.path.join(base_path, 'coordinators.xlsx'),
+                'approver': os.path.join(base_path, 'approvers.xlsx')
             }
             
             existing_orgs = {}
@@ -66,7 +66,7 @@ def filling_database(db):
             for org_type, file_path in files.items():
                 try:
                     if not os.path.exists(file_path):
-                        current_app.logger.warning(f'Файл не найден: {file_path}')
+                        current_app.logger.warning(f'No file: {file_path}')
                         continue
                     
                     df = pd.read_excel(file_path, header=3)
@@ -138,11 +138,11 @@ def filling_database(db):
                         existing_orgs[ynp] = org
                         
                 except Exception as e:
-                    current_app.logger.error(f'Ошибка при загрузке файла {file_path}: {str(e)}')
+                    current_app.logger.error(f'Error with file {file_path}: {str(e)}')
                     continue
             
             db.session.commit()
-            current_app.logger.info(f'Загружено {len(existing_orgs)} уникальных организаций, пропущено дубликатов: {skipped_duplicates}')
+            current_app.logger.info(f'Uploaded by {len(existing_orgs)} unique organizations, missing duplicates: {skipped_duplicates}')
         
         def assign_regions_to_organizations():
             try:
@@ -181,18 +181,51 @@ def filling_database(db):
                         deleted_count += 1
                 
                 db.session.commit()
-                current_app.logger.info(f'Регионы назначены для {assigned_count} организаций, удалено {deleted_count}')
+                current_app.logger.info(f'Regions assigned to {assigned_count} organizations, deleted {deleted_count}')
             except Exception as e:
-                current_app.logger.error(f'Ошибка при назначении регионов: {str(e)}')
+                current_app.logger.error(f'Error in assigning regions: {str(e)}')
                 db.session.rollback()
+
+        def assign_region_management_to_organizations():
+            try:
+                search_pattern = '%управление по надзору за рациональным использованием топливно-энергетических ресурсов%'
+                
+                organizations = Organization.query.filter(
+                    Organization.name.ilike(search_pattern),
+                    Organization.is_region_management == False
+                ).all()
+                
+                assigned_count = 0
+                
+                for org in organizations:
+                    org.is_region_management = True
+                    assigned_count += 1
+                    # current_app.logger.info(f'Assigned region management to: {org.name}')
+                
+                db.session.commit()
+                current_app.logger.info(f'Region management assigned to {assigned_count} organizations')
+                
+                return {
+                    'success': True,
+                    'assigned': assigned_count
+                }
+                
+            except Exception as e:
+                current_app.logger.error(f'Error in assign_region_management: {str(e)}')
+                db.session.rollback()
+                return {
+                    'success': False,
+                    'error': str(e)
+                }
 
         def org_migration():
             try:
                 load_organizations_from_excel()
                 assign_regions_to_organizations()
-                current_app.logger.info('Миграция организаций успешно завершена')
+                assign_region_management_to_organizations()
+                current_app.logger.info('The migration of organizations has been successfully completed')
             except Exception as e:
-                current_app.logger.error(f'Ошибка при миграции: {str(e)}')
+                current_app.logger.error(f'Migration error: {str(e)}')
                 db.session.rollback()
                 
         ### ----------- ###
@@ -204,25 +237,13 @@ def filling_database(db):
             ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 54),
             ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, None),
 
-            # ('', os.getenv('auditoremailBrest'), 'Иванов1', 'Иван', 'Иванович', '+11', False, True, 7940),
-            # ('', os.getenv('auditoremailVitebsk'), 'Иванов2', 'Иван', 'Иванович', '+22', False, True, 7941),
-            # ('', os.getenv('auditoremailGomel'), 'Иванов3', 'Иван', 'Иванович', '+33', False, True, 7942),
-            # ('', os.getenv('auditoremailGrodno'), 'Иванов4', 'Иван', 'Иванович', '+44', False, True, 7943),
-            # ('', os.getenv('auditoremailMinskobl'), 'Иванов5', 'Иван', 'Иванович', '+55', False, True, 7945),
-            # ('', os.getenv('auditoremailMogilev'), 'Иванов6', 'Иван', 'Иванович', '+66', False, True, 7946),
-            # ('', os.getenv('auditoremailMinsk'), 'Иванов7', 'Иван', 'Иванович', '+77', False, True, 7944),
-            
             ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 413),
             ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 124),
 
-            # ('', os.getenv('auditoremailBrestTEST'), 'Иванов1', 'Иван', 'Иванович', '+1', False, True, 7940),
-            # ('', os.getenv('auditoremailVitebskTEST'), 'Иванов2', 'Иван', 'Иванович', '+2', False, True, 7941),
-            # ('', os.getenv('auditoremailGomelTEST'), 'Иванов3', 'Иван', 'Иванович', '+3', False, True, 7942),
-            # ('', os.getenv('auditoremailGrodnoTEST'), 'Иванов4', 'Иван', 'Иванович', '+4', False, True, 7943),
-            # ('', os.getenv('auditoremailMinskoblTEST'), 'Иванов5', 'Иван', 'Иванович', '+5', False, True, 7945),
-            # ('', os.getenv('auditoremailMogilevTEST'), 'Иванов6', 'Иван', 'Иванович', '+6', False, True, 7946),
-            # ('', os.getenv('auditoremailMinskTEST'), 'Иванов7', 'Иван', 'Иванович', '+7', False, True, 7944),
-            # ('', os.getenv('auditoremailNadzorTEST'), 'Иванов8', 'Иван', 'Иванович', '+8', False, True, 7947),
+            ('', 'testauditorMinskobl@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 783),
+            ('', 'testauditorGancevichi@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 728),
+            ('', 'testauditorNesvig@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 792),
+            ('', 'testauditorLidskoePivo@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 411),
         ]
 
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:

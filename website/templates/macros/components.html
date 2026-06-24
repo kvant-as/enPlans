@@ -98,14 +98,14 @@
             {{ icons.pending_icon() }}
             <span>
                 {% if current_user and current_user.is_auditor != true %}
-                    {{ _('На рассмотрении') }}
+                    {{ _('На согласовании') }}
                 {% else %}
                     {{ _('Не просмотрен') }}
                 {% endif %}
             </span>
         {% elif plan.is_approved %}
             {{ icons.approved_icon() }}
-            <span>{{ _('Согласован') }}</span>
+            <span>{{ _('Одобрен') }}</span>
         {% endif %}
     </a>
 {% endmacro %}
@@ -266,217 +266,94 @@
 {% endmacro %}
 
 {% macro plan_agree_slider(plan, current_user) %}
-    {% set is_small = plan.plan_type == 'org_small' %}
-    {% set is_large = plan.plan_type == 'org_large' %}
+    {% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
+    {% set total_steps = approval_paths|length %}
+    {% set completed_steps = approval_paths|selectattr('is_viewed', 'equalto', True)|list|length %}
+    {% set progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0 %}
     
     <hr>
-    {% if is_small %}
-        {% set total_steps = 2 %}
-        {% set completed_steps = 0 %}
-        {% if plan.is_region_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% if plan.is_department_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% set progress_width = (completed_steps / total_steps) * 100 %}
-        
-        <h1 class="name">{{ _('Согласование плана (до 25 тыс. т.)') }}</h1>
-        <div class="enplans-approval-slider">
-            <div class="enplans-approval-slider-steps">
-                <div class="enplans-approval-step {% if plan.is_region_approved %}completed{% elif plan.approval_stage == 'regional' %}active{% endif %}">
-                    <div class="enplans-approval-step-icon">
-                        {% if plan.is_region_approved %}
-                            {{ icons.icon_check() }}
-                        {% else %}
-                            {{ icons.icon_region() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Региональное</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.region_approved_time %}
-                            {{ plan.region_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% else %}
-                            Ожидает
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-actions">
-                        {% if not plan.is_region_approved and current_user.is_region %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="regional">
-                                Подтвердить
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
+    <h1 class="name">{{ _('Этапы согласования плана') }}</h1>
+    <div class="enplans-approval-slider">
+        <div class="enplans-approval-slider-steps">
+            {% for path in approval_paths %}
+                {% set org = path.organization %}
+                {% set is_completed = path.is_viewed %}
+                {% set is_active = not is_completed and loop.index0 == completed_steps %}
+                {% set is_blocked = not is_completed and loop.index0 > completed_steps %}
                 
-                <div class="enplans-approval-step {% if plan.is_department_approved %}completed{% elif plan.approval_stage == 'department' %}active{% endif %}">
+                <div class="enplans-approval-step 
+                    {% if is_completed %}completed
+                    {% elif is_active %}active
+                    {% elif is_blocked %}blocked{% endif %}">
+                    
                     <div class="enplans-approval-step-icon">
-                        {% if plan.is_department_approved %}
+                        {% if is_completed %}
                             {{ icons.icon_check() }}
-                        {% else %}
-                            {{ icons.icon_department() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Департамент</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.department_approved_time %}
-                            {{ plan.department_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% elif plan.is_region_approved %}
-                            Ожидает
-                        {% else %}
-                            Заблокировано
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-actions">
-                        {% if plan.is_region_approved and not plan.is_department_approved and current_user.is_departament %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="department">
-                                Подтвердить
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="enplans-approval-progress-container">
-                <div class="enplans-approval-progress-line" style="width: {{ progress_width }}%;"></div>
-            </div>
-            <div class="enplans-approval-progress-text">
-                <span>Согласован на {{ completed_steps }} из {{ total_steps }} этапов ({{ progress_width|int }}%)</span>
-            </div>
-        </div>
-    {% elif is_large %}
-        {% set total_steps = 4 %}
-        {% set completed_steps = 0 %}
-        {% if plan.is_region_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% if plan.is_municipal_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% if plan.is_department_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% if plan.is_higher_organization_approved %}
-            {% set completed_steps = completed_steps + 1 %}
-        {% endif %}
-        {% set progress_width = (completed_steps / total_steps) * 100 %}
-        
-        <h1 class="name">{{ _('Согласование плана (свыше 25 тыс. т.)') }}</h1>
-        <div class="enplans-approval-slider">
-            <div class="enplans-approval-slider-steps">
-                <div class="enplans-approval-step {% if plan.is_region_approved %}completed{% elif plan.approval_stage == 'regional' %}active{% endif %}">
-                    <div class="enplans-approval-step-icon">
-                        {% if plan.is_region_approved %}
-                            {{ icons.icon_check() }}
-                        {% else %}
+                        {% elif path.step_type == 'region' %}
                             {{ icons.icon_region() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Региональное</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.region_approved_time %}
-                            {{ plan.region_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% else %}
-                            Ожидает
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-actions">
-                        {% if not plan.is_region_approved and current_user.is_region %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="regional">
-                                Подтвердить
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="enplans-approval-step {% if plan.is_municipal_approved %}completed{% elif plan.approval_stage == 'municipal' %}active{% endif %}">
-                    <div class="enplans-approval-step-icon">
-                        {% if plan.is_municipal_approved %}
-                            {{ icons.icon_check() }}
-                        {% else %}
+                        {% elif path.step_type == 'coordinator' %}
                             {{ icons.icon_municipal() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Обл/Горисполком</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.municipal_approved_time %}
-                            {{ plan.municipal_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% elif plan.is_region_approved %}
-                            Ожидает
-                        {% else %}
-                            Заблокировано
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-actions">
-                        {% if plan.is_region_approved and not plan.is_municipal_approved and current_user.is_municipal %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="municipal">
-                                Подтвердить
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="enplans-approval-step {% if plan.is_department_approved %}completed{% elif plan.approval_stage == 'department' %}active{% endif %}">
-                    <div class="enplans-approval-step-icon">
-                        {% if plan.is_department_approved %}
-                            {{ icons.icon_check() }}
-                        {% else %}
-                            {{ icons.icon_department() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Департамент</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.department_approved_time %}
-                            {{ plan.department_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% elif plan.is_municipal_approved %}
-                            Ожидает
-                        {% else %}
-                            Заблокировано
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-actions">
-                        {% if plan.is_municipal_approved and not plan.is_department_approved and current_user.is_departament %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="department">
-                                Подтвердить
-                            </button>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="enplans-approval-step {% if plan.is_higher_organization_approved %}completed{% elif plan.approval_stage == 'higher' %}active{% endif %}">
-                    <div class="enplans-approval-step-icon">
-                        {% if plan.is_higher_organization_approved %}
-                            {{ icons.icon_check() }}
-                        {% else %}
+                        {% elif path.step_type == 'approver' %}
                             {{ icons.icon_higher() }}
-                        {% endif %}
-                    </div>
-                    <div class="enplans-approval-step-name">Вышестоящая организация</div>
-                    <div class="enplans-approval-step-time">
-                        {% if plan.higher_organization_approved_time %}
-                            {{ plan.higher_organization_approved_time.strftime('%d.%m.%Y %H:%M') }}
-                        {% elif plan.is_department_approved %}
-                            Ожидает
                         {% else %}
-                            Заблокировано
+                            
                         {% endif %}
                     </div>
+                    
+                    <div class="enplans-approval-step-name" title="{{ org.name if org else 'Неизвестно' }}">
+                        {{ org.name if org else 'Неизвестно' }}
+                    </div>
+                    
+                    <div class="enplans-approval-step-type">
+                        {{ path.step_type_label }}
+                    </div>
+                    
+                    <div class="enplans-approval-step-time">
+                        {% if is_completed and path.viewed_at %}
+                            {{ path.viewed_at.strftime('%d.%m.%Y %H:%M') }}
+                        {% elif is_active %}
+                            {{ _('Ожидает') }}
+                        {% elif is_blocked %}
+                            {{ _('Заблокировано') }}
+                        {% else %}
+                            {{ _('Ожидает') }}
+                        {% endif %}
+                    </div>
+                    
                     <div class="enplans-approval-step-actions">
-                        {% if plan.is_department_approved and not plan.is_higher_organization_approved and current_user.is_higher_organization %}
-                            <button class="enplans-approval-btn" data-action="approve" data-stage="higher">
-                                Подтвердить
+                        {% if is_active and current_user.organization_id == org.id %}
+                            <button class="enplans-approval-btn" data-action="approve" data-path-id="{{ path.id }}">
+                                {{ _('Подтвердить') }}
                             </button>
                         {% endif %}
                     </div>
                 </div>
-            </div>
-            <div class="enplans-approval-progress-container">
-                <div class="enplans-approval-progress-line" style="width: {{ progress_width }}%;"></div>
-            </div>
-            <div class="enplans-approval-progress-text">
-                <span>Согласован на {{ completed_steps }} из {{ total_steps }} этапов ({{ progress_width|int }}%)</span>
-            </div>
+            {% else %}
+                <div class="enplans-approval-step empty">
+                    <div class="enplans-approval-step-icon">
+                        {{ icons.icon_info() }}
+                    </div>
+                    <div class="enplans-approval-step-name">
+                        {{ _('Путь согласования не определен') }}
+                    </div>
+                    <div class="enplans-approval-step-time">
+                        {{ _('Ожидает настройки') }}
+                    </div>
+                </div>
+            {% endfor %}
         </div>
-    {% endif %}
+        
+        <div class="enplans-approval-progress-container">
+            <div class="enplans-approval-progress-line" style="width: {{ progress_width }}%;"></div>
+        </div>
+        
+        <div class="enplans-approval-progress-text">
+            <span>
+                {{ _('Согласован на') }} {{ completed_steps }} {{ _('из') }} {{ total_steps }} {{ _('этапов') }} 
+                ({{ progress_width|int }}%)
+            </span>
+        </div>
+    </div>
 {% endmacro %}
 
 {% macro tickets_container(plan, current_user) %}
@@ -495,7 +372,7 @@
                         {% if ticket.is_owner %}
                             {{ _('Система') }}
                         {% else %}
-                            {{ _('Аудитор') }}
+                            {{ ticket.user.organization.name }}
                         {% endif %}
                     </span>
                     <span class="message-time">
@@ -737,7 +614,7 @@
                     {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
                         {{ _('Не просмотренные') }}
                     {% else %}
-                        {{ _('На рассмотрении') }}
+                        {{ _('На согласовании') }}
                     {% endif %}
                 {% elif selected_status == 'error' %}{{ _('С ошибками') }}
                 {% elif selected_status == 'approved' %}{{ _('Согласованные') }}
@@ -753,7 +630,7 @@
                 {% if current_user and (current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization) %}
                     {{ _('Не просмотренные') }}
                 {% else %}
-                    {{ _('На рассмотрении') }}
+                    {{ _('На согласовании') }}
                 {% endif %}
             </div>
             <div class="dropdown-item" data-value="error">{{ _('С ошибками') }}</div>

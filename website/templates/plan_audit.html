@@ -64,20 +64,30 @@
             </button>
           </form>      
           <form
-            id="confirmPlanForm"
-            action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
-            method="POST"
+              id="confirmPlanForm"
+              action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
+              method="POST"
           >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="approved" />
-            <button
-              id="confirmPlanButton"
-              type="submit"
-              class="element {% if plan.is_approved or plan.is_error %}non{% endif %}"
-            >
-              <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
-              <span class="btn-text">{{ _('Одобрить') }}</span>
-            </button>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" name="status" value="approved" />
+              <button
+                  id="confirmPlanButton"
+                  type="submit"
+                  class="element {% if plan.is_approved or plan.is_error %}non{% endif %}"
+              >
+                  <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
+                  <span class="btn-text">
+                      {% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
+                      {% set total_steps = approval_paths|length %}
+                      {% set current_user_path = approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|first %}
+                      {% set is_last = current_user_path and current_user_path.step_order == total_steps %}
+                      {% if is_last %}
+                          {{ _('Одобрить') }}
+                      {% else %}
+                          {{ _('Согласовать') }}
+                      {% endif %}
+                  </span>
+              </button>
           </form>
 
         </div>
@@ -113,9 +123,13 @@
         </button>
       </div>
     </form>
-    <hr>
+
     {% endif %}
 
+    {% if plan.is_sent or plan.is_approved%}
+      {{ component.plan_agree_slider(plan, current_user) }}
+    {%endif%}
+    <hr>
     <h1 class="name">{{ _('Предприятие') }}</h1>
 
     {% set org = none %}
@@ -157,24 +171,53 @@
           </div>
         </div>
       </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Регион') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_region() }}
+            <input
+              type="text"
+              value="{{ plan.user.organization.region.name }}"
+              placeholder="Регион"
+              class="app-input"
+            />
+          </div>
+        </div>
+      </div>
     {% endif %}
     
     <hr>
     <h1 class="name">{{ _('Респондент') }}</h1>
 
-
-    <div class="app-group">
-      <label>{{ _('ФИО') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_profile() }}
-        <input
-          type="text"
-          id="secondname"
-          maxlength="15"
-          value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
-          placeholder="{{ _('ФИО') }}"
-          class="app-input"
-        />
+    <div class="row-app-group">
+      <div class="app-group">
+        <label>{{ _('ФИО') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            id="secondname"
+            maxlength="15"
+            value="{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name }}"
+            placeholder="{{ _('ФИО') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Должность') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            id="secondname"
+            maxlength="15"
+            value="{{ plan.user.post }}"
+            placeholder="{{ _('Должность') }}"
+            class="app-input"
+          />
+        </div>
       </div>
     </div>
     <div class="row-app-group">

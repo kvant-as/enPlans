@@ -19,9 +19,9 @@ def build_html(message_body, email_type):
             color = "#ef4444"  # status-error
         elif status == "Контроль пройден":
             color = "#8b5cf6"  # status-control
-        elif status == "На рассмотрении" or status == "Не просмотрен":
+        elif status == "На согласовании" or status == "Не просмотрен":
             color = "#3b82f6"  # status-sent
-        elif status == "Согласован":
+        elif status == "Одобрен":
             color = "#10b981"  # status-approved
         else:
             color = "#00798f"  # цвет по умолчанию (EnPlans green)

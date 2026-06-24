@@ -5307,9 +5307,10 @@ input[type="checkbox"]:focus {
 #approval-slider-container {
   -ms-overflow-style: none;
 }
+
 .enplans-approval-slider {
   padding: 24px;
-  width: 100%;
+  /* width: 100%; */
   position: relative;
 }
 
@@ -5366,6 +5367,36 @@ input[type="checkbox"]:focus {
 .enplans-approval-step-icon svg {
   width: 24px;
   height: 24px;
+}
+
+.enplans-approval-step.blocked .enplans-approval-step-icon {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  opacity: 0.5;
+}
+
+.enplans-approval-step.blocked .enplans-approval-step-name {
+  color: #94a3b8;
+}
+
+.enplans-approval-step.blocked .enplans-approval-step-time {
+  color: #94a3b8;
+}
+
+.enplans-approval-step-type {
+  font-size: 11px;
+  color: var(--text-subtitle2);
+  margin-bottom: 4px;
+}
+
+.enplans-approval-step.empty .enplans-approval-step-icon {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.enplans-approval-step.empty .enplans-approval-step-name {
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .enplans-approval-step.completed .enplans-approval-step-icon {

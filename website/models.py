@@ -84,7 +84,7 @@ class PlanApprovalPath(db.Model):
     step_type = db.Column(db.String(20), nullable=False)
     is_viewed = db.Column(db.Boolean, default=False)
     viewed_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    created_at = db.Column(db.DateTime, nullable=False)
     
     plan = db.relationship("Plan", back_populates="approval_paths")
     organization = db.relationship("Organization", foreign_keys=[organization_id], back_populates="approval_paths")

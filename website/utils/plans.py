@@ -5,7 +5,7 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, PlanColumnConfig, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
+from ..models import Direction, Organization, Plan, PlanColumnConfig, Ticket, Indicator, Event, IndicatorUsage, Notification,PlanApprovalPath, TimeByMinsk
 
 from sqlalchemy import func, or_
 
@@ -207,13 +207,31 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         
         if user.is_auditor:
-            base_query = Plan.query.filter(Plan.is_sent == True)
+            auditor_org_ids = []
+            if user.organization_id:
+                auditor_org_ids.append(user.organization_id)
+            
+            if hasattr(user, 'organizations') and user.organizations:
+                auditor_org_ids.extend([org.id for org in user.organizations])
+            
+            if not auditor_org_ids:
+                base_query = Plan.query.filter(False)
+            else:
+                base_query = Plan.query.join(PlanApprovalPath, Plan.id == PlanApprovalPath.plan_id)\
+                    .filter(PlanApprovalPath.organization_id.in_(auditor_org_ids))\
+                    .filter(
+                        db.or_(
+                            Plan.is_sent == True,
+                            Plan.is_error == True,
+                            Plan.is_approved == True
+                        )
+                    )\
+                    .distinct()
         elif user.is_admin:
             base_query = Plan.query
         else:
             base_query = Plan.query.filter_by(user_id=user.id)
-        
-        # Проверяем, нужно ли делать join
+
         needs_join = bool(search_name or search_okpo or region_id)
         
         if needs_join:

@@ -220,7 +220,7 @@ def delete_profile():
     ).first()
     
     if has_active_plans:
-        flash('Невозможно удалить аккаунт. У вас есть отправленные, Согласованные планы или планы с ошибками.', 'error')
+        flash('Невозможно удалить аккаунт. У вас есть отправленные, одобренные планы или планы с ошибками.', 'error')
         return redirect(url_for('views.profile'))
     
     try:

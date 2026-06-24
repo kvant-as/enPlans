@@ -141,12 +141,14 @@
         </div>
       </div>
 
-    {% if plan.is_sent or plan.is_approved%}
+    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False%}
       {{ component.plan_agree_slider(plan, current_user) }}
+    {%endif%} 
+    {% if current_user.is_auditor == False%}
+      <hr>
+      <h1 class="name">{{ _('Результаты проверки') }}</h1>
+      {{ component.tickets_container(plan, current_user) }}
     {%endif%}
-    <hr>
-    <h1 class="name">{{ _('Результаты проверки') }}</h1>
-    {{ component.tickets_container(plan, current_user) }}
     <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
@@ -288,7 +290,7 @@
           
             <div id="step1" class="modal-step">
                 <div class="step-description">
-                    <p>{{ _('Выберите организацию/и для согласования плана (можно выбрать несколько)') }}</p>
+                  <p>{{ _('Выберите организации для согласования плана (можно выбрать несколько)') }}</p>
                 </div>
 
                 <div class="input-with-icon">
@@ -323,6 +325,9 @@
                     <div id="selected-coordinators" class="selected-tags">
                         <span class="empty-message">{{ _('Ничего не выбрано') }}</span>
                     </div>
+                </div>
+                <div class="auto-hint" style="font-size: 10px;">
+                    {{ _('Первая организация автоматически будет региональное управление по надзору за рациональным использованием ТЭР') }}
                 </div>
                 
                 <div class="button-auth-area">

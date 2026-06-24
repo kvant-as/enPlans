@@ -734,8 +734,19 @@ def api_change_plan_status(token):
                     flash('У плана не указан регион', 'error')
                     return redirect(request.referrer or url_for('views.plans'))
             
-            region_id = plan.organization.region_id
-            
+            region_org = Organization.query.filter(
+                Organization.is_region_management == True,
+                Organization.region_id == plan.organization.region_id
+            ).first()
+
+            if not region_org:
+                if request.is_json:
+                    return jsonify({'error': 'Региональное управление не найдено для этого региона'}), 400
+                else:
+                    current_app.logger.error('Региональное управление не найдено для этого региона')
+                    flash('Региональное управление не найдено для этого региона', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+
             if not coordinator_ids and not approver_id:
                 if request.is_json:
                     return jsonify({'error': 'Не выбраны организации для согласования и утверждения'}), 400
@@ -750,8 +761,9 @@ def api_change_plan_status(token):
             region_path = PlanApprovalPath(
                 plan_id=plan.id,
                 step_order=step_order,
-                organization_id=region_id,
-                step_type='region'
+                organization_id=region_org.id,
+                step_type='region',
+                created_at=TimeByMinsk()
             )
             db.session.add(region_path)
             step_order += 1
@@ -762,7 +774,8 @@ def api_change_plan_status(token):
                         plan_id=plan.id,
                         step_order=step_order,
                         organization_id=int(coord_id.strip()),
-                        step_type='coordinator'
+                        step_type='coordinator',
+                        created_at=TimeByMinsk()
                     )
                     db.session.add(coord_path)
                     step_order += 1
@@ -772,7 +785,8 @@ def api_change_plan_status(token):
                     plan_id=plan.id,
                     step_order=step_order,
                     organization_id=int(approver_id),
-                    step_type='approver'
+                    step_type='approver',
+                    created_at=TimeByMinsk()
                 )
                 db.session.add(approver_path)
             
@@ -793,7 +807,7 @@ def api_change_plan_status(token):
             if request.is_json:
                 return jsonify({'message': message, 'status': status})
             else:
-                return redirect(url_for('plan_bp.plan_audit', token=plan.token))
+                return redirect(url_for('plan_bp.plan_review', token=plan.token))
                 
         except Exception as e:
             db.session.rollback()
@@ -801,6 +815,98 @@ def api_change_plan_status(token):
                 return jsonify({'error': f'Ошибка при отправке плана: {str(e)}'}), 500
             else:
                 flash(f'Ошибка при отправке плана: {str(e)}', 'error')
+                return redirect(request.referrer or url_for('views.plans'))
+    
+    if status == 'approved':
+        try:
+            if not current_user.organization_id:
+                if request.is_json:
+                    return jsonify({'error': 'У пользователя не указана организация'}), 400
+                else:
+                    flash('У пользователя не указана организация', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+            
+            current_path = PlanApprovalPath.query.filter_by(
+                plan_id=plan.id,
+                is_viewed=False
+            ).order_by(PlanApprovalPath.step_order).first()
+            
+            if not current_path:
+                if request.is_json:
+                    return jsonify({'error': 'Все этапы уже пройдены'}), 400
+                else:
+                    flash('Все этапы уже пройдены', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+            
+            if current_path.organization_id != current_user.organization_id:
+                if request.is_json:
+                    return jsonify({'error': 'У вас нет прав на согласование этого этапа'}), 403
+                else:
+                    flash('У вас нет прав на согласование этого этапа', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+            
+            current_path.is_viewed = True
+            current_path.viewed_at = TimeByMinsk()
+            
+            plan.audit_time = TimeByMinsk()
+            plan.change_time = TimeByMinsk()
+            
+            next_path = PlanApprovalPath.query.filter_by(
+                plan_id=plan.id,
+                is_viewed=False
+            ).order_by(PlanApprovalPath.step_order).first()
+            
+            if not next_path:
+                setattr(plan, status_mapping[status], True)
+                
+                for other_status, attr_name in status_mapping.items():
+                    if other_status != status and attr_name != status_mapping[status]:
+                        setattr(plan, attr_name, False)
+                
+                ticket = Ticket(
+                    note="План утвержден и одобрен",
+                    luck=True,
+                    is_owner=False,
+                    plan_id=plan.id,
+                    user_id=current_user.id
+                )
+                db.session.add(ticket)
+                
+                notification = Notification(
+                    user_id=plan.user_id,
+                    message=f"План {plan.year} полностью согласован и утвержден",
+                    created_at=TimeByMinsk()
+                )
+                db.session.add(notification)
+                
+                message = "План полностью согласован и утвержден"
+            else:
+                ticket = Ticket(
+                    note="План согласован",
+                    luck=True,
+                    is_owner=False,
+                    plan_id=plan.id,
+                    user_id=current_user.id
+                )
+                db.session.add(ticket)
+                
+                message = "Этап успешно согласован"
+            
+            db.session.commit()
+            
+            flash(message, 'success')
+            
+            if request.is_json:
+                return jsonify({'message': message, 'status': status})
+            else:
+                return redirect(request.referrer or url_for('plan_bp.plan_review', token=plan.token))
+                
+        except Exception as e:
+            db.session.rollback()
+            if request.is_json:
+                return jsonify({'error': f'Ошибка при согласовании: {str(e)}'}), 500
+            else:
+                flash(f'Ошибка при согласовании: {str(e)}', 'error')
                 return redirect(request.referrer or url_for('views.plans'))
     
     if status in status_handlers:
@@ -832,7 +938,7 @@ def api_change_plan_status(token):
                 setattr(plan, attr_name, False)
                 
         new_ticket = Ticket(
-            note="План возвращен в статус 'На рассмотрении'.",
+            note="План возвращен в статус 'На согласовании'.",
             luck=True,
             is_owner=True,
             plan_id=plan.id
@@ -841,7 +947,7 @@ def api_change_plan_status(token):
         
         notification = Notification(
             user_id=plan.user_id,
-            message=f"План {plan.year} возвращен в статус 'На рассмотрении'.",
+            message=f"План {plan.year} возвращен в статус 'На согласовании'.",
             created_at=TimeByMinsk()
         )
         db.session.add(notification)       
