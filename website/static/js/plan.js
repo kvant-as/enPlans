@@ -2035,8 +2035,17 @@ class SendModalPreview {
         this.coordinatorSearchTimeout = null;
         this.approverSearchTimeout = null;
 
-        this.regionName = window.regionName || 'Регион';
-
+        this.regionNumber = window.regionNumber || '';
+        this.regionNames = {
+            1: 'Брестское областное управление',
+            2: 'Витебское областное управление',
+            3: 'Гомельское областное управление',
+            4: 'Гродненское областное управление',
+            5: 'Управление г. Минск',
+            6: 'Минское областное управление',
+            7: 'Могилевское областное управление'
+        };
+        
         this.init();
         this.updateButtonsState();
     }
@@ -2404,7 +2413,6 @@ class SendModalPreview {
             container.scrollLeft = scrollLeft - walk;
         });
 
-        // Для touch устройств
         let touchStartX = 0;
         let touchScrollLeft = 0;
 
@@ -2604,9 +2612,21 @@ class SendModalPreview {
         const container = this.approvalSliderContainer;
         if (!container) return;
 
-        const regionName = this.regionName;
+        const regionNumber = this.regionNumber;
         const coordinators = [];
         const approver = this.selectedApprover;
+
+        const regionNames = {
+            1: 'Брестское областное управление',
+            2: 'Витебское областное управление',
+            3: 'Гомельское областное управление',
+            4: 'Гродненское областное управление',
+            5: 'Управление г. Минск',
+            6: 'Минское областное управление',
+            7: 'Могилевское областное управление'
+        };
+
+        const regionName = regionNames[regionNumber] || 'Регион';
 
         this.selectedCoordinators.forEach(id => {
             const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
@@ -2631,7 +2651,7 @@ class SendModalPreview {
         if (allSteps.length === 1) {
             container.innerHTML = `
                 <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
-                    Выберите организации для отображения пути согласования
+                    Выберите организацию/и для отображения пути согласования
                 </div>
             `;
             return;
@@ -2641,36 +2661,56 @@ class SendModalPreview {
         const completedSteps = 0;
         const progressWidth = 0;
 
-        let stepsHtml = allSteps.map((name, index) => {
+        const sliderDiv = document.createElement('div');
+        sliderDiv.className = 'enplans-approval-slider';
+
+        const stepsDiv = document.createElement('div');
+        stepsDiv.className = 'enplans-approval-slider-steps';
+
+        allSteps.forEach((name, index) => {
             const isFirst = index === 0;
             const statusClass = isFirst ? 'active' : 'pending';
             
-            return `
-                <div class="enplans-approval-step ${statusClass}">
-                    <div class="enplans-approval-step-icon">
-                        ${this.getStepIcon(index, allSteps.length)}
-                    </div>
-                    <div class="enplans-approval-step-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</div>
-                    <div class="enplans-approval-step-time">
-                        ${isFirst ? 'Ожидает' : 'Ожидает'}
-                    </div>
-                </div>
-            `;
-        }).join('');
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `enplans-approval-step ${statusClass}`;
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'enplans-approval-step-icon';
+            iconDiv.innerHTML = this.getStepIcon(index, allSteps.length);
+            stepDiv.appendChild(iconDiv);
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'enplans-approval-step-name';
+            nameDiv.textContent = name;
+            nameDiv.title = name;
+            stepDiv.appendChild(nameDiv);
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'enplans-approval-step-time';
+            timeDiv.textContent = 'Ожидает';
+            stepDiv.appendChild(timeDiv);
+            
+            stepsDiv.appendChild(stepDiv);
+        });
 
-        container.innerHTML = `
-            <div class="enplans-approval-slider">
-                <div class="enplans-approval-slider-steps">
-                    ${stepsHtml}
-                </div>
-                <div class="enplans-approval-progress-container">
-                    <div class="enplans-approval-progress-line" style="width: ${progressWidth}%;"></div>
-                </div>
-                <div class="enplans-approval-progress-text">
-                    <span>Согласован на ${completedSteps} из ${totalSteps} этапов (${progressWidth}%)</span>
-                </div>
-            </div>
-        `;
+        sliderDiv.appendChild(stepsDiv);
+
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'enplans-approval-progress-container';
+        
+        const progressLine = document.createElement('div');
+        progressLine.className = 'enplans-approval-progress-line';
+        progressLine.style.width = `${progressWidth}%`;
+        progressContainer.appendChild(progressLine);
+        sliderDiv.appendChild(progressContainer);
+
+        const progressText = document.createElement('div');
+        progressText.className = 'enplans-approval-progress-text';
+        progressText.innerHTML = `<span>${completedSteps} из ${totalSteps} этапов (${progressWidth}%)</span>`;
+        sliderDiv.appendChild(progressText);
+
+        container.innerHTML = '';
+        container.appendChild(sliderDiv);
     }
 
     getStepIcon(index, total) {
@@ -2678,20 +2718,11 @@ class SendModalPreview {
         const isLast = index === total - 1;
         
         if (isFirst) {
-            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                <circle cx="12" cy="9" r="2.5" fill="currentColor"/>
-            </svg>`;
+            return window.icons.icon_region;
         } else if (isLast) {
-            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                <path d="M9 12l2 2 4-4"/>
-            </svg>`;
+            return window.icons.icon_higher;
         } else {
-            return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 8v8M8 12h8"/>
-            </svg>`;
+            return window.icons.icon_municipal;
         }
     }
 
@@ -2755,8 +2786,12 @@ class SendModalPreview {
         }
 
         if (this.submitButton) {
-            const hasCertificate = document.querySelector('#drop-certificate-area.has-file') !== null;
-            this.submitButton.disabled = !hasCertificate;
+            // const hasCertificate = document.querySelector('#drop-certificate-area.has-file') !== null;
+            // this.submitButton.disabled = !hasCertificate;
+            
+            // Пока отключаем проверку
+            this.submitButton.disabled = false;
+            this.submitButton.classList.remove('disabled');
         }
     }
 

@@ -278,7 +278,7 @@
 <div id="SendModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h1 id="modal-title">{{ _('Отправка плана на согласование') }}</h1>
+            <h1 id="modal-title">{{ _('Отправка плана на рассмотрение') }}</h1>
             {{ icons.icon_close() }}
         </div>
         <div class="modal-body">
@@ -288,7 +288,7 @@
           
             <div id="step1" class="modal-step">
                 <div class="step-description">
-                    <p>{{ _('Выберите организации для согласования плана (можно выбрать несколько)') }}</p>
+                    <p>{{ _('Выберите организацию/и для согласования плана (можно выбрать несколько)') }}</p>
                 </div>
 
                 <div class="input-with-icon">
@@ -302,7 +302,7 @@
                             <tr>
                                 <th style="width: 40px; text-align: center;">{{ _('Выбор') }}</th>
                                 <th>{{ _('Наименование организации') }}</th>
-                                <th style="max-width: 20px;">{{ _('УНП') }}</th>
+                                <th>{{ _('УНП') }}</th>
                             </tr>
                         </thead>
                         <tbody id="coordinator-tbody">
@@ -317,10 +317,7 @@
                 
                 <div class="selected-organizations">
                     <h4>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 6L9 17l-5-5"/>
-                        </svg>
-                        {{ _('Выбранные организации для согласования:') }}
+                        {{ _('организация/и для согласования:') }}
                         <span id="coordinator-count" class="selected-count">0</span>
                     </h4>
                     <div id="selected-coordinators" class="selected-tags">
@@ -353,7 +350,7 @@
                             <tr>
                                 <th style="width: 40px; text-align: center;">{{ _('Выбор') }}</th>
                                 <th>{{ _('Наименование организации') }}</th>
-                                <th style="min-width: 40px;">{{ _('УНП') }}</th>
+                                <th>{{ _('УНП') }}</th>
                             </tr>
                         </thead>
                         <tbody id="approver-tbody">
@@ -366,14 +363,10 @@
                     </table>
                 </div>
                 
-                <div class="selected-organizations">
+                <div class="selected-organizations approver">
                     <h4>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <path d="M9 12l2 2 4-4"/>
-                        </svg>
-                        {{ _('Выбранная организация для утверждения:') }}
-                        <span id="approver-count" class="selected-count">0</span>
+                        {{ _('Организация для утверждения:') }}
+                        <span id="approver-count" class="selected-count approver-count">0</span>
                     </h4>
                     <div id="selected-approver" class="selected-tags">
                         <span class="empty-message">{{ _('Ничего не выбрано') }}</span>
@@ -393,29 +386,10 @@
             </div>
             
             <div id="step3" class="modal-step" style="display: none;">
-              <div class="step-description">
-                  <p>{{ _('Подтвердите отправку плана') }}</p>
-              </div>
-              
-              <!-- <div class="summary-info">
-                  <div class="summary-item">
-                      <strong>{{ _('Согласующие организации:') }}</strong>
-                      <div id="summary-coordinators" class="summary-tags">
-                          <span class="empty-message">{{ _('Не выбрано') }}</span>
-                      </div>
-                  </div>
-                  <div class="summary-item">
-                      <strong>{{ _('Утверждающая организация:') }}</strong>
-                      <div id="summary-approver" class="summary-tags">
-                          <span class="empty-message">{{ _('Не выбрано') }}</span>
-                      </div>
-                  </div>
-              </div> -->
 
               <div class="plan-approval-path">
-                  <!-- <h4>{{ _('Путь согласования плана:') }}</h4> -->
                   <div id="approval-slider-container">
-                      <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
+                      <div class="approval-path-placeholder">
                           {{ _('Выберите организации для отображения пути согласования') }}
                       </div>
                   </div>
@@ -425,7 +399,7 @@
                   <p class="first-child">{{ _('Вы действительно хотите отправить план на согласование и утверждение?') }}</p>
                   <p>
                       {{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }} 
-                      <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
+                      <a href="/FAQ#ecp-certificate" target="_blank" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
                   </p>
               </div>
               
@@ -437,7 +411,7 @@
                   
                   <div class="drop-certificate-container">
                       <div id="drop-certificate-area" class="drop-certificate-area">
-                          <div class="drop-certificate-content">
+                          <div class="drop-certificate-content disabled">
                               <div class="drop-certificate-icon">
                                   {{ icons.icon_add() }}
                               </div>
@@ -452,13 +426,13 @@
                   </div>
                   
                   <div class="button-auth-area">
+                      <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button">
+                          {{ icons.icon_send() }}
+                          <span class="btn-text">{{ _('Да, отправить план') }}</span>
+                      </button>
                       <button type="button" class="svg-btn" id="step3-back-btn">
                           {{ icons.back_icon() }}
                           <span class="btn-text">{{ _('Назад') }}</span>
-                      </button>
-                      <button type="submit" class="main-btn main-btn-delete" id="submit-sent-button" disabled>
-                          {{ icons.icon_confirm() }}
-                          <span class="btn-text">{{ _('Да, отправить план') }}</span>
                       </button>
                   </div>
               </form>
@@ -472,11 +446,19 @@
   document.addEventListener("DOMContentLoaded", function () {
     window.ticketInfoInstance = new window.TicketInfo();
 
-    window.regionName = '{{ plan.organization.region.name if plan.organization.region else "Регион" }}';
+    window.regionNumber = '{{ plan.organization.region.number if plan.organization.region.number else "" }}';
   });
 
   function toggleTicketInfo(ticketId) {
     window.ticketInfoInstance.show(ticketId, event.currentTarget);
   }
+
+  window.icons = {
+      icon_region: `{{ icons.icon_region() }}`,
+      icon_municipal: `{{ icons.icon_municipal() }}`,
+      icon_higher: `{{ icons.icon_higher() }}`,
+      icon_check: `{{ icons.icon_check() }}`,
+      icon_department: `{{ icons.icon_department() }}`
+  };
 </script>
 {% endblock %}

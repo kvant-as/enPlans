@@ -17,7 +17,7 @@ from website.user import send_email
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
-from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanColumnConfig, Ticket, Event, Organization
+from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanApprovalPath, PlanColumnConfig, Ticket, Event, Organization
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
@@ -685,18 +685,22 @@ def api_change_plan_status(token):
     if request.is_json:
         data = request.get_json()
         status = data.get('status')
+        coordinator_ids = data.get('coordinator_ids', '').split(',') if data.get('coordinator_ids') else []
+        approver_id = data.get('approver_id')
     else:
         status = request.form.get('status')
-        if status == 'sent':
-            uploaded_file = request.files.get('certificate')
-            from ..ecp import validate_certificate_for_sending
-            is_valid, error_message = validate_certificate_for_sending(uploaded_file)
-            if not is_valid:
-                flash(error_message, 'error')
-                flash('План не был отправлен.', 'error')
-                return redirect(request.referrer)
-            else:
-                flash('Сертификат успешно прошел проверку.', 'success')
+        coordinator_ids = request.form.get('coordinator_ids', '').split(',') if request.form.get('coordinator_ids') else []
+        approver_id = request.form.get('approver_id')
+        # if status == 'sent':
+        #     uploaded_file = request.files.get('certificate')
+        #     from ..ecp import validate_certificate_for_sending
+        #     is_valid, error_message = validate_certificate_for_sending(uploaded_file)
+        #     if not is_valid:
+        #         flash(error_message, 'error')
+        #         flash('План не был отправлен.', 'error')
+        #         return redirect(request.referrer)
+        #     else:
+        #         flash('Сертификат успешно прошел проверку.', 'success')
     
     if not status:
         if request.is_json:
@@ -720,6 +724,84 @@ def api_change_plan_status(token):
         else:
             flash('Неверный статус', 'error')
             return redirect(request.referrer or url_for('views.plans'))
+    
+    if status == 'sent':
+        try:
+            if not plan.organization or not plan.organization.region_id:
+                if request.is_json:
+                    return jsonify({'error': 'У плана не указан регион'}), 400
+                else:
+                    flash('У плана не указан регион', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+            
+            region_id = plan.organization.region_id
+            
+            if not coordinator_ids and not approver_id:
+                if request.is_json:
+                    return jsonify({'error': 'Не выбраны организации для согласования и утверждения'}), 400
+                else:
+                    flash('Не выбраны организации для согласования и утверждения', 'error')
+                    return redirect(request.referrer or url_for('views.plans'))
+            
+            PlanApprovalPath.query.filter_by(plan_id=plan.id).delete()
+            
+            step_order = 1
+            
+            region_path = PlanApprovalPath(
+                plan_id=plan.id,
+                step_order=step_order,
+                organization_id=region_id,
+                step_type='region'
+            )
+            db.session.add(region_path)
+            step_order += 1
+            
+            for coord_id in coordinator_ids:
+                if coord_id and coord_id.strip():
+                    coord_path = PlanApprovalPath(
+                        plan_id=plan.id,
+                        step_order=step_order,
+                        organization_id=int(coord_id.strip()),
+                        step_type='coordinator'
+                    )
+                    db.session.add(coord_path)
+                    step_order += 1
+            
+            if approver_id:
+                approver_path = PlanApprovalPath(
+                    plan_id=plan.id,
+                    step_order=step_order,
+                    organization_id=int(approver_id),
+                    step_type='approver'
+                )
+                db.session.add(approver_path)
+            
+            setattr(plan, status_mapping[status], True)
+            
+            for other_status, attr_name in status_mapping.items():
+                if other_status != status and attr_name != status_mapping[status]:
+                    setattr(plan, attr_name, False)
+            
+            plan.sent_time = TimeByMinsk()
+            plan.change_time = TimeByMinsk()
+            
+            db.session.commit()
+            
+            message = "План успешно отправлен на согласование"
+            flash(message, 'success')
+            
+            if request.is_json:
+                return jsonify({'message': message, 'status': status})
+            else:
+                return redirect(url_for('plan_bp.plan_audit', token=plan.token))
+                
+        except Exception as e:
+            db.session.rollback()
+            if request.is_json:
+                return jsonify({'error': f'Ошибка при отправке плана: {str(e)}'}), 500
+            else:
+                flash(f'Ошибка при отправке плана: {str(e)}', 'error')
+                return redirect(request.referrer or url_for('views.plans'))
     
     if status in status_handlers:
         try:
@@ -752,11 +834,10 @@ def api_change_plan_status(token):
         new_ticket = Ticket(
             note="План возвращен в статус 'На рассмотрении'.",
             luck=True,
-            is_owner = True,
+            is_owner=True,
             plan_id=plan.id
         )
         db.session.add(new_ticket) 
-        
         
         notification = Notification(
             user_id=plan.user_id,
@@ -778,4 +859,3 @@ def api_change_plan_status(token):
             return redirect(request.referrer or url_for('views.plans'))
         else:
             return redirect(url_for('plan_bp.plan_review', token=plan.token))
-

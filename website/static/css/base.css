@@ -141,9 +141,14 @@
   --send-color-hover: linear-gradient(135deg, #358dff 0%, #25afff 100%);
   
   --green-back-gradient: linear-gradient(135deg, #ffffff 0%, #e9fcff 100%);
+  --green-back-gradient-apr: linear-gradient(135deg, #ffffff 0%, #e9fff1 100%);
+
   --green-element-gradient: linear-gradient(135deg, #dcfaff  0%, #dcfaff 100%);
+  --green-element-gradient-apr: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
 
   --color-green-text-main: #005867;
+  --color-green-text-main-hover: #007c92;
+  --color-control: #006748;
 
   --blur1: rgba(255, 255, 255, 0.25);
 
@@ -192,7 +197,9 @@
   --green-hover: #d7faff;;
   /* --active-row-color: rgb(234, 246, 255); */
   --active-row-color: #e3fbff;
+  --active-row-color-apr: #e3fff8;
 
+  
   --green-main-dark:  #005564;
 
 
@@ -411,7 +418,7 @@ body {
   border-color: rgba(0, 121, 143, 0.15);
 }
 
-.notif.unread::before {
+/* .notif.unread::before {
   content: '';
   position: absolute;
   left: 0;
@@ -421,7 +428,7 @@ body {
   height: 20px;
   background: var(--green-main);
   border-radius: 0 3px 3px 0;
-}
+} */
 
 .notif.unread .notif-message {
   font-weight: 600;
@@ -2655,36 +2662,6 @@ input::placeholder {
         font-size: 9px;
     }
 }
-
-/* 
-.main-btn main-btn-primary {
-  display: inline-flex;
-  align-items: center;  
-  justify-content: center;
-  gap: 11px;        
-  margin-top: 6px;
-  width: 100%;
-  padding: 9px;
-  background: linear-gradient(135deg, #71a7ff, #1d4ed8);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease-out;
-}
-
-.main-btn main-btn-primary svg {
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-  color: white !important;
-}
-
-.main-btn main-btn-primary svg path {
-  stroke: currentColor;
-} */
 
 .svg-btn {
   display: inline-flex;
@@ -5330,16 +5307,17 @@ input[type="checkbox"]:focus {
 #approval-slider-container {
   -ms-overflow-style: none;
 }
-
 .enplans-approval-slider {
   padding: 24px;
   width: 100%;
+  position: relative;
 }
 
 .enplans-approval-slider-steps {
   display: flex;
   justify-content: space-between;
   position: relative;
+  width: 100%;
 }
 
 .enplans-approval-slider-steps::before {
@@ -5348,8 +5326,9 @@ input[type="checkbox"]:focus {
   top: 32px;
   left: 0;
   right: 0;
+  width: 100%;
   height: 2px;
-  background: var(--border-color);
+  background: rgb(243, 243, 243);
   z-index: 1;
 }
 
@@ -5358,13 +5337,22 @@ input[type="checkbox"]:focus {
   text-align: center;
   position: relative;
   z-index: 2;
-  background: #fff;
+  background: transparent;
   padding: 0 12px;
+  min-width: 0;
+}
+
+.enplans-approval-step:first-child {
+  padding-left: 0;
+}
+
+.enplans-approval-step:last-child {
+  padding-right: 0;
 }
 
 .enplans-approval-step-icon {
-  width: 64px;
-  height: 64px;
+  width: 50px;
+  height: 50px;
   margin: 0 auto 12px;
   border-radius: 50%;
   background: var(--background-grey);
@@ -5376,8 +5364,8 @@ input[type="checkbox"]:focus {
 }
 
 .enplans-approval-step-icon svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .enplans-approval-step.completed .enplans-approval-step-icon {
@@ -5403,14 +5391,20 @@ input[type="checkbox"]:focus {
 
 .enplans-approval-step-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
+  margin: 0 auto;
   margin-bottom: 6px;
   color: var(--text-title);
-  max-width: 210px;
+  /* max-width: 160px; */
+  word-wrap: break-word;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
+  line-height: 1.3;
+  max-height: 32px;
 }
 
 .enplans-approval-step-time {
@@ -5460,14 +5454,6 @@ input[type="checkbox"]:focus {
   }
 }
 
-.enplans-approval-step:first-child {
-  padding-left: 0;
-}
-
-.enplans-approval-step:last-child {
-  padding-right: 0;
-}
-
 .enplans-approval-progress-container {
   width: 100%;
   height: 6px;
@@ -5497,7 +5483,6 @@ input[type="checkbox"]:focus {
       padding: 16px;
   }
 
-  
   .enplans-approval-step-icon {
       width: 48px;
       height: 48px;
@@ -6674,6 +6659,10 @@ input[type="checkbox"]:focus {
   background-color: var(--active-row-color) !important;
 }
 
+/* .active-row {
+  background-color: var(--active-row-color-apr) !important;
+} */
+
 .main-table tbody tr.group-header:hover {
   background-color: rgb(235, 235, 235);
 }
@@ -6840,12 +6829,18 @@ input[type="checkbox"]:focus {
 }
 
 .instruction-link {
-  color: #007bff;
+  color: var(--color-green-text-main);
   text-decoration: none;
   font-weight: 500;
   transition: all 0.2s ease;
   border-bottom: 1px solid transparent;
   cursor: pointer;
+}
+
+.instruction-link:hover {
+  color: var(--color-green-text-main-hover);
+  border-bottom-color: currentColor;
+  text-decoration: none;
 }
 
 .type-buttons {
@@ -7455,6 +7450,10 @@ button[disabled] {
   transition: all 0.3s ease;
 }
 
+.selected-organizations.approver{
+  background: var(--green-back-gradient-apr);
+}
+
 .selected-organizations h4 {
   margin: 0 0 10px 0;
   font-size: 13px;
@@ -7465,6 +7464,11 @@ button[disabled] {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.selected-organizations h4 svg{
+  width: 16px;
+  height: 16px;
 }
 
 .selected-organizations h4::after {
@@ -7487,7 +7491,7 @@ button[disabled] {
   align-items: center;
   gap: 8px;
   padding: 6px 12px 6px 14px;
-  background: var(--green-element-gradient);;
+  background: var(--green-element-gradient);
   color: var(--color-green-text-main);
   border-radius: 20px;
   font-size: 13px;
@@ -7503,13 +7507,9 @@ button[disabled] {
 }
 
 .selected-tag.approver-tag {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  color: #065f46;
+  background: var(--green-element-gradient-apr);
+  color: var(--color-control);
   box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
-}
-
-.selected-tag.approver-tag:hover {
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
 }
 
 .selected-tag .tag-icon {
@@ -7521,10 +7521,10 @@ button[disabled] {
   flex-shrink: 0;
 }
 
-.selected-tag .tag-icon svg {
+/* .selected-tag .tag-icon svg {
   width: 14px;
   height: 14px;
-}
+} */
 
 .selected-tag .tag-text {
   max-width: 200px;
@@ -7593,11 +7593,11 @@ button[disabled] {
 
 .modal-table-main tbody tr.active-row {
   background: var(--active-row-color);
-  border-left: 3px solid var(--green-main);
+  /* border-left: 3px solid var(--green-main); */
 }
 
 .modal-table-main tbody tr.active-row td:first-child {
-  border-left: 3px solid var(--green-main);
+  /* border-left: 3px solid var(--green-main); */
 }
 
 .modal-table-main tbody tr.active-row .coordinator-checkbox,
@@ -7611,8 +7611,8 @@ button[disabled] {
   justify-content: center;
   min-width: 20px;
   height: 20px;
-  background: var(--green-main);
-  color: white;
+  background: var(--green-element-gradient);
+  color: var(--color-green-text-main);
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
@@ -7620,7 +7620,8 @@ button[disabled] {
 }
 
 .selected-count.approver-count {
-  background: var(--green-main);
+  background: var(--green-element-gradient-apr);
+  color: var(--color-control);
 }
 
 .summary-info {
@@ -7694,16 +7695,20 @@ button[disabled] {
   text-align: center;
 }
 
+.drop-certificate-content.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
 .drop-certificate-icon {
-  font-size: 48px;
-  color: #999;
+  color: var(--green-light);
   margin-bottom: 12px;
 }
 
 .drop-certificate-icon svg {
-  width: 48px;
-  height: 48px;
-  fill: #999;
+  width: 38px;
+  width: 38px;
+  fill: var(--green-light);
 }
 
 .drop-certificate-text {
@@ -7713,14 +7718,14 @@ button[disabled] {
 }
 
 .drop-certificate-label {
-  color: #4CAF50;
+  color: var(--color-green-text-main);
   cursor: pointer;
   text-decoration: underline;
 }
 
-.drop-certificate-label:hover {
+/* .drop-certificate-label:hover {
   color: #45a049;
-}
+} */
 
 .drop-certificate-hint {
   margin: 0;

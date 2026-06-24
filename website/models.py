@@ -67,11 +67,40 @@ class Organization(db.Model):
     region = db.relationship("Region", back_populates="organizations")
     users = db.relationship("User", back_populates="organization")
     
+    approval_paths = db.relationship("PlanApprovalPath", foreign_keys="PlanApprovalPath.organization_id", back_populates="organization")
     plans = db.relationship("Plan", foreign_keys="Plan.org_id", back_populates="organization")
 
 def generate_static_token(length=20):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+class PlanApprovalPath(db.Model):
+    __tablename__ = 'plan_approval_paths'
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    step_order = db.Column(db.Integer, nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    step_type = db.Column(db.String(20), nullable=False)
+    is_viewed = db.Column(db.Boolean, default=False)
+    viewed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
+    
+    plan = db.relationship("Plan", back_populates="approval_paths")
+    organization = db.relationship("Organization", foreign_keys=[organization_id], back_populates="approval_paths")
+    
+    STEP_TYPES = {
+        'region': 'Региональное управление',
+        'coordinator': 'Согласовывающая организация',
+        'approver': 'Утверждающая организация'
+    }
+    
+    @property
+    def step_type_label(self):
+        return self.STEP_TYPES.get(self.step_type, self.step_type)
+    
+    def __repr__(self):
+        return f'<PlanApprovalPath plan_id={self.plan_id} step_order={self.step_order} type={self.step_type}>'
 
 
 class PlanColumnConfig(db.Model):
@@ -106,30 +135,19 @@ class Plan(db.Model):
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
-    is_error = db.Column(db.Boolean, default=False)
     
-    is_region_approved = db.Column(db.Boolean, default=False)
-    is_municipal_approved = db.Column(db.Boolean, default=False)
-    is_department_approved = db.Column(db.Boolean, default=False)
-    is_higher_organization_approved = db.Column(db.Boolean, default=False)
-
+    is_error = db.Column(db.Boolean, default=False)
     is_approved = db.Column(db.Boolean, default=False)
     
     plan_type = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    region_approved_time = db.Column(db.DateTime, nullable=True)
-    municipal_approved_time = db.Column(db.DateTime, nullable=True)
-    department_approved_time = db.Column(db.DateTime, nullable=True)
-    higher_organization_approved_time = db.Column(db.DateTime, nullable=True)
-    approval_stage = db.Column(db.String(50), default='regional')  # regional, municipal, department, higher
-
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
-    
     tickets = db.relationship('Ticket', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     events = db.relationship('Event', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     indicators_usage = db.relationship('IndicatorUsage', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     column_configs = db.relationship('PlanColumnConfig', back_populates='plan', lazy=True, cascade="all, delete-orphan")
+    approval_paths = db.relationship('PlanApprovalPath', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     
     user = db.relationship("User", back_populates="plans")
     organization = db.relationship("Organization", foreign_keys=[org_id], back_populates="plans")
