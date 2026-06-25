@@ -35,7 +35,6 @@ def create_ticket(token):
         return redirect(request.referrer)
     
     current_plan.afch = True
-    current_plan.audit_time = TimeByMinsk()
     
     new_ticket = Ticket(
         note=note.strip(),

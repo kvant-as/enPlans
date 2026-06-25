@@ -1,11 +1,9 @@
-from decimal import Decimal
 from flask import (
     Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
 
 import uuid
 import threading
-import zipfile
 
 from sqlalchemy import select
 
@@ -14,11 +12,11 @@ from flask_login import (
 )
 
 from ..time import TimeByMinsk
-from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_usd_rate_from_belarusbank
-from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
+from website.utils.currency_rates import fetch_usd_rate_from_any_source
+from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import News, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import News, User, Organization, Plan, Ticket, Indicator, IndicatorUsage
 from .. import db
 
 from functools import wraps
@@ -245,23 +243,23 @@ def plans():
         selected_year=year
     )
     
-@views.route('/plans-audit', methods=['GET'])
-@user_with_all_params()
-@login_required
-@session_required
-def plans_audit():
-    status = request.args.get('status', 'all')
-    year = request.args.get('year', 'all')
+# @views.route('/plans-audit', methods=['GET'])
+# @user_with_all_params()
+# @login_required
+# @session_required
+# def plans_audit():
+#     status = request.args.get('status', 'all')
+#     year = request.args.get('year', 'all')
     
-    return render_template(
-        'plans.html',
-        years=range(2026, 2050),
-        current_user=current_user,
-        hide_header=False,
-        selected_status=status,
-        selected_year=year,
-        audit_page=True
-    )
+#     return render_template(
+#         'plans.html',
+#         years=range(2026, 2050),
+#         current_user=current_user,
+#         hide_header=False,
+#         selected_status=status,
+#         selected_year=year,
+#         audit_page=True
+#     )
 
 @views.route('/export', methods=['GET'])
 @user_with_all_params()

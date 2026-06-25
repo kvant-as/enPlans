@@ -53,7 +53,7 @@ class Organization(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False)
     okpo = db.Column(db.String, unique=True, nullable=False)
-    ynp = db.Column(db.String(), nullable=True)
+    ynp = db.Column(db.String(), unique=True, nullable=False)
     
     is_active = db.Column(db.Boolean, default=True)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))

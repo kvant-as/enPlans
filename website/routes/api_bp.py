@@ -24,10 +24,11 @@ def api_get_plans():
         status_filter = request.args.get('status', 'all')
         year_filter = request.args.get('year', 'all')
         search_name = request.args.get('search_name', '')
-        search_okpo = request.args.get('search_okpo', '')
+        search_ynp = request.args.get('search_ynp', '')
         region = request.args.get('region', '')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 5, type=int)
+        show_checkboxes = request.args.get('show_checkboxes', 'false').lower() == 'true'
         
         region_id = None
         if region and region != 'all':
@@ -37,7 +38,7 @@ def api_get_plans():
                 region_id = None
         
         plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
+            current_user, status_filter, year_filter, search_name, search_ynp, region_id, page, per_page
         )
         
         is_compact = current_user.is_auditor
@@ -49,7 +50,7 @@ def api_get_plans():
             ''',
             plans=plans,
             current_user=current_user,
-            show_checkboxes=False,
+            show_checkboxes=show_checkboxes,
             show_actions=True,
             custom_empty_message=None,
             compact_view=is_compact
@@ -70,62 +71,7 @@ def api_get_plans():
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 500
-        
-@api_bp.route('/export-plans', methods=['GET'])
-@login_required
-def api_get_export_plans():
-    try:
-        status_filter = request.args.get('status', 'all')
-        year_filter = request.args.get('year', 'all')
-        search_name = request.args.get('search_name', '')
-        search_okpo = request.args.get('search_okpo', '')
-        region = request.args.get('region', '')
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 5, type=int)
-                
-        region_id = None
-        if region and region != 'all':
-            try:
-                region_id = int(region)
-            except (ValueError, TypeError):
-                region_id = None
-                
-        plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
-        )
-        
-        is_compact = current_user.is_auditor
-        
-        html = render_template_string(
-            '''
-            {% import 'macros/components.html' as components %}
-            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
-            ''',
-            plans=plans,
-            current_user=current_user,
-            show_checkboxes=True,
-            show_actions=False,
-            custom_empty_message=None,
-            compact_view=is_compact
-        )
-        
-        return jsonify({
-            'success': True,
-            'html': html,
-            'counts': status_counts,
-            'pagination': {
-                'current_page': page,
-                'per_page': per_page,
-                'total_count': total_count,
-                'has_next': page * per_page < total_count
-            }
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        }), 500      
         
 @api_bp.route('/approve-plan/<token>', methods=['POST'])
 @login_required

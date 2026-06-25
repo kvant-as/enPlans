@@ -27,55 +27,7 @@
       </div>
     </div>
 
-    <div class="stats-container">
-      <div class="stats-track">
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number" id="stat-all">-</a>
-            <a class="word-numb">{{ _('Все') }}</a>
-          </div>
-        </div>
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number-redac" id="stat-draft">-</a>
-            <a class="word-numb">{{ _('В редакции') }}</a>
-          </div>
-          <div class="status-dot"></div>
-        </div>
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number-control" id="stat-control">-</a>
-            <a class="word-numb">{{ _('Контроль') }}</a>
-          </div>
-          <div class="status-dot"></div>
-        </div>
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number-sent" id="stat-sent">-</a>
-            <a class="word-numb">{{ _('На согласовании') }}</a>
-          </div>
-          <div class="status-dot"></div>
-        </div>
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number-eror" id="stat-error">-</a>
-            <a class="word-numb">{{ _('С ошибками') }}</a>
-          </div>
-          <div class="status-dot"></div>
-        </div>
-        <div class="stat-and-dot">
-          <div class="stat">
-            <a class="stat-number-sub" id="stat-approved">-</a>
-            <a class="word-numb">{{ _('Одобренные') }}</a>
-          </div>
-          <div class="status-dot"></div>
-        </div>
-      </div>
-      <div class="progress-line-container">
-        <div class="progress-line-background"></div>
-        <div class="progress-line-active"></div>
-      </div>
-    </div>
+    {{ component.plan_count(current_user)}}
 
     {{ component.filters_section(
         years, 
@@ -103,5 +55,8 @@
   window.isExportPage = false;
 </script>
 
-  {{ affects.bg_effect() }}
+{{ affects.bg_effect() }}
+
+<script src="{{ url_for('static', filename='js/plan-status.js') }}"></script>
+
 {% endblock %}

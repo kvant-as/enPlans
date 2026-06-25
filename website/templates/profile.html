@@ -14,7 +14,7 @@
         {% if current_user.post %}  
           <a class="employee-position">{{ current_user.post}}</a>
         {% endif%}
-        <a class="employee-company">
+        <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.name}} {% endif%}
         </a>
       </div>

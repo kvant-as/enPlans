@@ -11,7 +11,6 @@ from website.utils.plans import check_and_create_period_directions, generate_uni
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
-from website.utils.plans import status_handlers
 from website.user import send_email
 
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
@@ -674,8 +673,8 @@ def delete_eventes(id):
     other_data_indicatorUpdate(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
-
-@plan_bp.route('/change-plan-status/<token>', methods=['POST'])
+        
+@plan_bp.route('/change-status/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @owner_only
@@ -691,16 +690,6 @@ def api_change_plan_status(token):
         status = request.form.get('status')
         coordinator_ids = request.form.get('coordinator_ids', '').split(',') if request.form.get('coordinator_ids') else []
         approver_id = request.form.get('approver_id')
-        # if status == 'sent':
-        #     uploaded_file = request.files.get('certificate')
-        #     from ..ecp import validate_certificate_for_sending
-        #     is_valid, error_message = validate_certificate_for_sending(uploaded_file)
-        #     if not is_valid:
-        #         flash(error_message, 'error')
-        #         flash('План не был отправлен.', 'error')
-        #         return redirect(request.referrer)
-        #     else:
-        #         flash('Сертификат успешно прошел проверку.', 'success')
     
     if not status:
         if request.is_json:
@@ -709,259 +698,55 @@ def api_change_plan_status(token):
             flash('Статус не указан', 'error')
             return redirect(request.referrer or url_for('views.plans'))
     
-    status_mapping = {
-        'draft': 'is_draft',
-        'control': 'is_control',
-        'sent': 'is_sent', 
-        'sent_without_check': 'is_sent',
-        'error': 'is_error',
-        'approved': 'is_approved'
+    from website.utils.status_plan import (
+        handle_sent_status,
+        handle_approved_status,
+        handle_sent_without_check_status,
+        handle_draft_status,
+        handle_control_status,
+        handle_error_status
+    )
+    
+    status_handlers = {
+        'sent': handle_sent_status,
+        'approved': handle_approved_status,
+        'sent_without_check': handle_sent_without_check_status,
+        'draft': handle_draft_status,
+        'control': handle_control_status,
+        'error': handle_error_status
     }
     
-    if status not in status_mapping:
+    if status not in status_handlers:
         if request.is_json:
             return jsonify({'error': 'Неверный статус'}), 400
         else:
             flash('Неверный статус', 'error')
             return redirect(request.referrer or url_for('views.plans'))
     
+    handler = status_handlers[status]
+    
     if status == 'sent':
-        try:
-            if not plan.organization or not plan.organization.region_id:
-                if request.is_json:
-                    return jsonify({'error': 'У плана не указан регион'}), 400
-                else:
-                    flash('У плана не указан регион', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-            
-            region_org = Organization.query.filter(
-                Organization.is_region_management == True,
-                Organization.region_id == plan.organization.region_id
-            ).first()
-
-            if not region_org:
-                if request.is_json:
-                    return jsonify({'error': 'Региональное управление не найдено для этого региона'}), 400
-                else:
-                    current_app.logger.error('Региональное управление не найдено для этого региона')
-                    flash('Региональное управление не найдено для этого региона', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-
-            if not coordinator_ids and not approver_id:
-                if request.is_json:
-                    return jsonify({'error': 'Не выбраны организации для согласования и утверждения'}), 400
-                else:
-                    flash('Не выбраны организации для согласования и утверждения', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-            
-            PlanApprovalPath.query.filter_by(plan_id=plan.id).delete()
-            
-            step_order = 1
-            
-            region_path = PlanApprovalPath(
-                plan_id=plan.id,
-                step_order=step_order,
-                organization_id=region_org.id,
-                step_type='region',
-                created_at=TimeByMinsk()
-            )
-            db.session.add(region_path)
-            step_order += 1
-            
-            for coord_id in coordinator_ids:
-                if coord_id and coord_id.strip():
-                    coord_path = PlanApprovalPath(
-                        plan_id=plan.id,
-                        step_order=step_order,
-                        organization_id=int(coord_id.strip()),
-                        step_type='coordinator',
-                        created_at=TimeByMinsk()
-                    )
-                    db.session.add(coord_path)
-                    step_order += 1
-            
-            if approver_id:
-                approver_path = PlanApprovalPath(
-                    plan_id=plan.id,
-                    step_order=step_order,
-                    organization_id=int(approver_id),
-                    step_type='approver',
-                    created_at=TimeByMinsk()
-                )
-                db.session.add(approver_path)
-            
-            setattr(plan, status_mapping[status], True)
-            
-            for other_status, attr_name in status_mapping.items():
-                if other_status != status and attr_name != status_mapping[status]:
-                    setattr(plan, attr_name, False)
-            
-            plan.sent_time = TimeByMinsk()
-            plan.change_time = TimeByMinsk()
-            
-            db.session.commit()
-            
-            message = "План успешно отправлен на согласование"
-            flash(message, 'success')
-            
-            if request.is_json:
-                return jsonify({'message': message, 'status': status})
-            else:
-                return redirect(url_for('plan_bp.plan_review', token=plan.token))
-                
-        except Exception as e:
-            db.session.rollback()
-            if request.is_json:
-                return jsonify({'error': f'Ошибка при отправке плана: {str(e)}'}), 500
-            else:
-                flash(f'Ошибка при отправке плана: {str(e)}', 'error')
-                return redirect(request.referrer or url_for('views.plans'))
-    
-    if status == 'approved':
-        try:
-            if not current_user.organization_id:
-                if request.is_json:
-                    return jsonify({'error': 'У пользователя не указана организация'}), 400
-                else:
-                    flash('У пользователя не указана организация', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-            
-            current_path = PlanApprovalPath.query.filter_by(
-                plan_id=plan.id,
-                is_viewed=False
-            ).order_by(PlanApprovalPath.step_order).first()
-            
-            if not current_path:
-                if request.is_json:
-                    return jsonify({'error': 'Все этапы уже пройдены'}), 400
-                else:
-                    flash('Все этапы уже пройдены', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-            
-            if current_path.organization_id != current_user.organization_id:
-                if request.is_json:
-                    return jsonify({'error': 'У вас нет прав на согласование этого этапа'}), 403
-                else:
-                    flash('У вас нет прав на согласование этого этапа', 'error')
-                    return redirect(request.referrer or url_for('views.plans'))
-            
-            current_path.is_viewed = True
-            current_path.viewed_at = TimeByMinsk()
-            
-            plan.audit_time = TimeByMinsk()
-            plan.change_time = TimeByMinsk()
-            
-            next_path = PlanApprovalPath.query.filter_by(
-                plan_id=plan.id,
-                is_viewed=False
-            ).order_by(PlanApprovalPath.step_order).first()
-            
-            if not next_path:
-                setattr(plan, status_mapping[status], True)
-                
-                for other_status, attr_name in status_mapping.items():
-                    if other_status != status and attr_name != status_mapping[status]:
-                        setattr(plan, attr_name, False)
-                
-                ticket = Ticket(
-                    note="План утвержден и одобрен",
-                    luck=True,
-                    is_owner=False,
-                    plan_id=plan.id,
-                    user_id=current_user.id
-                )
-                db.session.add(ticket)
-                
-                notification = Notification(
-                    user_id=plan.user_id,
-                    message=f"План {plan.year} полностью согласован и утвержден",
-                    created_at=TimeByMinsk()
-                )
-                db.session.add(notification)
-                
-                message = "План полностью согласован и утвержден"
-            else:
-                ticket = Ticket(
-                    note="План согласован",
-                    luck=True,
-                    is_owner=False,
-                    plan_id=plan.id,
-                    user_id=current_user.id
-                )
-                db.session.add(ticket)
-                
-                message = "Этап успешно согласован"
-            
-            db.session.commit()
-            
-            flash(message, 'success')
-            
-            if request.is_json:
-                return jsonify({'message': message, 'status': status})
-            else:
-                return redirect(request.referrer or url_for('plan_bp.plan_review', token=plan.token))
-                
-        except Exception as e:
-            db.session.rollback()
-            if request.is_json:
-                return jsonify({'error': f'Ошибка при согласовании: {str(e)}'}), 500
-            else:
-                flash(f'Ошибка при согласовании: {str(e)}', 'error')
-                return redirect(request.referrer or url_for('views.plans'))
-    
-    if status in status_handlers:
-        try:
-            result = status_handlers[status](plan)
-            db.session.commit()
-
-            if isinstance(result, dict) and "error" in result:
-                if request.is_json:
-                    return jsonify(result), 400
-                else:
-                    flash(result["error"], "error")
-                    return redirect(request.referrer or url_for('views.plans'))
-            message = result if isinstance(result, str) else "Статус изменен"
-
-        except Exception as e:
-            db.session.rollback()
-            if request.is_json:
-                return jsonify({'error': f'Ошибка обработки статуса: {str(e)}'}), 500
-            else:
-                flash(f'Ошибка обработки статуса: {str(e)}', 'error')
-                return redirect(request.referrer or url_for('views.plans'))
-    
-    if status == 'sent_without_check':
-        setattr(plan, status_mapping[status], True)
-        
-        for other_status, attr_name in status_mapping.items():
-            if other_status != status and attr_name != status_mapping[status]:
-                setattr(plan, attr_name, False)
-                
-        new_ticket = Ticket(
-            note="План возвращен в статус 'На согласовании'.",
-            luck=True,
-            is_owner=True,
-            plan_id=plan.id
-        )
-        db.session.add(new_ticket) 
-        
-        notification = Notification(
-            user_id=plan.user_id,
-            message=f"План {plan.year} возвращен в статус 'На согласовании'.",
-            created_at=TimeByMinsk()
-        )
-        db.session.add(notification)       
-        db.session.commit()
-        
-        message = "План возвращен в изначальное состояние."
-        flash(message, 'success')
-        return redirect(url_for('plan_bp.plan_audit', token=plan.token))
+        result = handler(plan, coordinator_ids, approver_id)
+    elif status == 'approved':
+        result = handler(plan, current_user)
+    elif status == 'sent_without_check':
+        result = handler(plan, current_user)
+    else:
+        result = handler(plan)
     
     if request.is_json:
-        return jsonify({'message': message, 'status': status})
+        if isinstance(result, dict) and "error" in result:
+            return jsonify({'error': result['error']}), 400
+        return jsonify({'message': result if isinstance(result, str) else result.get('message'), 'status': status})
     else:
+        if isinstance(result, dict) and "error" in result:
+            flash(result['error'], 'error')
+            return redirect(request.referrer or url_for('views.plans'))
+        message = result if isinstance(result, str) else result.get('message', 'Статус изменен')
         flash(message, 'success')
         if status in ['approved', 'error']:
             return redirect(request.referrer or url_for('views.plans'))
+        if status in ['sent_without_check']:
+            return redirect(request.referrer)
         else:
             return redirect(url_for('plan_bp.plan_review', token=plan.token))

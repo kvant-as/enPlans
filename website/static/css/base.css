@@ -155,6 +155,7 @@
   --background-redaced: #E1DBFF;
   --background-controled: #cefff1;
   --background-sented: #CFE2FF;
+  --background-sogl: #cffdff;
   --background-erorsed: #ffb2b3;
   --background-submited: #D8FFDC;
   --background-warning: #f9ffd8;
@@ -166,6 +167,7 @@
 
   --color-controled: #74FFD8;
   --color-sented: #83B4FF;
+  --color-sogl: #83e6ff;
   --color-erorsed: #FF6565;
   --color-submited: #8BFF97;
 
@@ -3534,9 +3536,8 @@ input::placeholder {
 .circle-fi{
   background-color: var(--background-grey);
   border-radius: 50%; 
-  width: 80px;       
-  height: 80px;      
-  padding: 15px;     
+  
+  padding: 45px 40px;     
   display: flex;     
   align-items: center;
   justify-content: center;
@@ -3573,16 +3574,18 @@ input::placeholder {
   display: block;
 }
 
-.employee-company{
+.employee-company {
   font-weight: 500;
   padding: 5px 16px;
   background-color: var(--background-grey);
   border-radius: 8px;
-  overflow-x: auto;
-  max-width: fit-content;
+  overflow: hidden;
+  max-width: 100%;
   white-space: nowrap;
   display: inline-block;
   font-size: 14px;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 hr {
@@ -4834,7 +4837,6 @@ input[type="checkbox"]:focus {
 }
 
 .no-submit-button.blue:hover {
-
   background: linear-gradient(135deg, #0091d4 0%, #47a6ff 100%) !important;
 }
 
@@ -4950,6 +4952,7 @@ input[type="checkbox"]:focus {
 .stat-number-redac,
 .stat-number-control,
 .stat-number-sent,
+.stat-number-sogl,
 .stat-number-eror,
 .stat-number-sub{
   text-shadow: 0 0 17px rgba(0, 0, 0, 0.5);
@@ -4966,6 +4969,10 @@ input[type="checkbox"]:focus {
 
 .stat-number-sent{
   color: var(--color-sented);
+}
+
+.stat-number-sogl{
+  color: var(--color-sogl);
 }
 
 .stat-number-eror{
@@ -5130,6 +5137,10 @@ input[type="checkbox"]:focus {
   background: var(--background-sented);
 }
 
+.plan-cont-sogl{
+  background: var(--background-sogl);
+}
+
 .plan-cont-eror{
   background: var(--background-erorsed);
 }
@@ -5223,9 +5234,15 @@ input[type="checkbox"]:focus {
   border: 1px solid rgba(59, 130, 246, 0.2) !important;
 }
 
+.status-sogl {
+  background: rgba(59, 202, 246, 0.1) !important;
+  color: #1e4349 !important;
+  border: 1px solid rgba(46, 179, 189, 0.2) !important;
+}
+
 .status-error {
   background: rgba(239, 68, 68, 0.1)!important;
-  color: #dc2626!important;
+  color: #801616!important;
   border: 1px solid rgba(167, 48, 48, 0.4)!important;
 }
 
@@ -5365,6 +5382,7 @@ input[type="checkbox"]:focus {
 }
 
 .enplans-approval-step-icon svg {
+  color: var(--green-main);
   width: 24px;
   height: 24px;
 }
@@ -5659,6 +5677,12 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   color: var(--telegram-text);
   opacity: 0.9;
+  max-width: 310px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .tickets-message-right .message-sender {

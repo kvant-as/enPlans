@@ -1877,55 +1877,7 @@ const TableCollapseManager = (function() {
 })();
 
 
-function initStatusProgress() {
-    const STATUS_CONFIG = {
-        'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)' },
-        'plan-cont-control': { width: '40%', color: 'var(--color-controled)' },
-        'plan-cont-sent': { width: '60%', color: 'var(--color-sented)' },
-        'plan-cont-eror': { width: '80%', color: 'var(--color-erorsed)' },
-        'plan-cont-sub': { width: '100%', color: 'var(--color-submited)' }
-    };
 
-    const planConts = document.querySelectorAll('.plan-cont');
-    const progressLine = document.querySelector('.progress-line-active');
-    const dots = document.querySelectorAll('.status-dot');
-
-    if (!planConts.length || !progressLine || !dots.length) {
-        console.warn('Не найдены необходимые элементы для прогресс-бара');
-        return;
-    }
-
-    const handleMouseEnter = (event) => {
-        const planCont = event.currentTarget;
-        
-        for (const [className, config] of Object.entries(STATUS_CONFIG)) {
-            if (planCont.classList.contains(className)) {
-                progressLine.style.width = config.width;
-                progressLine.style.background = config.color;
-                
-                const activeIndex = Object.keys(STATUS_CONFIG).indexOf(className);
-                const activeColor = STATUS_CONFIG[className].color;
-                
-                dots.forEach((dot, index) => {
-                    dot.style.background = index <= activeIndex ? activeColor : 'var(--border-color)';
-                });
-                break;
-            }
-        }
-    };
-
-    const handleMouseLeave = () => {
-        progressLine.style.width = '0';
-        dots.forEach(dot => {
-            dot.style.background = 'var(--border-color)';
-        });
-    };
-
-    planConts.forEach(planCont => {
-        planCont.addEventListener('mouseenter', handleMouseEnter);
-        planCont.addEventListener('mouseleave', handleMouseLeave);
-    });
-}
 
 
 function checkCategoryRequired() {
@@ -1978,8 +1930,6 @@ function checkCategoryRequired() {
     }
 }
 
-
-
 class SendModalPreview {
     constructor(modalId) {
         console.log('[SendModalPreview] Constructor called with modalId:', modalId);
@@ -1998,7 +1948,7 @@ class SendModalPreview {
         this.totalSteps = this.stepEls.length || 1;
         this.currentStep = 1;
 
-        this.selectedCoordinators = new Set();
+        this.selectedCoordinators = new Map();
         this.selectedApprover = null;
 
         this.coordinatorSearch = this.modal.querySelector('#coordinator-search');
@@ -2037,13 +1987,13 @@ class SendModalPreview {
 
         this.regionNumber = window.regionNumber || '';
         this.regionNames = {
-            1: 'Брестское областное управление',
-            2: 'Витебское областное управление',
-            3: 'Гомельское областное управление',
-            4: 'Гродненское областное управление',
-            5: 'Управление г. Минск',
-            6: 'Минское областное управление',
-            7: 'Могилевское областное управление'
+            1: 'Брестское областное управление по надзору за рациональным использованием ТЭР',
+            2: 'Витебское областное управление по надзору за рациональным использованием ТЭР',
+            3: 'Гомельское областное управление по надзору за рациональным использованием ТЭР',
+            4: 'Гродненское областное управление по надзору за рациональным использованием ТЭР',
+            5: 'Управление г. Минск по надзору за рациональным использованием ТЭР',
+            6: 'Минское областное управление по надзору за рациональным использованием ТЭР',
+            7: 'Могилевское областное управление по надзору за рациональным использованием ТЭР'
         };
         
         this.init();
@@ -2183,14 +2133,19 @@ class SendModalPreview {
 
             const isCoordinator = type === 'coordinator';
             const checkboxType = isCoordinator ? 'coordinator-checkbox' : 'approver-checkbox';
+            const isChecked = isCoordinator ? this.selectedCoordinators.has(String(org.id)) : this.selectedApprover === String(org.id);
 
             row.innerHTML = `
                 <td style="text-align: center;">
-                    <input type="checkbox" class="${checkboxType}" value="${org.id}" data-name="${this.escapeHtml(org.name)}">
+                    <input type="checkbox" class="${checkboxType}" value="${org.id}" data-name="${this.escapeHtml(org.name)}" ${isChecked ? 'checked' : ''}>
                 </td>
                 <td>${this.escapeHtml(org.name)}</td>
                 <td>${this.escapeHtml(org.ynp || '')}</td>
             `;
+
+            if (isChecked) {
+                row.classList.add('active-row');
+            }
 
             tbody.appendChild(row);
 
@@ -2215,8 +2170,9 @@ class SendModalPreview {
 
         checkbox.addEventListener('change', (e) => {
             const id = e.target.value;
+            const name = e.target.dataset.name;
             if (e.target.checked) {
-                this.selectedCoordinators.add(id);
+                this.selectedCoordinators.set(id, name);
                 row.classList.add('active-row');
             } else {
                 this.selectedCoordinators.delete(id);
@@ -2226,11 +2182,6 @@ class SendModalPreview {
             this.updateButtonsState();
             this.updateApprovalPath();
         });
-
-        if (this.selectedCoordinators.has(checkbox.value)) {
-            checkbox.checked = true;
-            row.classList.add('active-row');
-        }
     }
 
     initApproverRow(row, checkbox) {
@@ -2285,11 +2236,6 @@ class SendModalPreview {
             this.updateButtonsState();
             this.updateApprovalPath();
         });
-
-        if (this.selectedApprover === checkbox.value) {
-            checkbox.checked = true;
-            row.classList.add('active-row');
-        }
     }
 
     showLoading(tbody, colspan = 3) {
@@ -2486,7 +2432,7 @@ class SendModalPreview {
 
         this.modal.querySelector('#sentForm')?.addEventListener('submit', (e) => {
             if (this.coordinatorIdsInput) {
-                this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators).join(',');
+                this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators.keys()).join(',');
             }
             if (this.approverIdInput) {
                 this.approverIdInput.value = this.selectedApprover;
@@ -2509,9 +2455,7 @@ class SendModalPreview {
             return;
         }
         
-        this.selectedCoordinators.forEach(id => {
-            const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
-            const name = row ? row.dataset.name : `ID: ${id}`;
+        this.selectedCoordinators.forEach((name, id) => {
             const tag = document.createElement('span');
             tag.className = 'selected-tag';
             tag.innerHTML = `
@@ -2529,6 +2473,11 @@ class SendModalPreview {
                 if (checkbox) {
                     checkbox.checked = false;
                     checkbox.dispatchEvent(new Event('change'));
+                } else {
+                    this.selectedCoordinators.delete(id);
+                    this.updateSelectedCoordinators();
+                    this.updateButtonsState();
+                    this.updateApprovalPath();
                 }
             });
             container.appendChild(tag);
@@ -2578,9 +2527,7 @@ class SendModalPreview {
         if (this.summaryCoordinators) {
             this.summaryCoordinators.innerHTML = '';
             if (this.selectedCoordinators.size > 0) {
-                this.selectedCoordinators.forEach(id => {
-                    const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
-                    const name = row ? row.dataset.name : `ID: ${id}`;
+                this.selectedCoordinators.forEach((name, id) => {
                     const tag = document.createElement('span');
                     tag.className = 'summary-tag';
                     tag.textContent = name;
@@ -2628,11 +2575,8 @@ class SendModalPreview {
 
         const regionName = regionNames[regionNumber] || 'Регион';
 
-        this.selectedCoordinators.forEach(id => {
-            const row = this.coordinatorTbody?.querySelector(`tr.org-row[data-id="${id}"]`);
-            if (row) {
-                coordinators.push(row.dataset.name);
-            }
+        this.selectedCoordinators.forEach((name, id) => {
+            coordinators.push(name);
         });
 
         let approverName = '';
@@ -2786,10 +2730,6 @@ class SendModalPreview {
         }
 
         if (this.submitButton) {
-            // const hasCertificate = document.querySelector('#drop-certificate-area.has-file') !== null;
-            // this.submitButton.disabled = !hasCertificate;
-            
-            // Пока отключаем проверку
             this.submitButton.disabled = false;
             this.submitButton.classList.remove('disabled');
         }
@@ -3021,17 +2961,18 @@ class PlansLoader {
         this.currentYear = options.initialYear || 'all';
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
-        this.currentSearchOkpo = '';
+        this.currentSearchYnp = '';
         this.currentPage = 1;
         this.isLoading = false;
         this.hasMore = true;
         this.searchTimeout = null;
         this.perPage = options.perPage || 5;
+        this.isAuditor = options.isAuditor || false;
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
-        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.searchYnp = options.searchYnp || 'search-ynp';
         
         this.init();
     }
@@ -3051,8 +2992,8 @@ class PlansLoader {
         if (this.currentSearchName) {
             params.set('search_name', this.currentSearchName);
         }
-        if (this.currentSearchOkpo) {
-            params.set('search_okpo', this.currentSearchOkpo);
+        if (this.currentSearchYnp) {
+            params.set('search_ynp', this.currentSearchYnp);
         }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
@@ -3073,12 +3014,12 @@ class PlansLoader {
         this.updateUrl();
         
         try {
-            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
-            if (this.currentSearchOkpo) {
-                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            if (this.currentSearchYnp) {
+                url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
             
             const response = await fetch(url);
@@ -3102,6 +3043,10 @@ class PlansLoader {
                 this.updateLoadMoreButton();
                 this.updateCountsDisplay(data.counts);
                 this.attachCheckboxListeners();
+
+                if (typeof initStatusProgress === 'function') {
+                    setTimeout(initStatusProgress, 100);
+                }
             }
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -3126,6 +3071,7 @@ class PlansLoader {
         const statSent = document.querySelector('.stat-number-sent');
         const statError = document.querySelector('.stat-number-eror');
         const statApproved = document.querySelector('.stat-number-sub');
+        const statSogl = document.querySelector('.stat-number-sogl');
         
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
@@ -3133,6 +3079,7 @@ class PlansLoader {
         if (statSent) statSent.textContent = counts.sent || '-';
         if (statError) statError.textContent = counts.error || '-';
         if (statApproved) statApproved.textContent = counts.approved || '-';
+        if (statSogl) statSogl.textContent = counts.sogl || '-';
     }
     
     attachCheckboxListeners() {
@@ -3185,7 +3132,7 @@ class PlansLoader {
         }
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
-            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
@@ -3193,7 +3140,7 @@ class PlansLoader {
     
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
-        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        const searchOkpoInput = document.getElementById(this.searchYnp);
         
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
@@ -3314,16 +3261,16 @@ class PlansLoader {
             const newYear = params.get('year') || 'all';
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
-            const newSearchOkpo = params.get('search_okpo') || '';
+            const newSearchOkpo = params.get('search_ynp') || '';
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
-                this.currentSearchOkpo = newSearchOkpo;
+                this.currentSearchYnp = newSearchOkpo;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
@@ -3340,14 +3287,26 @@ class PlansLoader {
     }
     
     updateFilterDisplay() {
-        const statusMap = {
-            'all': 'Статус',
-            'draft': 'В редакции',
-            'control': 'Контроль пройден',
-            'sent': 'На согласовании',
-            'error': 'С ошибками',
-            'approved': 'Согласованные'
-        };
+        let statusMap;
+        
+        if (this.isAuditor) {
+            statusMap = {
+                'all': 'Статус',
+                'sent': 'Не просмотренные',
+                'sogl': 'Согласованные',
+                'error': 'Есть ошибки',
+                'approved': 'Утвержденные'
+            };
+        } else {
+            statusMap = {
+                'all': 'Статус',
+                'draft': 'В редакции',
+                'control': 'Контроль пройден',
+                'sent': 'На согласовании',
+                'error': 'Есть ошибки',
+                'approved': 'Согласованные'
+            };
+        }
         
         const regionMap = {
             'all': 'Регион',
@@ -3394,7 +3353,7 @@ class ExportPlansLoader {
         this.currentYear = options.initialYear || 'all';
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
-        this.currentSearchOkpo = '';
+        this.currentSearchYnp = '';
         this.currentPage = 1;
         this.isLoading = false;
         this.hasMore = true;
@@ -3410,7 +3369,7 @@ class ExportPlansLoader {
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
-        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.searchYnp = options.searchYnp || 'search-ynp';
         this.selectAllId = options.selectAllId || 'selectAllBtn';
         this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
@@ -3433,8 +3392,8 @@ class ExportPlansLoader {
         if (this.currentSearchName) {
             params.set('search_name', this.currentSearchName);
         }
-        if (this.currentSearchOkpo) {
-            params.set('search_okpo', this.currentSearchOkpo);
+        if (this.currentSearchYnp) {
+            params.set('search_ynp', this.currentSearchYnp);
         }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
@@ -3465,12 +3424,12 @@ class ExportPlansLoader {
         }
         
         try {
-            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || true}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
-            if (this.currentSearchOkpo) {
-                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            if (this.currentSearchYnp) {
+                url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
             
             const response = await fetch(url);
@@ -3598,7 +3557,7 @@ class ExportPlansLoader {
         }
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
-            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
@@ -3629,7 +3588,7 @@ class ExportPlansLoader {
     
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
-        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        const searchOkpoInput = document.getElementById(this.searchYnp);
         
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
@@ -3747,16 +3706,16 @@ class ExportPlansLoader {
             const newYear = params.get('year') || 'all';
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
-            const newSearchOkpo = params.get('search_okpo') || '';
+            const newSearchOkpo = params.get('search_ynp') || '';
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
-                this.currentSearchOkpo = newSearchOkpo;
+                this.currentSearchYnp = newSearchOkpo;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
@@ -3778,7 +3737,7 @@ class ExportPlansLoader {
             'draft': 'В редакции',
             'control': 'Контроль пройден',
             'sent': 'На согласовании',
-            'error': 'С ошибками',
+            'error': 'Есть ошибки',
             'approved': 'Согласованные'
         };
         
@@ -4081,7 +4040,7 @@ document.addEventListener('DOMContentLoaded', function() {
             containerId: 'plans-container',
             loadMoreBtnId: 'load-more-btn',
             searchNameId: 'search-name',
-            searchOkpoId: 'search-okpo',
+            searchYnp: 'search-ynp',
             selectAllId: 'selectAllBtn',
             exportFormId: 'exportForm'
         });
@@ -4093,7 +4052,7 @@ document.addEventListener('DOMContentLoaded', function() {
             containerId: 'plans-container',
             loadMoreBtnId: 'load-more-btn',
             searchNameId: 'search-name',
-            searchOkpoId: 'search-okpo'
+            searchYnp: 'search-ynp'
         });
     }
 
@@ -4111,11 +4070,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-    }
-
-
-    if (document.querySelector('.plan-cont')) {
-        initStatusProgress();
     }
 
     if (document.getElementById('indicatorsTable') && document.getElementById('indicators-tbody')) {
@@ -4272,7 +4226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 30-ти дней.'
+            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 3-ех месяцев.'
         });
     }
 

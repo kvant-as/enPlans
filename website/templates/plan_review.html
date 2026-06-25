@@ -17,23 +17,23 @@
                 {{ icons.icon_dots() }}
             </button>
             
-            <div class="dropdown-menu" id="planActionsMenu">
+            <div class="dropdown-menu" id="planActionsMenu" style="width: max-content;">
               <div class="nav-menu-list">
                 <button id="sentPlanButton" class="nav-menu-item" 
                     {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error %}disabled{% endif %}>
                     {{ icons.icon_send() }}
-                    <span>{{ _('Отправить') }}</span>
+                    <span>{{ _('Отправить на согласование') }}</span>
                 </button>
                 
                 <form id="cancelsentPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="status" value="draft" />
-                    <button type="submit" class="nav-menu-item" {% if plan.is_sent != true %}disabled{% endif %}>
-                        {{ icons.icon_cancel() }}
-                        <span>{{ _('Отменить отправку') }}</span>
+                    <button type="submit" class="nav-menu-item" {% if not (plan.is_sent == true and plan.user_id == current_user.id) %}disabled{% endif %}>
+                      {{ icons.icon_cancel() }}
+                      <span>{{ _('Отменить отправку') }}</span>
                     </button>
                 </form>
-
+                <hr>
                 <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                   <input type="hidden" name="status" value="control" />
@@ -43,7 +43,7 @@
                         <span>{{ _('Пройти контроль') }}</span>
                     </button>
                 </form>
-
+                <hr>
                 <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
                     {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) %}disabled{% endif %}>
                     {{ icons.icon_edit() }}
@@ -408,7 +408,7 @@
                   </p>
               </div>
               
-              <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+              <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <input type="hidden" name="status" value="sent">
                   <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="">

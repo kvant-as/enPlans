@@ -202,7 +202,7 @@ def get_plans_by_okpo():
             func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
         ).order_by(Plan.year.asc())
 
-def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_okpo="", region_id=None, page=1, per_page=5):
+def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_ynp="", region_id=None, page=1, per_page=5):
     try:
         current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         
@@ -228,11 +228,17 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                     )\
                     .distinct()
         elif user.is_admin:
-            base_query = Plan.query
+            base_query = Plan.query.order_by(
+                db.case(
+                    (Plan.user_id == user.id, 0),
+                    else_=1
+                ),
+                Plan.begin_time.desc()
+            )
         else:
             base_query = Plan.query.filter_by(user_id=user.id)
 
-        needs_join = bool(search_name or search_okpo or region_id)
+        needs_join = bool(search_name or search_ynp or region_id)
         
         if needs_join:
             base_query = base_query.join(Organization, Plan.org_id == Organization.id)
@@ -240,8 +246,8 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             if search_name:
                 base_query = base_query.filter(Organization.name.ilike(f'%{search_name}%'))
             
-            if search_okpo:
-                base_query = base_query.filter(Organization.okpo.ilike(f'%{search_okpo}%'))
+            if search_ynp:
+                base_query = base_query.filter(Organization.ynp.ilike(f'%{search_ynp}%'))
             
             if region_id:
                 base_query = base_query.filter(Organization.region_id == region_id)
@@ -250,12 +256,26 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             'draft': Plan.is_draft == True,
             'control': Plan.is_control == True,
             'sent': Plan.is_sent == True,
+            'sogl': Plan.is_sent == True,
             'error': Plan.is_error == True,
             'approved': Plan.is_approved == True
         }
         
         filtered_query = base_query
-        if status_filter != 'all' and status_filter in status_filters:
+        
+        if user.is_auditor and status_filter == 'sogl':
+            filtered_query = filtered_query.filter(
+                Plan.is_sent == True,
+                PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                PlanApprovalPath.is_viewed == True
+            ).distinct()
+        elif user.is_auditor and status_filter == 'sent':
+            filtered_query = filtered_query.filter(
+                Plan.is_sent == True,
+                PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                PlanApprovalPath.is_viewed == False
+            ).distinct()
+        elif status_filter != 'all' and status_filter in status_filters:
             filtered_query = filtered_query.filter(status_filters[status_filter])
         
         if year_filter != 'all':
@@ -272,13 +292,32 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             count_query = count_query.filter(Plan.year == int(year_filter))
         
         status_counts = {
-            'all': count_query.count(),
-            'draft': count_query.filter(Plan.is_draft == True).count(),
-            'control': count_query.filter(Plan.is_control == True).count(),
-            'sent': count_query.filter(Plan.is_sent == True).count(),
-            'error': count_query.filter(Plan.is_error == True).count(),
-            'approved': count_query.filter(Plan.is_approved == True).count()
+            'all': count_query.count()
         }
+        
+        if user.is_auditor and auditor_org_ids:
+            status_counts['sent'] = count_query.filter(
+                Plan.is_sent == True,
+                PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                PlanApprovalPath.is_viewed == False
+            ).distinct().count()
+            
+            status_counts['sogl'] = count_query.filter(
+                Plan.is_sent == True,
+                PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                PlanApprovalPath.is_viewed == True
+            ).distinct().count()
+            
+            status_counts['error'] = count_query.filter(Plan.is_error == True).distinct().count()
+            status_counts['approved'] = count_query.filter(Plan.is_approved == True).distinct().count()
+            status_counts['draft'] = 0
+            status_counts['control'] = 0
+        else:
+            status_counts['draft'] = count_query.filter(Plan.is_draft == True).count()
+            status_counts['control'] = count_query.filter(Plan.is_control == True).count()
+            status_counts['sent'] = count_query.filter(Plan.is_sent == True).count()
+            status_counts['error'] = count_query.filter(Plan.is_error == True).count()
+            status_counts['approved'] = count_query.filter(Plan.is_approved == True).count()
         
         return plans, total_count, status_counts
         
@@ -765,69 +804,3 @@ def handle_control_status(plan):
     plan.afch = False
     
     return "План прошел проверку на контроль."
-    
-    
-    
-    
-    
- 
-def handle_sent_status(plan):
-    if plan.audit_time and (TimeByMinsk() - plan.audit_time) > timedelta(hours=1):
-        return {"error": "Нельзя изменить статус: прошло больше допустимого времени"}
-    plan.sent_time = TimeByMinsk()
-    plan.is_sent = True
-    plan.is_draft = plan.is_control = plan.is_error = plan.is_approved = False
-    plan.afch = False
-    return "План передан на проверку."
-
-def handle_error_status(plan):
-    plan.audit_time = TimeByMinsk()
-    plan.is_error = True
-    plan.is_draft = plan.is_control = plan.is_sent = plan.is_approved = False
-
-    new_ticket = Ticket(
-        note="В плане нашли ошибки, статус изменен на Есть ошибки",
-        luck=True,
-        is_owner = True,
-        plan_id=plan.id,
-        created_at=TimeByMinsk(),
-    )
-    db.session.add(new_ticket)
-
-    notification = Notification(
-        user_id=plan.user_id,
-        message=f"В плане на {plan.year} год нашли ошибки."
-    )
-    db.session.add(notification)
-    return "Статус ошибки установлен."
-
-def handle_approved_status(plan):
-    plan.audit_time = TimeByMinsk()
-    plan.is_approved = True
-    plan.is_draft = plan.is_control = plan.is_sent = plan.is_error = False
-    plan.afch = False 
-
-    new_ticket = Ticket(
-        note="План был Согласован, статус был изменен на Согласован.",
-        luck=True,
-        is_owner = True,
-        plan_id=plan.id,
-    )
-    db.session.add(new_ticket)
-
-    notification = Notification(
-        user_id=plan.user_id,
-        message=f"План на {plan.year} год был Согласован.",
-        created_at=TimeByMinsk()
-    )
-    db.session.add(notification)
-    return "План Согласован."
-
-
-status_handlers = {
-    'draft': handle_draft_status,
-    'control': handle_control_status,
-    'sent': handle_sent_status,
-    'error': handle_error_status,
-    'approved': handle_approved_status
-}

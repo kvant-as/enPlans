@@ -22,7 +22,8 @@
                   <form id="cancel_auditPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="status" value="sent_without_check" />
-                    <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_error or plan.is_approved %}{%else%}disabled{% endif %}>
+                    <button id="cancel_auditPlanButton" class="nav-menu-item" >  
+                      <!-- {% if plan.is_error or plan.is_approved %}{%else%}disabled{% endif %} -->
                         {{ icons.icon_cancel() }}
                         <span>{{ _('Отменить изменения') }}</span>
                     </button>
@@ -57,7 +58,7 @@
             <button
               id="to_deletePlanButton"
               type="submit"
-              class="element {% if plan.is_approved or plan.is_error or plan.afch == false %}non{% else %}{% endif %}"
+              class="element {% if plan.afch == false %}non{% else %}{% endif %}"
             >
               <img src="/static/img/Error.svg" alt="" class="btn-icon" />
               <span class="btn-text">{{ _('Есть ошибки') }}</span>
@@ -99,7 +100,9 @@
 
     {{ component.tickets_container(plan, current_user) }}
 
-    {% if plan.is_approved or plan.is_error %}
+    {% set current_path = plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', False)|first %}
+
+    {% if plan.is_approved or plan.is_error or not current_path %}
     <hr />
     {% else %}
     <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}" method="POST">

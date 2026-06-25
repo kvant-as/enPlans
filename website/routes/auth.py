@@ -1,6 +1,4 @@
 from functools import wraps
-import secrets
-import string
 from flask import (
     Blueprint, current_app, jsonify, render_template, request, flash, redirect, session,
     url_for
@@ -220,7 +218,7 @@ def delete_profile():
     ).first()
     
     if has_active_plans:
-        flash('Невозможно удалить аккаунт. У вас есть отправленные, одобренные планы или планы с ошибками.', 'error')
+        flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками.', 'error')
         return redirect(url_for('views.profile'))
     
     try:

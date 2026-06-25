@@ -16,7 +16,7 @@ def build_html(message_body, email_type):
         if status == "В редакции":
             color = "#64748b"  # status-sent
         elif status == "Есть ошибки":
-            color = "#ef4444"  # status-error
+            color = "#801616"  # status-error
         elif status == "Контроль пройден":
             color = "#8b5cf6"  # status-control
         elif status == "На согласовании" or status == "Не просмотрен":
@@ -31,7 +31,7 @@ def build_html(message_body, email_type):
             <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
             <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.5; color: #334155;">Статус вашего плана энергосбережения изменен на:</p>
             <div style="text-align: center; margin: 24px 0;">
-                <span style="display: inline-block; background: {color}10; border-left: 3px solid {color}; padding: 10px 24px; border-radius: 8px; font-size: 18px; font-weight: 600; color: {color};">{status}</span>
+                <span style="display: inline-block; background: {color}; border-left: 3px solid {color}; padding: 10px 24px; border-radius: 8px; font-size: 18px; font-weight: 600; color: {color};">{status}</span>
             </div>
             <p style="margin: 16px 0 0 0; font-size: 14px; color: #64748b;">Вы можете отслеживать дальнейшие изменения в личном кабинете.</p>
         </div>
