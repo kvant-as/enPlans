@@ -141,10 +141,10 @@
         </div>
       </div>
 
-    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False%}
+    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False and current_user.is_admin == False%}
       {{ component.plan_agree_slider(plan, current_user) }}
     {%endif%} 
-    {% if current_user.is_auditor == False%}
+    {% if current_user.is_auditor == False and current_user.is_admin == False%}
       <hr>
       <h1 class="name">{{ _('Результаты проверки') }}</h1>
       {{ component.tickets_container(plan, current_user) }}

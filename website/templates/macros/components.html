@@ -319,7 +319,9 @@ plan=None, current_user=None) %}
     </div>
   </nav>
 </div>
-{% endmacro %} {% macro plan_agree_slider(plan, current_user) %} {% set
+{% endmacro %} 
+
+{% macro plan_agree_slider(plan, current_user) %} {% set
 approval_paths = plan.approval_paths|sort(attribute='step_order') %} {% set
 total_steps = approval_paths|length %} {% set completed_steps =
 approval_paths|selectattr('is_viewed', 'equalto', True)|list|length %} {% set
@@ -398,7 +400,9 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     </span>
   </div>
 </div>
-{% endmacro %} {% macro tickets_container(plan, current_user) %}
+{% endmacro %} 
+
+{% macro tickets_container(plan, current_user) %}
 <div class="tickets-container">
   {% if plan.tickets %}
   <div class="tickets-header">
@@ -413,8 +417,13 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       <div class="tickets-message-content">
         <div class="message-header">
           <span class="message-sender">
-            {% if ticket.is_owner %} {{ _('Система') }} {% else %} {{
-            ticket.user.organization.name }} {% endif %}
+            {% if ticket.is_owner %} {{ _('Система') }} {% else %} 
+              {% if ticket.user and ticket.user.organization %}
+                  {{ ticket.user.organization.name }}
+              {% else %}
+                  {{ _('Система') }}
+              {% endif %}
+            {% endif %}
           </span>
           <span class="message-time">
             {{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time else

@@ -1,6 +1,42 @@
 from datetime import timedelta
 from flask import current_app
 from ..models import db, Plan, Ticket, Notification, PlanApprovalPath, Organization, TimeByMinsk
+  
+def handle_draft_status(plan):
+    try:
+        plan.is_draft = True
+        plan.is_control = False
+        plan.is_sent = False
+        plan.is_error = False
+        plan.is_approved = False
+        
+        plan.change_time = TimeByMinsk()
+        
+        db.session.commit()
+        
+        return {'message': 'Статус изменен на "В редакции"'}
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Ошибка при изменении статуса: {str(e)}'}
+
+def handle_control_status(plan):
+    try:
+        plan.is_draft = False
+        plan.is_control = True
+        plan.is_sent = False
+        plan.is_error = False
+        plan.is_approved = False
+        
+        plan.change_time = TimeByMinsk()
+        
+        db.session.commit()
+        
+        return {'message': 'План прошел проверку на контроль'}
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Ошибка при изменении статуса: {str(e)}'}
 
 def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
     try:
@@ -61,7 +97,7 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         plan.is_error = False
         plan.is_approved = False
         plan.afch = False
-        
+         
         db.session.commit()
         
         return {'message': 'План успешно отправлен на согласование'}
@@ -70,6 +106,100 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         db.session.rollback()
         return {'error': f'Ошибка при отправке плана: {str(e)}'}
 
+def handle_sent_without_check_status(plan, current_user):
+    try:
+        plan.is_sent = True
+        plan.is_draft = False
+        plan.is_control = False
+        plan.is_error = False
+        plan.is_approved = False
+        
+        if current_user.is_auditor:
+            current_path = PlanApprovalPath.query.filter_by(
+                plan_id=plan.id,
+                organization_id=current_user.organization_id,
+                is_viewed=True
+            ).first()
+            
+            if current_path:
+                current_path.is_viewed = False
+                current_path.viewed_at = None
+                
+                ticket = Ticket(
+                    note="Проверка отменена. План возвращен на этап рассмотрения.",
+                    luck=True,
+                    is_owner=True,
+                    plan_id=plan.id,
+                    # user_id=current_user.id
+                )
+                db.session.add(ticket)
+                
+                notification = Notification(
+                    user_id=plan.user_id,
+                    message=f"План {plan.year} возвращен на этап согласования",
+                    created_at=TimeByMinsk()
+                )
+                db.session.add(notification)
+        else:
+            PlanApprovalPath.query.filter_by(plan_id=plan.id).update(
+                {'is_viewed': False, 'viewed_at': None}
+            )
+            
+            ticket = Ticket(
+                note="Отмена изменений. Все шаги согласования сброшены, план возвращен в изначальный статус.",
+                luck=True,
+                is_owner=True,
+                plan_id=plan.id
+            ) 
+            db.session.add(ticket)
+            
+            notification = Notification(
+                user_id=plan.user_id,
+                message=f"План {plan.year} возвращен в статус рассмотрения. Все шаги согласования сброшены.",
+                created_at=TimeByMinsk()
+            )
+            db.session.add(notification)
+        
+        db.session.commit()
+        
+        return {'message': 'План возвращен в изначальное состояние. Все шаги согласования сброшены.'}
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Ошибка при возврате плана: {str(e)}'}
+
+def handle_error_status(plan):
+    try:
+        plan.audit_time = TimeByMinsk()
+        plan.is_error = True
+        plan.is_draft = False
+        plan.is_control = False
+        plan.is_sent = False
+        plan.is_approved = False
+        plan.afch = False
+
+        ticket = Ticket(
+            note="В плане нашли ошибки, статус изменен на Есть ошибки",
+            luck=True,
+            is_owner=True,
+            plan_id=plan.id,
+            begin_time=TimeByMinsk()
+        )
+        db.session.add(ticket)
+
+        notification = Notification(
+            user_id=plan.user_id,
+            message=f"В плане на {plan.year} год нашли ошибки.",
+            created_at=TimeByMinsk()
+        )
+        db.session.add(notification)
+        db.session.commit()
+        
+        return {'message': 'Статус ошибки установлен'}
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Ошибка при установке статуса ошибки: {str(e)}'}
 
 def handle_approved_status(plan, current_user):
     try:
@@ -91,7 +221,6 @@ def handle_approved_status(plan, current_user):
         current_path.viewed_at = TimeByMinsk()
         
         plan.audit_time = TimeByMinsk()
-        plan.change_time = TimeByMinsk()
         
         next_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
@@ -142,138 +271,3 @@ def handle_approved_status(plan, current_user):
     except Exception as e:
         db.session.rollback()
         return {'error': f'Ошибка при согласовании: {str(e)}'}
-
-
-def handle_sent_without_check_status(plan, current_user):
-    try:
-        plan.is_sent = True
-        plan.is_draft = False
-        plan.is_control = False
-        plan.is_error = False
-        plan.is_approved = False
-        
-        if current_user.is_auditor:
-            current_path = PlanApprovalPath.query.filter_by(
-                plan_id=plan.id,
-                organization_id=current_user.organization_id,
-                is_viewed=True
-            ).first()
-            
-            if current_path:
-                current_path.is_viewed = False
-                current_path.viewed_at = None
-                
-                ticket = Ticket(
-                    note="Проверка отменена. План возвращен на этап рассмотрения.",
-                    luck=True,
-                    is_owner=False,
-                    plan_id=plan.id,
-                    # user_id=current_user.id
-                )
-                db.session.add(ticket)
-                
-                notification = Notification(
-                    user_id=plan.user_id,
-                    message=f"План {plan.year} возвращен на этап согласования",
-                    created_at=TimeByMinsk()
-                )
-                db.session.add(notification)
-        else:
-            PlanApprovalPath.query.filter_by(plan_id=plan.id).update(
-                {'is_viewed': False, 'viewed_at': None}
-            )
-            
-            ticket = Ticket(
-                note="Отмена изменений. Все шаги согласования сброшены, план возвращен в изначальный статус.",
-                luck=True,
-                is_owner=True,
-                plan_id=plan.id
-            )
-            db.session.add(ticket)
-            
-            notification = Notification(
-                user_id=plan.user_id,
-                message=f"План {plan.year} возвращен в статус рассмотрения. Все шаги согласования сброшены.",
-                created_at=TimeByMinsk()
-            )
-            db.session.add(notification)
-        
-        db.session.commit()
-        
-        return {'message': 'План возвращен в изначальное состояние. Все шаги согласования сброшены.'}
-        
-    except Exception as e:
-        db.session.rollback()
-        return {'error': f'Ошибка при возврате плана: {str(e)}'}
-    
-def handle_draft_status(plan):
-    try:
-        plan.is_draft = True
-        plan.is_control = False
-        plan.is_sent = False
-        plan.is_error = False
-        plan.is_approved = False
-        
-        plan.change_time = TimeByMinsk()
-        
-        db.session.commit()
-        
-        return {'message': 'Статус изменен на "В редакции"'}
-        
-    except Exception as e:
-        db.session.rollback()
-        return {'error': f'Ошибка при изменении статуса: {str(e)}'}
-
-
-def handle_control_status(plan):
-    try:
-        plan.is_draft = False
-        plan.is_control = True
-        plan.is_sent = False
-        plan.is_error = False
-        plan.is_approved = False
-        
-        plan.change_time = TimeByMinsk()
-        
-        db.session.commit()
-        
-        return {'message': 'План прошел проверку на контроль'}
-        
-    except Exception as e:
-        db.session.rollback()
-        return {'error': f'Ошибка при изменении статуса: {str(e)}'}
-
-
-def handle_error_status(plan):
-    try:
-        plan.audit_time = TimeByMinsk()
-        plan.is_error = True
-        plan.is_draft = False
-        plan.is_control = False
-        plan.is_sent = False
-        plan.is_approved = False
-        plan.afch = False
-
-        ticket = Ticket(
-            note="В плане нашли ошибки, статус изменен на Есть ошибки",
-            luck=True,
-            is_owner=True,
-            plan_id=plan.id,
-            begin_time=TimeByMinsk()
-        )
-        db.session.add(ticket)
-
-        notification = Notification(
-            user_id=plan.user_id,
-            message=f"В плане на {plan.year} год нашли ошибки.",
-            created_at=TimeByMinsk()
-        )
-        db.session.add(notification)
-        
-        db.session.commit()
-        
-        return {'message': 'Статус ошибки установлен'}
-        
-    except Exception as e:
-        db.session.rollback()
-        return {'error': f'Ошибка при установке статуса ошибки: {str(e)}'}
