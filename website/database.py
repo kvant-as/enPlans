@@ -13,11 +13,13 @@ def create_database(app, db):
         db.create_all()
         filling_database(db)
 
+
 def is_db_empty():
     from .models import User
     return all([
         User.query.count() == 0,
     ])
+
 
 def read_dbf(file_path, columns):
     data = []
@@ -25,6 +27,82 @@ def read_dbf(file_path, columns):
         row = {col: record[col] for col in columns}
         data.append(row)
     return data
+
+
+def import_stat_files(db):
+    from .models import StatPlan, Organization
+    from website.utils.stat_import import save_parsed_report, find_organization_by_okpo, OrganizationNotFoundError
+    from website.utils.stat_parse import parse_stat_file, extract_okpo_from_filename
+    
+    stats_dir = os.path.join('website', 'static', 'files', 'stats')
+    
+    if not os.path.exists(stats_dir):
+        current_app.logger.warning(f'Папка со статистикой не найдена: {stats_dir}')
+        return
+    
+    existing_reports = StatPlan.query.count()
+    if existing_reports > 0:
+        current_app.logger.info(f'В БД уже есть {existing_reports} отчётов. Пропускаем импорт статистики.')
+        return
+    
+    stat_files = []
+    for filename in os.listdir(stats_dir):
+        if filename.lower().endswith(('.xlsx', '.xls')) and not filename.startswith('~$'):
+            file_path = os.path.join(stats_dir, filename)
+            stat_files.append((file_path, filename))
+    
+    if not stat_files:
+        current_app.logger.warning('Нет файлов статистики для импорта')
+        return
+    
+    current_app.logger.info(f'Найдено {len(stat_files)} файлов статистики для импорта')
+    
+    imported_count = 0
+    error_count = 0
+    
+    for file_path, filename in stat_files:
+        try:
+            current_app.logger.info(f'Импорт файла: {filename}')
+            
+            parsed = parse_stat_file(file_path, filename)
+            
+            okpo = extract_okpo_from_filename(filename)
+            org = find_organization_by_okpo(okpo)
+            
+            if org is None:
+                current_app.logger.warning(
+                    f'Организация с ОКПО "{okpo}" не найдена. '
+                    f'Файл: {filename}'
+                )
+                error_count += 1
+                continue
+
+            report = save_parsed_report(
+                parsed=parsed,
+                organization_id=org.id,
+                db=db,
+                uploaded_by_id=None,
+                replace=True
+            )
+            
+            imported_count += 1
+            current_app.logger.info(
+                f'Успешно импортирован отчёт {parsed.type} для организации {org.name}'
+            )
+            
+        except OrganizationNotFoundError as e:
+            current_app.logger.warning(f'Ошибка: {str(e)}. Файл: {filename}')
+            error_count += 1
+            db.session.rollback()
+        except Exception as e:
+            current_app.logger.error(f'Ошибка при импорте файла {filename}: {str(e)}')
+            error_count += 1
+            db.session.rollback()
+    
+    current_app.logger.info(
+        f'Импорт статистики завершён: импортировано {imported_count} отчётов, '
+        f'ошибок: {error_count}'
+    )
 
 def filling_database(db):
     if is_db_empty():
@@ -200,7 +278,6 @@ def filling_database(db):
                 for org in organizations:
                     org.is_region_management = True
                     assigned_count += 1
-                    # current_app.logger.info(f'Assigned region management to: {org.name}')
                 
                 db.session.commit()
                 current_app.logger.info(f'Region management assigned to {assigned_count} organizations')
@@ -235,7 +312,7 @@ def filling_database(db):
         ### USER DATA ###
         users_data = [
             ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 54),
-            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, None),
+            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, 290),
 
             ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 413),
             ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 124),
@@ -535,5 +612,11 @@ def filling_database(db):
         db.session.commit()
         
         current_app.logger.debug('The filling is finished!')
+        
+        try:
+            import_stat_files(db)
+        except Exception as e:
+            current_app.logger.error(f'Ошибка при импорте статистических файлов: {str(e)}')
+        
     else:
         current_app.logger.debug('The database already contains the data!')

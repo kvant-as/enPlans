@@ -4864,7 +4864,7 @@ input[type="checkbox"]:focus {
   display: flex;
   flex-wrap: nowrap;
   position: relative;
-  z-index: 2;
+  z-index: 1;
   gap: 15px;
   width: 100%;
 }
@@ -4877,6 +4877,7 @@ input[type="checkbox"]:focus {
   min-width: 0;
   position: relative;
   width: 100%;
+  z-index: 1;
 }
 
 .stat{
@@ -4903,7 +4904,7 @@ input[type="checkbox"]:focus {
   background: var(--border-color);
   border: 3px solid white;
   position: relative;
-  z-index: 3;
+  z-index: 1;
 }
 
 .status-dot.active {
@@ -6717,6 +6718,78 @@ input[type="checkbox"]:focus {
 /* .active-row {
   background-color: var(--active-row-color-apr) !important;
 } */
+
+td.stat-valid {
+    background-color: rgba(107, 203, 119, 0.2) !important;
+    position: relative;
+}
+
+td.stat-invalid {
+    background-color: rgba(255, 107, 107, 0.2) !important;
+    position: relative;
+}
+
+td.stat-no-data {
+    background-color: rgba(255, 217, 61, 0.15) !important;
+    position: relative;
+}
+
+.stat-icon {
+    font-size: 16px;
+    margin-left: 5px;
+    cursor: help;
+}
+
+/* Стили для модального окна деталей */
+.stat-details-modal {
+    animation: fadeIn 0.3s ease;
+}
+
+.stat-details-modal table {
+    font-size: 14px;
+}
+
+.stat-details-modal table tr:hover {
+    background-color: #f9f9f9;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Стили для панели валидации */
+.validation-panel {
+    margin: 20px 0;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Индикатор загрузки */
+.validation-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
 .main-table tbody tr.group-header:hover {
   background-color: rgb(235, 235, 235);

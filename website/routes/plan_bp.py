@@ -92,8 +92,8 @@ def plan_indicators(token):
                         indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
                         confirmModal = True,
-                        # SendModal=current_plan.is_control,
                         context_menu = True)
+    
 
 @plan_bp.route('/update-column-label/<token>', methods=['POST'])
 @login_required

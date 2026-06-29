@@ -1,6 +1,6 @@
 import logging
 from venv import logger
-from flask import current_app, g, request, jsonify, Blueprint
+from flask import current_app, g, request, jsonify, Blueprint, render_template_string
 from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
@@ -9,12 +9,12 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
 
-from flask import render_template_string
+logger = logging.getLogger(__name__)
 
 @api_bp.route('/plans', methods=['GET'])
 @login_required
@@ -269,7 +269,6 @@ def get_indicator_api(id):
         current_app.logger.error(f'Error getting indicator {id}: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-
 @api_bp.route('/indicators/<token>', methods=['GET'])
 @user_with_all_params()
 @login_required
@@ -474,7 +473,6 @@ def refresh_plan_rates(token):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
     
-
 @api_bp.route('/notifications', methods=['GET'])
 @user_with_all_params()
 @login_required
@@ -502,7 +500,6 @@ def api_notifications():
         'has_next': notifications.has_next
     })
 
-
 @api_bp.route('/notifications/mark-all-read', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -511,7 +508,6 @@ def mark_all_notifications_read():
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
     db.session.commit()
     return jsonify({'message': 'Все уведомления отмечены как прочитанные'})
-
 
 @api_bp.route('/notifications/mark-read/<int:notification_id>', methods=['POST'])
 @user_with_all_params()
@@ -524,3 +520,87 @@ def mark_notification_read(notification_id):
         db.session.commit()
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Уведомление не найдено'}), 404
+
+
+
+@api_bp.route('/stat-data/<int:organization_id>/<int:year>')
+def get_stat_data(organization_id, year):
+    try:
+        stat_reports = StatPlan.query.filter_by(
+            organization_id=organization_id,
+            year=year
+        ).all()
+        
+        if not stat_reports:
+            return jsonify({
+                'success': False,
+                'message': f'Статистические данные за {year} год не найдены'
+            }), 404
+        
+        result = {
+            'success': True,
+            'year': year,
+            'organization_id': organization_id,
+            'data': {}
+        }
+        
+        for report in stat_reports:
+            report_type = report.type
+            result['data'][report_type] = {
+                'values': {}
+            }
+            
+            for val in report.values:
+                key = f"{val.row_code}_{val.column_code}"
+                result['data'][report_type]['values'][key] = float(val.value) if val.value else None
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting stat data: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@api_bp.route('/stat-data/mapping')
+def get_stat_mapping():
+    mapping = {
+        '12-tek': {
+            'row_110_col_1': {'plan_row': 1, 'description': 'КПТ всего (строка 110 графа 1)'},
+            'row_110_col_2': {'plan_row': 27, 'description': 'КПТ из него МВТ (строка 110 графа 2)'},
+            'row_110_col_3': {'plan_row': 28, 'description': 'КПТ из них ВИЭ (строка 110 графа 3)'},
+            'row_110_col_5': {'plan_row': 29, 'description': 'Электроэнергия (строка 110 графа 5)'},
+            'row_140_col_5': {'plan_row': 31, 'description': 'ЭЭ собственными энергоисточниками (строка 140 графа 5)'},
+            'row_142_col_5': {'plan_row': 33, 'description': 'ЭЭ от ВИЭ (строка 142 графа 5)'},
+            'row_110_col_4': {'plan_row': 35, 'description': 'Теплоэнергия (строка 110 графа 4)'},
+            'row_140_col_4': {'plan_row': 37, 'description': 'ТЭ собственными энергоисточниками (строка 140 графа 4)'},
+            'row_142_col_4': {'plan_row': 39, 'description': 'ТЭ от ВИЭ (строка 142 графа 4)'},
+            'row_260_col_1': {'plan_row': 41, 'description': 'Суммарное потребление ТЭР (строка 260 графа 1)'}
+        },
+        '4-tek': {
+            'row_1090_col_3': {'plan_row': 2, 'description': 'Газ природный (строка 1090 графа 3)'},
+            'row_1050_col_3': {'plan_row': 3, 'description': 'Мазут топочный (строка 1050 графа 3)'},
+            'row_1040_col_3': {'plan_row': 4, 'description': 'Топливо печное бытовое (строка 1040 графа 3)'},
+            'row_1660_col_3': {'plan_row': 5, 'description': 'Кокс металлургический (строка 1660 графа 3)'},
+            'row_1075_col_3': {'plan_row': 6, 'description': 'Кокс нефтяной (строка 1075 графа 3)'},
+            'row_1160_col_3': {'plan_row': 7, 'description': 'Уголь (строка 1160 графа 3)'},
+            'row_1150_col_3': {'plan_row': 8, 'description': 'Газы углеводородные сжиженные (строка 1150 графа 3)'},
+            'row_1060_col_3': {'plan_row': 9, 'description': 'Газы углеводородные нефтепереработки (строка 1060 графа 3)'},
+            'row_1750_col_3': {'plan_row': 10, 'description': 'Метано-водородная фракция (строка 1750 графа 3)'},
+            'row_1790_col_3': {'plan_row': 11, 'description': 'Отработанные нефтепродукты (строка 1790 графа 3)'},
+            'row_1110_col_3': {'plan_row': 12, 'description': 'Газ природный попутный (строка 1110 графа 3)'},
+            'row_1620+1630_col_3': {'plan_row': 13, 'description': 'Торф топливный (строка 1620+1630 графа 3)'},
+            'row_1640_col_3': {'plan_row': 14, 'description': 'Брикеты торфяные (строка 1640 графа 3)'},
+            'row_1794_col_3': {'plan_row': 15, 'description': 'Использованные автопокрышки (строка 1794 графа 3)'},
+            'row_1745_col_3': {'plan_row': 16, 'description': 'Биогаз (строка 1745 графа 3)'},
+            'row_1690_col_3': {'plan_row': 17, 'description': 'Дрова (строка 1690 графа 3)'},
+            'row_1680_col_3': {'plan_row': 18, 'description': 'Топливная щепа (строка 1680 графа 3)'},
+            'row_1742_col_3': {'plan_row': 19, 'description': 'Древесные гранулы, пеллеты (строка 1742 графа 3)'},
+            'row_1744_col_3': {'plan_row': 20, 'description': 'Древесные брикеты (строка 1744 графа 3)'},
+            'row_1785_col_3': {'plan_row': 21, 'description': 'RDF-топливо (строка 1785 графа 3)'},
+            'row_1730_col_3': {'plan_row': 22, 'description': 'Отходы лесозаготовок (строка 1730 графа 3)'},
+            'row_1740_col_3': {'plan_row': 23, 'description': 'Отходы сельхоздеятельности (строка 1740 графа 3)'},
+            'row_1780_col_3': {'plan_row': 24, 'description': 'Сульфатные щелока (строка 1780 графа 3)'}
+        }
+    }
+    
+    return jsonify({'success': True, 'mapping': mapping})

@@ -1,5 +1,5 @@
 from . import db
-from sqlalchemy import Numeric
+from sqlalchemy import Numeric, UniqueConstraint
 from flask_login import UserMixin
 import secrets
 import string
@@ -327,7 +327,6 @@ class News(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     views_count = db.Column(db.Integer, default=0)
 
-
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
     id = db.Column(db.Integer, primary_key=True)
@@ -354,3 +353,68 @@ class Chat(db.Model):
                               lazy='dynamic')
     created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     updated_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk(), onupdate=TimeByMinsk())
+    
+
+class StatPlan(db.Model):
+    __tablename__ = "stat_plans"
+ 
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False)
+ 
+    type = db.Column(db.String(10), nullable=False)   # '12-tek' | '4-tek'
+    year = db.Column(db.Integer, nullable=False)
+
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    uploaded_at = db.Column(db.DateTime)
+ 
+    organization = db.relationship("Organization", backref="stat_plans")
+    uploaded_by = db.relationship("User")
+ 
+    values = db.relationship(
+        "StatPlanValue",
+        back_populates="stat_plan",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+ 
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "type", "year",
+            name="uq_stat_plan_org_type_year",
+        ),
+    )
+ 
+    def __repr__(self):
+        return f"<StatPlan {self.type} {self.year} org={self.organization_id}>"
+ 
+    def get_value(self, row_code, column_code):
+        row_code, column_code = str(row_code), str(column_code)
+        for v in self.values:
+            if v.row_code == row_code and v.column_code == column_code:
+                return v.value
+        return None
+ 
+ 
+class StatPlanValue(db.Model):
+    __tablename__ = "stat_plan_values"
+ 
+    id = db.Column(db.Integer, primary_key=True)
+    stat_plan_id = db.Column(db.Integer, db.ForeignKey("stat_plans.id"), nullable=False)
+ 
+    row_code = db.Column(db.String(20), nullable=False)
+    row_name = db.Column(db.String(500))
+    column_code = db.Column(db.String(10), nullable=False)
+    value = db.Column(db.Numeric(scale=4))
+ 
+    stat_plan = db.relationship("StatPlan", back_populates="values")
+ 
+    __table_args__ = (
+        UniqueConstraint(
+            "stat_plan_id", "row_code", "column_code",
+            name="uq_stat_value_cell",
+        ),
+    )
+ 
+    def __repr__(self):
+        return f"<StatPlanValue row={self.row_code} col={self.column_code} val={self.value}>"
+    

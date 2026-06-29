@@ -372,7 +372,7 @@ class PlanIndicators {
                 <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
                     ${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.difference, row.group)}
                 </td>
-                <td style="display: none">${row.code}</td>
+                <td >${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             

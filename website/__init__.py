@@ -100,6 +100,7 @@ def create_app():
     from .routes.plan_bp import plan_bp
     from .routes.api_bp import api_bp
     from .routes.audit_bp import audit_bp
+    from .routes.stat_bp import bp as stat_bp
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
@@ -107,7 +108,7 @@ def create_app():
     app.register_blueprint(plan_bp, url_prefix='/plans/plan')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(audit_bp, url_prefix='/')
-    
+    app.register_blueprint(stat_bp, url_prefix='/stat-reports')
     
     with app.app_context():
         from .routes.admin import AdminSetup

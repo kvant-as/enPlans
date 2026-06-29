@@ -10,7 +10,11 @@
 <div class="personal-plan-conteiner">
   {{ component.plan_menu(plan, current_user, 'indicators') }}
   <div class="table-container">
-    <table class="main-table" id="indicatorsTable" data-token="{{ plan.token }}">
+    <table class="main-table" id="indicatorsTable" 
+       data-token="{{ plan.token }}"
+       data-plan-id="{{ plan.id }}"
+       data-plan-year="{{ plan.year }}"
+       data-organization-id="{{ plan.organization_id }}">
       <thead class="main-table-titels">
         <tr>
           <th rowspan="2" class="resizable">
@@ -438,4 +442,11 @@
     </div>
 </div>
 
+
+<!-- <script>
+    window.isAuditor = {{ current_user.is_auditor|tojson }};
+    window.organizationId = {{ plan.organization.id|tojson if plan.organization and plan.organization.id else 'null' }};
+    window.reportYear = {{ plan.year|tojson if plan.year else 'null' }};
+</script>
+<script src="{{ url_for('static', filename='js/stats-control.js') }}"></script> -->
 {% endblock %}
