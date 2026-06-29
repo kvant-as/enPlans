@@ -2165,8 +2165,8 @@ class TicketInfo {
                 </div>
                 <div class="ticket-info-content">
                     <div class="ticket-info-item">
-                        <span class="ticket-info-label">Роль</span>
-                        <span class="ticket-info-value">${data.is_owner ? 'Система' : 'Аудитор'}</span>
+                        <span class="ticket-info-label">Организация</span>
+                        <span class="ticket-info-value" title="${data.organization || 'Система'}">${data.organization || 'Система'}</span>
                     </div>
                     <div class="ticket-info-item">
                         <span class="ticket-info-label">ФИО</span>
@@ -2188,19 +2188,10 @@ class TicketInfo {
                             </a>
                         </span>
                     </div>
+               
                     <div class="ticket-info-item">
-                        <span class="ticket-info-label">Статус сообщения</span>
-                        <span class="ticket-info-value ticket-info-status ${data.luck ? 'success' : 'error'}">
-                            ${data.luck ? '✓ Успешно' : '✗ Ошибка'}
-                        </span>
-                    </div>
-                    <div class="ticket-info-item">
-                        <span class="ticket-info-label">Время отправки</span>
-                        <span class="ticket-info-value">${time}</span>
-                    </div>
-                    <div class="ticket-info-item">
-                        <span class="ticket-info-label">Дата отправки</span>
-                        <span class="ticket-info-value">${date || 'Не указана'}</span>
+                        <span class="ticket-info-label">Время создания</span>
+                        <span class="ticket-info-value">${date || 'Не указана'} - ${time}</span>
                     </div>
                     <div class="ticket-info-item full-width">
                         <span class="ticket-info-label">Текст сообщения</span>
@@ -2212,7 +2203,12 @@ class TicketInfo {
             </div>
         `;
     }
-    
+        //  <div class="ticket-info-item">
+        //                 <span class="ticket-info-label">Статус сообщения</span>
+        //                 <span class="ticket-info-value ticket-info-status ${data.luck ? 'success' : 'error'}">
+        //                     ${data.luck ? '✓ Согласовано' : '✗ Есть ошибки'}
+        //                 </span>
+        //             </div>
     extractContextFromElement(element) {
         const context = {};
         if (!element) return context;
@@ -2271,7 +2267,7 @@ class TicketInfo {
         
         this.currentPanel.style.animation = 'fadeOut 0.3s ease';
         const panelContent = this.currentPanel.querySelector(`.${this.options.panelClass}`);
-        if (panelContent) panelContent.style.animation = 'scaleOut 0.3s ease';
+        if (panelContent) panelContent.style.animation = '';
         
         setTimeout(() => {
             this.currentPanel.remove();
@@ -2604,6 +2600,17 @@ document.addEventListener('DOMContentLoaded', function() {
             bgGrid.style.transform = `translate(${x}px, ${y}px)`;
         });
     }
+
+    const ticket_container = document.querySelector('.tickets-messages-list');
+    if (ticket_container) {
+        setTimeout(() => {
+            ticket_container.scrollTo({
+                top: ticket_container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }, 100);
+    }
+
 });
 
 document.addEventListener('DOMContentLoaded', () => {

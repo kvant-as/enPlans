@@ -9,7 +9,7 @@ from flask_login import (
 from website.routes.views import owner_only
 from website.sessions import session_required
 
-from ..models import Ticket, TimeByMinsk
+from ..models import PlanApprovalPath, Ticket, TimeByMinsk
 from .. import db
 
 from .auth import user_with_all_params
@@ -30,8 +30,38 @@ def create_ticket(token):
     note = request.form.get('note')
     
     if not note or not note.strip():
-        current_app.logger.error("Epty message")
+        current_app.logger.error("Empty message")
         flash('Сообщение не может быть пустым.', 'error')
+        return redirect(request.referrer)
+    
+    if not current_plan.is_sent:
+        flash('План не находится на этапе согласования.', 'error')
+        return redirect(request.referrer)
+    
+    if current_plan.is_approved or current_plan.is_error:
+        flash('План уже обработан.', 'error')
+        return redirect(request.referrer)
+    
+    current_path = PlanApprovalPath.query.filter_by(
+        plan_id=current_plan.id,
+        is_viewed=False
+    ).order_by(PlanApprovalPath.step_order).first()
+    
+    if not current_path:
+        flash('Нет активных шагов для проверки.', 'error')
+        return redirect(request.referrer)
+    
+    if current_path.organization_id != current_user.organization_id:
+        flash('У вас нет прав на отправку сообщения для этого этапа.', 'error')
+        return redirect(request.referrer)
+    
+    prev_path = PlanApprovalPath.query.filter(
+        PlanApprovalPath.plan_id == current_plan.id,
+        PlanApprovalPath.step_order == current_path.step_order - 1
+    ).first()
+    
+    if prev_path and not prev_path.is_viewed:
+        flash('Предыдущий этап еще не пройден.', 'error')
         return redirect(request.referrer)
     
     current_plan.afch = True

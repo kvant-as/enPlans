@@ -228,6 +228,7 @@ def create_indicator(token):
         db.session.add(new_IndicatorUsage)
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
+        update_ChangeTimePlan(current_plan.id)
         
         current_app.logger.info(f'Successfully created indicator usage with id {new_IndicatorUsage.id} for plan {current_plan.id}')
 
@@ -337,7 +338,7 @@ def edit_indicator(token):
         
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
-        
+        update_ChangeTimePlan(current_plan.id)
         current_app.logger.info(f'Successfully updated indicator usage {id_indicator} for plan {current_plan.id}')
         flash('Показатель успешно обновлен', 'success')
         return redirect(url_for('plan_bp.plan_indicators', token=token))

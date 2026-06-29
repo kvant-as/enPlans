@@ -5241,9 +5241,9 @@ input[type="checkbox"]:focus {
 }
 
 .status-error {
-  background: rgba(239, 68, 68, 0.1)!important;
-  color: #801616!important;
-  border: 1px solid rgba(167, 48, 48, 0.4)!important;
+  background: rgba(255, 30, 30, 0.1)!important;
+  color: #641313!important;
+  border: 1px solid rgba(134, 39, 39, 0.4)!important;
 }
 
 
@@ -5616,7 +5616,7 @@ input[type="checkbox"]:focus {
 
 .tickets-messages-list {
   padding: 0 16px 16px 16px;
-  max-height: 400px;
+  max-height: 700px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5855,18 +5855,6 @@ input[type="checkbox"]:focus {
   max-width: 400px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  animation: scaleIn 0.3s ease;
-}
-
-@keyframes scaleIn {
-  from {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.95);
-  }
-  to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-  }
 }
 
 .ticket-info-header {
@@ -5921,6 +5909,15 @@ input[type="checkbox"]:focus {
   border-bottom: none;
 }
 
+.ticket-info-link{
+  color: var(--color-green-text-main);
+  font-weight: 500;
+}
+
+.ticket-info-link:hover{
+  color: var(--color-green-text-main-hover);
+}
+
 .ticket-info-label {
   font-size: 14px;
   color: var(--telegram-text-light);
@@ -5933,7 +5930,11 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   text-align: right;
   max-width: 60%;
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .ticket-info-status {
@@ -5962,7 +5963,6 @@ input[type="checkbox"]:focus {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
-  animation: fadeIn 0.3s ease;
 }
 
 .no-results-row td {

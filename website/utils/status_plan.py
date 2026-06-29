@@ -113,6 +113,7 @@ def handle_sent_without_check_status(plan, current_user):
         plan.is_control = False
         plan.is_error = False
         plan.is_approved = False
+        plan.afch = False
         
         if current_user.is_auditor:
             current_path = PlanApprovalPath.query.filter_by(
@@ -130,7 +131,6 @@ def handle_sent_without_check_status(plan, current_user):
                     luck=True,
                     is_owner=True,
                     plan_id=plan.id,
-                    # user_id=current_user.id
                 )
                 db.session.add(ticket)
                 
@@ -170,6 +170,9 @@ def handle_sent_without_check_status(plan, current_user):
 
 def handle_error_status(plan):
     try:
+        if not plan.afch:
+            return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
+        
         plan.audit_time = TimeByMinsk()
         plan.is_error = True
         plan.is_draft = False
@@ -179,7 +182,7 @@ def handle_error_status(plan):
         plan.afch = False
 
         ticket = Ticket(
-            note="В плане нашли ошибки, статус изменен на Есть ошибки",
+            note="В плане нашли ошибки, статус изменен на Есть ошибки.",
             luck=True,
             is_owner=True,
             plan_id=plan.id,
@@ -206,6 +209,9 @@ def handle_approved_status(plan, current_user):
         if not current_user.organization_id:
             return {'error': 'У пользователя не указана организация'}
         
+        if not plan.afch:
+            return {'error': 'Сначала необходимо отправить сообщение с замечаниями или подтверждением'}
+        
         current_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
             is_viewed=False
@@ -217,10 +223,19 @@ def handle_approved_status(plan, current_user):
         if current_path.organization_id != current_user.organization_id:
             return {'error': 'У вас нет прав на согласование этого этапа'}
         
+        prev_path = PlanApprovalPath.query.filter(
+            PlanApprovalPath.plan_id == plan.id,
+            PlanApprovalPath.step_order == current_path.step_order - 1
+        ).first()
+        
+        if prev_path and not prev_path.is_viewed:
+            return {'error': 'Предыдущий этап еще не пройден'}
+        
         current_path.is_viewed = True
         current_path.viewed_at = TimeByMinsk()
         
         plan.audit_time = TimeByMinsk()
+        plan.afch = False
         
         next_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
@@ -233,14 +248,12 @@ def handle_approved_status(plan, current_user):
             plan.is_control = False
             plan.is_sent = False
             plan.is_error = False
-            plan.afch = False
             
             ticket = Ticket(
-                note="План утвержден",
+                note="План согласован и утвержден",
                 luck=True,
-                is_owner=False,
-                plan_id=plan.id,
-                user_id=current_user.id
+                is_owner=True,
+                plan_id=plan.id
             )
             db.session.add(ticket)
             
@@ -254,11 +267,10 @@ def handle_approved_status(plan, current_user):
             message = "План полностью согласован и утвержден"
         else:
             ticket = Ticket(
-                note="План был согласован и передан в следующую стадию проверки",
+                note="План был согласован и передан в следующую стадию проверки.",
                 luck=True,
-                is_owner=False,
-                plan_id=plan.id,
-                user_id=current_user.id
+                is_owner=True,
+                plan_id=plan.id
             )
             db.session.add(ticket)
             

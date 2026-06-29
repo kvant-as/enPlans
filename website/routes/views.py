@@ -593,7 +593,7 @@ def get_ticket_details(ticket_id):
     
     return jsonify({
         'id': ticket.id,
-        'is_owner': ticket.is_owner,
+        'organization': ticket.user.organization.name if ticket.user and ticket.user.organization else 'Система',
         'luck': ticket.luck,
         'note': ticket.note or '',
         'time': ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--',

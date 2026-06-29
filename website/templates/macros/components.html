@@ -416,14 +416,20 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     >
       <div class="tickets-message-content">
         <div class="message-header">
-          <span class="message-sender">
-            {% if ticket.is_owner %} {{ _('Система') }} {% else %} 
-              {% if ticket.user and ticket.user.organization %}
-                  {{ ticket.user.organization.name }}
-              {% else %}
+          {% set sender_name %}
+              {% if ticket.is_owner %}
                   {{ _('Система') }}
+              {% else %}
+                  {% if ticket.user and ticket.user.organization %}
+                      {{ ticket.user.organization.name }}
+                  {% else %}
+                      {{ _('Система') }}
+                  {% endif %}
               {% endif %}
-            {% endif %}
+          {% endset %}
+
+          <span class="message-sender" title="{{ sender_name|striptags }}">
+              {{ sender_name }}
           </span>
           <span class="message-time">
             {{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time else
@@ -445,21 +451,12 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         <div class="message-bubble">
           <p class="text-ticket">{{ ticket.note }}</p>
           <div class="bubble-status">
-            {% if ticket.luck %}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path
                 d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
                 fill="#34B7F1"
               />
             </svg>
-            {% else %}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-                fill="#FF5252"
-              />
-            </svg>
-            {% endif %}
           </div>
         </div>
 
@@ -519,7 +516,7 @@ compact_view=false) %}
       <div class="plan-cont-column-header">
         <a class="plan-info">
           <span class="plan-info" style="font-weight: 600"
-            >{{ plan.year }} {{ _('год') }}</span
+            >{{ _('План на') }} {{ plan.year }} {{ _('год') }}</span
           >
           {% if plan.organization.name %}
           <span class="structure-plan"></span>{{ plan.organization.name |
@@ -530,7 +527,7 @@ compact_view=false) %}
       <div class="plan-cont-column-footer">
         {% if plan.organization.okpo %}
         <div class="plan-cont-column-footer-element">
-          <div class="date-icon black">{{ icons.icon_org() }}</div>
+          <div class="date-icon black">{{ icons.icon_ynp() }}</div>
           <a class="plan-info">{{ plan.organization.ynp }}</a>
         </div>
         {% endif %}
@@ -629,14 +626,16 @@ compact_view=false) %}
       />
       {% elif show_actions %}
       <div class="buttons-row">
+        {% set view_url = url_for('plan_bp.plan_audit', token=plan.token) if current_user.is_auditor else url_for('plan_bp.plan_review', token=plan.token) %}
+
         <button
-          type="button"
-          class="svg-btn tooltip-btn"
-          onclick="window.location.href='{{ url_for('plan_bp.plan_review', token=plan.token) }}'"
+            type="button"
+            class="svg-btn tooltip-btn"
+            onclick="window.location.href='{{ view_url }}'"
         >
-          {{ icons.icon_view() }}
-          <span class="tooltip-text">{{ _('Просмотр') }}</span>
-          <span class="btn-text">{{ _('Просмотр') }}</span>
+            {{ icons.icon_view() }}
+            <span class="tooltip-text">{{ _('Просмотр') }}</span>
+            <span class="btn-text">{{ _('Просмотр') }}</span>
         </button>
         {% if plan.user_id == current_user.id %} {% if not (plan.is_sent or
         plan.is_approved) %}

@@ -1,7 +1,6 @@
-import datetime
 import logging
 from venv import logger
-from flask import current_app, g, render_template, request, jsonify, Blueprint
+from flask import current_app, g, request, jsonify, Blueprint
 from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
@@ -10,7 +9,7 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Plan, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -71,55 +70,7 @@ def api_get_plans():
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 500      
-        
-@api_bp.route('/approve-plan/<token>', methods=['POST'])
-@login_required
-def api_approve_plan(token):
-    plan = Plan.query.filter_by(token=token).first_or_404()
-    data = request.get_json()
-    stage = data.get('stage')
-    current_time = TimeByMinsk()
-    
-    if stage == 'regional':
-        if not current_user.is_region:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_region_approved = True
-        plan.region_approved_time = current_time
-        if plan.plan_type == 'org_large':
-            plan.approval_stage = 'municipal'
-        else:
-            plan.approval_stage = 'department'
-        
-    elif stage == 'municipal':
-        if not current_user.is_municipal:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_municipal_approved = True
-        plan.municipal_approved_time = current_time
-        plan.approval_stage = 'department'
-        
-    elif stage == 'department':
-        if not current_user.is_departament:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_department_approved = True
-        plan.department_approved_time = current_time
-        if plan.plan_type == 'org_large':
-            plan.approval_stage = 'higher'
-        else:
-            plan.approval_stage = 'completed'
-            plan.is_approved = True
-            
-    elif stage == 'higher':
-        if not current_user.is_higher_organization:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_higher_organization_approved = True
-        plan.higher_organization_approved_time = current_time
-        plan.approval_stage = 'completed'
-        plan.is_approved = True
-    
-    db.session.commit()
-    
-    return jsonify({'success': True})
+        }), 500
 
 @api_bp.route('/news', methods=['GET'])
 def api_news():
@@ -269,91 +220,7 @@ def get_regions_api():
     except Exception as e:
         logging.error(f"Error fetching regions: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
- 
-@api_bp.route('/plan-approval-slider/<token>')
-@login_required
-def get_plan_approval_slider(token):
-    from flask import render_template_string
-    from app.macros import plan_agree_slider
-    
-    plan = Plan.query.filter_by(token=token).first_or_404()
-    
-    html = render_template_string(
-        '{{ plan_agree_slider(plan, current_user) }}',
-        plan=plan,
-        current_user=current_user,
-        plan_agree_slider=plan_agree_slider
-    )
-    
-    return jsonify({
-        'success': True,
-        'html': html
-    })
 
-# @api_bp.route('/higher-organizations')
-# @login_required
-# def get_higher_organizations_api():
-#     try:
-#         page = request.args.get("page", 1, type=int)
-#         search_query = request.args.get("q", "", type=str).strip()
-
-#         query = HigherOrganization.query.filter(HigherOrganization.is_active == True)
-#         if search_query:
-#             query = query.filter(HigherOrganization.name.ilike(f"%{search_query}%"))
-
-#         query = query.order_by(HigherOrganization.name)
-#         per_page = 10
-#         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-#         return jsonify({
-#             "higher_organizations": [
-#                 {
-#                     "id": org.id,
-#                     "name": org.name
-#                 }
-#                 for org in pagination.items
-#             ],
-#             "page": pagination.page,
-#             "has_next": pagination.has_next,
-#             "total_pages": pagination.pages,
-#             "total_items": pagination.total
-#         })
-#     except Exception as e:
-#         logging.error(f"Error fetching higher organizations: {str(e)}")
-#         return jsonify({"error": "Internal server error"}), 500
-
-# @api_bp.route('/oblispolkom-gorispolkoms')
-# @login_required
-# def get_oblispolkom_gorispolkoms_api():
-#     try:
-#         page = request.args.get("page", 1, type=int)
-#         search_query = request.args.get("q", "", type=str).strip()
-
-#         query = OblispolkomGorispolkom.query.filter(OblispolkomGorispolkom.is_active == True)
-#         if search_query:
-#             query = query.filter(OblispolkomGorispolkom.name.ilike(f"%{search_query}%"))
-
-#         query = query.order_by(OblispolkomGorispolkom.name)
-#         per_page = 10
-#         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-#         return jsonify({
-#             "oblispolkom_gorispolkoms": [
-#                 {
-#                     "id": org.id,
-#                     "name": org.name
-#                 }
-#                 for org in pagination.items
-#             ],
-#             "page": pagination.page,
-#             "has_next": pagination.has_next,
-#             "total_pages": pagination.pages,
-#             "total_items": pagination.total
-#         })
-#     except Exception as e:
-#         logging.error(f"Error fetching oblispolkom gorispolkoms: {str(e)}")
-#         return jsonify({"error": "Internal server error"}), 500
-    
 @api_bp.route('/get-event/<int:id>', methods=['GET'])
 @user_with_all_params()
 @login_required

@@ -4182,9 +4182,9 @@ document.addEventListener('DOMContentLoaded', function() {
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите отправить сообщение об ошибках пользователю?',
+            modalText: 'Вы действительно хотите отправить сообщение пользователю?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Описывайте ошибки максимально подробно, для наилучшего восприятия со стороны пользователя.'
+            modalTextSecond: 'Если есть ошибки описывайте максимально подробно, для наилучшего восприятия со стороны пользователя.'
         });
     }
 
