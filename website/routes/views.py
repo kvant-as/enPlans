@@ -560,10 +560,42 @@ def check_plan_year():
 @login_required
 @session_required
 def stats():
+    from website.models import StatPlan, Organization
+    
+    organization_id = current_user.organization_id
+    
     if request.method == 'POST':
         pass
+    
+    stat_years = []
+    stat_data = {}
+    
+    if organization_id:
+        stat_reports = StatPlan.query.filter_by(
+            organization_id=organization_id
+        ).order_by(StatPlan.year.desc()).all()
+        
+        for report in stat_reports:
+            year = report.year
+            if year not in stat_years:
+                stat_years.append(year)
+            
+            if year not in stat_data:
+                stat_data[year] = {}
+            
+            stat_data[year][report.type] = {
+                'count': len(report.values),
+                'uploaded_at': report.uploaded_at
+            }
+    
+    has_stats = len(stat_years) > 0
+    
     return render_template('stats.html', 
-                        hide_header=False)
+                        hide_header=False,
+                        stat_years=stat_years,
+                        stat_data=stat_data,
+                        has_stats=has_stats,
+                        organization_id=organization_id)
 
 @views.route('/api/ticket/<int:ticket_id>/details')
 @login_required

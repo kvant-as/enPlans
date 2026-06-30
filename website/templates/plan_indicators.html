@@ -14,7 +14,7 @@
        data-token="{{ plan.token }}"
        data-plan-id="{{ plan.id }}"
        data-plan-year="{{ plan.year }}"
-       data-organization-id="{{ plan.organization_id }}">
+       data-organization-id="{{ plan.org_id }}">
       <thead class="main-table-titels">
         <tr>
           <th rowspan="2" class="resizable">
@@ -46,7 +46,7 @@
             </th>
             {% endfor %}
 
-          <th rowspan="2" class="resizable" style="border-right: none; max-width: 120px">
+          <th rowspan="2" class="resizable" style="border-right: none;  max-width: 120px">
             <a>Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
@@ -442,11 +442,6 @@
     </div>
 </div>
 
-
-<!-- <script>
-    window.isAuditor = {{ current_user.is_auditor|tojson }};
-    window.organizationId = {{ plan.organization.id|tojson if plan.organization and plan.organization.id else 'null' }};
-    window.reportYear = {{ plan.year|tojson if plan.year else 'null' }};
-</script>
-<script src="{{ url_for('static', filename='js/stats-control.js') }}"></script> -->
+<script src="{{ url_for('static', filename='js/indicator-calc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/PlanStatControl.js') }}"></script>
 {% endblock %}

@@ -165,23 +165,12 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
       <span class="nav-text">{{ _('Создать') }}</span>
       <span class="nav-text-mobile">{{ _('Создать') }}</span>
     </div>
-    {% endif %} {#{% if current_user.is_auditor == true or current_user.is_admin
-    == true%}
-    <div
-      class="nav-item {% if active_tab == 'plans-audit' %} active{% endif %}"
-      onclick="window.location.href = '/plans-audit'"
-    >
+    {% endif %} 
+
+    <div class="nav-item {% if active_tab == 'stats' %} active {% endif %}" onclick="window.location.href = '/stats'">
       <div class="nav-icon-wrapper">
-        {{ icons.icon_eye() }} {% if active_tab == 'plans-audit' %}
-        <div class="active-indicator"></div>
-        {% endif %}
+        {{ icons.icon_stats() }} 
       </div>
-      <span class="nav-text">{{ _('Просмотр') }}</span>
-      <span class="nav-text-mobile">{{ _('Просмотр') }}</span>
-    </div>
-    {% endif %}#}
-    <div class="nav-item disabled-tab">
-      <div class="nav-icon-wrapper">{{ icons.icon_stats() }}</div>
       <span class="nav-text">{{ _('Статистика') }}</span>
       <span class="nav-text-mobile">{{ _('Статистика') }}</span>
     </div>
@@ -731,7 +720,7 @@ selected_status='all', selected_year='all') %}
           {% elif selected_status == 'draft' %}
               {{ _('В редакции') }}
           {% elif selected_status == 'control' %}
-              {{ _('Контроль') }}
+              {{ _('Контроль пройден') }}
           {% elif selected_status == 'sent' %}
               {% if current_user and current_user.is_auditor %}
                   {{ _('Не просмотренные') }}
@@ -848,7 +837,7 @@ selected_status='all', selected_year='all') %}
     <div class="stat-and-dot">
       <div class="stat">
         <a class="stat-number-control" id="stat-control">-</a>
-        <a class="word-numb">{{ _('Контроль') }}</a>
+        <a class="word-numb">{{ _('Контроль пройден') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>

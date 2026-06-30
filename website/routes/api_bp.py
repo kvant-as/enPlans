@@ -523,84 +523,94 @@ def mark_notification_read(notification_id):
 
 
 
-@api_bp.route('/stat-data/<int:organization_id>/<int:year>')
-def get_stat_data(organization_id, year):
+@api_bp.route('/stat-data/<int:organization_id>')
+def get_stat_data(organization_id):
     try:
         stat_reports = StatPlan.query.filter_by(
-            organization_id=organization_id,
-            year=year
+            organization_id=organization_id
         ).all()
-        
+
         if not stat_reports:
             return jsonify({
                 'success': False,
-                'message': f'Статистические данные за {year} год не найдены'
+                'message': 'Статистические данные не найдены'
             }), 404
-        
+
+        # Маппинг кодов плана к строкам и колонкам в статистике
+        mapping = {
+            # 12-тэк
+            '1000': {'report': '12-tek', 'row': '110', 'col': '1'},
+            '1104': {'report': '12-tek', 'row': '110', 'col': '2'},
+            '1105': {'report': '12-tek', 'row': '110', 'col': '3'},
+            '9900': {'report': '12-tek', 'row': '110', 'col': '5'},
+            '1404': {'report': '12-tek', 'row': '140', 'col': '5'},
+            '1424': {'report': '12-tek', 'row': '142', 'col': '5'},
+            '9915': {'report': '12-tek', 'row': '110', 'col': '4'},
+            '1405': {'report': '12-tek', 'row': '140', 'col': '4'},
+            '1425': {'report': '12-tek', 'row': '142', 'col': '4'},
+            '260': {'report': '12-tek', 'row': '260', 'col': '1'},
+            
+            # 4-тэк
+            '2000': {'report': '4-tek', 'row': '1090', 'col': '3', 'subtract': ['1090_5', '1090_6', '1092_7']},
+            '2001': {'report': '4-tek', 'row': '1050', 'col': '3', 'subtract': ['1050_5', '1050_6']},
+            '2002': {'report': '4-tek', 'row': '1040', 'col': '3', 'subtract': ['1040_5', '1040_6']},
+            '2003': {'report': '4-tek', 'row': '1660', 'col': '3', 'subtract': ['1660_5', '1660_6']},
+            '2004': {'report': '4-tek', 'row': '1075', 'col': '3', 'subtract': ['1075_5', '1075_6']},
+            '2005': {'report': '4-tek', 'row': '1160', 'col': '3', 'subtract': ['1160_5', '1160_6']},
+            '2006': {'report': '4-tek', 'row': '1150', 'col': '3', 'subtract': ['1150_5', '1150_6', '1152_7']},
+            '2007': {'report': '4-tek', 'row': '1060', 'col': '3', 'subtract': ['1060_5', '1060_6']},
+            '2008': {'report': '4-tek', 'row': '1750', 'col': '3', 'subtract': ['1750_5', '1750_6']},
+            '2009': {'report': '4-tek', 'row': '1790', 'col': '3', 'subtract': ['1790_5', '1790_6']},
+            '2010': {'report': '4-tek', 'row': '1110', 'col': '3', 'subtract': ['1110_5', '1110_6']},
+            '2011': {'report': '4-tek', 'row': '1620+1630', 'col': '3', 'subtract': ['1620_5', '1620_6', '1630_5', '1630_6']},
+            '2012': {'report': '4-tek', 'row': '1640', 'col': '3', 'subtract': ['1640_5', '1640_6']},
+            '2013': {'report': '4-tek', 'row': '1794', 'col': '3', 'subtract': ['1794_5', '1794_6']},
+            '2014': {'report': '4-tek', 'row': '1745', 'col': '3', 'subtract': ['1745_5', '1745_6']},
+            '2015': {'report': '4-tek', 'row': '1690', 'col': '3', 'subtract': ['1690_5', '1690_6']},
+            '2016': {'report': '4-tek', 'row': '1680', 'col': '3', 'subtract': ['1680_5', '1680_6']},
+            '2017': {'report': '4-tek', 'row': '1742', 'col': '3', 'subtract': ['1742_5', '1742_6']},
+            '2018': {'report': '4-tek', 'row': '1744', 'col': '3', 'subtract': ['1744_5', '1744_6']},
+            '2019': {'report': '4-tek', 'row': '1785', 'col': '3', 'subtract': ['1785_5', '1785_6']},
+            '2020': {'report': '4-tek', 'row': '1730', 'col': '3', 'subtract': ['1730_5', '1730_6']},
+            '2021': {'report': '4-tek', 'row': '1740', 'col': '3', 'subtract': ['1740_5', '1740_6']},
+            '2022': {'report': '4-tek', 'row': '1780', 'col': '3', 'subtract': ['1780_5', '1780_6']},
+        }
+
         result = {
             'success': True,
-            'year': year,
             'organization_id': organization_id,
-            'data': {}
+            'years': [],
+            'data': {},
+            'mapping': mapping
         }
-        
+
         for report in stat_reports:
+            year = str(report.year)
+            
+            if year not in result['years']:
+                result['years'].append(year)
+            
+            if year not in result['data']:
+                result['data'][year] = {}
+            
             report_type = report.type
-            result['data'][report_type] = {
-                'values': {}
-            }
+            
+            if report_type not in result['data'][year]:
+                result['data'][year][report_type] = []
             
             for val in report.values:
-                key = f"{val.row_code}_{val.column_code}"
-                result['data'][report_type]['values'][key] = float(val.value) if val.value else None
-        
+                result['data'][year][report_type].append({
+                    'row': str(val.row_code),
+                    'column': str(val.column_code),
+                    'value': float(val.value) if val.value is not None else 0
+                })
+
+        result['years'].sort()
         return jsonify(result)
-        
+
     except Exception as e:
         logger.error(f"Error getting stat data: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@api_bp.route('/stat-data/mapping')
-def get_stat_mapping():
-    mapping = {
-        '12-tek': {
-            'row_110_col_1': {'plan_row': 1, 'description': 'КПТ всего (строка 110 графа 1)'},
-            'row_110_col_2': {'plan_row': 27, 'description': 'КПТ из него МВТ (строка 110 графа 2)'},
-            'row_110_col_3': {'plan_row': 28, 'description': 'КПТ из них ВИЭ (строка 110 графа 3)'},
-            'row_110_col_5': {'plan_row': 29, 'description': 'Электроэнергия (строка 110 графа 5)'},
-            'row_140_col_5': {'plan_row': 31, 'description': 'ЭЭ собственными энергоисточниками (строка 140 графа 5)'},
-            'row_142_col_5': {'plan_row': 33, 'description': 'ЭЭ от ВИЭ (строка 142 графа 5)'},
-            'row_110_col_4': {'plan_row': 35, 'description': 'Теплоэнергия (строка 110 графа 4)'},
-            'row_140_col_4': {'plan_row': 37, 'description': 'ТЭ собственными энергоисточниками (строка 140 графа 4)'},
-            'row_142_col_4': {'plan_row': 39, 'description': 'ТЭ от ВИЭ (строка 142 графа 4)'},
-            'row_260_col_1': {'plan_row': 41, 'description': 'Суммарное потребление ТЭР (строка 260 графа 1)'}
-        },
-        '4-tek': {
-            'row_1090_col_3': {'plan_row': 2, 'description': 'Газ природный (строка 1090 графа 3)'},
-            'row_1050_col_3': {'plan_row': 3, 'description': 'Мазут топочный (строка 1050 графа 3)'},
-            'row_1040_col_3': {'plan_row': 4, 'description': 'Топливо печное бытовое (строка 1040 графа 3)'},
-            'row_1660_col_3': {'plan_row': 5, 'description': 'Кокс металлургический (строка 1660 графа 3)'},
-            'row_1075_col_3': {'plan_row': 6, 'description': 'Кокс нефтяной (строка 1075 графа 3)'},
-            'row_1160_col_3': {'plan_row': 7, 'description': 'Уголь (строка 1160 графа 3)'},
-            'row_1150_col_3': {'plan_row': 8, 'description': 'Газы углеводородные сжиженные (строка 1150 графа 3)'},
-            'row_1060_col_3': {'plan_row': 9, 'description': 'Газы углеводородные нефтепереработки (строка 1060 графа 3)'},
-            'row_1750_col_3': {'plan_row': 10, 'description': 'Метано-водородная фракция (строка 1750 графа 3)'},
-            'row_1790_col_3': {'plan_row': 11, 'description': 'Отработанные нефтепродукты (строка 1790 графа 3)'},
-            'row_1110_col_3': {'plan_row': 12, 'description': 'Газ природный попутный (строка 1110 графа 3)'},
-            'row_1620+1630_col_3': {'plan_row': 13, 'description': 'Торф топливный (строка 1620+1630 графа 3)'},
-            'row_1640_col_3': {'plan_row': 14, 'description': 'Брикеты торфяные (строка 1640 графа 3)'},
-            'row_1794_col_3': {'plan_row': 15, 'description': 'Использованные автопокрышки (строка 1794 графа 3)'},
-            'row_1745_col_3': {'plan_row': 16, 'description': 'Биогаз (строка 1745 графа 3)'},
-            'row_1690_col_3': {'plan_row': 17, 'description': 'Дрова (строка 1690 графа 3)'},
-            'row_1680_col_3': {'plan_row': 18, 'description': 'Топливная щепа (строка 1680 графа 3)'},
-            'row_1742_col_3': {'plan_row': 19, 'description': 'Древесные гранулы, пеллеты (строка 1742 графа 3)'},
-            'row_1744_col_3': {'plan_row': 20, 'description': 'Древесные брикеты (строка 1744 графа 3)'},
-            'row_1785_col_3': {'plan_row': 21, 'description': 'RDF-топливо (строка 1785 графа 3)'},
-            'row_1730_col_3': {'plan_row': 22, 'description': 'Отходы лесозаготовок (строка 1730 графа 3)'},
-            'row_1740_col_3': {'plan_row': 23, 'description': 'Отходы сельхоздеятельности (строка 1740 графа 3)'},
-            'row_1780_col_3': {'plan_row': 24, 'description': 'Сульфатные щелока (строка 1780 графа 3)'}
-        }
-    }
-    
-    return jsonify({'success': True, 'mapping': mapping})
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500

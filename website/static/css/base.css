@@ -5816,6 +5816,15 @@ input[type="checkbox"]:focus {
   gap: 7px;
 }
 
+.empty-state.stats-page{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 200px;
+}
+
 .empty-state svg{
   width: 50px;
   height: 50px;
@@ -8946,6 +8955,9 @@ label {
     }
 }
 /* ===================== chat styles end ===================== */
+
+
+
 
 @media (max-width: 320px) {
   .header-cont {
