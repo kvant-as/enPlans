@@ -11,13 +11,12 @@ from website.utils.plans import check_and_create_period_directions, generate_uni
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
 from website.sessions import session_required
-from website.utils.plans import status_handlers
 from website.user import send_email
 
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
 from .. import db
-from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanColumnConfig, Ticket, Event
+from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanApprovalPath, PlanColumnConfig, Ticket, Event, Organization
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
@@ -48,8 +47,8 @@ def plan_review(token):
     return render_template('plan_review.html', 
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
-                        hide_header=False,
-                        sentmodal=current_plan.is_control)
+                        SendModal=current_plan.is_control
+                        )
 
 @plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -93,8 +92,8 @@ def plan_indicators(token):
                         indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
                         confirmModal = True,
-                        sentmodal=current_plan.is_control,
                         context_menu = True)
+    
 
 @plan_bp.route('/update-column-label/<token>', methods=['POST'])
 @login_required
@@ -229,6 +228,7 @@ def create_indicator(token):
         db.session.add(new_IndicatorUsage)
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
+        update_ChangeTimePlan(current_plan.id)
         
         current_app.logger.info(f'Successfully created indicator usage with id {new_IndicatorUsage.id} for plan {current_plan.id}')
 
@@ -338,7 +338,7 @@ def edit_indicator(token):
         
         db.session.commit()
         other_data_indicatorUpdate(current_plan.id)
-        
+        update_ChangeTimePlan(current_plan.id)
         current_app.logger.info(f'Successfully updated indicator usage {id_indicator} for plan {current_plan.id}')
         flash('Показатель успешно обновлен', 'success')
         return redirect(url_for('plan_bp.plan_indicators', token=token))
@@ -417,7 +417,7 @@ def plan_event(event_type, token):
                         hide_header=False,
                         confirmModal=True,
                         directions=directions,
-                        sentmodal=current_plan.is_control,
+                        # SendModal=current_plan.is_control,
                         context_menu=True,
                         has_events=has_events
                     )
@@ -674,8 +674,8 @@ def delete_eventes(id):
     other_data_indicatorUpdate(current_plan.id)
     flash('Мероприятие успешно удалено', 'success')
     return redirect(url_for('plan_bp.plan_event', event_type=event_type, token=current_plan.token))
-
-@plan_bp.route('/change-plan-status/<token>', methods=['POST'])
+        
+@plan_bp.route('/change-status/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @owner_only
@@ -685,18 +685,12 @@ def api_change_plan_status(token):
     if request.is_json:
         data = request.get_json()
         status = data.get('status')
+        coordinator_ids = data.get('coordinator_ids', '').split(',') if data.get('coordinator_ids') else []
+        approver_id = data.get('approver_id')
     else:
         status = request.form.get('status')
-        if status == 'sent':
-            uploaded_file = request.files.get('certificate')
-            from ..ecp import validate_certificate_for_sending
-            is_valid, error_message = validate_certificate_for_sending(uploaded_file)
-            if not is_valid:
-                flash(error_message, 'error')
-                flash('План не был отправлен.', 'error')
-                return redirect(request.referrer)
-            else:
-                flash('Сертификат успешно прошел проверку.', 'success')
+        coordinator_ids = request.form.get('coordinator_ids', '').split(',') if request.form.get('coordinator_ids') else []
+        approver_id = request.form.get('approver_id')
     
     if not status:
         if request.is_json:
@@ -705,77 +699,55 @@ def api_change_plan_status(token):
             flash('Статус не указан', 'error')
             return redirect(request.referrer or url_for('views.plans'))
     
-    status_mapping = {
-        'draft': 'is_draft',
-        'control': 'is_control',
-        'sent': 'is_sent', 
-        'sent_without_check': 'is_sent',
-        'error': 'is_error',
-        'approved': 'is_approved'
+    from website.utils.status_plan import (
+        handle_sent_status,
+        handle_approved_status,
+        handle_sent_without_check_status,
+        handle_draft_status,
+        handle_control_status,
+        handle_error_status
+    )
+    
+    status_handlers = {
+        'sent': handle_sent_status,
+        'approved': handle_approved_status,
+        'sent_without_check': handle_sent_without_check_status,
+        'draft': handle_draft_status,
+        'control': handle_control_status,
+        'error': handle_error_status
     }
     
-    if status not in status_mapping:
+    if status not in status_handlers:
         if request.is_json:
             return jsonify({'error': 'Неверный статус'}), 400
         else:
             flash('Неверный статус', 'error')
             return redirect(request.referrer or url_for('views.plans'))
     
-    if status in status_handlers:
-        try:
-            result = status_handlers[status](plan)
-            db.session.commit()
-
-            if isinstance(result, dict) and "error" in result:
-                if request.is_json:
-                    return jsonify(result), 400
-                else:
-                    flash(result["error"], "error")
-                    return redirect(request.referrer or url_for('views.plans'))
-            message = result if isinstance(result, str) else "Статус изменен"
-
-        except Exception as e:
-            db.session.rollback()
-            if request.is_json:
-                return jsonify({'error': f'Ошибка обработки статуса: {str(e)}'}), 500
-            else:
-                flash(f'Ошибка обработки статуса: {str(e)}', 'error')
-                return redirect(request.referrer or url_for('views.plans'))
+    handler = status_handlers[status]
     
-    if status == 'sent_without_check':
-        setattr(plan, status_mapping[status], True)
-        
-        for other_status, attr_name in status_mapping.items():
-            if other_status != status and attr_name != status_mapping[status]:
-                setattr(plan, attr_name, False)
-                
-        new_ticket = Ticket(
-            note="План возвращен в статус 'На рассмотрении'.",
-            luck=True,
-            is_owner = True,
-            plan_id=plan.id
-        )
-        db.session.add(new_ticket) 
-        
-        
-        notification = Notification(
-            user_id=plan.user_id,
-            message=f"План {plan.year} возвращен в статус 'На рассмотрении'.",
-            created_at=TimeByMinsk()
-        )
-        db.session.add(notification)       
-        db.session.commit()
-        
-        message = "План возвращен в изначальное состояние."
-        flash(message, 'success')
-        return redirect(url_for('plan_bp.plan_audit', token=plan.token))
+    if status == 'sent':
+        result = handler(plan, coordinator_ids, approver_id)
+    elif status == 'approved':
+        result = handler(plan, current_user)
+    elif status == 'sent_without_check':
+        result = handler(plan, current_user)
+    else:
+        result = handler(plan)
     
     if request.is_json:
-        return jsonify({'message': message, 'status': status})
+        if isinstance(result, dict) and "error" in result:
+            return jsonify({'error': result['error']}), 400
+        return jsonify({'message': result if isinstance(result, str) else result.get('message'), 'status': status})
     else:
+        if isinstance(result, dict) and "error" in result:
+            flash(result['error'], 'error')
+            return redirect(request.referrer or url_for('views.plans'))
+        message = result if isinstance(result, str) else result.get('message', 'Статус изменен')
         flash(message, 'success')
         if status in ['approved', 'error']:
             return redirect(request.referrer or url_for('views.plans'))
+        if status in ['sent_without_check']:
+            return redirect(request.referrer)
         else:
             return redirect(url_for('plan_bp.plan_review', token=plan.token))
-

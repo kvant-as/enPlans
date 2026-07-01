@@ -1,5 +1,5 @@
 from . import db
-from sqlalchemy import Numeric
+from sqlalchemy import Numeric, UniqueConstraint
 from flask_login import UserMixin
 import secrets
 import string
@@ -17,20 +17,12 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String())
     
     organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
-    ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
-    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
-    higher_organization_id = db.Column(db.Integer, db.ForeignKey('higherOrganizations.id'))
-    oblispolkom_gorispolkom_id = db.Column(db.Integer, db.ForeignKey('oblispolkomGorispolkoms.id'))
-    
     password = db.Column(db.String())
     
     is_admin = db.Column(db.Boolean, default=False)
     is_auditor = db.Column(db.Boolean, default=False)
-    
-    is_region = db.Column(db.Boolean, default=False)
-    is_municipal = db.Column(db.Boolean, default=False)
-    is_departament = db.Column(db.Boolean, default=False)
-    is_higher_organization = db.Column(db.Boolean, default=False)
+    is_approver = db.Column(db.Boolean, default=False)
+    is_reader = db.Column(db.Boolean, default=False)
 
     last_active = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     begin_time = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
@@ -38,10 +30,6 @@ class User(db.Model, UserMixin):
     reset_password_expires = db.Column(db.DateTime, nullable=True)
     
     organization = db.relationship('Organization', foreign_keys=[organization_id], back_populates='users')
-    ministry = db.relationship('Ministry', foreign_keys=[ministry_id], back_populates='users')
-    region = db.relationship('Region', foreign_keys=[region_id], back_populates='users')
-    higher_organization = db.relationship('HigherOrganization', foreign_keys=[higher_organization_id], back_populates='users')
-    oblispolkom_gorispolkom = db.relationship('OblispolkomGorispolkom', foreign_keys=[oblispolkom_gorispolkom_id], back_populates='users')
     
     plans = db.relationship('Plan', back_populates='user', lazy=True, cascade="all, delete-orphan")
     tickets = db.relationship('Ticket', back_populates='user', lazy=True)
@@ -52,75 +40,67 @@ class User(db.Model, UserMixin):
         return f'<User {self.email}>'
 
 
-class HigherOrganization(db.Model):
-    __tablename__ = 'higherOrganizations'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-    
-    organizations = db.relationship("Organization", back_populates="higher_organization")
-    users = db.relationship("User", back_populates="higher_organization")
-    plans = db.relationship("Plan", foreign_keys="Plan.higher_organization_id", back_populates="higher_organization")
-
-
-class OblispolkomGorispolkom(db.Model):
-    __tablename__ = 'oblispolkomGorispolkoms'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-    
-    organizations = db.relationship("Organization", back_populates="oblispolkom_gorispolkom")
-    users = db.relationship("User", back_populates="oblispolkom_gorispolkom")
-    plans = db.relationship("Plan", foreign_keys="Plan.oblispolkom_gorispolkom_id", back_populates="oblispolkom_gorispolkom")
-
-
 class Region(db.Model):
     __tablename__ = 'regions'
     id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.Integer, unique=True, nullable=False)
     name = db.Column(db.String(), nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
     
     organizations = db.relationship("Organization", back_populates="region")
-    users = db.relationship("User", back_populates="region")
-    plans = db.relationship("Plan", foreign_keys="Plan.region_id", back_populates="region")
-
-
-class Ministry(db.Model):
-    __tablename__ = 'ministries'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(), nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-    
-    organizations = db.relationship("Organization", back_populates="ministry")
-    users = db.relationship("User", back_populates="ministry")
-    plans = db.relationship("Plan", foreign_keys="Plan.ministry_id", back_populates="ministry")
-
 
 class Organization(db.Model):
     __tablename__ = 'organizations'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False)
     okpo = db.Column(db.String, unique=True, nullable=False)
-    ynp = db.Column(db.String(), nullable=True)
-    
-    ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
-    higher_organization_id = db.Column(db.Integer, db.ForeignKey('higherOrganizations.id'))
-    oblispolkom_gorispolkom_id = db.Column(db.Integer, db.ForeignKey('oblispolkomGorispolkoms.id'))
-    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
+    ynp = db.Column(db.String(), unique=True, nullable=False)
     
     is_active = db.Column(db.Boolean, default=True)
+    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
     
-    ministry = db.relationship("Ministry", back_populates="organizations")
-    higher_organization = db.relationship("HigherOrganization", back_populates="organizations")
-    oblispolkom_gorispolkom = db.relationship("OblispolkomGorispolkom", back_populates="organizations")
+    is_regular = db.Column(db.Boolean, default=True)  # обычное юр лицо
+    is_coordinator = db.Column(db.Boolean, default=False)  # согласовывающее
+    is_approver = db.Column(db.Boolean, default=False)  # утверждающее
+    
+    is_region_management = db.Column(db.Boolean, default=False)
+    
     region = db.relationship("Region", back_populates="organizations")
     users = db.relationship("User", back_populates="organization")
+    
+    approval_paths = db.relationship("PlanApprovalPath", foreign_keys="PlanApprovalPath.organization_id", back_populates="organization")
     plans = db.relationship("Plan", foreign_keys="Plan.org_id", back_populates="organization")
-
 
 def generate_static_token(length=20):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+class PlanApprovalPath(db.Model):
+    __tablename__ = 'plan_approval_paths'
+    id = db.Column(db.Integer, primary_key=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'), nullable=False)
+    step_order = db.Column(db.Integer, nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False)
+    step_type = db.Column(db.String(20), nullable=False)
+    is_viewed = db.Column(db.Boolean, default=False)
+    viewed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+    
+    plan = db.relationship("Plan", back_populates="approval_paths")
+    organization = db.relationship("Organization", foreign_keys=[organization_id], back_populates="approval_paths")
+    
+    STEP_TYPES = {
+        'region': 'Региональное управление',
+        'coordinator': 'Согласовывающая организация',
+        'approver': 'Утверждающая организация'
+    }
+    
+    @property
+    def step_type_label(self):
+        return self.STEP_TYPES.get(self.step_type, self.step_type)
+    
+    def __repr__(self):
+        return f'<PlanApprovalPath plan_id={self.plan_id} step_order={self.step_order} type={self.step_type}>'
 
 
 class PlanColumnConfig(db.Model):
@@ -155,47 +135,27 @@ class Plan(db.Model):
     is_draft = db.Column(db.Boolean, default=True)
     is_control = db.Column(db.Boolean, default=False)
     is_sent = db.Column(db.Boolean, default=False)
-    is_error = db.Column(db.Boolean, default=False)
     
-    is_region_approved = db.Column(db.Boolean, default=False)
-    is_municipal_approved = db.Column(db.Boolean, default=False)
-    is_department_approved = db.Column(db.Boolean, default=False)
-    is_higher_organization_approved = db.Column(db.Boolean, default=False)
-
+    is_error = db.Column(db.Boolean, default=False)
     is_approved = db.Column(db.Boolean, default=False)
     
     plan_type = db.Column(db.String(50), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    region_approved_time = db.Column(db.DateTime, nullable=True)
-    municipal_approved_time = db.Column(db.DateTime, nullable=True)
-    department_approved_time = db.Column(db.DateTime, nullable=True)
-    higher_organization_approved_time = db.Column(db.DateTime, nullable=True)
-    approval_stage = db.Column(db.String(50), default='regional')  # regional, municipal, department, higher
-
     org_id = db.Column(db.Integer, db.ForeignKey('organizations.id'))
-    ministry_id = db.Column(db.Integer, db.ForeignKey('ministries.id'))
-    region_id = db.Column(db.Integer, db.ForeignKey('regions.id'))
-    higher_organization_id = db.Column(db.Integer, db.ForeignKey('higherOrganizations.id'))
-    oblispolkom_gorispolkom_id = db.Column(db.Integer, db.ForeignKey('oblispolkomGorispolkoms.id'))
-    
     tickets = db.relationship('Ticket', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     events = db.relationship('Event', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     indicators_usage = db.relationship('IndicatorUsage', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     column_configs = db.relationship('PlanColumnConfig', back_populates='plan', lazy=True, cascade="all, delete-orphan")
+    approval_paths = db.relationship('PlanApprovalPath', back_populates='plan', lazy=True, cascade="all, delete-orphan")
     
     user = db.relationship("User", back_populates="plans")
     organization = db.relationship("Organization", foreign_keys=[org_id], back_populates="plans")
-    ministry = db.relationship("Ministry", foreign_keys=[ministry_id], back_populates="plans")
-    region = db.relationship("Region", foreign_keys=[region_id], back_populates="plans")
-    higher_organization = db.relationship("HigherOrganization", foreign_keys=[higher_organization_id], back_populates="plans")
-    oblispolkom_gorispolkom = db.relationship("OblispolkomGorispolkom", foreign_keys=[oblispolkom_gorispolkom_id], back_populates="plans")
-
 
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)
-    begin_time = db.Column(db.DateTime, default=TimeByMinsk())
+    begin_time = db.Column(db.DateTime)
     luck = db.Column(db.Boolean, default=False)
     is_owner = db.Column(db.Boolean, default=False)
     note = db.Column(db.String(500), nullable=False)
@@ -367,7 +327,6 @@ class News(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     views_count = db.Column(db.Integer, default=0)
 
-
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
     id = db.Column(db.Integer, primary_key=True)
@@ -394,3 +353,68 @@ class Chat(db.Model):
                               lazy='dynamic')
     created_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk())
     updated_at = db.Column(db.DateTime, nullable=False, default=TimeByMinsk(), onupdate=TimeByMinsk())
+    
+
+class StatPlan(db.Model):
+    __tablename__ = "stat_plans"
+ 
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False)
+ 
+    type = db.Column(db.String(10), nullable=False)   # '12-tek' | '4-tek'
+    year = db.Column(db.Integer, nullable=False)
+
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    uploaded_at = db.Column(db.DateTime)
+ 
+    organization = db.relationship("Organization", backref="stat_plans")
+    uploaded_by = db.relationship("User")
+ 
+    values = db.relationship(
+        "StatPlanValue",
+        back_populates="stat_plan",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+ 
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "type", "year",
+            name="uq_stat_plan_org_type_year",
+        ),
+    )
+ 
+    def __repr__(self):
+        return f"<StatPlan {self.type} {self.year} org={self.organization_id}>"
+ 
+    def get_value(self, row_code, column_code):
+        row_code, column_code = str(row_code), str(column_code)
+        for v in self.values:
+            if v.row_code == row_code and v.column_code == column_code:
+                return v.value
+        return None
+ 
+ 
+class StatPlanValue(db.Model):
+    __tablename__ = "stat_plan_values"
+ 
+    id = db.Column(db.Integer, primary_key=True)
+    stat_plan_id = db.Column(db.Integer, db.ForeignKey("stat_plans.id"), nullable=False)
+ 
+    row_code = db.Column(db.String(20), nullable=False)
+    row_name = db.Column(db.String(500))
+    column_code = db.Column(db.String(10), nullable=False)
+    value = db.Column(db.Numeric(scale=4))
+ 
+    stat_plan = db.relationship("StatPlan", back_populates="values")
+ 
+    __table_args__ = (
+        UniqueConstraint(
+            "stat_plan_id", "row_code", "column_code",
+            name="uq_stat_value_cell",
+        ),
+    )
+ 
+    def __repr__(self):
+        return f"<StatPlanValue row={self.row_code} col={self.column_code} val={self.value}>"
+    

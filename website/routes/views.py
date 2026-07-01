@@ -1,11 +1,9 @@
-from decimal import Decimal
 from flask import (
     Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
 )
 
 import uuid
 import threading
-import zipfile
 
 from sqlalchemy import select
 
@@ -14,11 +12,11 @@ from flask_login import (
 )
 
 from ..time import TimeByMinsk
-from website.utils.currency_rates import fetch_usd_rate_from_any_source, fetch_usd_rate_from_belarusbank
-from website.utils.plans import get_column_configs_for_plan, get_filtered_plans, to_decimal_1, to_decimal_2, update_ChangeTimePlan
+from website.utils.currency_rates import fetch_usd_rate_from_any_source
+from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import HigherOrganization, Ministry, News, OblispolkomGorispolkom, Region, User, Organization, Plan, Ticket, Indicator, IndicatorUsage, Notification
+from ..models import News, User, Organization, Plan, Ticket, Indicator, IndicatorUsage
 from .. import db
 
 from functools import wraps
@@ -116,56 +114,56 @@ def edit_user_org():
                 return redirect(request.referrer)
             
             current_user.organization_id = selected_item.id
-            current_user.higher_organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
-            current_user.region_id = None
+            # current_user.higher_organization_id = None
+            # current_user.oblispolkom_gorispolkom_id = None
+            # current_user.region_id = None
             
             flash(f'Организация изменена на: {selected_item.name}', 'success')
             
-        elif item_type == 'higher_organization':
-            selected_item = HigherOrganization.query.filter_by(id=item_id).first()
+        # elif item_type == 'higher_organization':
+        #     selected_item = HigherOrganization.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Вышестоящая организация не найдена!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Вышестоящая организация не найдена!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'higher_organization'
-            current_user.higher_organization_id = selected_item.id
-            current_user.organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
-            current_user.region_id = None
+        #     current_user.plan_type = 'higher_organization'
+        #     current_user.higher_organization_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.oblispolkom_gorispolkom_id = None
+        #     current_user.region_id = None
             
-            flash(f'Вышестоящая организация изменена на: {selected_item.name}', 'success')
+        #     flash(f'Вышестоящая организация изменена на: {selected_item.name}', 'success')
             
-        elif item_type == 'oblispolkom_gorispolkom':
-            selected_item = OblispolkomGorispolkom.query.filter_by(id=item_id).first()
+        # elif item_type == 'oblispolkom_gorispolkom':
+        #     selected_item = OblispolkomGorispolkom.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Обл/Горисполком не найден!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Обл/Горисполком не найден!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'oblispolkom_gorispolkom'
-            current_user.oblispolkom_gorispolkom_id = selected_item.id
-            current_user.organization_id = None
-            current_user.higher_organization_id = None
-            current_user.region_id = None
+        #     current_user.plan_type = 'oblispolkom_gorispolkom'
+        #     current_user.oblispolkom_gorispolkom_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.higher_organization_id = None
+        #     current_user.region_id = None
             
-            flash(f'Обл/Горисполком изменен на: {selected_item.name}', 'success')
+        #     flash(f'Обл/Горисполком изменен на: {selected_item.name}', 'success')
             
-        elif item_type == 'region':
-            selected_item = Region.query.filter_by(id=item_id).first()
+        # elif item_type == 'region':
+        #     selected_item = Region.query.filter_by(id=item_id).first()
             
-            if not selected_item:
-                flash('Регион не найден!', 'error')
-                return redirect(request.referrer)
+        #     if not selected_item:
+        #         flash('Регион не найден!', 'error')
+        #         return redirect(request.referrer)
             
-            current_user.plan_type = 'region'
-            current_user.region_id = selected_item.id
-            current_user.organization_id = None
-            current_user.higher_organization_id = None
-            current_user.oblispolkom_gorispolkom_id = None
+        #     current_user.plan_type = 'region'
+        #     current_user.region_id = selected_item.id
+        #     current_user.organization_id = None
+        #     current_user.higher_organization_id = None
+        #     current_user.oblispolkom_gorispolkom_id = None
             
-            flash(f'Регион изменен на: {selected_item.name}', 'success')
+        #     flash(f'Регион изменен на: {selected_item.name}', 'success')
             
         else:
             flash('Неизвестный тип элемента!', 'error')
@@ -245,23 +243,23 @@ def plans():
         selected_year=year
     )
     
-@views.route('/plans-audit', methods=['GET'])
-@user_with_all_params()
-@login_required
-@session_required
-def plans_audit():
-    status = request.args.get('status', 'all')
-    year = request.args.get('year', 'all')
+# @views.route('/plans-audit', methods=['GET'])
+# @user_with_all_params()
+# @login_required
+# @session_required
+# def plans_audit():
+#     status = request.args.get('status', 'all')
+#     year = request.args.get('year', 'all')
     
-    return render_template(
-        'plans.html',
-        years=range(2026, 2050),
-        current_user=current_user,
-        hide_header=False,
-        selected_status=status,
-        selected_year=year,
-        audit_page=True
-    )
+#     return render_template(
+#         'plans.html',
+#         years=range(2026, 2050),
+#         current_user=current_user,
+#         hide_header=False,
+#         selected_status=status,
+#         selected_year=year,
+#         audit_page=True
+#     )
 
 @views.route('/export', methods=['GET'])
 @user_with_all_params()
@@ -394,17 +392,9 @@ def create_plan():
         share_energy = to_decimal_1(request.form.get('share_energy'))
 
         org_id = None
-        ministry_id = None
-        region_id = None
 
         if hasattr(current_user, 'organization') and current_user.organization:
             org_id = current_user.organization.id
-        
-        if hasattr(current_user, 'ministry') and current_user.ministry:
-            ministry_id = current_user.ministry.id
-        
-        if hasattr(current_user, 'region') and current_user.region:
-            region_id = current_user.region.id
 
         def get_usd_rate_for_new_plan():
             usd_rate, error = fetch_usd_rate_from_any_source()
@@ -433,8 +423,6 @@ def create_plan():
 
         new_plan = Plan(
             org_id=org_id,
-            ministry_id=ministry_id,
-            region_id=region_id,
             year=year,
             user_id=current_user.id,
             energy_saving=energy_saving,
@@ -572,10 +560,42 @@ def check_plan_year():
 @login_required
 @session_required
 def stats():
+    from website.models import StatPlan, Organization
+    
+    organization_id = current_user.organization_id
+    
     if request.method == 'POST':
         pass
+    
+    stat_years = []
+    stat_data = {}
+    
+    if organization_id:
+        stat_reports = StatPlan.query.filter_by(
+            organization_id=organization_id
+        ).order_by(StatPlan.year.desc()).all()
+        
+        for report in stat_reports:
+            year = report.year
+            if year not in stat_years:
+                stat_years.append(year)
+            
+            if year not in stat_data:
+                stat_data[year] = {}
+            
+            stat_data[year][report.type] = {
+                'count': len(report.values),
+                'uploaded_at': report.uploaded_at
+            }
+    
+    has_stats = len(stat_years) > 0
+    
     return render_template('stats.html', 
-                        hide_header=False)
+                        hide_header=False,
+                        stat_years=stat_years,
+                        stat_data=stat_data,
+                        has_stats=has_stats,
+                        organization_id=organization_id)
 
 @views.route('/api/ticket/<int:ticket_id>/details')
 @login_required
@@ -605,7 +625,7 @@ def get_ticket_details(ticket_id):
     
     return jsonify({
         'id': ticket.id,
-        'is_owner': ticket.is_owner,
+        'organization': ticket.user.organization.name if ticket.user and ticket.user.organization else 'Система',
         'luck': ticket.luck,
         'note': ticket.note or '',
         'time': ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--',

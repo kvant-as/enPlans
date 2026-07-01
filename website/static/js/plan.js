@@ -1,890 +1,4 @@
-class PlanIndicators {
-    constructor(token) {
-        this.token = token;
-        this.init();
-    }
 
-    async init() {
-        await this.loadIndicators();
-        this.initTableContextMenu();
-        this.initColumnResize();
-        this.initAddIndicatorModal();
-        this.initEditIndicatorModal();
-    }
-
-    initAddIndicatorModal() {
-        const addModal = document.getElementById('AddIndicatorModal');
-        if (!addModal) return;
-
-        const standardRadio = addModal.querySelector('input[name="coeff_type"][value="standard"]');
-        const customRadio = addModal.querySelector('input[name="coeff_type"][value="custom"]');
-        const customCoeffGroup = addModal.querySelector('#custom-coeff-group');
-        const customCoeffInput = addModal.querySelector('input[name="custom_coeff"]');
-
-        if (standardRadio && customRadio && customCoeffGroup) {
-            standardRadio.addEventListener('change', () => {
-                if (standardRadio.checked) {
-                    customCoeffGroup.style.display = 'none';
-                    if (customCoeffInput) customCoeffInput.value = '';
-                    this.updateTutResults();
-                }
-            });
-
-            customRadio.addEventListener('change', () => {
-                if (customRadio.checked) {
-                    customCoeffGroup.style.display = 'block';
-                    this.updateTutResults();
-                }
-            });
-        }
-
-        if (customCoeffInput) {
-            customCoeffInput.addEventListener('input', () => {
-                if (customRadio && customRadio.checked) {
-                    this.updateTutResults();
-                }
-            });
-        }
-
-        const table = addModal.querySelector('[data-action="modal-table-main"]');
-        if (table) {
-            table.querySelectorAll('tbody tr').forEach(row => {
-                row.removeEventListener('click', this.onIndicatorRowClick.bind(this));
-                row.addEventListener('click', this.onIndicatorRowClick.bind(this));
-            });
-        }
-
-        const numericInputs = addModal.querySelectorAll('.app-numeric-input');
-        numericInputs.forEach(input => {
-            input.removeEventListener('input', this.updateTutResults.bind(this));
-            input.addEventListener('input', this.updateTutResults.bind(this));
-        });
-
-        this.updateTutResults();
-    }
-
-    initEditIndicatorModal() {
-        const editModal = document.getElementById('EditIndicatorModal');
-        if (!editModal) return;
-
-        const standardRadio = editModal.querySelector('input[name="coeff_type"][value="standard"]');
-        const customRadio = editModal.querySelector('input[name="coeff_type"][value="custom"]');
-        const customCoeffGroup = editModal.querySelector('#edit-custom-coeff-group');
-        const customCoeffInput = editModal.querySelector('#edit-custom-coeff');
-
-        if (standardRadio && customRadio && customCoeffGroup) {
-            standardRadio.removeEventListener('change', this.handleEditStandardChange);
-            customRadio.removeEventListener('change', this.handleEditCustomChange);
-            
-            this.handleEditStandardChange = () => {
-                if (standardRadio.checked) {
-                    customCoeffGroup.style.display = 'none';
-                    if (customCoeffInput) customCoeffInput.value = '';
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            
-            this.handleEditCustomChange = () => {
-                if (customRadio.checked) {
-                    customCoeffGroup.style.display = 'block';
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            
-            standardRadio.addEventListener('change', this.handleEditStandardChange);
-            customRadio.addEventListener('change', this.handleEditCustomChange);
-        }
-
-        if (customCoeffInput) {
-            customCoeffInput.removeEventListener('input', this.handleEditCustomInput);
-            this.handleEditCustomInput = () => {
-                if (customRadio && customRadio.checked) {
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            customCoeffInput.addEventListener('input', this.handleEditCustomInput);
-        }
-
-        const numericInputs = editModal.querySelectorAll('.app-numeric-input');
-        numericInputs.forEach(input => {
-            input.removeEventListener('input', updateEditTutResults);
-            input.addEventListener('input', updateEditTutResults);
-        });
-    }
-
-    onIndicatorRowClick(event) {
-        const row = event.currentTarget;
-        const selectedDisplay = document.getElementById('selected-indicator-display');
-        const selectedName = document.getElementById('selected-indicator-name');
-        const idIndicatorInput = document.querySelector('input[name="id_indicator"]');
-        const standardCoeffSpan = document.getElementById('standard-coeff-value');
-        
-        const code = row.cells[1]?.textContent.trim() || '';
-        const name = row.cells[2]?.textContent.trim() || '';
-        const coeff = row.cells[4]?.textContent.trim() || '0';
-        const unitName = row.cells[3]?.textContent.trim() || 'ед. изм.';
-        const indicatorId = row.cells[0]?.textContent.trim() || '';
-        const group = row.querySelector('td[data-group]')?.getAttribute('data-group') || '';
-        
-        if (selectedName) {
-            selectedName.textContent = `${code} - ${name}`;
-        }
-        if (selectedDisplay) {
-            selectedDisplay.style.display = 'block';
-        }
-        if (idIndicatorInput) {
-            idIndicatorInput.value = indicatorId;
-        }
-        
-        if (standardCoeffSpan) {
-            let coeffValue = parseFloat(coeff.replace(',', '.'));
-            if (isNaN(coeffValue)) coeffValue = 0;
-            standardCoeffSpan.textContent = coeffValue.toFixed(3).replace('.', ',');
-        }
-        
-        const unitSpans = document.querySelectorAll('#AddIndicatorModal .value-unit');
-        unitSpans.forEach(span => {
-            span.textContent = unitName;
-        });
-        
-        const groupNumber = parseFloat(group);
-        this.initAddNumericInputsByGroup(groupNumber);
-        
-        if (typeof checkCategoryRequired === 'function') {
-            checkCategoryRequired();
-        }
-        
-        const table = document.querySelector('[data-action="modal-table-main"]');
-        if (table) {
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.classList.remove('active-row');
-            });
-        }
-        row.classList.add('active-row');
-        
-        const nextButton = document.getElementById('step1-next-btn');
-        if (nextButton) {
-            nextButton.disabled = false;
-        }
-        
-        this.updateTutResults();
-    }
-
-    initAddNumericInputsByGroup(groupNumber) {
-        const inputs = [
-            document.querySelector('#AddIndicatorModal input[data-year="before"]'),
-            document.querySelector('#AddIndicatorModal input[data-year="prev"]'),
-            document.querySelector('#AddIndicatorModal input[data-year="current"]')
-        ];
-        
-        inputs.forEach(input => {
-            if (!input) return;
-            
-            let decimalPlaces = 0;
-            let defaultValue = '0';
-            
-            if (groupNumber === 5) {
-                decimalPlaces = 1;
-                defaultValue = '0,0';
-            } else if (groupNumber === 6 || groupNumber === 7 || groupNumber === 8) {
-                decimalPlaces = 2;
-                defaultValue = '0,00';
-            } else {
-                decimalPlaces = 0;
-                defaultValue = '0';
-            }
-            
-            const settings = {
-                allowNegative: false,
-                decimalPlaces: decimalPlaces,
-                defaultValue: defaultValue
-            };
-            
-            input.removeEventListener('input', input._addInputHandler);
-            input.removeEventListener('focus', input._addFocusHandler);
-            input.removeEventListener('blur', input._addBlurHandler);
-            
-            const inputHandler = (e) => { 
-                NumericInputHandler.handleInput(e, settings);
-                this.updateTutResults();
-            };
-            const focusHandler = (e) => { 
-                NumericInputHandler.handleFocus(e, settings);
-            };
-            const blurHandler = (e) => { 
-                NumericInputHandler.handleBlur(e, settings);
-                this.updateTutResults();
-            };
-            
-            input.addEventListener('input', inputHandler);
-            input.addEventListener('focus', focusHandler);
-            input.addEventListener('blur', blurHandler);
-            input.addEventListener('click', (e) => { e.target.select(); });
-            
-            input._addInputHandler = inputHandler;
-            input._addFocusHandler = focusHandler;
-            input._addBlurHandler = blurHandler;
-            
-            if (decimalPlaces === 0) {
-                input.placeholder = '0';
-            } else if (decimalPlaces === 1) {
-                input.placeholder = '0,0';
-            } else {
-                input.placeholder = '0,00';
-            }
-        });
-    }
-
-    updateTutResults() {
-        let currentCoeff = null;
-        const coeffTypeRadio = document.querySelector('#AddIndicatorModal input[name="coeff_type"]:checked');
-        
-        if (!coeffTypeRadio) {
-            const standardCoeffSpan = document.getElementById('standard-coeff-value');
-            if (standardCoeffSpan) {
-                let coeffText = standardCoeffSpan.textContent.replace(',', '.');
-                currentCoeff = parseFloat(coeffText);
-            }
-        } else {
-            const coeffType = coeffTypeRadio.value;
-            
-            if (coeffType === 'standard') {
-                const coeffSpan = document.getElementById('standard-coeff-value');
-                if (coeffSpan) {
-                    let coeffText = coeffSpan.textContent.replace(',', '.');
-                    currentCoeff = parseFloat(coeffText);
-                }
-            } else {
-                const customInput = document.querySelector('#AddIndicatorModal input[name="custom_coeff"]');
-                if (customInput && customInput.value) {
-                    let customText = customInput.value.replace(',', '.');
-                    currentCoeff = parseFloat(customText);
-                } else {
-                    currentCoeff = 0;
-                }
-            }
-        }
-        
-        if (currentCoeff === null || isNaN(currentCoeff)) {
-            currentCoeff = 0;
-        }
-        
-        const activeRow = document.querySelector('[data-action="modal-table-main"] tbody tr.active-row');
-        let groupValue = '';
-        if (activeRow) {
-            const groupDataCell = activeRow.querySelector('td[data-group]');
-            if (groupDataCell) {
-                groupValue = groupDataCell.getAttribute('data-group');
-            }
-        }
-        const groupNumber = parseFloat(groupValue);
-        
-        const formatResultValue = (value, groupId) => {
-            if (value === null || value === undefined || isNaN(value)) return '0';
-            
-            if (groupId === 5) {
-                return value.toFixed(1).replace('.', ',');
-            } else if (groupId === 6 || groupId === 7 || groupId === 8) {
-                return value.toFixed(2).replace('.', ',');
-            } else {
-                return Math.round(value).toString().replace('.', ',');
-            }
-        };
-        
-        const years = ['before', 'prev', 'current'];
-        years.forEach((year) => {
-            const input = document.querySelector(`#AddIndicatorModal input[data-year="${year}"]`);
-            const resultSpan = document.getElementById(`result-${year}`);
-            
-            if (input && resultSpan) {
-                if (input.value) {
-                    let inputValue = input.value.replace(',', '.');
-                    let value = parseFloat(inputValue);
-                    if (isNaN(value)) value = 0;
-                    const tutValue = value * currentCoeff;
-                    let formattedResult = formatResultValue(tutValue, groupNumber);
-                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-                } else {
-                    resultSpan.textContent = '= 0 т.у.т.';
-                }
-            }
-        });
-    }
-
-    async loadIndicators() {
-        try {
-            const response = await fetch(`/api/indicators/${this.token}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                this.renderIndicatorsTable(data.indicators);
-            } else {
-                this.showError('Ошибка загрузки данных');
-            }
-        } catch (error) {
-            console.error('Error loading indicators:', error);
-            this.showError('Ошибка загрузки данных');
-        }
-    }
-
-    renderIndicatorsTable(indicators) {
-        const tbody = document.getElementById('indicators-tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
-        let lastGroup = null;
-        
-        indicators.forEach((row, index) => {
-            const isNewGroup = row.group !== lastGroup;
-            lastGroup = row.group;
-            
-            const tr = document.createElement('tr');
-            tr.className = `menu-row ${isNewGroup ? 'group-header-indicator' : ''}`;
-            tr.setAttribute('data-id', row.id);
-            
-            const formatValue = (value, groupId) => {
-                if (value === null || value === undefined || isNaN(value)) return '';
-                
-                if (groupId === 5) {
-                    return value.toFixed(1).replace('.', ',');
-                } else if (groupId === 6 || groupId === 7 || groupId === 8) {
-                    return value.toFixed(2).replace('.', ',');
-                } else {
-                    return Math.round(value).toString().replace('.', ',');
-                }
-            };
-            
-            tr.innerHTML = `
-                <td style="text-align: center; display: none;">${index + 1}</td>
-                <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
-                <td style="text-align: start">
-                    ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
-                </td>
-                <td style="text-align: start">${this.escapeHtml(row.unit_name)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_unit, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_tut, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_unit, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_tut, row.group)}</td>
-                <td>${formatValue(row.QYearCurrent_unit, row.group)}</td>
-                <td>${formatValue(row.QYearCurrent_tut, row.group)}</td>
-                <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
-                    ${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.difference, row.group)}
-                </td>
-                <td style="display: none">${row.code}</td>
-                <td style="display: none" data-group="${row.group}">${row.group}</td>
-            `;
-            
-            tbody.appendChild(tr);
-        });
-    }
-
-    initTableContextMenu() {
-        const indicatorsTable = document.getElementById('indicatorsTable');
-        const indicatorsMenu = document.getElementById('MenuMainTable');
-        
-        if (indicatorsTable && indicatorsMenu && typeof TableContextMenu !== 'undefined') {
-            if (window.indicatorsTableMenu) {
-                window.indicatorsTableMenu = null;
-            }
-            
-            window.indicatorsTableMenu = new TableContextMenu('indicatorsTable', 'MenuMainTable', {
-                contextEditButtonId: 'contextEditButton',
-                contextDeleteButtonId: 'contextDeleteButton',
-                tableEditButtonId: 'tableEditButton',
-                tableDeleteButtonId: 'tableDeleteButton',
-                removeUrlTemplate: '../delete-indicator/{id}',
-                immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917', '9910'],
-                immutableEditCodes: [],
-                immutableDeleteCodes: ['9911', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'],
-                codeColumnIndex: 11,
-                hideCodeColumn: true
-            });
-        }
-    }
-
-    initColumnResize() {
-        const table = document.querySelector('.main-table');
-        if (!table) return;
-        
-        const thElements = table.querySelectorAll('th.resizable');
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-        let currentTh = null;
-
-        thElements.forEach(th => {
-            const resizer = th.querySelector('.resizer');
-            if (resizer) {
-                resizer.addEventListener('mousedown', function(e) {
-                    isResizing = true;
-                    startX = e.clientX;
-                    startWidth = th.offsetWidth;
-                    currentTh = th;
-                    document.body.style.cursor = 'col-resize';
-                    e.preventDefault();
-                });
-            }
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (isResizing && currentTh) {
-                const newWidth = startWidth + (e.clientX - startX);
-                currentTh.style.width = newWidth + 'px';
-                currentTh.style.minWidth = newWidth + 'px';
-            }
-        });
-
-        document.addEventListener('mouseup', function() {
-            if (isResizing) {
-                isResizing = false;
-                document.body.style.cursor = '';
-                currentTh = null;
-            }
-        });
-    }
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    showError(message) {
-        const tbody = document.getElementById('indicators-tbody');
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: red;">${message}</td></tr>`;
-        }
-    }
-}
-
-function Edit_indicator_modal() {
-    const EditIndicatorModal = document.getElementById('EditIndicatorModal');
-    if (!EditIndicatorModal) return;
-
-    const activeRow = document.querySelector('.rows .active-row');
-    if (!activeRow) return;
-
-    const idIndicator = activeRow.getAttribute('data-id');
-    if (!idIndicator) return;
-
-    const editIdInput = document.getElementById('edit-id-indicator');
-    if (editIdInput) {
-        editIdInput.value = idIndicator;
-    }
-
-    let groupValue = '';
-    const groupDataCell = activeRow.querySelector('td[data-group]');
-    if (groupDataCell) {
-        groupValue = groupDataCell.getAttribute('data-group');
-    }
-
-    const groupNumber = parseFloat(groupValue);
-    const isGroup5 = groupNumber === 5;
-    const isGroup6 = groupNumber === 6;
-    const isGroup7 = groupNumber === 7;
-    const isGroup8 = groupNumber === 8;
-    const isSpecialGroup = isGroup5 || isGroup6;
-
-    const qYearCurrNoDisplay = document.getElementById('QYearCurr-edit-nodisplay');
-    const QYearBeforePrevNoDisplay = document.getElementById('QYearBeforePrev-edit-nodisplay');
-    const QYearCurrentCard = document.getElementById('QYearCurrent-edit-nodisplay');
-    const editCategorySection = document.getElementById('edit-category-section');
-    const editNameSection = document.getElementById('edit-name-section');
-    const editNameInput = document.getElementById('edit-name-section-input');
-    
-    const initNumericInput = (inputElement, groupId) => {
-        if (!inputElement) return;
-        
-        let decimalPlaces = 0;
-        let defaultValue = '0';
-        
-        if (groupId === 5) {
-            decimalPlaces = 1;
-            defaultValue = '0,0';
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
-            decimalPlaces = 2;
-            defaultValue = '0,00';
-        } else {
-            decimalPlaces = 0;
-            defaultValue = '0';
-        }
-        
-        const settings = {
-            allowNegative: false,
-            decimalPlaces: decimalPlaces,
-            defaultValue: defaultValue
-        };
-        
-        const inputHandler = function(e) { 
-            NumericInputHandler.handleInput(e, settings);
-            updateEditTutResults();
-        };
-        const focusHandler = function(e) { 
-            NumericInputHandler.handleFocus(e, settings);
-        };
-        const blurHandler = function(e) { 
-            NumericInputHandler.handleBlur(e, settings);
-            updateEditTutResults();
-        };
-        
-        inputElement.removeEventListener('input', inputElement._inputHandler);
-        inputElement.removeEventListener('focus', inputElement._focusHandler);
-        inputElement.removeEventListener('blur', inputElement._blurHandler);
-        
-        inputElement.addEventListener('input', inputHandler);
-        inputElement.addEventListener('focus', focusHandler);
-        inputElement.addEventListener('blur', blurHandler);
-        inputElement.addEventListener('click', function(e) { e.target.select(); });
-        
-        inputElement._inputHandler = inputHandler;
-        inputElement._focusHandler = focusHandler;
-        inputElement._blurHandler = blurHandler;
-    };
-    
-    const formatDisplayValue = (value, groupId) => {
-        if (value === null || value === undefined || isNaN(value)) return '';
-        
-        if (groupId === 5) {
-            return value.toFixed(1).replace('.', ',');
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
-            return value.toFixed(2).replace('.', ',');
-        } else {
-            return Math.round(value).toString().replace('.', ',');
-        }
-    };
-    
-    const beforePrevInput = document.getElementById('QYearBeforePrev-edit');
-    const prevInput = document.getElementById('QYearCurr-edit');
-    const currentInput = document.getElementById('QYearCurrent-edit');
-    
-    initNumericInput(beforePrevInput, groupNumber);
-    initNumericInput(prevInput, groupNumber);
-    initNumericInput(currentInput, groupNumber);
-    
-    fetch(`/api/get-indicator/${idIndicator}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) throw new Error(data.error);
-            
-            const editSelectedIndicatorName = document.getElementById('edit-selected-indicator-name');
-            if (editSelectedIndicatorName && data.name) {
-                const indicatorCode = data.code || '';
-                const displayName = indicatorCode ? indicatorCode + ' - ' + data.name : data.name;
-                editSelectedIndicatorName.textContent = displayName;
-            }
-            
-            const unitName = data.unit_name || 'ед. изм.';
-            const unitSpans = document.querySelectorAll('#EditIndicatorModal .value-unit');
-            unitSpans.forEach(function(span) {
-                span.textContent = unitName;
-            });
-            
-            const indicatorCode = data.code;
-            const indicatorCodeNum = parseInt(indicatorCode);
-            const isCoeffEditable = indicatorCodeNum >= 2000 && indicatorCodeNum <= 2024;
-            const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
-            
-            if (isCodes9911to9914) {
-                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
-                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
-                if (QYearCurrentCard) {
-                    QYearCurrentCard.style.display = 'block';
-                    if (currentInput) {
-                        currentInput.setAttribute('required', 'required');
-                        currentInput.removeAttribute('readonly');
-                    }
-                }
-            } else if (isSpecialGroup) {
-                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
-                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = 'none';
-                if (QYearCurrentCard) {
-                    QYearCurrentCard.style.display = 'block';
-                    if (currentInput) {
-                        currentInput.setAttribute('required', 'required');
-                        currentInput.removeAttribute('readonly');
-                    }
-                }
-            } else {
-                if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = '';
-                if (qYearCurrNoDisplay) qYearCurrNoDisplay.style.display = '';
-                if (QYearCurrentCard) {
-                    QYearCurrentCard.style.display = 'block';
-                    if (currentInput) {
-                        currentInput.setAttribute('required', 'required');
-                        currentInput.removeAttribute('readonly');
-                    }
-                }
-            }
-            
-            const coeffSection = document.getElementById('edit-coeff-section');
-            const customOption = document.getElementById('edit-custom-option');
-            
-            if (isCoeffEditable) {
-                coeffSection.style.display = 'block';
-                customOption.style.display = 'block';
-            } else {
-                coeffSection.style.display = 'block';
-                customOption.style.display = 'none';
-                const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
-                if (standardRadio) {
-                    standardRadio.checked = true;
-                }
-            }
-            
-            const standardCoeffSpan = document.getElementById('edit-standard-coeff-value');
-            if (standardCoeffSpan) {
-                standardCoeffSpan.textContent = data.CoeffToTut.toFixed(3).replace('.', ',');
-            }
-            
-            const customCoeffGroup = document.getElementById('edit-custom-coeff-group');
-            const customCoeffInput = document.getElementById('edit-custom-coeff');
-            const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
-            const customRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="custom"]');
-            
-            if (isCoeffEditable && data.is_custom && data.custom_coeff_to_tut) {
-                if (customRadio) customRadio.checked = true;
-                if (customCoeffGroup) customCoeffGroup.style.display = 'block';
-                if (customCoeffInput) customCoeffInput.value = data.custom_coeff_to_tut.toFixed(3).replace('.', ',');
-            } else {
-                if (standardRadio) standardRadio.checked = true;
-                if (customCoeffGroup) customCoeffGroup.style.display = 'none';
-                if (customCoeffInput) customCoeffInput.value = '';
-            }
-            
-            const usedCoeff = data.used_coeff;
-            const coeffValue = usedCoeff ? usedCoeff : data.CoeffToTut;
-            
-            const setFormattedValue = (inputId, value, groupId) => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    if (value === null || value === undefined || isNaN(value)) {
-                        input.value = '';
-                    } else {
-                        input.value = formatDisplayValue(value, groupId);
-                    }
-                }
-            };
-            
-            if (isCodes9911to9914) {
-                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
-                setFormattedValue('QYearCurr-edit', null, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
-                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
-            } else if (!isSpecialGroup) {
-                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue) : null;
-                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue) : null;
-                setFormattedValue('QYearBeforePrev-edit', valBeforePrev, groupNumber);
-                setFormattedValue('QYearCurr-edit', valPrev, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
-                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
-            } else {
-                setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
-                setFormattedValue('QYearCurr-edit', null, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
-                setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
-            }
-            
-            function validateEditForm() {
-                const isCategoryChecked = categoryRadios && Array.from(categoryRadios).some(radio => radio.checked);
-                const isNameFilled = editNameInput && editNameInput.value.trim() !== '';
-                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
-                
-                if (submitEditBtn) {
-                    if (indicatorCode === '2023' || indicatorCode === '2024') {
-                        submitEditBtn.disabled = !(isCategoryChecked && isNameFilled);
-                    } else {
-                        submitEditBtn.disabled = false;
-                    }
-                }
-            }
-            
-            const categoryRadios = document.querySelectorAll('#EditIndicatorModal input[name="fuel_category"]');
-            
-            if (indicatorCode === '2023' || indicatorCode === '2024') {
-                if (editCategorySection) editCategorySection.style.display = 'block';
-                if (editNameSection) editNameSection.style.display = 'block';
-                
-                if (editNameInput) {
-                    editNameInput.removeAttribute('required');
-                    editNameInput.required = true;
-                }
-                
-                if (data.note && editNameInput) {
-                    editNameInput.value = data.note;
-                }
-                
-                if (data.is_local) {
-                    const localRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="local"]');
-                    if (localRadio) localRadio.checked = true;
-                } else if (data.is_renewable) {
-                    const renewableRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="renewable"]');
-                    if (renewableRadio) renewableRadio.checked = true;
-                }
-                
-                categoryRadios.forEach(radio => {
-                    radio.removeEventListener('change', validateEditForm);
-                    radio.addEventListener('change', validateEditForm);
-                });
-                
-                if (editNameInput) {
-                    editNameInput.removeEventListener('input', validateEditForm);
-                    editNameInput.addEventListener('input', validateEditForm);
-                }
-                
-                validateEditForm();
-            } else {
-                if (editCategorySection) editCategorySection.style.display = 'none';
-                if (editNameSection) editNameSection.style.display = 'none';
-                if (editNameInput) {
-                    editNameInput.required = false;
-                    editNameInput.value = '';
-                }
-                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
-                if (submitEditBtn) submitEditBtn.disabled = false;
-            }
-
-            const form = document.getElementById('editIndicatorForm');
-            if (form) {
-                const token = document.querySelector('#indicatorsTable')?.dataset?.token;
-                if (token) {
-                    form.action = `/plans/plan/edit-indicator/${token}`;
-                }
-            }
-            
-            updateEditTutResults();
-        })
-        .catch(error => {
-            console.error('Error fetching indicator data:', error);
-            alert('Ошибка при загрузке данных: ' + error.message);
-        });
-}
-
-function updateEditTutResults() {
-    let currentCoeff = null;
-    const coeffTypeRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"]:checked');
-    
-    if (!coeffTypeRadio) {
-        const standardCoeffSpan = document.getElementById('edit-standard-coeff-value');
-        if (standardCoeffSpan) {
-            let coeffText = standardCoeffSpan.textContent.replace(',', '.');
-            currentCoeff = parseFloat(coeffText);
-        }
-    } else {
-        const coeffType = coeffTypeRadio.value;
-        
-        if (coeffType === 'standard') {
-            const coeffSpan = document.getElementById('edit-standard-coeff-value');
-            if (coeffSpan) {
-                let coeffText = coeffSpan.textContent.replace(',', '.');
-                currentCoeff = parseFloat(coeffText);
-            }
-        } else {
-            const customInput = document.getElementById('edit-custom-coeff');
-            if (customInput && customInput.value) {
-                let customText = customInput.value.replace(',', '.');
-                currentCoeff = parseFloat(customText);
-            } else {
-                currentCoeff = 0;
-            }
-        }
-    }
-    
-    if (currentCoeff === null || isNaN(currentCoeff)) {
-        currentCoeff = 0;
-    }
-    
-    const activeRow = document.querySelector('.rows .active-row');
-    let indicatorCode = '';
-    let groupValue = '';
-    
-    if (activeRow) {
-        const codeCell = activeRow.querySelector('td:nth-child(12)');
-        if (codeCell) {
-            indicatorCode = codeCell.textContent.trim();
-        }
-        const groupDataCell = activeRow.querySelector('td[data-group]');
-        if (groupDataCell) {
-            groupValue = groupDataCell.getAttribute('data-group');
-        }
-    }
-    
-    const groupNumber = parseFloat(groupValue);
-    const isGroup5 = groupNumber === 5;
-    const isGroup6 = groupNumber === 6;
-    const isGroup7 = groupNumber === 7;
-    const isGroup8 = groupNumber === 8;
-    const isSpecialGroup = isGroup5 || isGroup6;
-    
-    const formatResultValue = (value, groupId) => {
-        if (value === null || value === undefined || isNaN(value)) return '0';
-        
-        if (groupId === 5) {
-            return value.toFixed(1).replace('.', ',');
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
-            return value.toFixed(2).replace('.', ',');
-        } else {
-            return Math.round(value).toString().replace('.', ',');
-        }
-    };
-    
-    const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
-    
-    if (isCodes9911to9914) {
-        const currentInput = document.getElementById('QYearCurrent-edit');
-        const resultSpan = document.getElementById('edit-result-current');
-        
-        if (currentInput && resultSpan && currentInput.value) {
-            let inputValue = currentInput.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) value = 0;
-            const tutValue = value * currentCoeff;
-            let formattedResult = formatResultValue(tutValue, groupNumber);
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        } else if (resultSpan) {
-            resultSpan.textContent = '= 0 т.у.т.';
-        }
-    } else if (isSpecialGroup) {
-        const currentInput = document.getElementById('QYearCurrent-edit');
-        const resultSpan = document.getElementById('edit-result-current');
-        
-        if (currentInput && resultSpan && currentInput.value) {
-            let inputValue = currentInput.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) value = 0;
-            const tutValue = value * currentCoeff;
-            let formattedResult = formatResultValue(tutValue, groupNumber);
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        } else if (resultSpan) {
-            resultSpan.textContent = '= 0 т.у.т.';
-        }
-    } else {
-        const inputs = [
-            { id: 'QYearBeforePrev-edit', resultId: 'edit-result-before' },
-            { id: 'QYearCurr-edit', resultId: 'edit-result-prev' },
-            { id: 'QYearCurrent-edit', resultId: 'edit-result-current' }
-        ];
-        
-        inputs.forEach(function(item) {
-            const input = document.getElementById(item.id);
-            const resultSpan = document.getElementById(item.resultId);
-            
-            if (input && resultSpan) {
-                if (input.value && !input.readOnly) {
-                    let inputValue = input.value.replace(',', '.');
-                    let value = parseFloat(inputValue);
-                    if (isNaN(value)) value = 0;
-                    const tutValue = value * currentCoeff;
-                    let formattedResult = formatResultValue(tutValue, groupNumber);
-                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-                } else {
-                    resultSpan.textContent = '= 0 т.у.т.';
-                }
-            }
-        });
-    }
-}
 
 var NumericInputHandler = {
     init: function(selector, options) {
@@ -992,13 +106,6 @@ var NumericInputHandler = {
         }
     }
 };
-
-function setValueIfExists(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.value = value;
-    }
-}
 
 class PlanEvents {
     constructor(token, eventType) {
@@ -1876,62 +983,935 @@ const TableCollapseManager = (function() {
 })();
 
 
-function initStatusProgress() {
-    const STATUS_CONFIG = {
-        'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)' },
-        'plan-cont-control': { width: '40%', color: 'var(--color-controled)' },
-        'plan-cont-sent': { width: '60%', color: 'var(--color-sented)' },
-        'plan-cont-eror': { width: '80%', color: 'var(--color-erorsed)' },
-        'plan-cont-sub': { width: '100%', color: 'var(--color-submited)' }
-    };
 
-    const planConts = document.querySelectorAll('.plan-cont');
-    const progressLine = document.querySelector('.progress-line-active');
-    const dots = document.querySelectorAll('.status-dot');
 
-    if (!planConts.length || !progressLine || !dots.length) {
-        console.warn('Не найдены необходимые элементы для прогресс-бара');
-        return;
-    }
 
-    const handleMouseEnter = (event) => {
-        const planCont = event.currentTarget;
+function checkCategoryRequired() {
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const categorySection = document.getElementById('category-section');
+    const nameSection = document.getElementById('name-section');
+    const submitBtn = document.getElementById('submit-indicator-btn');
+    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    const nameInput = document.getElementById('name-section-input');
+    
+    if (!selectedIndicatorName || !categorySection || !nameSection) return;
+    
+    const indicatorText = selectedIndicatorName.textContent;
+    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    
+    function validateForm() {
+        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
+        const isNameFilled = nameInput && nameInput.value.trim() !== '';
         
-        for (const [className, config] of Object.entries(STATUS_CONFIG)) {
-            if (planCont.classList.contains(className)) {
-                progressLine.style.width = config.width;
-                progressLine.style.background = config.color;
-                
-                const activeIndex = Object.keys(STATUS_CONFIG).indexOf(className);
-                const activeColor = STATUS_CONFIG[className].color;
-                
-                dots.forEach((dot, index) => {
-                    dot.style.background = index <= activeIndex ? activeColor : 'var(--border-color)';
-                });
-                break;
+        if (submitBtn) {
+            if (isCategoryRequired) {
+                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
+            } else {
+                submitBtn.disabled = false;
             }
         }
-    };
-
-    const handleMouseLeave = () => {
-        progressLine.style.width = '0';
-        dots.forEach(dot => {
-            dot.style.background = 'var(--border-color)';
+    }
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        nameSection.style.display = 'block';
+        
+        categoryRadios.forEach(radio => {
+            radio.removeEventListener('change', validateForm);
+            radio.addEventListener('change', validateForm);
         });
-    };
-
-    planConts.forEach(planCont => {
-        planCont.addEventListener('mouseenter', handleMouseEnter);
-        planCont.addEventListener('mouseleave', handleMouseLeave);
-    });
+        
+        if (nameInput) {
+            nameInput.removeEventListener('input', validateForm);
+            nameInput.addEventListener('input', validateForm);
+        }
+        
+        validateForm();
+    } else {
+        categorySection.style.display = 'none';
+        nameSection.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
 }
 
+class SendModalPreview {
+    constructor(modalId) {
+        console.log('[SendModalPreview] Constructor called with modalId:', modalId);
+        
+        this.modal = document.getElementById(modalId);
+        if (!this.modal) {
+            console.error('[SendModalPreview] Modal element not found:', modalId);
+            return;
+        }
 
+        this.progressBar = this.modal.querySelector('#modal-progress-bar');
+        this.stepEls = Array.from(this.modal.querySelectorAll('[id^="step"]'))
+            .filter(el => /^step\d+$/.test(el.id))
+            .sort((a, b) => parseInt(a.id.slice(4), 10) - parseInt(b.id.slice(4), 10));
 
+        this.totalSteps = this.stepEls.length || 1;
+        this.currentStep = 1;
 
+        this.selectedCoordinators = new Map();
+        this.selectedApprover = null;
 
+        this.coordinatorSearch = this.modal.querySelector('#coordinator-search');
+        this.approverSearch = this.modal.querySelector('#approver-search');
+        this.coordinatorTbody = this.modal.querySelector('#coordinator-tbody');
+        this.approverTbody = this.modal.querySelector('#approver-tbody');
+        this.selectedCoordinatorsContainer = this.modal.querySelector('#selected-coordinators');
+        this.selectedApproverContainer = this.modal.querySelector('#selected-approver');
+        this.summaryCoordinators = this.modal.querySelector('#summary-coordinators');
+        this.summaryApprover = this.modal.querySelector('#summary-approver');
+        this.coordinatorIdsInput = this.modal.querySelector('#coordinator-ids-input');
+        this.approverIdInput = this.modal.querySelector('#approver-id-input');
+        this.coordinatorCount = this.modal.querySelector('#coordinator-count');
+        this.approverCount = this.modal.querySelector('#approver-count');
+        this.approvalSliderContainer = this.modal.querySelector('#approval-slider-container');
 
+        this.buttons = {
+            step1Next: this.modal.querySelector('#step1-next-btn'),
+            step2Back: this.modal.querySelector('#step2-back-btn'),
+            step2Next: this.modal.querySelector('#step2-next-btn'),
+            step3Back: this.modal.querySelector('#step3-back-btn')
+        };
 
+        this.submitButton = this.modal.querySelector('#submit-sent-button');
+
+        this.coordinatorPage = 1;
+        this.approverPage = 1;
+        this.coordinatorHasMore = true;
+        this.approverHasMore = true;
+        this.coordinatorLoading = false;
+        this.approverLoading = false;
+        this.coordinatorSearchQuery = '';
+        this.approverSearchQuery = '';
+        this.coordinatorSearchTimeout = null;
+        this.approverSearchTimeout = null;
+
+        this.regionNumber = window.regionNumber || '';
+        this.regionNames = {
+            1: 'Брестское областное управление по надзору за рациональным использованием ТЭР',
+            2: 'Витебское областное управление по надзору за рациональным использованием ТЭР',
+            3: 'Гомельское областное управление по надзору за рациональным использованием ТЭР',
+            4: 'Гродненское областное управление по надзору за рациональным использованием ТЭР',
+            5: 'Управление г. Минск по надзору за рациональным использованием ТЭР',
+            6: 'Минское областное управление по надзору за рациональным использованием ТЭР',
+            7: 'Могилевское областное управление по надзору за рациональным использованием ТЭР'
+        };
+        
+        this.init();
+        this.updateButtonsState();
+    }
+
+    init() {
+        this.loadCoordinators();
+        this.loadApprovers();
+        this.initSearch();
+        this.initNavigation();
+        this.initScrollLoading();
+        this.initSliderDrag();
+        this.updateButtonsState();
+    }
+
+    async loadCoordinators(reset = true) {
+        if (this.coordinatorLoading) return;
+        
+        if (reset) {
+            this.coordinatorPage = 1;
+            this.coordinatorHasMore = true;
+            this.coordinatorTbody.innerHTML = '';
+        }
+        
+        if (!this.coordinatorHasMore) {
+            this.removeLoading(this.coordinatorTbody);
+            return;
+        }
+
+        this.coordinatorLoading = true;
+        this.showLoading(this.coordinatorTbody, 3);
+
+        try {
+            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}&hide_rm=true`;
+            console.log('[SendModalPreview] Loading coordinators, page:', this.coordinatorPage);
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                console.error('Error loading coordinators:', data.error);
+                this.coordinatorLoading = false;
+                this.removeLoading(this.coordinatorTbody);
+                return;
+            }
+
+            this.removeLoading(this.coordinatorTbody);
+            
+            if (data.organizations && data.organizations.length > 0) {
+                this.renderOrganizations(this.coordinatorTbody, data.organizations, 'coordinator');
+            }
+            
+            this.coordinatorHasMore = data.has_next || false;
+            this.coordinatorPage = data.page + 1;
+
+            console.log('[SendModalPreview] Coordinators loaded:', data.organizations?.length || 0, 'Has more:', this.coordinatorHasMore);
+
+            if (!this.coordinatorHasMore) {
+                this.removeLoading(this.coordinatorTbody);
+                this.showEndMessage(this.coordinatorTbody, 3);
+            }
+        } catch (error) {
+            console.error('Error loading coordinators:', error);
+            this.removeLoading(this.coordinatorTbody);
+        } finally {
+            this.coordinatorLoading = false;
+        }
+    }
+
+    async loadApprovers(reset = true) {
+        if (this.approverLoading) return;
+        
+        if (reset) {
+            this.approverPage = 1;
+            this.approverHasMore = true;
+            this.approverTbody.innerHTML = '';
+        }
+        
+        if (!this.approverHasMore) {
+            this.removeLoading(this.approverTbody);
+            return;
+        }
+
+        this.approverLoading = true;
+        this.showLoading(this.approverTbody, 3);
+
+        try {
+            const url = `/api/organizations?type=approver&page=${this.approverPage}&per_page=10&q=${encodeURIComponent(this.approverSearchQuery)}`;
+            console.log('[SendModalPreview] Loading approvers, page:', this.approverPage);
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                console.error('Error loading approvers:', data.error);
+                this.approverLoading = false;
+                this.removeLoading(this.approverTbody);
+                return;
+            }
+
+            this.removeLoading(this.approverTbody);
+            
+            if (data.organizations && data.organizations.length > 0) {
+                this.renderOrganizations(this.approverTbody, data.organizations, 'approver');
+            }
+            
+            this.approverHasMore = data.has_next || false;
+            this.approverPage = data.page + 1;
+
+            console.log('[SendModalPreview] Approvers loaded:', data.organizations?.length || 0, 'Has more:', this.approverHasMore);
+
+            if (!this.approverHasMore) {
+                this.removeLoading(this.approverTbody);
+                this.showEndMessage(this.approverTbody, 3);
+            }
+        } catch (error) {
+            console.error('Error loading approvers:', error);
+            this.removeLoading(this.approverTbody);
+        } finally {
+            this.approverLoading = false;
+        }
+    }
+
+    renderOrganizations(tbody, organizations, type) {
+        if (!tbody) return;
+
+        if (!organizations || organizations.length === 0) {
+            return;
+        }
+
+        organizations.forEach(org => {
+            const row = document.createElement('tr');
+            row.className = 'org-row';
+            row.dataset.id = org.id;
+            row.dataset.name = org.name;
+
+            const isCoordinator = type === 'coordinator';
+            const checkboxType = isCoordinator ? 'coordinator-checkbox' : 'approver-checkbox';
+            const isChecked = isCoordinator ? this.selectedCoordinators.has(String(org.id)) : this.selectedApprover === String(org.id);
+
+            row.innerHTML = `
+                <td style="text-align: center;">
+                    <input type="checkbox" class="${checkboxType}" value="${org.id}" data-name="${this.escapeHtml(org.name)}" ${isChecked ? 'checked' : ''}>
+                </td>
+                <td>${this.escapeHtml(org.name)}</td>
+                <td>${this.escapeHtml(org.ynp || '')}</td>
+            `;
+
+            if (isChecked) {
+                row.classList.add('active-row');
+            }
+
+            tbody.appendChild(row);
+
+            if (isCoordinator) {
+                const checkbox = row.querySelector('.coordinator-checkbox');
+                this.initCoordinatorRow(row, checkbox);
+            } else {
+                const checkbox = row.querySelector('.approver-checkbox');
+                this.initApproverRow(row, checkbox);
+            }
+        });
+    }
+
+    initCoordinatorRow(row, checkbox) {
+        if (!checkbox) return;
+
+        row.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+        });
+
+        checkbox.addEventListener('change', (e) => {
+            const id = e.target.value;
+            const name = e.target.dataset.name;
+            if (e.target.checked) {
+                this.selectedCoordinators.set(id, name);
+                row.classList.add('active-row');
+            } else {
+                this.selectedCoordinators.delete(id);
+                row.classList.remove('active-row');
+            }
+            this.updateSelectedCoordinators();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+    }
+
+    initApproverRow(row, checkbox) {
+        if (!checkbox) return;
+
+        row.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const isChecked = !checkbox.checked;
+            
+            this.approverTbody.querySelectorAll('tr.org-row').forEach(r => {
+                const cb = r.querySelector('.approver-checkbox');
+                if (cb) {
+                    cb.checked = false;
+                    r.classList.remove('active-row');
+                }
+            });
+            
+            if (isChecked) {
+                checkbox.checked = true;
+                row.classList.add('active-row');
+                this.selectedApprover = checkbox.value;
+            } else {
+                checkbox.checked = false;
+                row.classList.remove('active-row');
+                this.selectedApprover = null;
+            }
+            
+            this.updateSelectedApprover();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+
+        checkbox.addEventListener('change', (e) => {
+            const id = e.target.value;
+            
+            if (e.target.checked) {
+                this.approverTbody.querySelectorAll('tr.org-row').forEach(r => {
+                    const cb = r.querySelector('.approver-checkbox');
+                    if (cb && cb !== e.target) {
+                        cb.checked = false;
+                        r.classList.remove('active-row');
+                    }
+                });
+                this.selectedApprover = id;
+                row.classList.add('active-row');
+            } else {
+                this.selectedApprover = null;
+                row.classList.remove('active-row');
+            }
+            
+            this.updateSelectedApprover();
+            this.updateButtonsState();
+            this.updateApprovalPath();
+        });
+    }
+
+    showLoading(tbody, colspan = 3) {
+        if (!tbody) return;
+        
+        let loadingRow = tbody.querySelector('.loading-row');
+        if (!loadingRow) {
+            loadingRow = document.createElement('tr');
+            loadingRow.className = 'loading-row';
+            loadingRow.innerHTML = `
+                <td colspan="${colspan}" style="text-align: center; padding: 20px;">
+                    <span class="loading-spinner"></span> Загрузка...
+                </td>
+            `;
+            tbody.appendChild(loadingRow);
+        }
+        loadingRow.style.display = '';
+    }
+
+    removeLoading(tbody) {
+        if (!tbody) return;
+        const loadingRow = tbody.querySelector('.loading-row');
+        if (loadingRow) {
+            loadingRow.remove();
+        }
+    }
+
+    showEndMessage(tbody, colspan = 3) {
+        if (!tbody) return;
+        
+        const endRow = tbody.querySelector('.end-message-row');
+        if (endRow) return;
+        
+        const row = document.createElement('tr');
+        row.className = 'end-message-row';
+        row.innerHTML = `
+            <td colspan="${colspan}" style="text-align: center; padding: 15px; color: #999; font-size: 13px;">
+                Все организации загружены
+            </td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    initScrollLoading() {
+        const coordinatorContainer = this.modal.querySelector('#step1 .modal-table-conteiner');
+        const approverContainer = this.modal.querySelector('#step2 .modal-table-conteiner');
+        
+        console.log('[SendModalPreview] Containers found:', {
+            coordinatorContainer: !!coordinatorContainer,
+            approverContainer: !!approverContainer
+        });
+
+        if (coordinatorContainer) {
+            coordinatorContainer.addEventListener('scroll', (e) => {
+                const container = e.target;
+                const scrollTop = container.scrollTop;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+
+                const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+
+                if (isNearBottom && !this.coordinatorLoading && this.coordinatorHasMore) {
+                    console.log('[SendModalPreview] Coordinator scroll: loading more...');
+                    this.loadCoordinators(false);
+                }
+            });
+        }
+
+        if (approverContainer) {
+            approverContainer.addEventListener('scroll', (e) => {
+                const container = e.target;
+                const scrollTop = container.scrollTop;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+
+                const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+
+                if (isNearBottom && !this.approverLoading && this.approverHasMore) {
+                    console.log('[SendModalPreview] Approver scroll: loading more...');
+                    this.loadApprovers(false);
+                }
+            });
+        }
+    }
+
+    initSliderDrag() {
+        const container = this.approvalSliderContainer;
+        if (!container) return;
+
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        container.addEventListener('mousedown', (e) => {
+            isDown = true;
+            container.style.cursor = 'grabbing';
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+            container.style.userSelect = 'none';
+        });
+
+        container.addEventListener('mouseleave', () => {
+            if (isDown) {
+                isDown = false;
+                container.style.cursor = 'grab';
+                container.style.userSelect = '';
+            }
+        });
+
+        container.addEventListener('mouseup', () => {
+            isDown = false;
+            container.style.cursor = 'grab';
+            container.style.userSelect = '';
+        });
+
+        container.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            container.scrollLeft = scrollLeft - walk;
+        });
+
+        let touchStartX = 0;
+        let touchScrollLeft = 0;
+
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].pageX - container.offsetLeft;
+            touchScrollLeft = container.scrollLeft;
+        });
+
+        container.addEventListener('touchmove', (e) => {
+            const x = e.touches[0].pageX - container.offsetLeft;
+            const walk = (x - touchStartX) * 1.5;
+            container.scrollLeft = touchScrollLeft - walk;
+        });
+    }
+
+    initSearch() {
+        if (this.coordinatorSearch) {
+            this.coordinatorSearch.addEventListener('input', (e) => {
+                clearTimeout(this.coordinatorSearchTimeout);
+                this.coordinatorSearchTimeout = setTimeout(() => {
+                    const newQuery = e.target.value.trim();
+                    if (newQuery !== this.coordinatorSearchQuery) {
+                        this.coordinatorSearchQuery = newQuery;
+                        this.coordinatorHasMore = true;
+                        this.loadCoordinators(true);
+                    }
+                }, 300);
+            });
+        }
+
+        if (this.approverSearch) {
+            this.approverSearch.addEventListener('input', (e) => {
+                clearTimeout(this.approverSearchTimeout);
+                this.approverSearchTimeout = setTimeout(() => {
+                    const newQuery = e.target.value.trim();
+                    if (newQuery !== this.approverSearchQuery) {
+                        this.approverSearchQuery = newQuery;
+                        this.approverHasMore = true;
+                        this.loadApprovers(true);
+                    }
+                }, 300);
+            });
+        }
+    }
+
+    initNavigation() {
+        this.buttons.step1Next?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.validateStep1()) {
+                this.nextStep();
+            }
+        });
+
+        this.buttons.step2Back?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.prevStep();
+        });
+
+        this.buttons.step2Next?.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.validateStep2()) {
+                this.updateSummary();
+                this.nextStep();
+            }
+        });
+
+        this.buttons.step3Back?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.prevStep();
+        });
+
+        this.modal.querySelector('#sentForm')?.addEventListener('submit', (e) => {
+            if (this.coordinatorIdsInput) {
+                this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators.keys()).join(',');
+            }
+            if (this.approverIdInput) {
+                this.approverIdInput.value = this.selectedApprover;
+            }
+        });
+    }
+
+    updateSelectedCoordinators() {
+        if (!this.selectedCoordinatorsContainer) return;
+        
+        const container = this.selectedCoordinatorsContainer;
+        container.innerHTML = '';
+        
+        if (this.coordinatorCount) {
+            this.coordinatorCount.textContent = this.selectedCoordinators.size;
+        }
+        
+        if (this.selectedCoordinators.size === 0) {
+            container.innerHTML = '<span class="empty-message">Ничего не выбрано</span>';
+            return;
+        }
+        
+        this.selectedCoordinators.forEach((name, id) => {
+            const tag = document.createElement('span');
+            tag.className = 'selected-tag';
+            tag.innerHTML = `
+                <span class="tag-text">${this.escapeHtml(name)}</span>
+                <button class="remove-tag" data-id="${id}" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+            tag.querySelector('.remove-tag').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const checkbox = this.coordinatorTbody?.querySelector(`.coordinator-checkbox[value="${id}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                } else {
+                    this.selectedCoordinators.delete(id);
+                    this.updateSelectedCoordinators();
+                    this.updateButtonsState();
+                    this.updateApprovalPath();
+                }
+            });
+            container.appendChild(tag);
+        });
+    }
+
+    updateSelectedApprover() {
+        if (!this.selectedApproverContainer) return;
+        
+        const container = this.selectedApproverContainer;
+        container.innerHTML = '';
+        
+        if (this.approverCount) {
+            this.approverCount.textContent = this.selectedApprover ? '1' : '0';
+        }
+        
+        if (!this.selectedApprover) {
+            container.innerHTML = '<span class="empty-message">Ничего не выбрано</span>';
+            return;
+        }
+        
+        const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${this.selectedApprover}"]`);
+        const name = row ? row.dataset.name : `ID: ${this.selectedApprover}`;
+        const tag = document.createElement('span');
+        tag.className = 'selected-tag approver-tag';
+        tag.innerHTML = `
+            <span class="tag-text">${this.escapeHtml(name)}</span>
+            <button class="remove-tag" data-id="${this.selectedApprover}" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        tag.querySelector('.remove-tag').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const checkbox = this.approverTbody?.querySelector(`.approver-checkbox[value="${this.selectedApprover}"]`);
+            if (checkbox) {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        });
+        container.appendChild(tag);
+    }
+
+    updateSummary() {
+        if (this.summaryCoordinators) {
+            this.summaryCoordinators.innerHTML = '';
+            if (this.selectedCoordinators.size > 0) {
+                this.selectedCoordinators.forEach((name, id) => {
+                    const tag = document.createElement('span');
+                    tag.className = 'summary-tag';
+                    tag.textContent = name;
+                    this.summaryCoordinators.appendChild(tag);
+                });
+            } else {
+                this.summaryCoordinators.innerHTML = '<span class="empty-message">Не выбрано</span>';
+            }
+        }
+        
+        if (this.summaryApprover) {
+            this.summaryApprover.innerHTML = '';
+            if (this.selectedApprover) {
+                const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${this.selectedApprover}"]`);
+                const name = row ? row.dataset.name : `ID: ${this.selectedApprover}`;
+                const tag = document.createElement('span');
+                tag.className = 'summary-tag approver-tag';
+                tag.textContent = name;
+                this.summaryApprover.appendChild(tag);
+            } else {
+                this.summaryApprover.innerHTML = '<span class="empty-message">Не выбрано</span>';
+            }
+        }
+
+        this.updateApprovalPath();
+    }
+
+    updateApprovalPath() {
+        const container = this.approvalSliderContainer;
+        if (!container) return;
+
+        const regionNumber = this.regionNumber;
+        const coordinators = [];
+        const approver = this.selectedApprover;
+
+        const regionNames = {
+            1: 'Брестское областное управление по надзору за рациональным использованием ТЭР',
+            2: 'Витебское областное управление по надзору за рациональным использованием ТЭР',
+            3: 'Гомельское областное управление по надзору за рациональным использованием ТЭР',
+            4: 'Гродненское областное управление по надзору за рациональным использованием ТЭР',
+            5: 'Управление г. Минск по надзору за рациональным использованием ТЭР',
+            6: 'Минское областное управление по надзору за рациональным использованием ТЭР',
+            7: 'Могилевское областное управление по надзору за рациональным использованием ТЭР'
+        };
+
+        const regionName = regionNames[regionNumber] || 'Регион';
+
+        this.selectedCoordinators.forEach((name, id) => {
+            coordinators.push(name);
+        });
+
+        let approverName = '';
+        if (approver) {
+            const row = this.approverTbody?.querySelector(`tr.org-row[data-id="${approver}"]`);
+            if (row) {
+                approverName = row.dataset.name;
+            }
+        }
+
+        const allSteps = [regionName, ...coordinators];
+        if (approverName) {
+            allSteps.push(approverName);
+        }
+
+        if (allSteps.length === 1) {
+            container.innerHTML = `
+                <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
+                    Выберите организацию/и для отображения пути согласования
+                </div>
+            `;
+            return;
+        }
+
+        const totalSteps = allSteps.length;
+        const completedSteps = 0;
+        const progressWidth = 0;
+
+        const sliderDiv = document.createElement('div');
+        sliderDiv.className = 'enplans-approval-slider';
+
+        const stepsDiv = document.createElement('div');
+        stepsDiv.className = 'enplans-approval-slider-steps';
+
+        allSteps.forEach((name, index) => {
+            const isFirst = index === 0;
+            const statusClass = isFirst ? 'active' : 'pending';
+            
+            const stepDiv = document.createElement('div');
+            stepDiv.className = `enplans-approval-step ${statusClass}`;
+            
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'enplans-approval-step-icon';
+            iconDiv.innerHTML = this.getStepIcon(index, allSteps.length);
+            stepDiv.appendChild(iconDiv);
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'enplans-approval-step-name';
+            nameDiv.textContent = name;
+            nameDiv.title = name;
+            stepDiv.appendChild(nameDiv);
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'enplans-approval-step-time';
+            timeDiv.textContent = 'Ожидает';
+            stepDiv.appendChild(timeDiv);
+            
+            stepsDiv.appendChild(stepDiv);
+        });
+
+        sliderDiv.appendChild(stepsDiv);
+
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'enplans-approval-progress-container';
+        
+        const progressLine = document.createElement('div');
+        progressLine.className = 'enplans-approval-progress-line';
+        progressLine.style.width = `${progressWidth}%`;
+        progressContainer.appendChild(progressLine);
+        sliderDiv.appendChild(progressContainer);
+
+        const progressText = document.createElement('div');
+        progressText.className = 'enplans-approval-progress-text';
+        progressText.innerHTML = `<span>${completedSteps} из ${totalSteps} этапов (${progressWidth}%)</span>`;
+        sliderDiv.appendChild(progressText);
+
+        container.innerHTML = '';
+        container.appendChild(sliderDiv);
+    }
+
+    getStepIcon(index, total) {
+        const isFirst = index === 0;
+        const isLast = index === total - 1;
+        
+        if (isFirst) {
+            return window.icons.icon_region;
+        } else if (isLast) {
+            return window.icons.icon_higher;
+        } else {
+            return window.icons.icon_municipal;
+        }
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    activeStepEl() {
+        return this.stepEls[this.currentStep - 1];
+    }
+
+    updateProgressBar() {
+        if (!this.progressBar) return;
+        const progress = (this.currentStep / this.totalSteps) * 100;
+        this.progressBar.style.width = progress + '%';
+    }
+
+    nextStep() {
+        if (this.currentStep >= this.totalSteps) return;
+        this.activeStepEl().style.display = 'none';
+        this.currentStep++;
+        this.activeStepEl().style.display = 'block';
+        this.updateProgressBar();
+        this.updateButtonsState();
+        
+        if (this.currentStep === 2) {
+            const rows = this.approverTbody?.querySelectorAll('tr.org-row') || [];
+            if (rows.length === 0) {
+                this.approverHasMore = true;
+                this.loadApprovers(true);
+            }
+        }
+        
+        if (this.currentStep === 3) {
+            this.updateApprovalPath();
+            setTimeout(() => {
+                this.initSliderDrag();
+            }, 100);
+        }
+    }
+
+    prevStep() {
+        if (this.currentStep <= 1) return;
+        this.activeStepEl().style.display = 'none';
+        this.currentStep--;
+        this.activeStepEl().style.display = 'block';
+        this.updateProgressBar();
+        this.updateButtonsState();
+    }
+
+    updateButtonsState() {
+        if (this.buttons.step1Next) {
+            this.buttons.step1Next.disabled = this.selectedCoordinators.size === 0;
+        }
+
+        if (this.buttons.step2Next) {
+            this.buttons.step2Next.disabled = !this.selectedApprover;
+        }
+
+        if (this.submitButton) {
+            this.submitButton.disabled = false;
+            this.submitButton.classList.remove('disabled');
+        }
+    }
+
+    validateStep1() {
+        if (this.selectedCoordinators.size === 0) {
+            alert('Пожалуйста, выберите хотя бы одну организацию для согласования');
+            return false;
+        }
+        return true;
+    }
+
+    validateStep2() {
+        if (!this.selectedApprover) {
+            alert('Пожалуйста, выберите организацию для утверждения');
+            return false;
+        }
+        return true;
+    }
+
+    close() {
+        this.modal.style.display = 'none';
+    }
+
+    resetForm() {
+        this.selectedCoordinators.clear();
+        this.selectedApprover = null;
+        
+        this.coordinatorTbody?.querySelectorAll('tr.org-row').forEach(row => {
+            const cb = row.querySelector('.coordinator-checkbox');
+            if (cb) {
+                cb.checked = false;
+                row.classList.remove('active-row');
+            }
+        });
+        
+        this.approverTbody?.querySelectorAll('tr.org-row').forEach(row => {
+            const cb = row.querySelector('.approver-checkbox');
+            if (cb) {
+                cb.checked = false;
+                row.classList.remove('active-row');
+            }
+        });
+        
+        if (this.coordinatorCount) {
+            this.coordinatorCount.textContent = '0';
+        }
+        
+        if (this.approverCount) {
+            this.approverCount.textContent = '0';
+        }
+        
+        this.coordinatorSearchQuery = '';
+        this.approverSearchQuery = '';
+        if (this.coordinatorSearch) this.coordinatorSearch.value = '';
+        if (this.approverSearch) this.approverSearch.value = '';
+        
+        this.coordinatorHasMore = true;
+        this.approverHasMore = true;
+        
+        this.updateSelectedCoordinators();
+        this.updateSelectedApprover();
+        this.updateSummary();
+        
+        this.loadCoordinators(true);
+        this.loadApprovers(true);
+        
+        this.stepEls.forEach((el, i) => {
+            el.style.display = i === 0 ? 'block' : 'none';
+        });
+        this.currentStep = 1;
+        this.updateProgressBar();
+        this.updateButtonsState();
+    }
+}
 
 class CertificateUploadHandler {
     constructor() {
@@ -2087,17 +2067,18 @@ class PlansLoader {
         this.currentYear = options.initialYear || 'all';
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
-        this.currentSearchOkpo = '';
+        this.currentSearchYnp = '';
         this.currentPage = 1;
         this.isLoading = false;
         this.hasMore = true;
         this.searchTimeout = null;
         this.perPage = options.perPage || 5;
+        this.isAuditor = options.isAuditor || false;
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
-        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.searchYnp = options.searchYnp || 'search-ynp';
         
         this.init();
     }
@@ -2117,8 +2098,8 @@ class PlansLoader {
         if (this.currentSearchName) {
             params.set('search_name', this.currentSearchName);
         }
-        if (this.currentSearchOkpo) {
-            params.set('search_okpo', this.currentSearchOkpo);
+        if (this.currentSearchYnp) {
+            params.set('search_ynp', this.currentSearchYnp);
         }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
@@ -2139,12 +2120,12 @@ class PlansLoader {
         this.updateUrl();
         
         try {
-            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
-            if (this.currentSearchOkpo) {
-                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            if (this.currentSearchYnp) {
+                url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
             
             const response = await fetch(url);
@@ -2168,6 +2149,10 @@ class PlansLoader {
                 this.updateLoadMoreButton();
                 this.updateCountsDisplay(data.counts);
                 this.attachCheckboxListeners();
+
+                if (typeof initStatusProgress === 'function') {
+                    setTimeout(initStatusProgress, 100);
+                }
             }
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -2192,6 +2177,7 @@ class PlansLoader {
         const statSent = document.querySelector('.stat-number-sent');
         const statError = document.querySelector('.stat-number-eror');
         const statApproved = document.querySelector('.stat-number-sub');
+        const statSogl = document.querySelector('.stat-number-sogl');
         
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
@@ -2199,6 +2185,7 @@ class PlansLoader {
         if (statSent) statSent.textContent = counts.sent || '-';
         if (statError) statError.textContent = counts.error || '-';
         if (statApproved) statApproved.textContent = counts.approved || '-';
+        if (statSogl) statSogl.textContent = counts.sogl || '-';
     }
     
     attachCheckboxListeners() {
@@ -2251,7 +2238,7 @@ class PlansLoader {
         }
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
-            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
@@ -2259,7 +2246,7 @@ class PlansLoader {
     
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
-        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        const searchOkpoInput = document.getElementById(this.searchYnp);
         
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
@@ -2380,16 +2367,16 @@ class PlansLoader {
             const newYear = params.get('year') || 'all';
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
-            const newSearchOkpo = params.get('search_okpo') || '';
+            const newSearchOkpo = params.get('search_ynp') || '';
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
-                this.currentSearchOkpo = newSearchOkpo;
+                this.currentSearchYnp = newSearchOkpo;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
@@ -2406,14 +2393,26 @@ class PlansLoader {
     }
     
     updateFilterDisplay() {
-        const statusMap = {
-            'all': 'Статус',
-            'draft': 'В редакции',
-            'control': 'Контроль пройден',
-            'sent': 'На рассмотрении',
-            'error': 'С ошибками',
-            'approved': 'Согласованные'
-        };
+        let statusMap;
+        
+        if (this.isAuditor) {
+            statusMap = {
+                'all': 'Статус',
+                'sent': 'Не просмотренные',
+                'sogl': 'Согласованные',
+                'error': 'Есть ошибки',
+                'approved': 'Утвержденные'
+            };
+        } else {
+            statusMap = {
+                'all': 'Статус',
+                'draft': 'В редакции',
+                'control': 'Контроль пройден',
+                'sent': 'На согласовании',
+                'error': 'Есть ошибки',
+                'approved': 'Согласованные'
+            };
+        }
         
         const regionMap = {
             'all': 'Регион',
@@ -2460,7 +2459,7 @@ class ExportPlansLoader {
         this.currentYear = options.initialYear || 'all';
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
-        this.currentSearchOkpo = '';
+        this.currentSearchYnp = '';
         this.currentPage = 1;
         this.isLoading = false;
         this.hasMore = true;
@@ -2476,7 +2475,7 @@ class ExportPlansLoader {
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
-        this.searchOkpoId = options.searchOkpoId || 'search-okpo';
+        this.searchYnp = options.searchYnp || 'search-ynp';
         this.selectAllId = options.selectAllId || 'selectAllBtn';
         this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
@@ -2499,8 +2498,8 @@ class ExportPlansLoader {
         if (this.currentSearchName) {
             params.set('search_name', this.currentSearchName);
         }
-        if (this.currentSearchOkpo) {
-            params.set('search_okpo', this.currentSearchOkpo);
+        if (this.currentSearchYnp) {
+            params.set('search_ynp', this.currentSearchYnp);
         }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
@@ -2531,12 +2530,12 @@ class ExportPlansLoader {
         }
         
         try {
-            let url = `/api/export-plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}`;
+            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || true}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
-            if (this.currentSearchOkpo) {
-                url += `&search_okpo=${encodeURIComponent(this.currentSearchOkpo)}`;
+            if (this.currentSearchYnp) {
+                url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
             
             const response = await fetch(url);
@@ -2664,7 +2663,7 @@ class ExportPlansLoader {
         }
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
-            this.currentSearchOkpo = document.getElementById(this.searchOkpoId)?.value || '';
+            this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
@@ -2695,7 +2694,7 @@ class ExportPlansLoader {
     
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
-        const searchOkpoInput = document.getElementById(this.searchOkpoId);
+        const searchOkpoInput = document.getElementById(this.searchYnp);
         
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
@@ -2813,16 +2812,16 @@ class ExportPlansLoader {
             const newYear = params.get('year') || 'all';
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
-            const newSearchOkpo = params.get('search_okpo') || '';
+            const newSearchOkpo = params.get('search_ynp') || '';
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchOkpo) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
-                this.currentSearchOkpo = newSearchOkpo;
+                this.currentSearchYnp = newSearchOkpo;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
@@ -2843,8 +2842,8 @@ class ExportPlansLoader {
             'all': 'Статус',
             'draft': 'В редакции',
             'control': 'Контроль пройден',
-            'sent': 'На рассмотрении',
-            'error': 'С ошибками',
+            'sent': 'На согласовании',
+            'error': 'Есть ошибки',
             'approved': 'Согласованные'
         };
         
@@ -3128,7 +3127,7 @@ function initEditableHeaders() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('sentmodal')) {
+    if (document.getElementById('SendModal')) {
         new CertificateUploadHandler();
     }
 
@@ -3147,7 +3146,7 @@ document.addEventListener('DOMContentLoaded', function() {
             containerId: 'plans-container',
             loadMoreBtnId: 'load-more-btn',
             searchNameId: 'search-name',
-            searchOkpoId: 'search-okpo',
+            searchYnp: 'search-ynp',
             selectAllId: 'selectAllBtn',
             exportFormId: 'exportForm'
         });
@@ -3159,7 +3158,7 @@ document.addEventListener('DOMContentLoaded', function() {
             containerId: 'plans-container',
             loadMoreBtnId: 'load-more-btn',
             searchNameId: 'search-name',
-            searchOkpoId: 'search-okpo'
+            searchYnp: 'search-ynp'
         });
     }
 
@@ -3179,11 +3178,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
-    if (document.querySelector('.plan-cont')) {
-        initStatusProgress();
-    }
-
     if (document.getElementById('indicatorsTable') && document.getElementById('indicators-tbody')) {
         const token = document.getElementById('indicatorsTable')?.dataset?.token;
         if (token) {
@@ -3200,11 +3194,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-
     const sentPlanButton = document.getElementById('sentPlanButton');
-    const sentmodal = document.getElementById('sentmodal');
-    if (sentmodal && sentPlanButton) {
-        handleModal(sentmodal, sentPlanButton, sentmodal.querySelector('.close'));
+    const SendModal = document.getElementById('SendModal');
+    if (SendModal && sentPlanButton) {
+        handleModal(SendModal, sentPlanButton, SendModal.querySelector('.close'));
+        
+    
+        window.sendModalInstance = new SendModalPreview('SendModal');
+        
+   
+        sentPlanButton.addEventListener('click', function() {
+            if (window.sendModalInstance) {
+                window.sendModalInstance.resetForm();
+            }
+        });
     }
 
     if (document.getElementById('editPlanButton')) {
@@ -3285,9 +3288,9 @@ document.addEventListener('DOMContentLoaded', function() {
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите отправить сообщение об ошибках пользователю?',
+            modalText: 'Вы действительно хотите отправить сообщение пользователю?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Описывайте ошибки максимально подробно, для наилучшего восприятия со стороны пользователя.'
+            modalTextSecond: 'Если есть ошибки описывайте максимально подробно, для наилучшего восприятия со стороны пользователя.'
         });
     }
 
@@ -3329,7 +3332,7 @@ document.addEventListener('DOMContentLoaded', function() {
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 30-ти дней.'
+            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 3-ех месяцев.'
         });
     }
 
@@ -3392,6 +3395,7 @@ document.addEventListener('DOMContentLoaded', function() {
         customSmoothScroll(ticketsContainer, ticketsContainer.scrollHeight);
     }
 
+    
     const addEventModal = document.getElementById('AddEventModal');
     const addEventModal1 = new EventModal('AddEventModal');
     if (addEventModal && addEventModal1) {

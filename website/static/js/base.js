@@ -231,7 +231,14 @@ const Notifications = {
         this.notifListEl.innerHTML = ""; 
 
         if (!data || data.length === 0) {
-            this.notifListEl.innerHTML = "<div class='notif empty'>Нет уведомлений</div>";
+            this.notifListEl.innerHTML = `
+                <div class='empty-state'>
+                    <svg viewBox='0 0 24 24' fill='none'>
+                        <path d='M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' fill='#E6E6E6'></path>
+                    </svg>
+                    <h1>Нет уведомлений</h1>
+                </div>
+            `;
             this.hideCounter();
             this.hideLoadMore();
             return;
@@ -974,9 +981,9 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            higherOrganizationsApiUrl: '/api/higher-organizations',
-            oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
-            regionsApiUrl: '/api/regions',
+            // higherOrganizationsApiUrl: '/api/higher-organizations',
+            // oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
+            // regionsApiUrl: '/api/regions',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -1009,7 +1016,8 @@ class MultiTypeSearchManager {
         this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
-        this.highlightActiveTypeButton();
+        // this.highlightActiveTypeButton();
+        this.hideTypeButtons();
     }
 
     bindEvents() {
@@ -1046,16 +1054,16 @@ class MultiTypeSearchManager {
             }
         });
 
-        if (this.typeButtons.length > 0) {
-            this.typeButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const type = e.target.dataset.type || e.target.closest('button').dataset.type;
-                    if (type && type !== this.selectedItemType) {
-                        this.selectItemType(type);
-                    }
-                });
-            });
-        }
+        // if (this.typeButtons.length > 0) {
+        //     this.typeButtons.forEach(button => {
+        //         button.addEventListener('click', (e) => {
+        //             const type = e.target.dataset.type || e.target.closest('button').dataset.type;
+        //             if (type && type !== this.selectedItemType) {
+        //                 this.selectItemType(type);
+        //             }
+        //         });
+        //     });
+        // }
 
         if (this.prevPageBtn) {
             this.prevPageBtn.addEventListener('click', () => {
@@ -1101,15 +1109,15 @@ class MultiTypeSearchManager {
                 case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
                     break;
-                case 'higher_organization':
-                    apiUrl = this.config.higherOrganizationsApiUrl;
-                    break;
-                case 'oblispolkom_gorispolkom':
-                    apiUrl = this.config.oblispolkomGorispolkomApiUrl;
-                    break;
-                case 'region':
-                    apiUrl = this.config.regionsApiUrl;
-                    break;
+                // case 'higher_organization':
+                //     apiUrl = this.config.higherOrganizationsApiUrl;
+                //     break;
+                // case 'oblispolkom_gorispolkom':
+                //     apiUrl = this.config.oblispolkomGorispolkomApiUrl;
+                //     break;
+                // case 'region':
+                //     apiUrl = this.config.regionsApiUrl;
+                //     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
             }
@@ -1146,12 +1154,12 @@ class MultiTypeSearchManager {
         switch(type) {
             case 'organization':
                 return data.organizations || [];
-            case 'higher_organization':
-                return data.higher_organizations || [];
-            case 'oblispolkom_gorispolkom':
-                return data.oblispolkom_gorispolkoms || [];
-            case 'region':
-                return data.regions || [];
+            // case 'higher_organization':
+            //     return data.higher_organizations || [];
+            // case 'oblispolkom_gorispolkom':
+            //     return data.oblispolkom_gorispolkoms || [];
+            // case 'region':
+            //     return data.regions || [];
             default:
                 return [];
         }
@@ -1192,27 +1200,27 @@ class MultiTypeSearchManager {
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                case 'higher_organization':
-                    html += `
-                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                        <td style="text-align: center;"></td>
-                        <td style="text-align: center;"></td>
-                    `;
-                    break;
-                case 'oblispolkom_gorispolkom':
-                    html += `
-                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                        <td style="text-align: center;"></td>
-                        <td style="text-align: center;"></td>
-                    `;
-                    break;
-                case 'region':
-                    html += `
-                        <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                        <td style="text-align: center;"></td>
-                        <td style="text-align: center;"></td>
-                    `;
-                    break;
+                // case 'higher_organization':
+                //     html += `
+                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                //         <td style="text-align: center;"></td>
+                //         <td style="text-align: center;"></td>
+                //     `;
+                //     break;
+                // case 'oblispolkom_gorispolkom':
+                //     html += `
+                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                //         <td style="text-align: center;"></td>
+                //         <td style="text-align: center;"></td>
+                //     `;
+                //     break;
+                // case 'region':
+                //     html += `
+                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
+                //         <td style="text-align: center;"></td>
+                //         <td style="text-align: center;"></td>
+                //     `;
+                //     break;
                 default:
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
@@ -1267,124 +1275,132 @@ class MultiTypeSearchManager {
                     <th style="text-align: center;">ОКПО</th>
                 `;
                 break;
-            case 'higher_organization':
-                headersHTML += `
-                    <th style="width: 100%;">Наименование вышестоящей организации</th>
-                    <th style="text-align: center;"></th>
-                    <th style="text-align: center;"></th>
-                `;
-                break;
-            case 'oblispolkom_gorispolkom':
-                headersHTML += `
-                    <th style="width: 100%;">Наименование обл/горисполкома</th>
-                    <th style="text-align: center;"></th>
-                    <th style="text-align: center;"></th>
-                `;
-                break;
-            case 'region':
-                headersHTML += `
-                    <th style="width: 100%;">Наименование региона</th>
-                    <th style="text-align: center;"></th>
-                    <th style="text-align: center;"></th>
-                `;
-                break;
+            // case 'higher_organization':
+            //     headersHTML += `
+            //         <th style="width: 100%;">Наименование вышестоящей организации</th>
+            //         <th style="text-align: center;"></th>
+            //         <th style="text-align: center;"></th>
+            //     `;
+            //     break;
+            // case 'oblispolkom_gorispolkom':
+            //     headersHTML += `
+            //         <th style="width: 100%;">Наименование обл/горисполкома</th>
+            //         <th style="text-align: center;"></th>
+            //         <th style="text-align: center;"></th>
+            //     `;
+            //     break;
+            // case 'region':
+            //     headersHTML += `
+            //         <th style="width: 100%;">Наименование региона</th>
+            //         <th style="text-align: center;"></th>
+            //         <th style="text-align: center;"></th>
+            //     `;
+            //     break;
         }
         
         headersHTML += `</tr>`;
         thead.innerHTML = headersHTML;
     }
 
-    selectItemType(type) {
-        this.selectedItemType = type;
-        this.selectedItemId = null;
-        this.currentPage = 1;
-        this.currentQuery = '';
+    // selectItemType(type) {
+    //     this.selectedItemType = type;
+    //     this.selectedItemId = null;
+    //     this.currentPage = 1;
+    //     this.currentQuery = '';
         
-        this.typeButtons.forEach(btn => {
-            if (btn.dataset.type === type) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
+    //     this.typeButtons.forEach(btn => {
+    //         if (btn.dataset.type === type) {
+    //             btn.classList.add('active');
+    //         } else {
+    //             btn.classList.remove('active');
+    //         }
+    //     });
         
-        this.updateSearchPlaceholder(type);
-        this.updateSubmitButtonText();
-        this.updateModalTitle(type);
+    //     this.updateSearchPlaceholder(type);
+    //     this.updateSubmitButtonText();
+    //     this.updateModalTitle(type);
         
-        if (this.searchInput) {
-            this.searchInput.value = '';
-            if (this.clearSearchButton) {
-                this.clearSearchButton.style.display = 'none';
-            }
+    //     if (this.searchInput) {
+    //         this.searchInput.value = '';
+    //         if (this.clearSearchButton) {
+    //             this.clearSearchButton.style.display = 'none';
+    //         }
+    //     }
+        
+    //     this.updateSubmitButtonState(false);
+    //     this.loadData();
+    // }
+
+    // updateSearchPlaceholder(type) {
+    //     if (!this.searchInput) return;
+        
+    //     const placeholders = {
+    //         'organization': 'Наименование/окпо/унп организации',
+    //         'higher_organization': 'Наименование вышестоящей организации',
+    //         'oblispolkom_gorispolkom': 'Наименование обл/горисполкома',
+    //         'region': 'Наименование региона',
+    //     };
+        
+    //     this.searchInput.placeholder = placeholders[type] || 'Поиск...';
+        
+    //     const searchLabel = document.getElementById('search-label');
+    //     if (searchLabel) {
+    //         const labels = {
+    //             'organization': 'Поиск организации',
+    //             'higher_organization': 'Поиск вышестоящей организации',
+    //             'oblispolkom_gorispolkom': 'Поиск обл/горисполкома',
+    //             'region': 'Поиск региона',
+    //         };
+    //         searchLabel.textContent = labels[type] || 'Поиск';
+    //     }
+    // }
+
+    // updateSubmitButtonText() {
+    //     if (!this.submitButton) return;
+        
+    //     const buttonTexts = {
+    //         'organization': 'Сохранить организацию',
+    //         'higher_organization': 'Сохранить вышестоящую организацию',
+    //         'oblispolkom_gorispolkom': 'Сохранить обл/горисполком',
+    //         'region': 'Сохранить регион',
+    //     };
+        
+    //     const text = buttonTexts[this.selectedItemType] || 'Сохранить изменения';
+        
+    //     const btnTextSpan = this.submitButton.querySelector('.btn-text');
+    //     if (btnTextSpan) {
+    //         btnTextSpan.textContent = text;
+    //     }
+    // }
+
+    // updateModalTitle(type) {
+    //     const modalTitle = document.getElementById('modal-title');
+    //     if (!modalTitle) return;
+        
+    //     const titles = {
+    //         'organization': 'Выберите организацию',
+    //         'higher_organization': 'Выберите вышестоящую организацию',
+    //         'oblispolkom_gorispolkom': 'Выберите обл/горисполком',
+    //         'region': 'Выберите регион',
+    //     };
+        
+    //     modalTitle.textContent = titles[type] || 'Выберите элемент';
+    // }
+
+    // highlightActiveTypeButton() {
+    //     this.typeButtons.forEach(btn => {
+    //         if (btn.dataset.type === this.selectedItemType) {
+    //             btn.classList.add('active');
+    //         }
+    //     });
+    // }
+
+    hideTypeButtons() {
+        if (this.typeButtons.length > 0) {
+            this.typeButtons.forEach(btn => {
+                btn.style.display = 'none';
+            });
         }
-        
-        this.updateSubmitButtonState(false);
-        this.loadData();
-    }
-
-    updateSearchPlaceholder(type) {
-        if (!this.searchInput) return;
-        
-        const placeholders = {
-            'organization': 'Наименование/окпо/унп организации',
-            'higher_organization': 'Наименование вышестоящей организации',
-            'oblispolkom_gorispolkom': 'Наименование обл/горисполкома',
-            'region': 'Наименование региона',
-        };
-        
-        this.searchInput.placeholder = placeholders[type] || 'Поиск...';
-        
-        const searchLabel = document.getElementById('search-label');
-        if (searchLabel) {
-            const labels = {
-                'organization': 'Поиск организации',
-                'higher_organization': 'Поиск вышестоящей организации',
-                'oblispolkom_gorispolkom': 'Поиск обл/горисполкома',
-                'region': 'Поиск региона',
-            };
-            searchLabel.textContent = labels[type] || 'Поиск';
-        }
-    }
-
-    updateSubmitButtonText() {
-        if (!this.submitButton) return;
-        
-        const buttonTexts = {
-            'organization': 'Сохранить организацию',
-            'higher_organization': 'Сохранить вышестоящую организацию',
-            'oblispolkom_gorispolkom': 'Сохранить обл/горисполком',
-            'region': 'Сохранить регион',
-        };
-        
-        const text = buttonTexts[this.selectedItemType] || 'Сохранить изменения';
-        
-        const btnTextSpan = this.submitButton.querySelector('.btn-text');
-        if (btnTextSpan) {
-            btnTextSpan.textContent = text;
-        }
-    }
-
-    updateModalTitle(type) {
-        const modalTitle = document.getElementById('modal-title');
-        if (!modalTitle) return;
-        
-        const titles = {
-            'organization': 'Выберите организацию',
-            'higher_organization': 'Выберите вышестоящую организацию',
-            'oblispolkom_gorispolkom': 'Выберите обл/горисполком',
-            'region': 'Выберите регион',
-        };
-        
-        modalTitle.textContent = titles[type] || 'Выберите элемент';
-    }
-
-    highlightActiveTypeButton() {
-        this.typeButtons.forEach(btn => {
-            if (btn.dataset.type === this.selectedItemType) {
-                btn.classList.add('active');
-            }
-        });
     }
 
     selectItem(row) {
@@ -1422,9 +1438,9 @@ class MultiTypeSearchManager {
     getTypeLabel(type, plural = false) {
         const labels = {
             'organization': plural ? 'организаций' : 'организация',
-            'higher_organization': plural ? 'вышестоящих организаций' : 'вышестоящая организация',
-            'oblispolkom_gorispolkom': plural ? 'обл/горисполкомов' : 'обл/горисполком',
-            'region': plural ? 'регионов' : 'регион',
+            // 'higher_organization': plural ? 'вышестоящих организаций' : 'вышестоящая организация',
+            // 'oblispolkom_gorispolkom': plural ? 'обл/горисполкомов' : 'обл/горисполком',
+            // 'region': plural ? 'регионов' : 'регион',
         };
         return labels[type] || (plural ? 'данных' : 'данные');
     }
@@ -1448,7 +1464,6 @@ class MultiTypeSearchManager {
         this.tableBody.innerHTML = `
             <tr>
                 <td colspan="3" style="text-align: center; padding: 40px; color: #dc2626;">
-                    <div style="font-size: 24px; margin-bottom: 12px;">⚠️</div>
                     <div style="font-weight: 500; margin-bottom: 8px;">Ошибка</div>
                     <div style="color: #6b7280; font-size: 14px;">${message}</div>
                 </td>
@@ -1555,20 +1570,18 @@ class MultiStepForm {
             minSearchLength: 2,
             debounceDelay: 300,
             perPage: 10,
-            endpoints: {
-                organization: '/api/organizations',
-                controlling_body: '/api/controlling-bodies'
-            },
             ...options
         };
 
         this.currentEntityType = 'respondent';
         this.selectedItem = null;
         this.searchData = {
-            organization: { page: 1, query: '', hasMore: false, loading: false },
-            controlling_body: { page: 1, query: '', hasMore: false, loading: false }
+            page: 1,
+            query: '',
+            hasMore: false,
+            loading: false
         };
-        this.debounceTimers = {};
+        this.debounceTimer = null;
         this.init();
     }
 
@@ -1576,6 +1589,8 @@ class MultiStepForm {
         this.elements = {};
         this.getElementReferences();
         this.bindEvents();
+        this.updateNextButtonState();
+        this.updateSelectedRoleDisplay();
     }
 
     getElementReferences() {
@@ -1593,40 +1608,12 @@ class MultiStepForm {
 
         this.elements.entityTypeRadioInputs = document.querySelectorAll('input[name="entity_type"]');
         
-        this.elements.entityBlocks = {
-            respondent: document.getElementById('respondent-block'),
-            auditor: document.getElementById('auditor-block')
-        };
-        
-        this.elements.searchInputs = {
-            respondent: document.getElementById('respondent-search'),
-            auditor: document.getElementById('auditor-search')
-        };
-        
-        this.elements.hiddenInputs = {
-            respondent: document.getElementById('organization_id'),
-            auditor: document.getElementById('controlling_body_id')
-        };
-        
-        this.elements.dropdowns = {
-            respondent: document.getElementById('organization-dropdown'),
-            auditor: document.getElementById('controlling-body-dropdown')
-        };
-        
-        this.elements.lists = {
-            organization: document.getElementById('organization-list'),
-            controlling_body: document.getElementById('controlling-body-list')
-        };
-        
-        this.elements.loadings = {
-            respondent: document.getElementById('organization-loading'),
-            auditor: document.getElementById('controlling-body-loading')
-        };
-        
-        this.elements.moreButtons = {
-            respondent: document.getElementById('organization-more'),
-            auditor: document.getElementById('controlling-body-more')
-        };
+        this.elements.searchInput = document.getElementById('organization-search');
+        this.elements.hiddenInput = document.getElementById('organization_id');
+        this.elements.dropdown = document.getElementById('organization-dropdown');
+        this.elements.list = document.getElementById('organization-list');
+        this.elements.loading = document.getElementById('organization-loading');
+        this.elements.moreButton = document.getElementById('organization-more');
     }
 
     bindEvents() {
@@ -1652,25 +1639,19 @@ class MultiStepForm {
             });
         }
         
-        Object.keys(this.elements.searchInputs).forEach(type => {
-            const input = this.elements.searchInputs[type];
-            if (input) {
-                input.addEventListener('input', (e) => this.handleSearchInput(e, type));
-                input.addEventListener('focus', () => this.handleSearchFocus(type));
-                input.addEventListener('blur', () => setTimeout(() => this.hideDropdown(type), 200));
-                input.addEventListener('keydown', (e) => this.handleSearchKeydown(e, type));
-            }
-        });
+        if (this.elements.searchInput) {
+            this.elements.searchInput.addEventListener('input', (e) => this.handleSearchInput(e));
+            this.elements.searchInput.addEventListener('focus', () => this.handleSearchFocus());
+            this.elements.searchInput.addEventListener('blur', () => setTimeout(() => this.hideDropdown(), 200));
+            this.elements.searchInput.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
+        }
         
-        Object.keys(this.elements.moreButtons).forEach(type => {
-            const button = this.elements.moreButtons[type];
-            if (button) {
-                const loadMoreBtn = button.querySelector('.load-more-btn');
-                if (loadMoreBtn) {
-                    loadMoreBtn.addEventListener('click', () => this.handleLoadMore(type));
-                }
+        if (this.elements.moreButton) {
+            const loadMoreBtn = this.elements.moreButton.querySelector('.load-more-btn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', () => this.handleLoadMore());
             }
-        });
+        }
         
         if (this.elements.form) {
             this.elements.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
@@ -1681,70 +1662,64 @@ class MultiStepForm {
         this.setupStep1Validation();
     }
 
-    getApiType(type) {
-        if (type === 'respondent') return 'organization';
-        if (type === 'auditor') return 'controlling_body';
-        return type;
-    }
-
-    getDataKey(type) {
-        if (type === 'respondent') return 'organizations';
-        if (type === 'auditor') return 'controlling_bodies';
-        return `${type}s`;
-    }
-
-    getListKey(type) {
-        if (type === 'respondent') return 'organization';
-        if (type === 'auditor') return 'controlling_body';
-        return type;
-    }
-
     handleEntityTypeChange(e) {
         this.currentEntityType = e.target.value;
-        
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
         
-        this.updateStep3Content();
-    }
-
-    updateStep3Content() {
-        const blocks = {
-            respondent: 'respondent-block',
-            auditor: 'auditor-block'
-        };
-        
-        Object.values(blocks).forEach(blockId => {
-            const block = document.getElementById(blockId);
-            if (block) block.style.display = 'none';
-        });
-        
-        const currentBlockId = blocks[this.currentEntityType];
-        const currentBlock = document.getElementById(currentBlockId);
-        if (currentBlock) {
-            currentBlock.style.display = 'block';
-        }
+        this.updateSelectedRoleDisplay();
         
         this.selectedItem = null;
-        this.resetHiddenFields();
-        
+        if (this.elements.hiddenInput) {
+            this.elements.hiddenInput.value = '';
+        }
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = true;
         }
-        
-        this.clearSearchResults(this.currentEntityType);
-        
-        const searchInput = this.elements.searchInputs[this.currentEntityType];
-        if (searchInput) {
-            setTimeout(() => {
-                searchInput.value = '';
-                searchInput.focus();
-            }, 100);
+        if (this.elements.searchInput) {
+            this.elements.searchInput.value = '';
+            this.elements.searchInput.placeholder = this.getPlaceholder();
         }
+        this.clearSearchResults();
+        this.hideDropdown();
     }
 
-    selectItem(item, type) {
+    updateSelectedRoleDisplay() {
+        const roles = {
+            'respondent': {
+                title: 'Респондент',
+                subtitle: 'Формирование и подача плана мероприятий по энергосбережению'
+            },
+            'auditor': {
+                title: 'Аудитор',
+                subtitle: 'Согласование отправленных планов мероприятий по энергосбережению'
+            },
+            'approver': {
+                title: 'Утверждающий',
+                subtitle: 'Утверждение согласованных планов мероприятий по энергосбережению'
+            }
+        };
+        
+        const role = roles[this.currentEntityType] || roles['respondent'];
+        
+        const titleElement = document.getElementById('selected-role-title');
+        const subtitleElement = document.getElementById('selected-role-subtitle');
+        
+        if (titleElement) titleElement.textContent = role.title;
+        if (subtitleElement) subtitleElement.textContent = role.subtitle;
+    }
+
+    getPlaceholder() {
+        const placeholders = {
+            'respondent': 'Наименование или ОКПО или УНП',
+            'auditor': 'Наименование или ОКПО или УНП',
+            'approver': 'Наименование или ОКПО или УНП'
+        };
+        return placeholders[this.currentEntityType] || 'Наименование или ОКПО или УНП';
+    }
+
+    selectItem(item) {
         document.querySelectorAll('.search-item').forEach(el => {
             el.classList.remove('selected');
         });
@@ -1754,21 +1729,19 @@ class MultiStepForm {
             clickedElement.classList.add('selected');
         }
         
-        const input = this.elements.searchInputs[type];
-        if (input) {
-            input.value = item.name;
+        if (this.elements.searchInput) {
+            this.elements.searchInput.value = item.name;
         }
         
-        const hiddenInput = this.elements.hiddenInputs[type];
-        if (hiddenInput) {
-            hiddenInput.value = item.id;
+        if (this.elements.hiddenInput) {
+            this.elements.hiddenInput.value = item.id;
         }
         
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
         
-        this.hideDropdown(type);
+        this.hideDropdown();
         
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = false;
@@ -1781,7 +1754,7 @@ class MultiStepForm {
         e.preventDefault();
         
         if (!this.validateForm()) {
-            alert('Пожалуйста, заполните все обязательные поля и выберите структуру');
+            alert('Пожалуйста, заполните все обязательные поля и выберите организацию');
             return;
         }
         
@@ -1832,11 +1805,7 @@ class MultiStepForm {
         const step1Valid = this.validateStep1();
         if (!step1Valid) return false;
         
-        const entityType = this.currentEntityType;
-        if (!entityType) return false;
-        
-        const hiddenInput = this.elements.hiddenInputs[entityType];
-        if (!hiddenInput || !hiddenInput.value) return false;
+        if (!this.elements.hiddenInput || !this.elements.hiddenInput.value) return false;
         
         return true;
     }
@@ -1903,7 +1872,6 @@ class MultiStepForm {
                 }
                 break;
             case 3:
-                this.updateStep3Content();
                 if (this.elements.step3) {
                     this.elements.step3.style.display = 'block';
                     if (this.elements.step1) this.elements.step1.classList.remove('active');
@@ -1914,93 +1882,75 @@ class MultiStepForm {
         }
     }
 
-    handleSearchInput(e, type) {
+    handleSearchInput(e) {
         const query = e.target.value.trim();
         
         this.selectedItem = null;
-        
-        if (this.elements.hiddenInputs[type]) {
-            this.elements.hiddenInputs[type].value = '';
+        if (this.elements.hiddenInput) {
+            this.elements.hiddenInput.value = '';
         }
-        
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = true;
         }
         
-        const apiType = this.getApiType(type);
-        this.searchData[apiType].query = query;
-        this.searchData[apiType].page = 1;
+        this.searchData.query = query;
+        this.searchData.page = 1;
         
-        if (this.debounceTimers[type]) {
-            clearTimeout(this.debounceTimers[type]);
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
         }
         
         if (query.length >= this.config.minSearchLength) {
-            this.debounceTimers[type] = setTimeout(() => {
-                this.searchEntities(query, type, 1, false);
+            this.debounceTimer = setTimeout(() => {
+                this.searchEntities(query, 1, false);
             }, this.config.debounceDelay);
         } else {
-            this.hideDropdown(type);
-            this.clearSearchResults(type);
+            this.hideDropdown();
+            this.clearSearchResults();
         }
     }
 
-    handleSearchFocus(type) {
-        const apiType = this.getApiType(type);
-        const query = this.searchData[apiType].query;
-        const dropdown = this.elements.dropdowns[type];
-        const listKey = this.getListKey(type);
-        const list = this.elements.lists[listKey];
-        
+    handleSearchFocus() {
+        const query = this.searchData.query;
         if (query && query.length >= this.config.minSearchLength && 
-            dropdown && list && list.children.length > 0) {
-            dropdown.style.display = 'block';
+            this.elements.dropdown && this.elements.list && this.elements.list.children.length > 0) {
+            this.elements.dropdown.style.display = 'block';
         }
     }
 
-    handleSearchKeydown(e, type) {
+    handleSearchKeydown(e) {
         if (e.key === 'Escape') {
-            this.hideDropdown(type);
+            this.hideDropdown();
         }
     }
 
-    handleLoadMore(type) {
-        const apiType = this.getApiType(type);
-        const data = this.searchData[apiType];
-        if (data.hasMore && data.query && !data.loading) {
-            data.page += 1;
-            this.searchEntities(data.query, type, data.page, true);
+    handleLoadMore() {
+        if (this.searchData.hasMore && this.searchData.query && !this.searchData.loading) {
+            this.searchData.page += 1;
+            this.searchEntities(this.searchData.query, this.searchData.page, true);
         }
     }
 
     handleDocumentClick(e) {
-        Object.keys(this.elements.searchInputs).forEach(type => {
-            const input = this.elements.searchInputs[type];
-            const dropdown = this.elements.dropdowns[type];
-            
-            if (input && dropdown && 
-                !input.contains(e.target) && 
-                !dropdown.contains(e.target)) {
-                this.hideDropdown(type);
-            }
-        });
+        if (this.elements.searchInput && this.elements.dropdown && 
+            !this.elements.searchInput.contains(e.target) && 
+            !this.elements.dropdown.contains(e.target)) {
+            this.hideDropdown();
+        }
     }
 
-    async searchEntities(query, type, page = 1, append = false) {
-        const apiType = this.getApiType(type);
+    async searchEntities(query, page = 1, append = false) {
+        if (this.searchData.loading) return;
         
-        if (this.searchData[apiType].loading) return;
-        
-        this.searchData[apiType].loading = true;
+        this.searchData.loading = true;
         
         if (!append) {
-            this.showLoading(type, true);
-            this.clearSearchResults(type);
+            this.showLoading(true);
+            this.clearSearchResults();
         }
         
         try {
-            const endpoint = this.config.endpoints[apiType] || `/api/${apiType}`;
-            const url = `${endpoint}?q=${encodeURIComponent(query)}&page=${page}`;
+            const url = `/api/organizations?q=${encodeURIComponent(query)}&page=${page}&type=${this.currentEntityType}`;
             
             const response = await fetch(url);
             
@@ -2009,130 +1959,93 @@ class MultiStepForm {
             }
             
             const data = await response.json();
-            this.handleSearchResponse(data, type, append);
+            this.handleSearchResponse(data, append);
         } catch (error) {
-            console.error(`Error fetching ${type}:`, error);
-            this.showError(type, error.message);
+            console.error('Error fetching organizations:', error);
+            this.showError(error.message);
         } finally {
-            this.searchData[apiType].loading = false;
-            this.showLoading(type, false);
+            this.searchData.loading = false;
+            this.showLoading(false);
         }
     }
 
-    handleSearchResponse(data, type, append = false) {
-        const listKey = this.getListKey(type);
-        const list = this.elements.lists[listKey];
-        const dropdown = this.elements.dropdowns[type];
-        const moreButton = this.elements.moreButtons[type];
+    handleSearchResponse(data, append = false) {
+        if (!this.elements.list || !this.elements.dropdown) return;
         
-        if (!list || !dropdown) {
-            console.error(`Elements not found for ${type}:`, { list, dropdown });
-            return;
-        }
-        
-        const dataKey = this.getDataKey(type);
-        const items = data[dataKey] || [];
-        const apiType = this.getApiType(type);
+        const items = data.organizations || [];
         
         if (!append) {
-            list.innerHTML = '';
+            this.elements.list.innerHTML = '';
         }
         
         if (items.length > 0) {
             items.forEach(item => {
-                const itemElement = this.createListItem(item, apiType);
-                list.appendChild(itemElement);
+                const itemElement = this.createListItem(item);
+                this.elements.list.appendChild(itemElement);
             });
             
-            this.searchData[apiType].hasMore = data.has_next || false;
-            if (moreButton) {
-                moreButton.style.display = data.has_next ? 'block' : 'none';
+            this.searchData.hasMore = data.has_next || false;
+            if (this.elements.moreButton) {
+                this.elements.moreButton.style.display = data.has_next ? 'block' : 'none';
             }
             
-            dropdown.style.display = 'block';
+            this.elements.dropdown.style.display = 'block';
         } else if (!append) {
-            list.innerHTML = '<div class="no-results">Ничего не найдено</div>';
-            dropdown.style.display = 'block';
-            if (moreButton) moreButton.style.display = 'none';
+            this.elements.list.innerHTML = '<div class="no-results">Ничего не найдено</div>';
+            this.elements.dropdown.style.display = 'block';
+            if (this.elements.moreButton) {
+                this.elements.moreButton.style.display = 'none';
+            }
         }
     }
 
-    createListItem(item, type) {
+    createListItem(item) {
         const div = document.createElement('div');
         div.className = 'search-item';
         div.dataset.id = item.id;
         
-        switch(type) {
-            case 'organization':
-                div.innerHTML = `
-                    <div class="item-name">${this.escapeHtml(item.name)}</div>
-                    <div class="item-details">
-                        <span class="item-okpo">ОКПО: ${this.escapeHtml(item.okpo || '—')}</span>
-                        <span class="item-ynp">УНП: ${this.escapeHtml(item.ynp || '—')}</span>
-                        ${item.ministry ? `<span class="item-ministry">Министерство: ${this.escapeHtml(item.ministry)}</span>` : ''}
-                    </div>
-                `;
-                break;
-            case 'controlling_body':
-                div.innerHTML = `
-                    <div class="item-name">${this.escapeHtml(item.name)}</div>
-                    <div class="item-details">
-                        <span class="item-type">${this.escapeHtml(item.type || 'Контролирующий орган')}</span>
-                    </div>
-                `;
-                break;
-        }
+        div.innerHTML = `
+            <div class="item-name">${this.escapeHtml(item.name)}</div>
+            <div class="item-details">
+                <span class="item-okpo">ОКПО: ${this.escapeHtml(item.okpo || '—')}</span>
+                <span class="item-ynp">УНП: ${this.escapeHtml(item.ynp || '—')}</span>
+            </div>
+        `;
         
         div.addEventListener('click', () => {
-            this.selectItem(item, type === 'organization' ? 'respondent' : 'auditor');
+            this.selectItem(item);
         });
         
         return div;
     }
 
-    showLoading(type, show) {
-        const loading = this.elements.loadings[type];
-        if (loading) {
-            loading.style.display = show ? 'block' : 'none';
+    showLoading(show) {
+        if (this.elements.loading) {
+            this.elements.loading.style.display = show ? 'block' : 'none';
         }
     }
 
-    clearSearchResults(type) {
-        const listKey = this.getListKey(type);
-        const list = this.elements.lists[listKey];
-        if (list) {
-            list.innerHTML = '';
+    clearSearchResults() {
+        if (this.elements.list) {
+            this.elements.list.innerHTML = '';
         }
-        const moreButton = this.elements.moreButtons[type];
-        if (moreButton) {
-            moreButton.style.display = 'none';
+        if (this.elements.moreButton) {
+            this.elements.moreButton.style.display = 'none';
         }
     }
 
-    hideDropdown(type) {
-        const dropdown = this.elements.dropdowns[type];
-        if (dropdown) {
-            dropdown.style.display = 'none';
+    hideDropdown() {
+        if (this.elements.dropdown) {
+            this.elements.dropdown.style.display = 'none';
         }
     }
 
-    showError(type, message = 'Ошибка загрузки данных') {
-        const listKey = this.getListKey(type);
-        const list = this.elements.lists[listKey];
-        const dropdown = this.elements.dropdowns[type];
-        
-        if (list && dropdown) {
-            list.innerHTML = `<div class="error">${message}</div>`;
-            dropdown.style.display = 'block';
+    showError(message = 'Ошибка загрузки данных') {
+        if (this.elements.list && this.elements.dropdown) {
+            this.elements.list.innerHTML = `<div class="error">${message}</div>`;
+            this.elements.dropdown.style.display = 'block';
         }
-        
-        this.showLoading(type, false);
-    }
-
-    resetHiddenFields() {
-        Object.values(this.elements.hiddenInputs).forEach(input => {
-            if (input) input.value = '';
-        });
+        this.showLoading(false);
     }
 
     escapeHtml(text) {
@@ -2143,32 +2056,31 @@ class MultiStepForm {
     }
 
     destroy() {
-        Object.values(this.debounceTimers).forEach(timer => {
-            if (timer) clearTimeout(timer);
-        });
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
     }
 
     reset() {
         this.currentEntityType = 'respondent';
         this.selectedItem = null;
-        this.resetHiddenFields();
         
+        if (this.elements.hiddenInput) {
+            this.elements.hiddenInput.value = '';
+        }
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = true;
         }
+        if (this.elements.searchInput) {
+            this.elements.searchInput.value = '';
+        }
         
-        Object.keys(this.searchData).forEach(type => {
-            this.searchData[type] = { 
-                page: 1, 
-                query: '', 
-                hasMore: false, 
-                loading: false 
-            };
-        });
-        
-        Object.values(this.elements.searchInputs).forEach(input => {
-            if (input) input.value = '';
-        });
+        this.searchData = {
+            page: 1,
+            query: '',
+            hasMore: false,
+            loading: false
+        };
         
         this.goToStep(1);
     }
@@ -2253,8 +2165,8 @@ class TicketInfo {
                 </div>
                 <div class="ticket-info-content">
                     <div class="ticket-info-item">
-                        <span class="ticket-info-label">Роль</span>
-                        <span class="ticket-info-value">${data.is_owner ? 'Система' : 'Аудитор'}</span>
+                        <span class="ticket-info-label">Организация</span>
+                        <span class="ticket-info-value" title="${data.organization || 'Система'}">${data.organization || 'Система'}</span>
                     </div>
                     <div class="ticket-info-item">
                         <span class="ticket-info-label">ФИО</span>
@@ -2276,19 +2188,10 @@ class TicketInfo {
                             </a>
                         </span>
                     </div>
+               
                     <div class="ticket-info-item">
-                        <span class="ticket-info-label">Статус сообщения</span>
-                        <span class="ticket-info-value ticket-info-status ${data.luck ? 'success' : 'error'}">
-                            ${data.luck ? '✓ Успешно' : '✗ Ошибка'}
-                        </span>
-                    </div>
-                    <div class="ticket-info-item">
-                        <span class="ticket-info-label">Время отправки</span>
-                        <span class="ticket-info-value">${time}</span>
-                    </div>
-                    <div class="ticket-info-item">
-                        <span class="ticket-info-label">Дата отправки</span>
-                        <span class="ticket-info-value">${date || 'Не указана'}</span>
+                        <span class="ticket-info-label">Время создания</span>
+                        <span class="ticket-info-value">${date || 'Не указана'} - ${time}</span>
                     </div>
                     <div class="ticket-info-item full-width">
                         <span class="ticket-info-label">Текст сообщения</span>
@@ -2300,7 +2203,12 @@ class TicketInfo {
             </div>
         `;
     }
-    
+        //  <div class="ticket-info-item">
+        //                 <span class="ticket-info-label">Статус сообщения</span>
+        //                 <span class="ticket-info-value ticket-info-status ${data.luck ? 'success' : 'error'}">
+        //                     ${data.luck ? '✓ Согласовано' : '✗ Есть ошибки'}
+        //                 </span>
+        //             </div>
     extractContextFromElement(element) {
         const context = {};
         if (!element) return context;
@@ -2359,7 +2267,7 @@ class TicketInfo {
         
         this.currentPanel.style.animation = 'fadeOut 0.3s ease';
         const panelContent = this.currentPanel.querySelector(`.${this.options.panelClass}`);
-        if (panelContent) panelContent.style.animation = 'scaleOut 0.3s ease';
+        if (panelContent) panelContent.style.animation = '';
         
         setTimeout(() => {
             this.currentPanel.remove();
@@ -2692,6 +2600,17 @@ document.addEventListener('DOMContentLoaded', function() {
             bgGrid.style.transform = `translate(${x}px, ${y}px)`;
         });
     }
+
+    const ticket_container = document.querySelector('.tickets-messages-list');
+    if (ticket_container) {
+        setTimeout(() => {
+            ticket_container.scrollTo({
+                top: ticket_container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }, 100);
+    }
+
 });
 
 document.addEventListener('DOMContentLoaded', () => {

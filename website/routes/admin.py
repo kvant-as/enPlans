@@ -325,14 +325,14 @@ class UserView(SecureModelView):
         return form
 
 class OrganizationView(SecureModelView):
-    column_list = ['id', 'name', 'okpo', 'ynp', 'ministry_id', 'is_active', 'users']
+    column_list = ['id', 'name', 'okpo', 'ynp', 'is_active', 'users']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'name', 'okpo', 'is_active')
     can_delete = True
     can_create = True
     can_edit = True
     can_export = True
-    form_columns = ['name', 'okpo', 'ynp', 'ministry_id', 'is_active']
+    form_columns = ['name', 'okpo', 'ynp', 'is_active']
     form_args = {
         'name': {
             'label': 'Полное наименование',
@@ -349,18 +349,13 @@ class OrganizationView(SecureModelView):
             'validators': [Length(max=20)],
             'description': 'Учетный номер плательщика'
         },
-        'ministry_id': {
-            'label': 'Министерство',
-            'validators': [Length(max=500)],
-            'description': 'Вышестоящее министерство'
-        },
         'is_active': {
             'label': 'Активна',
             'description': 'Активна ли организация'
         }
     }
-    column_searchable_list = ['name', 'okpo', 'ynp', 'ministry_id']
-    column_filters = ['id', 'is_active', 'ministry_id']
+    column_searchable_list = ['name', 'okpo', 'ynp']
+    column_filters = ['id', 'is_active']
     column_formatters = {
         'is_active': lambda v, c, m, p: '✅' if m.is_active else '❌',
         'users': lambda v, c, m, p: f'{len(m.users)} пользователей' if m.users else 'Нет пользователей'
@@ -369,7 +364,7 @@ class OrganizationView(SecureModelView):
 class PlanView(SecureModelView):
     column_list = ['id',
                    'is_draft', 'is_control', 'is_sent', 'is_error', 'is_approved',
-                   'begin_time', 'change_time', 'sent_time', 'audit_time', 'ministry_id', 'org_id', 'region_id']
+                   'begin_time', 'change_time', 'sent_time', 'audit_time', 'org_id']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'year', 'begin_time', 'change_time', 'sent_time', 'audit_time')
     can_delete = True

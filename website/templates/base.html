@@ -146,7 +146,6 @@
     <div id="confirmModal" class="modal">
       <div class="modal-content"  style = "max-width: 450px;">
             <div class="modal-header">
-                
                 <h1 id = "modal-title">{{ _('Подтверждение') }}</h1>    
             </div>
             <div class="modal-body">
@@ -166,53 +165,6 @@
             </div> 
       </div>
     </div>    
-    {% endif %}
-
-    {% if sentmodal %}
-    <div id="sentmodal" class="modal">
-        <div class="modal-content" style="max-width: 450px;">
-            <div class="modal-header">
-                <h1 id="modal-title">{{ _('Отправка плана') }}</h1>
-                {{ icons.icon_close() }}
-            </div>
-            <div class="modal-body">
-                <div class="modal-subtext">
-                    <p class="first-child">{{ _('Вы действительно хотите отправить план?') }}</p>
-                    <p>
-                        {{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }} 
-                        <a href="/FAQ#ecp-certificate" class="instruction-link" id="certificate-help-link">{{ _('инструкции') }}</a>.
-                    </p>
-                </div>
-                <form id="sentForm" class="sent-form" action="/plans/plan/change-plan-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="sent">
-                    
-                    <div class="drop-certificate-container">
-                        <div id="drop-certificate-area" class="drop-certificate-area">
-                            <div class="drop-certificate-content">
-                                <div class="drop-certificate-icon">
-                                    {{ icons.icon_add() }}
-                                </div>
-                                <p class="drop-certificate-text">
-                                    {{ _('Перетащите файл сертификата сюда или') }} 
-                                    <label for="certificate-to-check" class="drop-certificate-label">{{ _('нажмите для выбора') }}</label>
-                                </p>
-                                <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
-                            </div>
-                            <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input">
-                        </div>
-                    </div>
-                    
-                    <div class="modal-buttons-area">
-                        <button type="submit" class="main-btn main-btn-delete" id="submit-sent-button" disabled>
-                            {{ icons.icon_confirm() }}
-                            <span class="btn-text">{{ _('Да, отправить план') }}</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
     {% endif %}
 
     <div id="confirmModal2" class="modal">
@@ -259,36 +211,10 @@
     <div id="orgUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h1 id="modal-title">{{ _('Выберите отчитывающийся субъект') }}</h1>
+                <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
                 {{ icons.icon_close() }}  
             </div>
-
-            <div class="telegram-type-selector">
-                <button type="button" 
-                        class="spravoch-btn active" 
-                        data-action="select-type" 
-                        data-type="organization">
-                    {{ _('Организации') }}
-                </button>
-                <button type="button" 
-                        class="spravoch-btn" 
-                        data-action="select-type" 
-                        data-type="higher_organization">
-                    {{ _('Вышестоящие организации') }}
-                </button>
-                <button type="button" 
-                        class="spravoch-btn" 
-                        data-action="select-type" 
-                        data-type="oblispolkom_gorispolkom">
-                    {{ _('Обл/Горисполкомы') }}
-                </button>
-                <button type="button" 
-                        class="spravoch-btn" 
-                        data-action="select-type" 
-                        data-type="region">
-                    {{ _('Регионы') }}
-                </button>
-            </div>
+            
             <div class="modal-body">
                 <div id="step1" class="modal-step">
                     <div class="app-group">
@@ -296,7 +222,7 @@
                         <div class="input-with-icon">
                             {{ icons.icon_search() }}
                             <input type="text" data-action="search-organization" 
-                                placeholder="{{ _('Код или наименование') }}" 
+                                placeholder="{{ _('ОКПО или наименование') }}" 
                                 class="app-input" required>
                         </div>
                     </div>
@@ -315,7 +241,7 @@
                             </table>
                         </div>             
                     </div> 
-                    <!-- Пагинация -->
+
                     <div class="pagination-area" id="paginationArea" style="display: none;">
                         <div class="pagination-container">
                             <button id="prevPageBtn" class="pagination-btn prev-btn" aria-label="Предыдущая страница">
@@ -347,7 +273,7 @@
                             <div></div>
                             <button type="submit" class="main-btn main-btn-primary" data-action="submit">
                                 {{ icons.icon_confirm() }}
-                                <span class="btn-text">{{ _('Сохранить изменения') }}</span>
+                                <span class="btn-text">{{ _('Сохранить организацию') }}</span>
                             </button>
                         </div>
                     </form>
@@ -356,6 +282,7 @@
         </div>
     </div>
     {% endif %}
+
     {% if not chat_widget %}
         <div class="chat-container" id="chatContainer">
             <div class="chat-header">

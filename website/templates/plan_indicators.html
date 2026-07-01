@@ -8,15 +8,18 @@
 </div>
 
 <div class="personal-plan-conteiner">
-  {{ component.plan_menu(plan, current_user, 'indicators') }}
+  {{ component.plan_menu(plan, current_user, 'indicators', show_control=True) }}
   <div class="table-container">
-    <table class="main-table" id="indicatorsTable" data-token="{{ plan.token }}">
+    <table class="main-table" id="indicatorsTable" 
+       data-token="{{ plan.token }}"
+       data-plan-id="{{ plan.id }}"
+       data-plan-year="{{ plan.year }}"
+       data-organization-id="{{ plan.org_id }}"
+       data-is-region-management="{{ current_user.organization.is_region_management|lower }}"
+       data-is-admin="{{ current_user.is_admin|lower }}">
+
       <thead class="main-table-titels">
-        <tr> {#
-          <th rowspan="2" class="resizable" style="max-width: 90px;">
-            <a>Строка {{ icons.icon_sort() }}</a>
-            <div class="resizer"></div>
-          </th>#}
+        <tr>
           <th rowspan="2" class="resizable">
             <a>№ п/п {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
@@ -29,7 +32,6 @@
             <a>Ед. изм.{{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-
 
             {% set configs = plan.column_configs|sort(attribute='year') %}
             {% for config in configs %}
@@ -47,8 +49,7 @@
             </th>
             {% endfor %}
 
-
-          <th rowspan="2" class="resizable" style="border-right: none; max-width: 120px">
+          <th rowspan="2" class="resizable" style="border-right: none;  max-width: 120px">
             <a>Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
@@ -200,6 +201,36 @@
                         </div>
                     </div>
                     
+                    <div class="name-section" id="name-section" style="display: none;">
+                        <div class="name-section-title">Наименование</div>
+                        <div class="name-options">
+                          <div class="input-with-icon">
+                            <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
+                          </div>
+                        </div>
+                    </div>
+
+                    <div class="category-section" id="category-section" style="display: none;">
+                        <!-- <div class="category-section-title">Категория топлива</div> -->
+                        <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="local">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Местные виды топлива и отходы</div>
+                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                </div>
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="renewable">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Возобновляемые источники энергии</div>
+                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                </div>
+                            </label>
+                        </div>
+                        <hr>
+                    </div>
+
                     <div class="coeff-section">
                         <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
                         <div class="coeff-options">
@@ -217,36 +248,6 @@
                                     <div class="coeff-option-value custom-value-input" id="custom-coeff-group" style="display: none;">
                                         <input type="text" name="custom_coeff" placeholder="0,000" class="custom-coeff-input app-numeric-input-coeff">
                                     </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="name-section" id="name-section" style="display: none;">
-                        <div class="name-section-title">Наименование</div>
-                        <div class="name-options">
-                          <div class="input-with-icon">
-                            
-                            <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
-                          </div>
-                        </div>
-                    </div>
-
-                    <div class="category-section" id="category-section" style="display: none;">
-                        <div class="category-section-title">Категория топлива</div>
-                        <div class="category-options">
-                            <label class="category-option">
-                                <input type="radio" name="fuel_category" value="local">
-                                <div class="category-option-content">
-                                    <div class="category-option-title">Местные виды топлива и отходы</div>
-                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
-                                </div>
-                            </label>
-                            <label class="category-option">
-                                <input type="radio" name="fuel_category" value="renewable">
-                                <div class="category-option-content">
-                                    <div class="category-option-title">Возобновляемые источники энергии</div>
-                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
                                 </div>
                             </label>
                         </div>
@@ -333,6 +334,36 @@
                         </div>
                     </div>
                     
+                    <div class="name-section" id="edit-name-section" style="display: none;">
+                        <div class="name-section-title">Наименование</div>
+                        <div class="name-options">
+                          <div class="input-with-icon">
+                            
+                            <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
+                          </div>
+                        </div>
+                    </div>
+
+                    <div class="category-section" id="edit-category-section" style="display: none;">
+                        <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="local">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Местные виды топлива и отходы</div>
+                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                </div>
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="renewable">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Возобновляемые источники энергии</div>
+                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                </div>
+                            </label>
+                        </div>
+                        <hr>
+                    </div>
+                    
                     <div class="coeff-section" id="edit-coeff-section">
                         <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
                         <div class="coeff-options">
@@ -354,37 +385,7 @@
                             </label>
                         </div>
                     </div>
-                    
-                    <div class="name-section" id="edit-name-section" style="display: none;">
-                        <div class="name-section-title">Наименование</div>
-                        <div class="name-options">
-                          <div class="input-with-icon">
-                            
-                            <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
-                          </div>
-                        </div>
-                    </div>
 
-                    <div class="category-section" id="edit-category-section" style="display: none;">
-                        <div class="category-section-title">Категория топлива</div>
-                        <div class="category-options">
-                            <label class="category-option">
-                                <input type="radio" name="fuel_category" value="local">
-                                <div class="category-option-content">
-                                    <div class="category-option-title">Местные виды топлива и отходы</div>
-                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
-                                </div>
-                            </label>
-                            <label class="category-option">
-                                <input type="radio" name="fuel_category" value="renewable">
-                                <div class="category-option-content">
-                                    <div class="category-option-title">Возобновляемые источники энергии</div>
-                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    
                     {% set configs = plan.column_configs|sort(attribute='year') %}
                     <div class="values-section">
                         <div class="values-section-title">Значения показателя</div>
@@ -444,5 +445,6 @@
     </div>
 </div>
 
-<!-- <script src="{{ url_for('static', filename='js/plan.js') }}"></script> -->
+<script src="{{ url_for('static', filename='js/indicator-calc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/PlanStatControl.js') }}"></script>
 {% endblock %}

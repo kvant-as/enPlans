@@ -1,7 +1,6 @@
-import datetime
 import logging
 from venv import logger
-from flask import current_app, g, render_template, request, jsonify, Blueprint
+from flask import current_app, g, request, jsonify, Blueprint, render_template_string
 from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
@@ -10,12 +9,12 @@ from website.sessions import session_required
 from website.time import TimeByMinsk
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, HigherOrganization, Indicator, IndicatorUsage, Ministry, News, Notification, OblispolkomGorispolkom, Organization, Plan, Region, Event
+from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
 
-from flask import render_template_string
+logger = logging.getLogger(__name__)
 
 @api_bp.route('/plans', methods=['GET'])
 @login_required
@@ -24,10 +23,11 @@ def api_get_plans():
         status_filter = request.args.get('status', 'all')
         year_filter = request.args.get('year', 'all')
         search_name = request.args.get('search_name', '')
-        search_okpo = request.args.get('search_okpo', '')
+        search_ynp = request.args.get('search_ynp', '')
         region = request.args.get('region', '')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 5, type=int)
+        show_checkboxes = request.args.get('show_checkboxes', 'false').lower() == 'true'
         
         region_id = None
         if region and region != 'all':
@@ -37,10 +37,10 @@ def api_get_plans():
                 region_id = None
         
         plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
+            current_user, status_filter, year_filter, search_name, search_ynp, region_id, page, per_page
         )
         
-        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
+        is_compact = current_user.is_auditor
         
         html = render_template_string(
             '''
@@ -49,7 +49,7 @@ def api_get_plans():
             ''',
             plans=plans,
             current_user=current_user,
-            show_checkboxes=False,
+            show_checkboxes=show_checkboxes,
             show_actions=True,
             custom_empty_message=None,
             compact_view=is_compact
@@ -71,109 +71,6 @@ def api_get_plans():
             'success': False,
             'error': str(e)
         }), 500
-        
-@api_bp.route('/export-plans', methods=['GET'])
-@login_required
-def api_get_export_plans():
-    try:
-        status_filter = request.args.get('status', 'all')
-        year_filter = request.args.get('year', 'all')
-        search_name = request.args.get('search_name', '')
-        search_okpo = request.args.get('search_okpo', '')
-        region = request.args.get('region', '')
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 5, type=int)
-                
-        region_id = None
-        if region and region != 'all':
-            try:
-                region_id = int(region)
-            except (ValueError, TypeError):
-                region_id = None
-                
-        plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_okpo, region_id, page, per_page
-        )
-        
-        is_compact = current_user.is_auditor or current_user.is_municipal or current_user.is_departament or current_user.is_higher_organization
-        
-        html = render_template_string(
-            '''
-            {% import 'macros/components.html' as components %}
-            {{ components.plans_list_items(plans, current_user, show_checkboxes, show_actions, custom_empty_message, compact_view) }}
-            ''',
-            plans=plans,
-            current_user=current_user,
-            show_checkboxes=True,
-            show_actions=False,
-            custom_empty_message=None,
-            compact_view=is_compact
-        )
-        
-        return jsonify({
-            'success': True,
-            'html': html,
-            'counts': status_counts,
-            'pagination': {
-                'current_page': page,
-                'per_page': per_page,
-                'total_count': total_count,
-                'has_next': page * per_page < total_count
-            }
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-        
-@api_bp.route('/approve-plan/<token>', methods=['POST'])
-@login_required
-def api_approve_plan(token):
-    plan = Plan.query.filter_by(token=token).first_or_404()
-    data = request.get_json()
-    stage = data.get('stage')
-    current_time = TimeByMinsk()
-    
-    if stage == 'regional':
-        if not current_user.is_region:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_region_approved = True
-        plan.region_approved_time = current_time
-        if plan.plan_type == 'org_large':
-            plan.approval_stage = 'municipal'
-        else:
-            plan.approval_stage = 'department'
-        
-    elif stage == 'municipal':
-        if not current_user.is_municipal:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_municipal_approved = True
-        plan.municipal_approved_time = current_time
-        plan.approval_stage = 'department'
-        
-    elif stage == 'department':
-        if not current_user.is_departament:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_department_approved = True
-        plan.department_approved_time = current_time
-        if plan.plan_type == 'org_large':
-            plan.approval_stage = 'higher'
-        else:
-            plan.approval_stage = 'completed'
-            plan.is_approved = True
-            
-    elif stage == 'higher':
-        if not current_user.is_higher_organization:
-            return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        plan.is_higher_organization_approved = True
-        plan.higher_organization_approved_time = current_time
-        plan.approval_stage = 'completed'
-        plan.is_approved = True
-    
-    db.session.commit()
-    
-    return jsonify({'success': True})
 
 @api_bp.route('/news', methods=['GET'])
 def api_news():
@@ -243,13 +140,27 @@ def get_organizations_api():
     try:
         page = request.args.get("page", 1, type=int)
         search_query = request.args.get("q", "", type=str).strip()
+        org_type = request.args.get("type", "", type=str).strip()
+        hide_region_management = request.args.get("hide_rm", "false", type=str).lower() == "true"
 
-        query = Organization.query
+        query = Organization.query.filter_by(is_active=True)
+
+        if hide_region_management:
+            query = query.filter(Organization.is_region_management == False)
+
+        if org_type == 'respondent':
+            query = query.filter(Organization.is_regular == True)
+        elif org_type == 'auditor':
+            query = query.filter(Organization.is_coordinator == True)
+        elif org_type == 'approver':
+            query = query.filter(Organization.is_approver == True)
+
         if search_query:
             query = query.filter(
                 db.or_(
                     Organization.name.ilike(f"%{search_query}%"),
-                    Organization.okpo.ilike(f"%{search_query}%")
+                    Organization.okpo.ilike(f"%{search_query}%"),
+                    Organization.ynp.ilike(f"%{search_query}%")
                 )
             )
 
@@ -263,7 +174,6 @@ def get_organizations_api():
                     "name": org.name,
                     "okpo": org.okpo or "",
                     "ynp": org.ynp or "",
-                    "ministry": org.ministry.name if org.ministry else "",
                 }
                 for org in pagination.items
             ],
@@ -274,41 +184,6 @@ def get_organizations_api():
         })
     except Exception as e:
         logging.error(f"Error fetching organizations: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-@api_bp.route('/ministries')
-@login_required
-def get_ministries_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
-        
-        query = Ministry.query.filter(Ministry.is_active == True)
-        
-        if search_query:
-            query = query.filter(Ministry.name.ilike(f"%{search_query}%"))
-        
-        query = query.order_by(Ministry.name)
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "ministrys": [
-                {
-                    "id": ministry.id,
-                    "name": ministry.name
-                }
-                for ministry in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-        
-    except Exception as e:
-        logging.error(f"Error fetching Ministries: {str(e)}")
-        current_app.logger.error(f"ERROR: {str(e)}") 
         return jsonify({"error": "Internal server error"}), 500
 
 @api_bp.route('/regions')
@@ -345,71 +220,7 @@ def get_regions_api():
     except Exception as e:
         logging.error(f"Error fetching regions: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
- 
-@api_bp.route('/higher-organizations')
-@login_required
-def get_higher_organizations_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
 
-        query = HigherOrganization.query.filter(HigherOrganization.is_active == True)
-        if search_query:
-            query = query.filter(HigherOrganization.name.ilike(f"%{search_query}%"))
-
-        query = query.order_by(HigherOrganization.name)
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "higher_organizations": [
-                {
-                    "id": org.id,
-                    "name": org.name
-                }
-                for org in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-    except Exception as e:
-        logging.error(f"Error fetching higher organizations: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-@api_bp.route('/oblispolkom-gorispolkoms')
-@login_required
-def get_oblispolkom_gorispolkoms_api():
-    try:
-        page = request.args.get("page", 1, type=int)
-        search_query = request.args.get("q", "", type=str).strip()
-
-        query = OblispolkomGorispolkom.query.filter(OblispolkomGorispolkom.is_active == True)
-        if search_query:
-            query = query.filter(OblispolkomGorispolkom.name.ilike(f"%{search_query}%"))
-
-        query = query.order_by(OblispolkomGorispolkom.name)
-        per_page = 10
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
-        return jsonify({
-            "oblispolkom_gorispolkoms": [
-                {
-                    "id": org.id,
-                    "name": org.name
-                }
-                for org in pagination.items
-            ],
-            "page": pagination.page,
-            "has_next": pagination.has_next,
-            "total_pages": pagination.pages,
-            "total_items": pagination.total
-        })
-    except Exception as e:
-        logging.error(f"Error fetching oblispolkom gorispolkoms: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-    
 @api_bp.route('/get-event/<int:id>', methods=['GET'])
 @user_with_all_params()
 @login_required
@@ -457,7 +268,6 @@ def get_indicator_api(id):
     except Exception as e:
         current_app.logger.error(f'Error getting indicator {id}: {str(e)}')
         return jsonify({'error': str(e)}), 500
-
 
 @api_bp.route('/indicators/<token>', methods=['GET'])
 @user_with_all_params()
@@ -663,7 +473,6 @@ def refresh_plan_rates(token):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
     
-
 @api_bp.route('/notifications', methods=['GET'])
 @user_with_all_params()
 @login_required
@@ -691,7 +500,6 @@ def api_notifications():
         'has_next': notifications.has_next
     })
 
-
 @api_bp.route('/notifications/mark-all-read', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -700,7 +508,6 @@ def mark_all_notifications_read():
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
     db.session.commit()
     return jsonify({'message': 'Все уведомления отмечены как прочитанные'})
-
 
 @api_bp.route('/notifications/mark-read/<int:notification_id>', methods=['POST'])
 @user_with_all_params()
@@ -713,3 +520,95 @@ def mark_notification_read(notification_id):
         db.session.commit()
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Уведомление не найдено'}), 404
+
+@api_bp.route('/stat-data/<int:organization_id>')
+def get_stat_data(organization_id):
+    try:
+        stat_reports = StatPlan.query.filter_by(
+            organization_id=organization_id
+        ).all()
+
+        if not stat_reports:
+            return jsonify({
+                'success': False,
+                'message': 'Статистические данные не найдены'
+            }), 404
+
+        # Маппинг кодов плана к строкам и колонкам в статистике
+        mapping = {
+            # 12-тэк
+            '1000': {'report': '12-tek', 'row': '110', 'col': '1'},
+            '1104': {'report': '12-tek', 'row': '110', 'col': '2'},
+            '1105': {'report': '12-tek', 'row': '110', 'col': '3'},
+            '9900': {'report': '12-tek', 'row': '110', 'col': '5'},
+            '1404': {'report': '12-tek', 'row': '140', 'col': '5'},
+            '1424': {'report': '12-tek', 'row': '142', 'col': '5'},
+            '9915': {'report': '12-tek', 'row': '110', 'col': '4'},
+            '1405': {'report': '12-tek', 'row': '140', 'col': '4'},
+            '1425': {'report': '12-tek', 'row': '142', 'col': '4'},
+            '260': {'report': '12-tek', 'row': '260', 'col': '1'},
+            
+            # 4-тэк
+            '2000': {'report': '4-tek', 'row': '1090', 'col': '3', 'subtract': ['1090_5', '1090_6', '1092_7']},
+            '2001': {'report': '4-tek', 'row': '1050', 'col': '3', 'subtract': ['1050_5', '1050_6']},
+            '2002': {'report': '4-tek', 'row': '1040', 'col': '3', 'subtract': ['1040_5', '1040_6']},
+            '2003': {'report': '4-tek', 'row': '1660', 'col': '3', 'subtract': ['1660_5', '1660_6']},
+            '2004': {'report': '4-tek', 'row': '1075', 'col': '3', 'subtract': ['1075_5', '1075_6']},
+            '2005': {'report': '4-tek', 'row': '1160', 'col': '3', 'subtract': ['1160_5', '1160_6']},
+            '2006': {'report': '4-tek', 'row': '1150', 'col': '3', 'subtract': ['1150_5', '1150_6', '1152_7']},
+            '2007': {'report': '4-tek', 'row': '1060', 'col': '3', 'subtract': ['1060_5', '1060_6']},
+            '2008': {'report': '4-tek', 'row': '1750', 'col': '3', 'subtract': ['1750_5', '1750_6']},
+            '2009': {'report': '4-tek', 'row': '1790', 'col': '3', 'subtract': ['1790_5', '1790_6']},
+            '2010': {'report': '4-tek', 'row': '1110', 'col': '3', 'subtract': ['1110_5', '1110_6']},
+            '2011': {'report': '4-tek', 'row': '1620+1630', 'col': '3', 'subtract': ['1620_5', '1620_6', '1630_5', '1630_6']},
+            '2012': {'report': '4-tek', 'row': '1640', 'col': '3', 'subtract': ['1640_5', '1640_6']},
+            '2013': {'report': '4-tek', 'row': '1794', 'col': '3', 'subtract': ['1794_5', '1794_6']},
+            '2014': {'report': '4-tek', 'row': '1745', 'col': '3', 'subtract': ['1745_5', '1745_6']},
+            '2015': {'report': '4-tek', 'row': '1690', 'col': '3', 'subtract': ['1690_5', '1690_6']},
+            '2016': {'report': '4-tek', 'row': '1680', 'col': '3', 'subtract': ['1680_5', '1680_6']},
+            '2017': {'report': '4-tek', 'row': '1742', 'col': '3', 'subtract': ['1742_5', '1742_6']},
+            '2018': {'report': '4-tek', 'row': '1744', 'col': '3', 'subtract': ['1744_5', '1744_6']},
+            '2019': {'report': '4-tek', 'row': '1785', 'col': '3', 'subtract': ['1785_5', '1785_6']},
+            '2020': {'report': '4-tek', 'row': '1730', 'col': '3', 'subtract': ['1730_5', '1730_6']},
+            '2021': {'report': '4-tek', 'row': '1740', 'col': '3', 'subtract': ['1740_5', '1740_6']},
+            '2022': {'report': '4-tek', 'row': '1780', 'col': '3', 'subtract': ['1780_5', '1780_6']},
+        }
+
+        result = {
+            'success': True,
+            'organization_id': organization_id,
+            'years': [],
+            'data': {},
+            'mapping': mapping
+        }
+
+        for report in stat_reports:
+            year = str(report.year)
+            
+            if year not in result['years']:
+                result['years'].append(year)
+            
+            if year not in result['data']:
+                result['data'][year] = {}
+            
+            report_type = report.type
+            
+            if report_type not in result['data'][year]:
+                result['data'][year][report_type] = []
+            
+            for val in report.values:
+                result['data'][year][report_type].append({
+                    'row': str(val.row_code),
+                    'column': str(val.column_code),
+                    'value': float(val.value) if val.value is not None else 0
+                })
+
+        result['years'].sort()
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error getting stat data: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
