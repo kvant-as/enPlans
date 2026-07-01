@@ -103,14 +103,10 @@
     <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="bottom_tickets_arrea">
-        <textarea
-          class="sent-textarea"
-          placeholder="{{ _('Введите сообщение...') }}"
-          rows="1"
-          maxlength="500"
-          name="note"
-          required
-        ></textarea>
+        <div class="textarea-wrapper">
+            <textarea class="sent-textarea" placeholder="Введите сообщение..." rows="1" maxlength="500" name="note" required=""></textarea>
+            <span class="char-counter">0/500</span>
+        </div>
         <button
           id="sent_mesPlanButton"
           type="submit"
@@ -322,5 +318,48 @@
   function toggleTicketInfo(ticketId) {
     window.ticketInfoInstance.show(ticketId, event.currentTarget);
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('.sent-textarea');
+    if (!textarea) return;
+    
+    const counter = document.querySelector('.char-counter');
+    if (!counter) return;
+    
+    const maxLength = parseInt(textarea.getAttribute('maxlength')) || 500;
+    
+    function updateCounter() {
+        const currentLength = textarea.value.length;
+        const remaining = maxLength - currentLength;
+        counter.textContent = currentLength + '/' + maxLength;
+        
+        counter.classList.remove('warning', 'danger', 'limit');
+        
+        if (currentLength === maxLength) {
+            counter.classList.add('limit');
+        } else if (currentLength > maxLength * 0.9) {
+            counter.classList.add('danger');
+        } else if (currentLength > maxLength * 0.7) {
+            counter.classList.add('warning');
+        }
+    }
+    
+    function autoResize() {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    }
+    
+    textarea.addEventListener('input', function() {
+        updateCounter();
+        autoResize();
+    });
+    
+    textarea.addEventListener('focus', function() {
+        autoResize();
+    });
+    
+    updateCounter();
+    autoResize();
+});
 </script>
 {% endblock %}

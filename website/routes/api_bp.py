@@ -521,8 +521,6 @@ def mark_notification_read(notification_id):
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Уведомление не найдено'}), 404
 
-
-
 @api_bp.route('/stat-data/<int:organization_id>')
 def get_stat_data(organization_id):
     try:

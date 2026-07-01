@@ -131,6 +131,7 @@ def handle_sent_without_check_status(plan, current_user):
                     luck=True,
                     is_owner=True,
                     plan_id=plan.id,
+                    begin_time=TimeByMinsk()
                 )
                 db.session.add(ticket)
                 
@@ -149,7 +150,8 @@ def handle_sent_without_check_status(plan, current_user):
                 note="Отмена изменений. Все шаги согласования сброшены, план возвращен в изначальный статус.",
                 luck=True,
                 is_owner=True,
-                plan_id=plan.id
+                plan_id=plan.id,
+                begin_time=TimeByMinsk()
             ) 
             db.session.add(ticket)
             
@@ -186,7 +188,7 @@ def handle_error_status(plan):
             luck=True,
             is_owner=True,
             plan_id=plan.id,
-            begin_time=TimeByMinsk()
+            begin_time=TimeByMinsk(),
         )
         db.session.add(ticket)
 
@@ -253,7 +255,8 @@ def handle_approved_status(plan, current_user):
                 note="План согласован и утвержден",
                 luck=True,
                 is_owner=True,
-                plan_id=plan.id
+                plan_id=plan.id,
+                begin_time=TimeByMinsk()
             )
             db.session.add(ticket)
             
@@ -270,7 +273,8 @@ def handle_approved_status(plan, current_user):
                 note="План был согласован и передан в следующую стадию проверки.",
                 luck=True,
                 is_owner=True,
-                plan_id=plan.id
+                plan_id=plan.id,
+                begin_time=TimeByMinsk()
             )
             db.session.add(ticket)
             

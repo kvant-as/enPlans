@@ -71,7 +71,8 @@ def create_ticket(token):
         luck=False,
         plan_id=current_plan.id,
         user_id=current_user.id,
-        is_owner=current_user.id == current_plan.user_id
+        is_owner=current_user.id == current_plan.user_id,
+        begin_time=TimeByMinsk()
     )
 
     db.session.add(new_ticket)

@@ -6005,17 +6005,51 @@ input[type="checkbox"]:focus {
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.bottom_tickets_arrea .sent-textarea{
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.bottom_tickets_arrea .sent-textarea {
   box-sizing: border-box;
-  width: 100%; 
+  width: 100%;
   border-radius: 100px;
   border: none;
   outline: none;
   resize: none;
   font-size: 14px;
   font-family: inherit;
-  padding: 15px 20px;
+  padding: 15px 70px 15px 20px;
+  min-height: 52px;
+  max-height: 200px;
   overflow-y: auto;
+  line-height: 1.5;
+  transition: height 0.2s ease;
+}
+
+.char-counter {
+  position: absolute;
+  right: 20px;
+  bottom: 50%;
+  transform: translateY(50%);
+  font-size: 12px;
+  color: #aaa;
+  pointer-events: none;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.char-counter.warning {
+  color: #f57c00;
+}
+
+.char-counter.danger {
+  color: #d32f2f;
+}
+
+.char-counter.limit {
+  color: #d32f2f;
+  font-weight: 600;
 }
 
 .bottom_tickets_arrea .sent-textarea::placeholder {
@@ -6450,6 +6484,51 @@ input[type="checkbox"]:focus {
 .menu-conteiner .element:active:not(.non) {
   transform: scale(0.96);
   background: #f1f3f7;
+}
+
+.toggle-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.toggle-status.status-off {
+  background: #e8e8e8;
+  color: #999;
+}
+
+.toggle-status.status-on {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.menu-conteiner .element.active .toggle-status.status-off {
+  display: none;
+}
+
+.menu-conteiner .element.active .toggle-status.status-on {
+  display: inline-block;
+}
+
+.menu-conteiner .element:not(.active) .toggle-status.status-off {
+  display: inline-block;
+}
+
+.menu-conteiner .element:not(.active) .toggle-status.status-on {
+  display: none;
+}
+
+.menu-conteiner .element.active {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.menu-conteiner .element.active .element-text {
+  color: #1976d2;
 }
 
 .menu-conteiner .element img {
@@ -8956,8 +9035,272 @@ label {
 }
 /* ===================== chat styles end ===================== */
 
+/* ===================== control plan styles ===================== */
 
+.stat-cell {
+    position: relative;
+    transition: background-color 0.3s ease;
+}
 
+.stat-cell.match .stat-indicator {
+    background-color: #4caf50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
+}
+
+.stat-cell.mismatch {
+    cursor: pointer;
+}
+
+.stat-cell.mismatch .stat-indicator {
+    background-color: #f44336;
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.4);
+    animation: stat-pulse 1.5s ease-in-out infinite;
+}
+
+.stat-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+@keyframes stat-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.stat-tooltip {
+    display: none;
+    position: fixed;
+    background: #ffffff;
+    padding: 24px 32px;
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    min-width: 200px;
+    text-align: center;
+    font-size: 14px;
+    color: #333;
+    pointer-events: none;
+    border: 1px solid #f0f0f0;
+    animation: tooltip-fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes tooltip-fade-in {
+    0% {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.stat-tooltip .tooltip-title {
+    font-weight: 600;
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.stat-tooltip .tooltip-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #d32f2f;
+    margin: 6px 0 8px 0;
+    line-height: 1.2;
+}
+
+.stat-tooltip .tooltip-divider {
+    width: 32px;
+    height: 2px;
+    background: #e8e8e8;
+    margin: 10px auto;
+    border-radius: 2px;
+}
+
+.stat-tooltip .tooltip-details {
+    font-size: 13px;
+    color: #999;
+    line-height: 1.6;
+}
+
+.stat-tooltip .tooltip-details span {
+    display: inline-block;
+    margin: 0 3px;
+}
+
+.stat-tooltip .tooltip-plan {
+    font-size: 12px;
+    color: #bbb;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed #eee;
+}
+
+.stat-tooltip .tooltip-plan strong {
+    color: #666;
+    font-weight: 600;
+}
+
+.stat-log-popup {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 500px;
+    max-height: 400px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 9998;
+    padding: 12px 16px;
+    border: 1px solid #e8e8e8;
+    display: none;
+    animation: stat-log-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stat-log-popup.visible {
+    display: block;
+}
+
+@keyframes stat-log-slide-in {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.stat-log-popup.hidden {
+    animation: stat-log-slide-out 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes stat-log-slide-out {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+}
+
+.stat-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.stat-log-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+}
+
+.stat-log-clear-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: 18px;
+    padding: 0 8px;
+    transition: color 0.2s ease;
+}
+
+.stat-log-clear-btn:hover {
+    color: #333;
+}
+
+.stat-log-textarea {
+    width: 100%;
+    height: 250px;
+    border: none;
+    resize: none;
+    font-family: monospace;
+    font-size: 12px;
+    color: #333;
+    background: #f9f9f9;
+    padding: 8px;
+    border-radius: 4px;
+    outline: none;
+    line-height: 1.6;
+}
+
+.stat-log-textarea:focus {
+    outline: none;
+}
+
+.stat-log-textarea::-webkit-scrollbar {
+    width: 6px;
+}
+
+.stat-log-textarea::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.stat-log-textarea::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.stat-log-textarea::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+.menu-conteiner .stat-log-menu .element.active {
+    background: #e3f2fd;
+    border-color: #1976d2;
+}
+
+.menu-conteiner .stat-log-menu .element.active .element-text {
+    color: #1976d2;
+}
+
+.menu-conteiner .stat-log-menu .element.active svg {
+    stroke: #1976d2;
+}
+
+@media (max-width: 768px) {
+    .stat-log-popup {
+        width: 320px;
+        right: 10px;
+        bottom: 70px;
+        max-height: 300px;
+    }
+    
+    .stat-log-textarea {
+        height: 180px;
+        font-size: 11px;
+    }
+}
+
+/* ===================== control plan styles end ===================== */
 
 @media (max-width: 320px) {
   .header-cont {

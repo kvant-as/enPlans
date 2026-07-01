@@ -159,6 +159,7 @@ def update_ChangeTimePlan(id):
             luck = True,
             is_owner = True,
             plan_id=plan.id,
+            begin_time=TimeByMinsk()
         )
 
         db.session.add(new_ticket)

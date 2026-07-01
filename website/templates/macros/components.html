@@ -1,74 +1,86 @@
-{% import 'macros/svg_icons.html' as icons %} {% macro plan_menu(plan,
-current_user, section, increase_events=None, econom_events=None,
-indicators=None) %} {% set section_config = { 'indicators': { 'title':
-'Показатель', 'add_button_id': 'AddIndicatorModalButton', 'has_data': True,
-'is_empty': False }, 'event-saving': { 'title': 'Мероприятие', 'add_button_id':
-'AddEventsModalBtn', 'has_data': plan.events|selectattr('direction.is_econom',
-'equalto', True)|list|length > 0, 'is_empty': not
-(plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0)
-}, 'event-increase': { 'title': 'Мероприятие', 'add_button_id':
-'AddEventsModalBtn', 'has_data': plan.events|selectattr('direction.is_increase',
-'equalto', True)|list|length > 0, 'is_empty': not
-(plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length >
-0) } } %} {% set config = section_config[section] %} {% set is_disabled =
-plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id ==
-current_user.id %}
+{% import 'macros/svg_icons.html' as icons %} 
+
+{% macro plan_menu(plan, current_user, section, increase_events=None, econom_events=None, indicators=None, show_control=False) %}
+
+{% set section_config = {
+    'indicators': {
+        'title':'Показатель',
+        'add_button_id': 'AddIndicatorModalButton',
+        'has_data': True,
+        'is_empty': False
+    },
+    'event-saving': {
+        'title': 'Мероприятие',
+        'add_button_id': 'AddEventsModalBtn',
+        'has_data': plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0,
+        'is_empty': not (plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0)
+    },
+    'event-increase': {
+        'title': 'Мероприятие',
+        'add_button_id': 'AddEventsModalBtn',
+        'has_data': plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0,
+        'is_empty': not (plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0)
+    }
+} %}
+
+{% set config = section_config[section] %}
+{% set is_disabled = plan.is_sent or plan.is_approved %}
+{% set is_owner = plan.user_id == current_user.id %}
 
 <div class="plan-menu">
-  <div class="menu-conteiner">
-    <div class="menu-conteiner-btns">
-      <div
-        class="element add {% if is_disabled or not is_owner %}non{% endif %} {% if config.is_empty and not is_disabled and is_owner %}highlight{% endif %}"
-        id="{{ config.add_button_id }}"
-      >
-        <img src="{{ url_for('static', filename='img/icon-add.svg') }}" />
-        <span class="element-text">Добавить</span>
-      </div>
-      {% if config.has_data %}
-      <div
-        class="element del {% if is_disabled or not is_owner %}non{% endif %}"
-        id="tableDeleteButton"
-      >
-        <img src="{{ url_for('static', filename='img/icon-del.svg') }}" />
-        <span class="element-text">Удалить</span>
-      </div>
-      <div
-        class="element edit {% if is_disabled or not is_owner %}non{% endif %}"
-        id="tableEditButton"
-      >
-        <img src="{{ url_for('static', filename='img/icon-edit.svg') }}" />
-        <span class="element-text">Редактировать</span>
-      </div>
-      {% endif %}
+    <div class="menu-conteiner">
+        <div class="menu-conteiner-btns">
+            <div class="element add {% if is_disabled or not is_owner %}non{% endif %} {% if config.is_empty and not is_disabled and is_owner %}highlight{% endif %}" id="{{ config.add_button_id }}">
+                <img src="{{ url_for('static', filename='img/icon-add.svg') }}" />
+                <span class="element-text">Добавить</span>
+            </div>
+            {% if config.has_data %}
+            <div class="element del {% if is_disabled or not is_owner %}non{% endif %}" id="tableDeleteButton">
+                <img src="{{ url_for('static', filename='img/icon-del.svg') }}" />
+                <span class="element-text">Удалить</span>
+            </div>
+            <div class="element edit {% if is_disabled or not is_owner %}non{% endif %}" id="tableEditButton">
+                <img src="{{ url_for('static', filename='img/icon-edit.svg') }}" />
+                <span class="element-text">Редактировать</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="menu-conteiner-title">
+            <span>{{ config.title }}</span>
+        </div>
     </div>
-    <div class="menu-conteiner-title">
-      <span>{{ config.title }}</span>
-    </div>
-  </div>
 
-  <div class="menu-conteiner">
-    <div class="menu-conteiner-btns">
-      {#
-      <div class="element btn-disabled" id="">
-        <img src="{{ url_for('static', filename='img/icon-excel.svg') }}" />
-        <span class="element-text">Экспорт</span>
-      </div>
-      #}
-      <a
-        href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link"
-        class="element"
-        id=""
-      >
-        <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
-        <span class="element-text">Квитанции</span>
-      </a>
+    <div class="menu-conteiner">
+        <div class="menu-conteiner-btns">
+            <a href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" class="element" id="">
+                <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
+                <span class="element-text">Квитанции</span>
+            </a>
+        </div>
+        <div class="menu-conteiner-title">
+            <span>План</span>
+        </div>
     </div>
-    <div class="menu-conteiner-title">
-      <span>План</span>
+
+    {% if show_control and (current_user.organization.is_region_management or current_user.is_admin) %}
+    <div class="menu-conteiner stat-log-menu">
+        <div class="menu-conteiner-btns">
+            <div class="element stat-log-toggle" id="statLogToggleBtn">
+                <span class="element-text">Логи контроля</span>
+                <span class="toggle-status status-off" id="statLogStatus">Выкл</span>
+            </div>
+            <div class="element stat-indicator-toggle-btn" id="statIndicatorToggleBtn">
+                <span class="element-text">Индикаторы</span>
+                <span class="toggle-status status-off" id="statIndicatorStatus">Выкл</span>
+            </div>
+        </div>
+        <div class="menu-conteiner-title">
+            <span>Контроль</span>
+        </div>
     </div>
-  </div>
+    {% endif %}
 </div>
-{% endmacro %} 
+{% endmacro %}
 
 {% macro status_plan(plan, current_user=None) %}
 <a class="status-plan 

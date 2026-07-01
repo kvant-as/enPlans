@@ -8,13 +8,16 @@
 </div>
 
 <div class="personal-plan-conteiner">
-  {{ component.plan_menu(plan, current_user, 'indicators') }}
+  {{ component.plan_menu(plan, current_user, 'indicators', show_control=True) }}
   <div class="table-container">
     <table class="main-table" id="indicatorsTable" 
        data-token="{{ plan.token }}"
        data-plan-id="{{ plan.id }}"
        data-plan-year="{{ plan.year }}"
-       data-organization-id="{{ plan.org_id }}">
+       data-organization-id="{{ plan.org_id }}"
+       data-is-region-management="{{ current_user.organization.is_region_management|lower }}"
+       data-is-admin="{{ current_user.is_admin|lower }}">
+
       <thead class="main-table-titels">
         <tr>
           <th rowspan="2" class="resizable">
