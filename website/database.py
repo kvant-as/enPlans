@@ -30,7 +30,7 @@ def read_dbf(file_path, columns):
 
 
 def import_stat_files(db):
-    from .models import StatPlan, Organization
+    from .models import StatPlan
     from website.utils.stat_import import save_parsed_report, find_organization_by_okpo, OrganizationNotFoundError
     from website.utils.stat_parse import parse_stat_file, extract_okpo_from_filename
     
@@ -593,12 +593,12 @@ def filling_database(db):
             True, 
             TimeByMinsk(), 
             1),
-            ('Новый дизайн интерфейса', 
-            'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 
-            'design.png', 
-            True, 
-            TimeByMinsk(), 
-            1),
+            # ('Новый дизайн интерфейса', 
+            # 'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 
+            # 'design.png', 
+            # True, 
+            # TimeByMinsk(), 
+            # 1),
         ]
 
         for title, content, image_url, is_published, published_at, views_count in news_data:

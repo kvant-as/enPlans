@@ -26,7 +26,7 @@
 
 .faq-modern {
   min-height: 100vh;
-  background: var(--faq-bg);
+  /* background: var(--faq-bg); */
 }
 
 .faq-content-wrapper {

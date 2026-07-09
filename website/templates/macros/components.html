@@ -179,7 +179,7 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
     </div>
     {% endif %} 
 
-    <div class="nav-item {% if active_tab == 'stats' %} active {% endif %}" onclick="window.location.href = '/stats'">
+    <div class="nav-item disabled-tab {% if active_tab == 'stats' %} active {% endif %}" onclick="window.location.href = '/stats'">
       <div class="nav-icon-wrapper">
         {{ icons.icon_stats() }} 
       </div>
@@ -691,7 +691,7 @@ compact_view=false) %}
 {% macro required_legend() %}
 <div class="required-legend">
   <span>{{ _('Поля, отмеченные ')|safe }}</span>
-  {{ icons.icon_star() }}
+  {#{{ icons.icon_star() }}#} <span class="star">*</span>
   <span>{{ _('обязательны для заполнения')|safe }}</span>
 </div>
 {% endmacro %} 
@@ -790,25 +790,28 @@ selected_status='all', selected_year='all') %}
   <div class="custom-dropdown" data-filter-type="region">
     <button type="button" class="dropdown-toggle">
       <span class="selected-option" id="selected-region">
-        {% if selected_region == 'all' %}{{ _('Регион') }} {% elif
-        selected_region == '1' %}Брестское областное {% elif selected_region ==
-        '2' %}Витебское областное {% elif selected_region == '3' %}Гомельское
-        областное {% elif selected_region == '4' %}Гродненское областное {% elif
-        selected_region == '6' %}Минское областное {% elif selected_region ==
-        '7' %}Могилевское областное {% elif selected_region == '5' %}г. Минск {%
-        else %}{{ _('Регион') }}{% endif %}
+        {% if selected_region == 'all' %}{{ _('Регион') }} 
+          {% elif selected_region == '1' %}Брест
+          {% elif selected_region == '2' %}Витебск
+          {% elif selected_region == '3' %}Гомель
+          {% elif selected_region == '4' %}Гродно
+          {% elif selected_region == '5' %}г. Минск 
+          {% elif selected_region == '6' %}Минск
+          {% elif selected_region =='7' %}Могилев
+          {%else %}{{ _('Регион') }}
+        {% endif %}
       </span>
       {{ icons.dropdown_arrow() }}
     </button>
     <div class="dropdown-menu-filter">
       <div class="dropdown-item" data-value="all">{{ _('Все регионы') }}</div>
-      <div class="dropdown-item" data-value="1">Брестское областное</div>
-      <div class="dropdown-item" data-value="2">Витебское областное</div>
-      <div class="dropdown-item" data-value="3">Гомельское областное</div>
-      <div class="dropdown-item" data-value="4">Гродненское областное</div>
-      <div class="dropdown-item" data-value="6">Минское областное</div>
-      <div class="dropdown-item" data-value="7">Могилевское областное</div>
+      <div class="dropdown-item" data-value="1">Брест</div>
+      <div class="dropdown-item" data-value="2">Витебск</div>
+      <div class="dropdown-item" data-value="3">Гомель</div>
+      <div class="dropdown-item" data-value="4">Гродно</div>
       <div class="dropdown-item" data-value="5">г. Минск</div>
+      <div class="dropdown-item" data-value="6">Минск</div>
+      <div class="dropdown-item" data-value="7">Могилев</div>
     </div>
   </div>
 </div>

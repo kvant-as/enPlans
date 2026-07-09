@@ -8,7 +8,7 @@ from flask_socketio import SocketIO
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
-from flask_babel import format_date
+from flask_babel import format_date, format_datetime
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 
@@ -167,4 +167,15 @@ def create_app():
             if not is_admin:
                 flash('Недостаточно прав для доступа к админ-панели', 'error')
                 return redirect(url_for('views.begin_page'))
+            
+    @app.template_filter('ru_date')
+    def ru_date(date):
+        months = {
+            1: 'Января', 2: 'Февраля', 3: 'Марта',
+            4: 'Апреля', 5: 'Мая', 6: 'Июня',
+            7: 'Июля', 8: 'Августа', 9: 'Сентября',
+            10: 'Октября', 11: 'Ноября', 12: 'Декабря'
+        }
+        return f"{date.day} {months[date.month]} {date.year}"
+            
     return app
