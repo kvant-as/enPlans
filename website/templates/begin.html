@@ -46,44 +46,33 @@
         <div class="stat-trend">+8 за месяц</div>
       </div>
     </div>
-  </section>
 
-{% if latest_news %}
-  <section class="latest-news">
-    <div class="news-card-large">
-      <div class="news-card-large-content">
-        <div class="news-badge">
-          Последняя новость
+    {% if latest_news %}
+      <div class="news-card-large">
+        <div class="news-card-large-content">
+          <h2>{{ latest_news.title }}</h2>
+          <p>{{ latest_news.content[:200] }}{% if latest_news.content|length > 200 %}...{% endif %}</p>
+          <div class="news-meta">
+            <span class="news-date">
+              {{ latest_news.published_at | ru_date }}
+            </span>
+            <a href="/news/{{ latest_news.id }}" class="read-more-link">
+              Читать подробнее
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
         </div>
-        <h2>{{ latest_news.title }}</h2>
-        <p>{{ latest_news.content[:200] }}{% if latest_news.content|length > 200 %}...{% endif %}</p>
-        <div class="news-meta">
-          <span class="news-date">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-            </svg>
-            {{ latest_news.published_at.strftime('%d %B %Y') }}
-          </span>
-          <a href="/news/{{ latest_news.id }}" class="read-more-link">
-            Читать подробнее
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 5l7 7-7 7"/>
-            </svg>
-          </a>
+        {% if latest_news.image_url %}
+        <div class="news-card-large-image">
+          <img src="{{ url_for('static', filename='img/news/' + latest_news.image_url) }}" alt="{{ latest_news.title }}">
         </div>
+        {% endif %}
       </div>
-      {% if latest_news.image_url %}
-      <div class="news-card-large-image">
-        <img src="{{ url_for('static', filename='img/news/' + latest_news.image_url) }}" alt="{{ latest_news.title }}">
-      </div>
-      {% endif %}
-    </div>
-  </section>
-  {% endif %}
+    {% endif %}
 
-
-  <section id="contacts-cont" class="modern-contact">
-    <div class="contact-glass">
+    <div id="contacts-cont" class="contact-glass">
       <h2 class="contact-title">Контакты</h2>
       <div class="contact-methods">
         <a href="mailto:energoeffect@gosstandart.gov.by" class="contact-method">
@@ -97,7 +86,7 @@
           <div class="contact-icon">{{ icons.icon_location() }}</div>
           <div class="contact-info-contacts">
             <div class="contact-type">Офис</div>
-            <div class="contact-value">пл. Свободы 17, Минск</div>
+            <div class="contact-value">пл. Свободы 17, г. Минск</div>
           </div>
         </div>
         <a href="tel:+375173385051" class="contact-method">
@@ -111,7 +100,7 @@
           <div class="contact-icon">{{ icons.icon_clock() }}</div>
           <div class="contact-info-contacts">
             <div class="contact-type">Часы работы</div>
-            <div class="contact-value">Пн-Пт: 9:00 - 16:00</div>
+            <div class="contact-value">Пн-Пт: 9:00 - 18:00</div>
           </div>
         </div>
       </div>
@@ -119,6 +108,6 @@
   </section>
 </main>
 
-{{ affects.bg_effect() }} 
+{{ affects.blurback() }} 
 
 {% endblock %}

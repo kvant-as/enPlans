@@ -26,7 +26,7 @@ EnPlans{% endblock %} {% block content %}
 
     <form class="auth-form" method="POST" action="{{ url_for('auth.code') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="activation_code_container">
+      <div class="activation-code-container">
         {% for i in range(5) %}
         <input
           type="text"
@@ -39,7 +39,7 @@ EnPlans{% endblock %} {% block content %}
       </div>
 
       <button type="submit" class="main-btn main-btn-primary">
-        {{ icons.icon_confirm() }}
+        {{ icons.icon_send() }}
         <span class="btn-text">{{ _('Проверить') }}</span>
       </button>
     </form>
@@ -73,6 +73,6 @@ EnPlans{% endblock %} {% block content %}
   </div>
 </div>
 
-{{ affects.bg_effect() }} 
+{{ affects.blurback() }} 
 
 {% endblock %}

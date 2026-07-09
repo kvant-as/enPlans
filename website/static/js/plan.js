@@ -2519,9 +2519,9 @@ class ExportPlansLoader {
         const page = reset ? 1 : this.currentPage + 1;
         const container = document.getElementById(this.containerId);
         
-        if (reset && container) {
-            container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
-        }
+        // if (reset && container) {
+        //     container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
+        // }
         
         const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
         if (!reset && loadMoreBtn) {
