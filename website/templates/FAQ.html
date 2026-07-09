@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block title %}{{ _('Ответы на часто задаваемые
-вопросы') }} - enPlans{% endblock %} {% block content %}
+вопросы') }} - EnPlans{% endblock %} {% block content %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/faq.css') }}" />
 
@@ -23,7 +23,7 @@
             <div class="questions-list-modern">
               <a href="#what-is" class="question-link-modern">
                 <span class="question-icon">📘</span>
-                Что такое enPlans?
+                Что такое EnPlans?
               </a>
               <a href="#getting-started" class="question-link-modern">
                 <span class="question-icon">🚀</span>
@@ -43,7 +43,7 @@
               </a>
               <a href="#audit-data" class="question-link-modern">
                 <span class="question-icon">📊</span>
-                Аудит планов
+                Согласование планов
               </a>
               <a href="#export" class="question-link-modern">
                 <span class="question-icon">📤</span>
@@ -59,14 +59,14 @@
             <div class="questions-list-modern">
               <a href="#ecp-certificate" class="question-link-modern">
                 <span class="question-icon">🔐</span>
-                Сертификат ЭЦП
+                Цифровая подпись
               </a>
             </div>
           </div>
 
           <div class="category-modern">
             <div class="category-header-modern">
-              <h3>Планы и аналитика</h3>
+              <h3>Планы энергосбережения</h3>
             </div>
             <div class="questions-list-modern">
               <a href="#plans" class="question-link-modern">
@@ -89,22 +89,12 @@
 
         <article class="answer-active-modern" id="what-is">
           <div class="answer-header-modern">
-            <h1 class="answer-title-modern">Что такое enPlans?</h1>
+            <h1 class="answer-title-modern">Что такое EnPlans?</h1>
           </div>
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                <strong>enPlans</strong> — это автоматизированный комплекс для
-                создания, анализа и представления для согласования планов
-                энергоэффективности организаций.
-              </p>
-            </div>
-            <div class="answer-highlight">
-              <div class="highlight-icon">💡</div>
-              <p>
-                <strong>Ключевая особенность:</strong> enPlans автоматизирует
-                95% рутинных расчетов, позволяя сосредоточиться на
-                стратегических решениях.
+                <strong>EnPlans</strong> — это автоматизированный комплекс для создания и представления для согласования планов мероприятий по энергосбережению организаций.
               </p>
             </div>
             <div class="features-grid">
@@ -125,13 +115,12 @@
               </div>
               <div class="feature-card">
                 <div class="feature-icon">📋</div>
-                <h4>Формирование планов</h4>
-                <p>Формирование планов энергосберегающих мероприятий</p>
+                <h4>Согласование планов</h4>
+                <p>Согласование планов мероприятий по энергосбережению</p>
               </div>
             </div>
+            <h3>Для кого предназначена система?</h3>
             <div class="answer-text">
-              <h3>Для кого предназначена система?</h3>
-
               <div class="features-grid">
                 <div class="feature-card">
                   <div class="feature-icon">🏢</div>
@@ -148,9 +137,10 @@
 
             <div class="answer-navigation">
               <div></div>
-              <a href="#getting-started" class="nav-btn next"
-                >Следующий вопрос <i> {{ icons.next_icon() }}</i></a
-              >
+              <a href="#getting-started" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
@@ -162,7 +152,7 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Начать работу с enPlans просто даже для новичков. Следуйте этому
+                Начать работу с EnPlans просто даже для новичков. Следуйте этому
                 пошаговому руководству, и вы сможете создать свой первый план за
                 15 минут.
               </p>
@@ -193,19 +183,11 @@
                 <div class="step-content">
                   <h4>Создание первого плана</h4>
                   <p>
-                    Перейдите на страницу "Создать план", укажите год и
+                    Перейдите на страницу <strong>Создать план</strong>, укажите год и
                     заполните необходимые данные.
                   </p>
                 </div>
               </div>
-            </div>
-            <div class="answer-highlight">
-              <div class="highlight-icon">🎯</div>
-              <p>
-                <strong>Совет для начала:</strong> Начните с просмотра демо,
-                чтобы ознакомиться с интерфейсом и основными функциями без
-                риска.
-              </p>
             </div>
             <div class="video-container">
               <video controls poster="/static/img/faq/video-poster.png">
@@ -213,8 +195,8 @@
                 Ваш браузер не поддерживает видео.
               </video>
               <div class="video-caption">
-                <h5>Быстрый старт с enPlans</h5>
-                <p>Посмотрите как начать работу с enPlans</p>
+                <h5>Быстрый старт с EnPlans</h5>
+                <p>Посмотрите как начать работу с EnPlans</p>
               </div>
             </div>
             <div class="answer-text">
@@ -245,11 +227,11 @@
               </div>
             </div>
             <div class="answer-navigation">
-              <a href="#what-is" class="nav-btn prev"
-                ><i>{{ icons.back_icon() }}</i> Предыдущий вопрос</a
-              >
-              <div></div>
-            </div>
+              <a href="#what-is" class="nav-btn next">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+            <div> 
           </div>
         </article>
 
@@ -262,7 +244,7 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Создание плана энергоэффективности в enPlans — это простой
+                Создание плана энергоэффективности в EnPlans — это простой
                 пошаговый процесс, который занимает всего несколько минут.
                 Система проведет вас через все необходимые этапы.
               </p>
@@ -346,17 +328,16 @@
               </video>
               <div class="video-caption">
                 <h5>Создание плана</h5>
-                <p>Посмотрите как создать и заполнить план в enPlans</p>
+                <p>Посмотрите как создать и заполнить план в EnPlans</p>
               </div>
             </div>
-            <div class="answer-highlight">
-              <div class="highlight-icon">💾</div>
-              <p>
-                <strong>Сохранение данных:</strong> Все изменения фиксируются в
-                системе автоматически после нажатия кнопок "Применить изменения"
-                или "Добавить".
-              </p>
+            <div class="feature-card warn">
+              <h4>Важно</h4>
+              <p>Все изменения фиксируются в
+                системе автоматически после нажатия кнопок <strong>Применить изменения</strong>
+                или <strong>Добавить</strong>.</p>
             </div>
+
             <div class="plan-after-creation">
               <h3>Что происходит после создания плана?</h3>
               <div class="plan-features">
@@ -377,9 +358,10 @@
               </div>
             </div>
             <div class="answer-navigation">
-              <a href="#audit-data" class="nav-btn next"
-                >Следующий вопрос <i> {{ icons.next_icon() }}</i></a
-              >
+              <a href="#audit-data" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
@@ -387,41 +369,23 @@
         <article class="answer-active-modern" id="audit-data">
           <div class="answer-header-modern">
             <h1 class="answer-title-modern">
-              Аудит планов энергоэффективности
+              Согласование планов энергоэффективности
             </h1>
           </div>
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Аудит планов в enPlans выполняется специально назначенными
-                аудиторами — региональными управлениями по надзору за
-                энергоэффективностью.
+                Согласование планов в EnPlans выполняется специально назначенными
+                аудиторами — ....
               </p>
-            </div>
-            <div class="answer-highlight">
-              <h3>Роль аудиторов в системе</h3>
-              <div class="white-cont-ul">
-                <p>Кто осуществляет проверку?</p>
-                <span
-                  >Официальные представители региональных управлений по надзору
-                  за энергоэффективностью Республики Беларусь</span
-                >
-              </div>
-              <div class="white-cont-ul">
-                <p>Их полномочия и доступы</p>
-                <span
-                  >Полный доступ ко всем таблицам, расчетам и исходным данным
-                  плана для проведения официальной проверки</span
-                >
-              </div>
             </div>
             <div class="steps-container">
               <div class="step-item">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <h4>Доступ к плану на проверку</h4>
+                  <h4>Получение плана</h4>
                   <p>
-                    Аудитор получает план в статусе "Не просмотренные" в своем
+                    Аудитор получает план в статусе "Не просмотренный" в своем
                     интерфейсе.
                   </p>
                 </div>
@@ -460,7 +424,7 @@
                         <div class="option-title">Одобрить</div>
                         <div class="option-description">
                           План соответствует требованиям, переводится в статус
-                          "Одобрен"
+                          "Согласован"
                         </div>
                       </div>
                     </div>
@@ -498,14 +462,14 @@
                     <h4 class="outcome-title">Если есть ошибки</h4>
                     <p class="outcome-description">
                       План возвращается респонденту с комментариями. Статус
-                      меняется на "Требует доработки"
+                      меняется на "Есть ошибки"
                     </p>
                   </div>
                   <div class="outcome-item outcome-approved">
                     <div class="outcome-icon"><span>✓</span></div>
-                    <h4 class="outcome-title">Если одобрено</h4>
+                    <h4 class="outcome-title">Если Согласовано</h4>
                     <p class="outcome-description">
-                      План переводится в статус "Одобрен" и считается официально
+                      План переводится в статус "Согласован" и считается официально
                       принятым
                     </p>
                   </div>
@@ -513,19 +477,22 @@
                     <div class="outcome-icon"><span>↩️</span></div>
                     <h4 class="outcome-title">Если отменено</h4>
                     <p class="outcome-description">
-                      Статус плана возвращается к изначальному для аудитора
+                      Статус плана возвращается к изначальному для аудитора статусу
                     </p>
                   </div>
                 </div>
               </div>
             </div>
             <div class="answer-navigation">
-              <a href="#create-plan" class="nav-btn prev"
-                ><i>{{ icons.back_icon() }}</i> Предыдущий вопрос</a
-              >
-              <a href="#export" class="nav-btn next"
-                >Следующий вопрос <i> {{ icons.next_icon() }}</i></a
-              >
+              <a href="#create-plan" class="nav-btn">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+
+              <a href="#export" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
@@ -537,7 +504,7 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                enPlans предоставляет несколько форматов экспорта для различных
+                EnPlans предоставляет несколько форматов экспорта для различных
                 целей: от аналитики в Excel до официальных проектов плана для
                 подачи.
               </p>
@@ -548,8 +515,7 @@
                 <div class="step-content">
                   <h4>Переход к экспорту</h4>
                   <p>
-                    В меню плана выберите "Экспорт" или перейдите в раздел
-                    "Экспорт данных" в главном меню.
+                    В меню плана выберите <strong>Экспорт</strong>.
                   </p>
                 </div>
               </div>
@@ -558,7 +524,7 @@
                 <div class="step-content">
                   <h4>Настройка параметров экспорта</h4>
                   <p>
-                    Выберите формат файла (.xlsx, .pdf, .xml), используйте
+                    Выберите формат файла <strong>xlsx</strong>, <strong>pdf</strong>, <strong>xml</strong>, используйте
                     фильтры по статусу и году, отметьте нужные планы.
                   </p>
                 </div>
@@ -568,7 +534,7 @@
                 <div class="step-content">
                   <h4>Формирование и скачивание</h4>
                   <p>
-                    Нажмите кнопку "Экспортировать". Система автоматически
+                    Нажмите кнопку <strong>Экспортировать</strong>. Система автоматически
                     сформирует файл и предложит его скачать.
                   </p>
                 </div>
@@ -577,7 +543,7 @@
             <div class="features-grid">
               <div class="feature-card">
                 <div class="feature-icon">📈</div>
-                <h4>Проект плана (.xlsx)</h4>
+                <h4>Формат (.xlsx)</h4>
                 <p>
                   Для анализа и работы с данными. Полные таблицы планов и
                   мероприятий.
@@ -585,7 +551,7 @@
               </div>
               <div class="feature-card">
                 <div class="feature-icon">📄</div>
-                <h4>Проект плана (.pdf)</h4>
+                <h4>Формат (.pdf)</h4>
                 <p>
                   Для официальной подачи. Форматированный проект плана, готов к
                   печати.
@@ -593,7 +559,7 @@
               </div>
               <div class="feature-card">
                 <div class="feature-icon">⚙️</div>
-                <h4>Проект плана (.xml)</h4>
+                <h4>Формат (.xml)</h4>
                 <p>
                   Для интеграции с программами. Структурированные данные,
                   машинно-читаемый формат.
@@ -618,47 +584,9 @@
             </h1>
           </div>
           <div class="answer-body-modern">
-            <div class="answer-text">
-              <p>
-                В enPlans каждый план проходит несколько этапов жизненного
-                цикла, отражаемых через систему статусов.
-              </p>
-            </div>
-            <div class="answer-highlight">
-              <div
-                style="
-                  display: flex;
-                  gap: 20px;
-                  align-items: center;
-                  flex-wrap: wrap;
-                "
-              >
-                <div
-                  style="
-                    width: 50px;
-                    height: 50px;
-                    background: var(--faq-primary);
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                  "
-                >
-                  <span style="color: white; font-size: 24px">🔄</span>
-                </div>
-                <div style="flex: 1">
-                  <h3 style="margin: 0 0 8px">Жизненный цикл плана</h3>
-                  <p style="margin: 0">
-                    Каждый план последовательно проходит все этапы: от создания
-                    до финального одобрения.
-                  </p>
-                </div>
-              </div>
-            </div>
             <div class="status-grid">
-              <h3>Все статусы планов</h3>
               <div class="status-grid-container">
-                <div class="status-card status-editing">
+                <div class="status-card status-draft">
                   <div class="status-header">
                     <div class="status-icon"><span>📝</span></div>
                     <span class="status-badge">В редакции</span>
@@ -679,10 +607,10 @@
                     заполненных данных.
                   </p>
                 </div>
-                <div class="status-card status-review">
+                <div class="status-card status-sent">
                   <div class="status-header">
                     <div class="status-icon"><span>📤</span></div>
-                    <span class="status-badge">На рассмотрении</span>
+                    <span class="status-badge">На согласовании</span>
                   </div>
                   <h4 class="status-title">На проверке у аудитора</h4>
                   <p class="status-description">
@@ -692,9 +620,9 @@
                 <div class="status-card status-error">
                   <div class="status-header">
                     <div class="status-icon"><span>⚠️</span></div>
-                    <span class="status-badge">С ошибками</span>
+                    <span class="status-badge">Есть ошибки</span>
                   </div>
-                  <h4 class="status-title">Требует доработки</h4>
+                  <h4 class="status-title">Есть ошибки</h4>
                   <p class="status-description">
                     Аудитор обнаружил ошибки. План возвращен для исправления.
                   </p>
@@ -702,70 +630,69 @@
                 <div class="status-card status-approved">
                   <div class="status-header">
                     <div class="status-icon"><span>✅</span></div>
-                    <span class="status-badge">Одобренные</span>
+                    <span class="status-badge">Утвержденный</span>
                   </div>
                   <h4 class="status-title">Проверка пройдена</h4>
                   <p class="status-description">
-                    План успешно прошел аудит и официально одобрен.
+                    План успешно прошел аудит и официально Утвержден.
                   </p>
                 </div>
               </div>
             </div>
-            <div class="plan-types">
-              <h3>Типы планов по объему потребления</h3>
-              <div class="plan-types-grid">
-                <div class="plan-type-item">
-                  <div class="plan-type-header">
-                    <div class="plan-type-dot small"></div>
-                    <h4 class="plan-type-title">Для малых организаций</h4>
-                  </div>
-                  <p class="plan-type-description">
-                    <strong>До 25 тыс. тонн условного топлива</strong
-                    ><br />Упрощенная форма отчетности.
-                  </p>
+            <h3>Типы планов по объему потребления</h3>
+   
+            <div class="plan-types-grid">
+              <div class="plan-type-item">
+                <div class="plan-type-header">
+                  <h4 class="plan-type-title">Для малых организаций</h4>
                 </div>
-                <div class="plan-type-item">
-                  <div class="plan-type-header">
-                    <div class="plan-type-dot large"></div>
-                    <h4 class="plan-type-title">Для крупных организаций</h4>
-                  </div>
-                  <p class="plan-type-description">
-                    <strong>Более 25 тыс. тонн условного топлива</strong
-                    ><br />Расширенная форма с детальными расчетами.
-                  </p>
-                </div>
+                <p class="plan-type-description">
+                  <strong>До 25 тыс. тонн условного топлива</strong
+                  ><br />Упрощенная форма отчетности.
+                </p>
               </div>
-            </div>
+              <div class="plan-type-item">
+                <div class="plan-type-header">
+                  <h4 class="plan-type-title">Для крупных организаций</h4>
+                </div>
+                <p class="plan-type-description">
+                  <strong>Более 25 тыс. тонн условного топлива</strong
+                  ><br />Расширенная форма с детальными расчетами.
+                </p>
+              </div>
+              </div>
+          
             <div class="tracking-status">
               <h3>Как отслеживать статусы планов?</h3>
-              <div class="tracking-methods">
-                <div class="tracking-method">
-                  <div class="tracking-icon"><span>📊</span></div>
-                  <div class="tracking-content">
-                    <h4>Панель управления</h4>
-                    <p>Обзор всех планов с цветовой индикацией статусов</p>
-                  </div>
+              <div class="features-grid">
+                <div class="feature-card">
+                  <div class="feature-icon">📊</div>
+                  <h4>Панель управления</h4>
+                  <p>
+                    Обзор всех планов с цветовой индикацией статусов
+                  </p>
                 </div>
-                <div class="tracking-method">
-                  <div class="tracking-icon"><span>🔔</span></div>
-                  <div class="tracking-content">
-                    <h4>Уведомления</h4>
-                    <p>Автоматические оповещения при изменении статуса плана</p>
-                  </div>
+                <div class="feature-card">
+                  <div class="feature-icon">🔔</div>
+                  <h4>Уведомления</h4>
+                  <p>
+                    Автоматические оповещения при изменении статуса плана
+                  </p>
                 </div>
-                <div class="tracking-method">
-                  <div class="tracking-icon"><span>📋</span></div>
-                  <div class="tracking-content">
-                    <h4>История изменений</h4>
-                    <p>Подробный лог всех переходов между статусами</p>
-                  </div>
+                <div class="feature-card">
+                  <div class="feature-icon">📋</div>
+                  <h4>История изменений</h4>
+                  <p>
+                    Подробный лог всех переходов между статусами
+                  </p>
                 </div>
               </div>
             </div>
             <div class="answer-navigation">
-              <a href="#export" class="nav-btn prev"
-                ><i>{{ icons.back_icon() }}</i> Предыдущий вопрос</a
-              >
+              <a href="#export" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
               <div></div>
             </div>
           </div>
@@ -774,24 +701,25 @@
         <article class="answer-active-modern" id="ecp-certificate">
           <div class="answer-header-modern">
             <h1 class="answer-title-modern">
-              Как пройти проверку сертификата ЭЦП
+              Как пройти проверку ЭЦП
             </h1>
           </div>
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Для отправки планов в системе enPlans требуется использование
+                Для отправки планов в системе EnPlans требуется использование
                 электронной цифровой подписи (ЭЦП).
               </p>
             </div>
-            <div class="answer-highlight">
-              <div class="highlight-icon">💡</div>
-              <p>
-                <strong>Важное требование:</strong> Для осуществления функции
-                "отправить план" должно быть установлено ПО "Менеджер
-                сертификатов" от Авест с настроенным сертификатом ЭЦП.
-              </p>
+
+            <div class="feature-card warn">
+              <h4>Важное требование</h4>
+              <p>Для осуществления функции
+                <strong>"отправить план"</strong> должно быть установлено ПО "Менеджер
+                сертификатов" от Авест с настроенным сертификатом ЭЦП.</p>
             </div>
+
+            <h3>Виды сертификатов</h3>
             <div class="features-grid">
               <div class="feature-card">
                 <div class="feature-icon">✅</div>
@@ -800,10 +728,12 @@
               </div>
               <div class="feature-card">
                 <div class="feature-icon">❌</div>
-                <h4>НЕдействительный сертификат</h4>
+                <h4>Недействительный сертификат</h4>
                 <p>Срок действия сертификата истек, требуется обновление</p>
               </div>
             </div>
+
+            <h3>Где находится файл сертифаката?</h3>
             <div class="steps-container">
               <div class="step-item">
                 <div class="step-number">1</div>
@@ -858,9 +788,10 @@
               </div>
             </div>
             <div class="answer-navigation">
-              <a href="#plans" class="nav-btn prev"
-                ><i>{{ icons.back_icon() }}</i> Предыдущий вопрос</a
-              >
+              <a href="#plans" class="nav-btn prev">
+                <i>{{ icons.back_icon() }}</i>
+                <span>Предыдущий вопрос</span>
+              </a>
               <div></div>
             </div>
           </div>

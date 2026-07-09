@@ -5,9 +5,8 @@ from sqlalchemy import func
 from website import db
 from website.email import send_email
 from website.models import User
-
 from flask import request, flash, redirect, session, url_for
-
+import logging
 import re
 
 from flask_login import (
@@ -16,6 +15,8 @@ from flask_login import (
 
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash
+
+logger = logging.getLogger(__name__)
 
 def gener_password():
     length=5
@@ -73,7 +74,7 @@ def activate_account():
         flash('Некорректный код активации.', 'error')
         return redirect(url_for('auth.code')) 
          
-def add_param(first_name, last_name, patronymic_name, phone, organization_id=None, ministry_id=None, region_id=None, post=None):
+def add_param(first_name, last_name, patronymic_name, phone, organization_id=None, user_type='respondent', post=None):
     required_fields = {
         'first_name': first_name,
         'last_name': last_name,
@@ -98,10 +99,8 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
             return None
     
     org_id = parse_id(organization_id)
-    min_id = parse_id(ministry_id)
-    reg_id = parse_id(region_id)
     
-    filled_ids = [id for id in [org_id, min_id, reg_id] if id is not None]
+    filled_ids = [id for id in [org_id] if id is not None]
     
     if len(filled_ids) > 1:
         flash('Можно выбрать только одну принадлежность: организацию, министерство или регион!', 'error')
@@ -119,11 +118,29 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     # else:
     #     normalized_phone = ''.join(filter(str.isdigit, normalized_phone))
     
-    existing_user = User.query.filter_by(phone=normalized_phone).first()
-    if existing_user and existing_user.id != current_user.id:
-        flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
-        return redirect(url_for('auth.param'))
+    # existing_user = User.query.filter_by(phone=normalized_phone).first()
+    # if existing_user and existing_user.id != current_user.id:
+    #     flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
+    #     return redirect(url_for('auth.param'))
     
+    if user_type == 'respondent':
+        current_user.is_auditor = False
+        current_user.is_approver = False
+        current_app.logger.info(f'User {current_user.id} set as respondent')
+    elif user_type == 'auditor':
+        current_user.is_auditor = True
+        current_user.is_approver = False
+        current_app.logger.info(f'User {current_user.id} set as auditor')
+    elif user_type == 'approver':
+        current_user.is_auditor = False
+        current_user.is_approver = True
+        current_app.logger.info(f'User {current_user.id} set as approver')
+    else:
+        current_app.logger.warning(f'Unknown user_type: {user_type} for user {current_user.id}')
+        flash(f'Такого типа пользователя не существует: {str(e)}', 'error')
+        return redirect(url_for('auth.param'))
+        
+        
     current_user.first_name = first_name.strip()
     current_user.last_name = last_name.strip()
     current_user.patronymic_name = patronymic_name.strip() if patronymic_name else None
@@ -131,22 +148,15 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     current_user.post = post.strip() if post else ''
     
     current_user.organization_id = org_id
-    current_user.ministry_id = min_id
-    current_user.region_id = reg_id
-
-    if min_id:
-        current_user.plan_type = 'ministry'
-    elif reg_id:
-        current_user.plan_type = 'region'
 
     try:
         db.session.commit()
         flash('Данные успешно сохранены!', 'success')
-        send_email(
-            recipient_email=current_user.email,
-            message=current_user.first_name or "Пользователь",
-            email_type="registration"
-        )
+        # send_email(
+        #     recipient_email=current_user.email,
+        #     message=current_user.first_name or "Пользователь",
+        #     email_type="registration"
+        # )
         return redirect(url_for('views.profile'))
     except Exception as e:
         db.session.rollback()

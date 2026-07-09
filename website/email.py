@@ -333,11 +333,11 @@ def get_email_queue():
 
 def send_email(message, recipient_email, email_type="default"):
     subject_map = {
-        "code": "Код подтверждения enPlans",
-        "plan": "Изменение статуса плана enPlans",
-        "reset_link": "Сброс пароля enPlans",
-        "registration": "Добро пожаловать в enPlans",
-        "notification": "Уведомление от enPlans",
+        "code": "Код подтверждения EnPlans",
+        "plan": "Изменение статуса плана EnPlans",
+        "reset_link": "Сброс пароля EnPlans",
+        "registration": "Добро пожаловать в EnPlans",
+        "notification": "Уведомление от EnPlans",
     }
 
     html = build_html(message, email_type)

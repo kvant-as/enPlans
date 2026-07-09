@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить свой профиль в enPlans?',
+            modalText: 'Вы действительно хотите удалить свой профиль в EnPlans?',
             textSecondId: 'modal-text-second',
             modalTextSecond: 'Это действие нельзя будет отменить.'
         });

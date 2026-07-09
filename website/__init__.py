@@ -8,7 +8,7 @@ from flask_socketio import SocketIO
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
-from flask_babel import format_date
+from flask_babel import format_date, format_datetime
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 
@@ -55,7 +55,6 @@ def create_app():
     app = Flask(__name__, static_url_path='/static')
     from itsdangerous import URLSafeSerializer, BadSignature
     s = URLSafeSerializer(os.getenv('SECRET_KEY'))
-
     app.config.update(
         SECRET_KEY=os.getenv('SECRET_KEY'),
         SQLALCHEMY_DATABASE_URI=f"postgresql://{os.getenv('postrgeuser')}:{os.getenv('postrgepass')}@localhost:5432/{os.getenv('postrgedbname')}",
@@ -74,6 +73,8 @@ def create_app():
 
         AI_API_URL=os.getenv('AI_API_URL'),
         AI_X_API_KEY=os.getenv('AI_X_API_KEY'),
+        
+        LOG_LEVEL='DEBUG'
     )
 
     db.init_app(app)
@@ -96,10 +97,18 @@ def create_app():
     from .routes.views import views
     from .routes.auth import auth
     from .routes.chat_bp import chat_bp
+    from .routes.plan_bp import plan_bp
+    from .routes.api_bp import api_bp
+    from .routes.audit_bp import audit_bp
+    from .routes.stat_bp import bp as stat_bp
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
     app.register_blueprint(chat_bp, url_prefix='/api/chat')
+    app.register_blueprint(plan_bp, url_prefix='/plans/plan')
+    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(audit_bp, url_prefix='/')
+    app.register_blueprint(stat_bp, url_prefix='/stat-reports')
     
     with app.app_context():
         from .routes.admin import AdminSetup
@@ -158,4 +167,15 @@ def create_app():
             if not is_admin:
                 flash('Недостаточно прав для доступа к админ-панели', 'error')
                 return redirect(url_for('views.begin_page'))
+            
+    @app.template_filter('ru_date')
+    def ru_date(date):
+        months = {
+            1: 'Января', 2: 'Февраля', 3: 'Марта',
+            4: 'Апреля', 5: 'Мая', 6: 'Июня',
+            7: 'Июля', 8: 'Августа', 9: 'Сентября',
+            10: 'Октября', 11: 'Ноября', 12: 'Декабря'
+        }
+        return f"{date.day} {months[date.month]} {date.year}"
+            
     return app

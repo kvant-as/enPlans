@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - enPlans{%endblock %} 
+{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - EnPlans{%endblock %} 
 {% block content %}
 
 <div class="pers-page">
@@ -11,12 +11,11 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        {#<a class="employee-position">{{ current_user.post}}</a>#}
-        <a class="employee-company">
-          {% if current_user.organization %} {{ current_user.organization.name
-          }} {% elif current_user.ministry %} {{ current_user.ministry.name }}
-          {% elif current_user.region %} {{ current_user.region.name }} {% endif
-          %}
+        {% if current_user.post %}  
+          <a class="employee-position">{{ current_user.post}}</a>
+        {% endif%}
+        <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.name}} {% endif%}">
+          {% if current_user.organization %} {{ current_user.organization.name}} {% endif%}
         </a>
       </div>
     </div>
@@ -41,7 +40,7 @@
                     {{ icons.icon_password() }}
                     <span>{{ _('Изменить пароль') }}</span>
                 </button>
-                <button class="nav-menu-item" disabled>
+                <button class="nav-menu-item" onclick="window.location.href='/change-email'">
                     {{ icons.icon_email() }}
                     <span>{{ _('Изменить эл. адрес') }}</span>
                 </button>
@@ -60,7 +59,6 @@
             value="{{current_user.last_name}}"
             placeholder="{{ _('Фамилия пользователя') }}"
             class="app-input"
-            readonly
           />
         </div>
       </div>
@@ -73,7 +71,6 @@
             value="{{current_user.first_name}}"
             class="app-input"
             placeholder="{{ _('Имя пользователя') }}"
-            readonly
           />
         </div>
       </div>
@@ -87,7 +84,6 @@
           value="{{current_user.patronymic_name}}"
           placeholder="{{ _('Отчество пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -100,7 +96,6 @@
           value="{{current_user.email}}"
           placeholder="{{ _('Email пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -113,7 +108,6 @@
           value="{{current_user.phone}}"
           placeholder="Номер телефона пользователя"
           class="app-input"
-          readonly
         />
       </div>
     </div>
@@ -126,15 +120,15 @@
           value="{{ current_user.post }}"
           placeholder="{{ _('Должность пользователя') }}"
           class="app-input"
-          readonly
         />
       </div>
     </div>
     <hr/>
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{% if current_user.is_auditor %}{{ _('Региональное управление') }}{% else
-      %}{{ _('Данные отчитывающегося субъекта') }}{% endif %}</a>
+        <a class="name" style="padding-bottom: 0">
+          {{ _('Предприятие') }}
+        </a>
       </div>
       <div class="header-content-right">
           <div class="dropdown-menu-container">
@@ -144,18 +138,18 @@
               
               <div class="dropdown-menu" id="menu-profile-org">
                   <div class="nav-menu-list">
-                    <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal or current_user.is_auditor %}disabled{% endif %}>
+                    <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal %}disabled{% endif %}>
                         {{ icons.icon_org() }}
                         <span>{{ _('Сменить организацию') }}</span>
                     </button>
                     <button class="nav-menu-item" disabled>
                         {{ icons.icon_edit() }}
                         <span>{{ _('Запросить изменение данных') }}</span>
-                    </button>
+                    </button>{#
                     <button class="nav-menu-item" disabled>
                         {{ icons.icon_add() }}
                         <span>{{ _('Выбрать ещё одну') }}</span>
-                    </button>
+                    </button>#}
                     
                   </div>
               </div>
@@ -165,30 +159,26 @@
     {% if current_user.organization %}
     <div class="profile-org">
       <div class="app-group">
-        <label>{{ _('Организация') }}</label>
+        <label>{{ _('Наименование') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_org() }}
           <input
             type="text"
             value="{{ current_user.organization.name }}"
-            readonly
             class="app-input"
           />
         </div>
       </div>
-      
-    {% if current_user.is_auditor %} {% else %}
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('ОКПО') }}</label>
           <div class="input-with-icon">
-            {{ icons.icon_org() }}
+            {{ icons.icon_okpo() }}
             <input
               type="text"
               id="name"
               placeholder="Номер окпо"
               value="{{ current_user.organization.okpo }}"
-              readonly
               class="app-input"
             />
           </div>
@@ -196,47 +186,26 @@
         <div class="app-group">
           <label>{{ _('УНП') }}</label>
           <div class="input-with-icon">
-            {{ icons.icon_org() }}
+            {{ icons.icon_ynp() }}
             <input
               type="text"
               value="{{ current_user.organization.ynp|default('Пусто', true) }}"
-              readonly
               class="app-input"
             />
           </div>
         </div>
       </div>
-    {% endif %}
-    {% elif current_user.ministry %}
-    <div class="profile-min">
       <div class="app-group">
-        <label>{{ _('Министерство *') }}</label>
+        <label>{{ _('Регион') }}</label>
         <div class="input-with-icon">
-          {{ icons.icon_org() }}
+          {{ icons.icon_region() }}
           <input
             type="text"
-            value="{{ current_user.ministry.name }}"
-            readonly
+            value="{{ current_user.organization.region.name|default('Пусто', true) }}"
             class="app-input"
           />
         </div>
       </div>
-    </div>
-    {% elif current_user.region %}
-    <div class="profile-reg">
-      <div class="app-group">
-        <label>{{ _('Регион *') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_org() }}
-          <input
-            type="text"
-            value="{{ current_user.region.name }}"
-            readonly
-            class="app-input"
-          />
-        </div>
-      </div>
-    </div>
     {%endif%}
     <hr>
     <div class="header-content">
@@ -259,7 +228,6 @@
                     <div class="app-group">
                         <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
                         <div class="input-with-icon">
-                            {{ icons.icon_email() }}
                             <input type="text" id="confirm-email-field" name="confirm_email" class="app-input" placeholder="{{ current_user.email }}">
                         </div>
                     </div>
@@ -299,7 +267,17 @@
           </div>
           <div class="date-content">
             <div class="date-info">
-              <span class="date-label">{{ _('Id пользователя') }}: demo-{{ current_user.id }}</span>
+              {% if current_user.is_admin %}
+                <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_auditor %}
+                <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_approver %}
+                <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
+              {% elif current_user.is_reader %}
+                <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
+              {% else %}
+                <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+              {% endif %}
             </div>
           </div>
         </div>

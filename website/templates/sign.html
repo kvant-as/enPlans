@@ -1,15 +1,14 @@
-{% extends "base.html" %} {% block title %}{{ _('Регистрация') }} - enPlans{%
+{% extends "base.html" %} {% block title %}{{ _('Регистрация') }} - EnPlans{%
 endblock %} {% block content %}
 
 <div class="auth-page">
   <div class="auth-text-upper">
     <div class="auth-title" onclick="window.location.href = '/login'">
       <img src="/static/img/logo.svg" alt="" />
-      <a>enPlans</a>
+      <a>EnPlans</a>
     </div>
     <p class="auth-subtitle">
-      {{ _('Система представления планов энергосберегающих <br />
-      мероприятий') }}
+      {{ _('Формирование планов мероприятий <br/> по энергосбережению') }}
     </p>
   </div>
   <div class="auth-container">
@@ -91,6 +90,6 @@ endblock %} {% block content %}
   </div>
 </div>
 
-{{ affects.bg_effect() }} 
+{{ affects.blurback() }}
 
 {% endblock %}

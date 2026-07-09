@@ -1,15 +1,14 @@
-{% extends "base.html" %} {% block title %}enPlans | Формирование планов
-энергосберегающих мероприятий{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block content %}
 
 <main class="modern-container">
   <section class="modern-hero">
     <div class="hero-glass">
       <h1 class="hero-gradient-text">
-        Формирование планов<br />энергосберегающих мероприятий
+        Формирование планов<br />мероприятий по энергосбережению
       </h1>
       <p class="hero-subtext">
-        Автоматизированный комплекс для создания, анализа и представления для
-        согласования планов энергоэффективности организаций
+        Автоматизированный комплекс для создания и представления для согласования планов мероприятий по энергосбережению организаций
       </p>
       <div class="hero-actions">
         {% if current_user.is_authenticated %}
@@ -43,14 +42,37 @@
       </div>
       <div class="stat-card">
         <div class="stat-numbers" data-count="{{user_data}}">0</div>
-        <div class="stat-label">Активных респондентов</div>
+        <div class="stat-label">Активных пользователей</div>
         <div class="stat-trend">+8 за месяц</div>
       </div>
     </div>
-  </section>
 
-  <section id="contacts-cont" class="modern-contact">
-    <div class="contact-glass">
+    {% if latest_news %}
+      <div class="news-card-large">
+        <div class="news-card-large-content">
+          <h2>{{ latest_news.title }}</h2>
+          <p>{{ latest_news.content[:200] }}{% if latest_news.content|length > 200 %}...{% endif %}</p>
+          <div class="news-meta">
+            <span class="news-date">
+              {{ latest_news.published_at | ru_date }}
+            </span>
+            <a href="/news/{{ latest_news.id }}" class="read-more-link">
+              Читать подробнее
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+        {% if latest_news.image_url %}
+        <div class="news-card-large-image">
+          <img src="{{ url_for('static', filename='img/news/' + latest_news.image_url) }}" alt="{{ latest_news.title }}">
+        </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div id="contacts-cont" class="contact-glass">
       <h2 class="contact-title">Контакты</h2>
       <div class="contact-methods">
         <a href="mailto:energoeffect@gosstandart.gov.by" class="contact-method">
@@ -64,7 +86,7 @@
           <div class="contact-icon">{{ icons.icon_location() }}</div>
           <div class="contact-info-contacts">
             <div class="contact-type">Офис</div>
-            <div class="contact-value">пл. Свободы 17, Минск</div>
+            <div class="contact-value">пл. Свободы 17, г. Минск</div>
           </div>
         </div>
         <a href="tel:+375173385051" class="contact-method">
@@ -74,18 +96,11 @@
             <div class="contact-value">+375 17 338-50-51</div>
           </div>
         </a>
-        <a href="tel:+375172315563" class="contact-method">
-          <div class="contact-icon">{{ icons.icon_contacts() }}</div>
-          <div class="contact-info-contacts">
-            <div class="contact-type">Телефон техподдержки</div>
-            <div class="contact-value">+375 17 365-04-33</div>
-          </div>
-        </a>
         <div class="contact-method">
           <div class="contact-icon">{{ icons.icon_clock() }}</div>
           <div class="contact-info-contacts">
             <div class="contact-type">Часы работы</div>
-            <div class="contact-value">Пн-Пт: 9:00 - 16:00</div>
+            <div class="contact-value">Пн-Пт: 9:00 - 18:00</div>
           </div>
         </div>
       </div>
@@ -93,6 +108,6 @@
   </section>
 </main>
 
-{{ affects.bg_effect() }} 
+{{ affects.blurback() }} 
 
 {% endblock %}

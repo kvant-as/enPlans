@@ -2,7 +2,9 @@ from flask import current_app, request, jsonify, Blueprint
 from flask_login import current_user, login_required
 import requests
 
-from ..models import TimeByMinsk, Chat, ChatMessage
+from ..models import Chat, ChatMessage
+
+from ..time import TimeByMinsk
 from .. import db
 
 chat_bp = Blueprint('chat_bp', __name__, url_prefix='/api/chat')

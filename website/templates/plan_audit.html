@@ -1,6 +1,22 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Общее') }} - enPlans{% endblock%}
+{% block title %}{{ _('Проверка плана') }} - EnPlans{% endblock%}
 {% block content %}
+
+{% set current_path = plan.approval_paths|selectattr('is_viewed', 'equalto', False)|sort(attribute='step_order')|first %}
+{% set is_current_user_step = current_path and current_path.organization_id == current_user.organization_id %}
+
+{% set user_has_viewed_current = plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', True)|list|length > 0 %}
+
+{% set next_path = none %}
+{% if current_path %}
+    {% set next_path = plan.approval_paths|selectattr('step_order', 'equalto', current_path.step_order + 1)|first %}
+{% endif %}
+
+{% set can_audit = is_current_user_step and (not plan.is_approved) and (not plan.is_error) %}
+
+{% set can_cancel = (user_has_viewed_current and (not next_path or not next_path.is_viewed)) or plan.is_error or plan.is_approved %}
+
+{% set can_change_status = can_audit and plan.afch %} 
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
@@ -8,7 +24,7 @@
   <div class="personal-acc-conteiner">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('Проверка плана энергосбережения') }}</a>
+        <a class="name" style="padding-bottom: 0">{{ _('Проверка плана мероприятий по энергосбережению') }}</a>
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
@@ -19,69 +35,59 @@
             
             <div class="dropdown-menu" id="planActionsMenu">
                 <div class="nav-menu-list">
-                  <form id="cancel_auditPlanForm" action="{{ url_for('views.api_change_plan_status', token=plan.token) }}" method="POST">
+                  <form id="cancel_auditPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <input type="hidden" name="status" value="sent_without_check" />
-                    <button id="cancel_auditPlanButton" class="nav-menu-item" {% if plan.is_sent or plan.is_approved %}{%else%}disabled{% endif %}>
+                    <button id="cancel_auditPlanButton" class="nav-menu-item {% if not can_cancel %}disabled{% endif %}" {% if not can_cancel %}disabled{% endif %}>
                         {{ icons.icon_cancel() }}
                         <span>{{ _('Отменить изменения') }}</span>
                     </button>
                   </form>
-                  <button type="submit" class="nav-menu-item delete-item" disabled>
-                      {{ icons.icon_delete() }}
-                      <span>{{ _('Удалить') }}</span>
-                  </button>
                 </div>
             </div>
         </div>
       </div>
     </div>
-    {#
-    <div class="answer-highlight">
-      <div class="highlight-icon">💡</div>
-      <p>
-        Если в плане <strong>существуют</strong> ошибки,
-        <strong>укажите</strong> их, в противном случае просто
-        <strong>одобрите</strong> план.
-      </p>
-    </div>#}
-    
-    {% set is_disabled = plan.is_sent or plan.is_approved or
-    current_user.is_auditor %}
+
     <div class = "plan-menu">
       <div class="menu-conteiner">
         <div class="menu-conteiner-btns">
-          <form
-            id="to_deletePlanForm"
-            action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
+          <form id="to_deletePlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <input type="hidden" name="status" value="error" />
             <button
               id="to_deletePlanButton"
               type="submit"
-              class="element {% if plan.is_approved or plan.is_error or plan.afch == false %}non{% else %}{% endif %}"
-            >
-              <img src="/static/img/Error.svg" alt="" class="btn-icon" />
+              class="element {% if not can_change_status %}non{% endif %}"
+              {% if not can_change_status %}disabled{% endif %}>
+              <img src="/static/img/Error.svg" class="btn-icon" />
               <span class="btn-text">{{ _('Есть ошибки') }}</span>
             </button>
           </form>      
           <form
-            id="confirmPlanForm"
-            action="{{ url_for('views.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="approved" />
-            <button
-              id="confirmPlanButton"
-              type="submit"
-              class="element {% if plan.is_approved or plan.is_error %}non{% endif %}"
-            >
-              <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
-              <span class="btn-text">{{ _('Одобрить') }}</span>
-            </button>
+              id="confirmPlanForm"
+              action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
+              method="POST">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input type="hidden" name="status" value="approved" />
+              <button
+                  id="confirmPlanButton"
+                  type="submit"
+                  class="element {% if not can_change_status %}non{% endif %}"
+                  {% if not can_change_status %}disabled{% endif %}>
+                  <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
+                  <span class="btn-text">
+                      {% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
+                      {% set total_steps = approval_paths|length %}
+                      {% set current_user_path = approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|first %}
+                      {% set is_last = current_user_path and current_user_path.step_order == total_steps %}
+                      {% if is_last %}
+                          {{ _('Одобрить') }}
+                      {% else %}
+                          {{ _('Согласовать') }}
+                      {% endif %}
+                  </span>
+              </button>
           </form>
 
         </div>
@@ -93,20 +99,14 @@
 
     {{ component.tickets_container(plan, current_user) }}
 
-    {% if plan.is_approved or plan.is_error %}
-    <hr />
-    {% else %}
-    <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('views.create_ticket', token=plan.token) }}" method="POST">
+    {% if can_audit %}
+    <form id="sent_mesPlanForm" class="main-form" action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="bottom_tickets_arrea">
-        <textarea
-          class="sent-textarea"
-          placeholder="{{ _('Введите сообщение...') }}"
-          rows="1"
-          maxlength="500"
-          name="note"
-          required
-        ></textarea>
+        <div class="textarea-wrapper">
+            <textarea class="sent-textarea" placeholder="Введите сообщение..." rows="1" maxlength="500" name="note" required=""></textarea>
+            <span class="char-counter">0/500</span>
+        </div>
         <button
           id="sent_mesPlanButton"
           type="submit"
@@ -117,8 +117,157 @@
         </button>
       </div>
     </form>
-    <hr>
     {% endif %}
+
+    {% if plan.is_sent or plan.is_approved%}
+      {{ component.plan_agree_slider(plan, current_user) }}
+    {%endif%}
+    <hr>
+    <h1 class="name">{{ _('Предприятие') }}</h1>
+
+    {% set org = none %}
+  
+    {% if plan.organization %}
+      {% set org = plan.organization.name %}
+    {% endif %}
+    
+    {% if org %}
+      <div class="app-group">
+        <label>{{ _('Наименование') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_org() }}
+          <input type="text" value="{{ org }}" class="app-input" />
+        </div>
+      </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('ОКПО') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_okpo() }}
+            <input
+              type="text"
+              value="{{ plan.organization.okpo if plan.organization else '' }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('УНП') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_ynp() }}
+            <input
+              type="text"
+              value="{{ plan.organization.ynp if plan.organization else '' }}"
+              placeholder="Унп организации"
+              class="app-input"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Регион') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_region() }}
+            <input
+              type="text"
+              value="{{ plan.organization.region.name if plan.organization and plan.organization.region else '' }}"
+              placeholder="Регион"
+              class="app-input"
+            />
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    
+    <hr>
+    <h1 class="name">{{ _('Респондент') }}</h1>
+
+    <div class="row-app-group">
+      <div class="app-group">
+        <label>{{ _('Фамилия') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.last_name if plan.user else '' }}"
+            placeholder="{{ _('Фамилия') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Имя') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.first_name if plan.user else '' }}"
+            placeholder="{{ _('Имя') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+    </div>
+      <div class="app-group">
+        <label>{{ _('Отчество') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.patronymic_name if plan.user else '' }}"
+            placeholder="{{ _('Отчество') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+    <div class="row-app-group">
+      <div class="app-group">
+        <label>{{ _('Email') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_email() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.email if plan.user else '' }}"
+            placeholder="{{ _('demo@example.com') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Телефон') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_contacts() }}
+        <input
+          type="text"
+          maxlength="15"
+          value="{{ plan.user.phone if plan.user else '' }}"
+          placeholder="+375.."
+          class="app-input"
+        />
+      </div>
+    </div>
+    <div class="app-group">
+      <label>{{ _('Должность') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_profile() }}
+        <input
+          type="text"
+          id="secondname"
+          maxlength="15"
+          value="{{ plan.user.post if plan.user else '' }}"
+          placeholder="{{ _('Должность') }}"
+          class="app-input"
+        />
+      </div>
+    </div>
+
+    <hr>
 
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
@@ -154,26 +303,6 @@
                 <span class="date-empty">{{ _('Не отправлен') }}</span>
               {% endif %}
             </div>
-            <div class="date-status">
-              {{ component.status_plan(plan, current_user) }}
-            </div>
-          </div>
-        </div>
-
-        <div class="date-item" data-type="sent">
-          <div class="date-icon">
-            {{ icons.icon_eye() }}
-          </div>
-          <div class="date-content">
-            <div class="date-info">
-              <span class="date-label">{{ _('Просмотрен') }}</span>
-              {% if plan.audit_time %}
-                <span class="date-day">{{ plan.audit_time.strftime('%d.%m.%Y') }}</span>
-                <span class="date-time">{{ plan.audit_time.strftime('%H:%M') }}</span>
-              {% else %}
-                <span class="date-empty">{{ _('Не просмотрен') }}</span>
-              {% endif %}
-            </div>
           </div>
         </div>
       </div>
@@ -189,5 +318,48 @@
   function toggleTicketInfo(ticketId) {
     window.ticketInfoInstance.show(ticketId, event.currentTarget);
   }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.querySelector('.sent-textarea');
+    if (!textarea) return;
+    
+    const counter = document.querySelector('.char-counter');
+    if (!counter) return;
+    
+    const maxLength = parseInt(textarea.getAttribute('maxlength')) || 500;
+    
+    function updateCounter() {
+        const currentLength = textarea.value.length;
+        const remaining = maxLength - currentLength;
+        counter.textContent = currentLength + '/' + maxLength;
+        
+        counter.classList.remove('warning', 'danger', 'limit');
+        
+        if (currentLength === maxLength) {
+            counter.classList.add('limit');
+        } else if (currentLength > maxLength * 0.9) {
+            counter.classList.add('danger');
+        } else if (currentLength > maxLength * 0.7) {
+            counter.classList.add('warning');
+        }
+    }
+    
+    function autoResize() {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    }
+    
+    textarea.addEventListener('input', function() {
+        updateCounter();
+        autoResize();
+    });
+    
+    textarea.addEventListener('focus', function() {
+        autoResize();
+    });
+    
+    updateCounter();
+    autoResize();
+});
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import (
-    Blueprint, current_app, render_template, request, flash, redirect, session,
+    Blueprint, current_app, jsonify, render_template, request, flash, redirect, session,
     url_for
 )
 
@@ -38,9 +38,7 @@ def user_without_param():
             )
             
             has_entity = (
-                current_user.organization_id or
-                current_user.ministry_id or
-                current_user.region_id
+                current_user.organization_id
             )
             
             if has_required_fields and has_entity:
@@ -69,19 +67,17 @@ def user_with_all_params():
                 return redirect(url_for('auth.param'))
             
             entity_fields = [
-                current_user.organization_id,
-                current_user.ministry_id,
-                current_user.region_id
+                current_user.organization_id
             ]
             
             filled_entities = [field for field in entity_fields if field is not None]
             
             if len(filled_entities) == 0:
-                flash("Необходимо выбрать принадлежность: организацию, министерство или регион", "error")
+                flash("Необходимо выбрать предприятие", "error")
                 return redirect(url_for('auth.param'))
             
             if len(filled_entities) > 1:
-                flash("Можно выбрать только одну принадлежность: организацию, министерство или регион", "error")
+                flash("Можно выбрать только одну принадлежность", "error")
                 return redirect(url_for('auth.param'))
             
             return f(*args, **kwargs)
@@ -161,7 +157,7 @@ def resend_code():
 
 @auth.route('/param', methods=['GET', 'POST'])
 @login_required
-@user_without_param()
+# @user_without_param()
 def param():
     if request.method == 'GET':
         return render_template('param.html')
@@ -172,10 +168,9 @@ def param():
         phone = request.form.get('phone')
         post = request.form.get('post')
         organization_id = request.form.get('organization_id')
-        ministry_id = request.form.get('ministry_id')
-        region_id = request.form.get('region_id')
+        user_type = request.form.get('entity_type')
         from ..user import add_param
-        return add_param(first_name, last_name, patronymic_name, phone, organization_id, ministry_id, region_id, post)
+        return add_param(first_name, last_name, patronymic_name, phone, organization_id, user_type, post)
     
 @auth.route('/edit-param', methods=['POST'])
 def edit_param():
@@ -223,7 +218,7 @@ def delete_profile():
     ).first()
     
     if has_active_plans:
-        flash('Невозможно удалить аккаунт. У вас есть отправленные, одобренные планы или планы с ошибками.', 'error')
+        flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками.', 'error')
         return redirect(url_for('views.profile'))
     
     try:
@@ -321,3 +316,148 @@ def reset_password(token):
             db.session.rollback()
             flash('Произошла ошибка при изменении пароля. Попробуйте еще раз', 'error')
             return redirect(url_for('auth.reset_password', token=token))
+        
+@auth.route('/change-email', methods=['GET', 'POST'])
+@login_required
+def change_email():
+    if request.method == 'GET':
+        return render_template('edit_email.html')
+    
+    elif request.method == 'POST':
+        code = request.form.get('code')
+        
+        if code:
+            new_email = session.get('new_email')
+            stored_code = session.get('email_confirmation_code')
+            expires = session.get('email_confirmation_expires')
+            
+            if not new_email or not stored_code:
+                flash('Сессия истекла. Попробуйте снова', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            if expires:
+                expires_dt = datetime.fromisoformat(expires)
+                if datetime.utcnow() > expires_dt:
+                    session.pop('new_email', None)
+                    session.pop('email_confirmation_code', None)
+                    session.pop('email_confirmation_expires', None)
+                    flash('Код подтверждения истек. Запросите новый', 'error')
+                    return redirect(url_for('auth.change_email'))
+            
+            if code != stored_code:
+                flash('Неверный код подтверждения', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            try:
+                old_email = current_user.email
+                current_user.email = new_email
+                
+                session.pop('new_email', None)
+                session.pop('email_confirmation_code', None)
+                session.pop('email_confirmation_expires', None)
+                
+                db.session.commit()
+                
+                try:
+                    send_email(
+                        recipient_email=old_email,
+                        message=f'Ваш email был изменен на {new_email}',
+                        email_type="notification"
+                    )
+                except Exception as e:
+                    current_app.logger.warning(f"Could not send notification to old email: {str(e)}")
+                
+                flash('Email успешно изменен', 'success')
+                return redirect(url_for('views.profile'))
+                
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error changing email: {str(e)}")
+                flash('Произошла ошибка при изменении email', 'error')
+                return redirect(url_for('auth.change_email'))
+        
+        else:
+            new_email = request.form.get('new_email')
+            password = request.form.get('password')
+            
+            if not new_email or not password:
+                flash('Заполните все поля', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            if not check_password_hash(current_user.password, password):
+                flash('Неверный пароль', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            existing_user = User.query.filter(func.lower(User.email) == func.lower(new_email)).first()
+            if existing_user and existing_user.id != current_user.id:
+                flash('Пользователь с таким email уже существует', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            if new_email.lower() == current_user.email.lower():
+                flash('Новый email совпадает с текущим', 'error')
+                return redirect(url_for('auth.change_email'))
+            
+            try:
+                import secrets
+                import string
+                confirmation_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+                
+                session['new_email'] = new_email
+                session['email_confirmation_code'] = confirmation_code
+                session['email_confirmation_expires'] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+                
+                send_email(
+                    recipient_email=new_email,
+                    message=f'{confirmation_code}',
+                    email_type="code"
+                )
+                
+                flash('Код подтверждения отправлен на новый email', 'success')
+                return redirect(url_for('auth.change_email'))
+                
+            except Exception as e:
+                current_app.logger.error(f"Error sending confirmation email: {str(e)}")
+                flash('Ошибка при отправке кода подтверждения', 'error')
+                return redirect(url_for('auth.change_email'))
+
+
+@auth.route('/resend-email-code', methods=['POST'])
+@login_required
+def resend_email_code():
+    try:
+        new_email = session.get('new_email')
+        if not new_email:
+            flash('Сессия истекла. Попробуйте снова', 'error')
+            return redirect(url_for('auth.change_email'))
+        
+        import secrets
+        import string
+        confirmation_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+        session['email_confirmation_code'] = confirmation_code
+        session['email_confirmation_expires'] = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+        
+        send_email(
+            recipient_email=new_email,
+            message=f'{confirmation_code}',
+            email_type="code"
+        )
+        
+        flash('Новый код подтверждения отправлен на почту', 'success')
+        return redirect(url_for('auth.change_email'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Error resending confirmation code: {str(e)}")
+        flash('Ошибка при отправке кода', 'error')
+        return redirect(url_for('auth.change_email'))
+    
+@auth.route('/clear-email-session', methods=['POST'])
+@login_required
+def clear_email_session():
+    try:
+        session.pop('new_email', None)
+        session.pop('email_confirmation_code', None)
+        session.pop('email_confirmation_expires', None)
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.error(f"Error clearing email session: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -1,15 +1,14 @@
 {% extends "base.html" %} {% block title %}{{ _('Подтверждение email') }} -
-enPlans{% endblock %} {% block content %}
+EnPlans{% endblock %} {% block content %}
 
 <div class="auth-page">
   <div class="auth-text-upper">
     <div class="auth-title" onclick="window.location.href = '/login'">
       <img src="/static/img/logo.svg" alt="" />
-      <a>enPlans</a>
+      <a>EnPlans</a>
     </div>
     <p class="auth-subtitle">
-      {{ _('Система представления планов энергосберегающих <br />
-      мероприятий') }}
+      {{ _('Формирование планов мероприятий <br/> по энергосбережению') }}
     </p>
   </div>
   <div class="auth-container">
@@ -27,7 +26,7 @@ enPlans{% endblock %} {% block content %}
 
     <form class="auth-form" method="POST" action="{{ url_for('auth.code') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="activation_code_container">
+      <div class="activation-code-container">
         {% for i in range(5) %}
         <input
           type="text"
@@ -40,7 +39,7 @@ enPlans{% endblock %} {% block content %}
       </div>
 
       <button type="submit" class="main-btn main-btn-primary">
-        {{ icons.icon_confirm() }}
+        {{ icons.icon_send() }}
         <span class="btn-text">{{ _('Проверить') }}</span>
       </button>
     </form>
@@ -74,6 +73,6 @@ enPlans{% endblock %} {% block content %}
   </div>
 </div>
 
-{{ affects.bg_effect() }} 
+{{ affects.blurback() }} 
 
 {% endblock %}

@@ -1,4 +1,5 @@
-{% extends "base.html" %} {% block title %}{{ _('Экспорт') }} - enPlans {%endblock %} 
+{% extends "base.html" %} 
+{% block title %}{{ _('Экспорт') }} - EnPlans {% endblock %} 
 {% block content %}
 
 <div class="pers-page">
@@ -7,161 +8,68 @@
     <a class="name">{{ _('Экспорт данных') }}</a>
     <div class="export-choose-area">
       <div class="export-choose" data-format="xlsx">
-        {{ icons.icon_xlsx() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xlsx)</a>
-          <a class="export-choose-text-dis"
-            >Таблица с данными планов и мероприятий</a
-          >
+          <a class="export-choose-text-dis">Таблица с данными планов и мероприятий</a>
         </div>
       </div>
       <div class="export-choose disabled" data-format="pdf">
-        {{ icons.icon_pdf() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.pdf)</a>
-          <a class="export-choose-text-dis"
-            >Форматированный план для печати</a
-          >
+          <a class="export-choose-text-dis">Форматированный план для печати</a>
         </div>
       </div>
       <div class="export-choose disabled" data-format="xml">
-        {{ icons.icon_xml() }}
+        {{ icons.icon_file() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xml)</a>
-          <a class="export-choose-text-dis"
-            >Структурированные данные для программ</a
-          >
+          <a class="export-choose-text-dis">Структурированные данные для программ</a>
         </div>
       </div>
     </div>
 
     <div class="header-content">
       <div class="header-content-left">
-        <div class="filters-area">
-          <form
-            method="GET"
-            action="{{ url_for('views.export') }}"
-            class="filter-form"
-            id="statusFilter"
-          >
-            <input
-              type="hidden"
-              name="status"
-              id="statusInput"
-              value="{{ request.args.get('status', 'all') }}"
-            />
-            <div class="custom-dropdown" data-filter-type="status">
-              <button type="button" class="dropdown-toggle">
-                <span class="selected-option">
-                  {% if request.args.get('status') == 'draft' %}{{ _('В редакции')
-                  }} {% elif request.args.get('status') == 'control' %}{{
-                  _('Контроль пройден') }} {% elif request.args.get('status') ==
-                  'sent' %}{% if current_user.is_auditor != true %}{{ _('На
-                  рассмотрении') }}{%else%}{{ _('Не просмотренные') }}{%endif%} {%
-                  elif request.args.get('status') == 'error' %}{{ _('С ошибками') }}
-                  {% elif request.args.get('status') == 'approved' %}{{
-                  _('Одобренные') }} {% else %}{{ _('Статус') }}{% endif %}
-                </span>
-                {{ icons.dropdown_arrow() }}
-              </button>
-              <div class="dropdown-menu-filter">
-                <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
-                <div class="dropdown-item" data-value="draft">
-                  {{ _('В редакции') }}
-                </div>
-                <div class="dropdown-item" data-value="control">
-                  {{ _('Контроль пройден') }}
-                </div>
-                <div class="dropdown-item" data-value="sent">
-                  {% if current_user.is_auditor != true %}{{ _('На рассмотрении')
-                  }}{%else%}{{ _('Не просмотренные') }}{%endif%}
-                </div>
-                <div class="dropdown-item" data-value="error">
-                  {{ _('С ошибками') }}
-                </div>
-                <div class="dropdown-item" data-value="approved">
-                  {{ _('Одобренные') }}
-                </div>
-              </div>
-            </div>
-          </form>
-
-          <form
-            method="GET"
-            action="{{ url_for('views.export') }}"
-            class="filter-form"
-            id="yearFilter"
-          >
-            <input
-              type="hidden"
-              name="year"
-              id="yearInput"
-              value="{{ request.args.get('year', 'all') }}"
-            />
-            <div class="custom-dropdown" data-filter-type="year">
-              <button type="button" class="dropdown-toggle">
-                <span class="selected-option">
-                  {% if request.args.get('year') and request.args.get('year') !=
-                  'all' %}{{ request.args.get('year') }} {% else %}{{ _('Год') }}{%
-                  endif %}
-                </span>
-                {{ icons.dropdown_arrow() }}
-              </button>
-              <div class="dropdown-menu-filter">
-                <div class="dropdown-item" data-value="all">
-                  {{ _('Все года') }}
-                </div>
-                {% for year in years %}
-                <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
-                {% endfor %}
-              </div>
-            </div>
-          </form>
-
-          {% if current_user.is_auditor %}
-          <div class="input-with-icon">
-            {{ icons.icon_search() }}
-            <input
-              type="text"
-              data-action="search-directions"
-              placeholder="{{ _('Наим. предприятия') }}"
-              class="app-input"
-              id="search-name"
-            />
-          </div>
-          <div class="input-with-icon">
-            {{ icons.icon_search() }}
-            <input
-              type="text"
-              data-action="search-directions"
-              placeholder="{{ _('ОКПО предприятия') }}"
-              class="app-input"
-              id="search-okpo"
-            />
-          </div>
-          {% endif %}
-        </div>
+        {{ component.filters_section(
+            years, 
+            current_user, 
+            show_search=true, 
+            show_status=true, 
+            show_year=true,
+            selected_status=selected_status,
+            selected_year=selected_year
+        ) }}
       </div>
-      <div class="header-content-right">
-        <div class="check-box-area">
-          <input type="checkbox" id="selectAllBtn" />
-          <a>{{ _('Выбрать все') }}</a>
+        <div class="header-content-right">
+          <div class="check-box-area">
+            <button type="button" id="selectAllBtn" class="select-all-btn">
+                {{ icons.icon_confirm() }}
+                <a>{{ _('Выбрать все') }}</a>
+            </button>
+            <button type="button" id="clearAllBtn" class="clear-all-btn" style="display: none;">
+                {{ icons.icon_close() }}
+                <a>{{ _('Очистить все') }}</a>
+            </button>
         </div>
       </div>
     </div>
 
-    <form method="POST" id="exportForm">
-      {{ component.plans_list(plans, current_user, show_checkboxes=true, show_actions=false) }}
-      <input type="hidden" name="format" id="selectedFormat" />
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" id="statusInput" value="all">
+    <input type="hidden" id="yearInput" value="all">
 
+    <form method="POST" id="exportForm" action="/export-to/xlsx">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div id="plans-container"></div>
+      <div id="load-more-container" style="text-align: center; margin-top: 20px; display: none;">
+        <button id="load-more-btn" class="load-more-btn">
+          <span class="loading-spinner" style="display: none;"></span>
+          <span class="btn-text">{{ _('Загрузить еще') }}</span>
+        </button>
+      </div>
       <div class="button-area">
-        <button
-          type="submit"
-          class="main-btn main-btn-primary"
-          id="exportBtn"
-          disabled
-        >
+        <button type="submit" class="main-btn main-btn-primary" id="exportBtn" disabled>
           {{ icons.icon_export() }}
           <span class="btn-text">{{ _('Экспортировать') }}</span>
         </button>
@@ -169,5 +77,12 @@
     </form>
   </div>
 </div>
+
+<script>
+  window.initialStatus = '{{ initial_status }}';
+  window.initialYear = '{{ initial_year }}';
+  window.isExportPage = true;
+</script>
+
 {{ affects.bg_effect() }} 
 {% endblock %}

@@ -1,6 +1,51 @@
-{% extends "base.html" %} {% block title %}{{ _('Новости') }} - enPlans{%endblock %} 
+{% extends "base.html" %}
+{% block title %}Новости - EnPlans{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
+{% endblock %}
+
 {% block content %}
+<div class="news_page">
+    <div class="news_filters">
+        <div class="filter_group">
+            <button class="filter_btn active" data-filter="published">Опубликованные</button>
+        </div>
+        <div class="filter_sort">
+            <button class="sort_btn" data-sort="date">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M3 12h18M3 18h18"/>
+                    <path d="M16 6l3-3 3 3"/>
+                    <path d="M19 3v18"/>
+                </svg>
+                По дате
+            </button>
+            <button class="sort_btn" data-sort="views">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                По просмотрам
+            </button>
+        </div>
+    </div>
 
+    <div class="news_grid" id="newsGrid"></div>
 
-Новости
+    <div class="news_pagination" id="pagination">
+        <button class="page_btn prev" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+        <div class="page_numbers" id="pageNumbers"></div>
+        <button class="page_btn next">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/news.js') }}"></script>
 {% endblock %}

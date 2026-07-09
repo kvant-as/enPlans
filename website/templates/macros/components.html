@@ -1,481 +1,887 @@
-{% import 'macros/svg_icons.html' as icons %}
+{% import 'macros/svg_icons.html' as icons %} 
 
-{% macro plan_menu(plan, current_user, section, non_local_econ_execes=None, local_econ_execes=None, indicators=None) %}
-    {% set section_config = {
-        'directions': {
-            'title': 'Направления',
-            'add_button_id': 'AddDirectionModalButton',
-            'has_data': plan.econ_measures is defined and plan.econ_measures,
-            'is_empty': not (plan.econ_measures is defined and plan.econ_measures)
-        },
-        'events': {
-            'title': 'Мероприятия',
-            'add_button_id': 'AddEventModalButton',
-            'has_data': plan.econ_execes is defined and plan.econ_execes,
-            'is_empty': not (plan.econ_execes is defined and plan.econ_execes)
-        },
-        'indicators': {
-            'title': 'Показатели',
-            'add_button_id': 'AddIndicatorModalButton',
-            'has_data': True,
-            'is_empty': False
-        }
-    } %}
-    
-    {% set config = section_config[section] %}
-    {% set is_disabled = plan.is_sent or plan.is_approved or current_user.is_auditor %}
-    
-    <div class="plan-menu">
-        <div class="menu-conteiner">
-            <div class="menu-conteiner-btns">
-                <div class="element add 
-                    {% if is_disabled %}non{% endif %} 
-                    {% if config.is_empty and not is_disabled %}highlight{% endif %}" 
-                     id="{{ config.add_button_id }}">
-                    <img src="{{ url_for('static', filename='img/icon-add.svg') }}">
-                    <span class="element-text">Добавить</span>
-                </div>
-                {% if config.has_data %}
-                <div class="element del {% if is_disabled %}non{% endif %}" id="tableDeleteButton">
-                    <img src="{{ url_for('static', filename='img/icon-del.svg') }}">
-                    <span class="element-text">Удалить</span>
-                </div>
-                <div class="element edit {% if is_disabled %}non{% endif %}" id="tableEditButton">
-                    <img src="{{ url_for('static', filename='img/icon-edit.svg') }}">
-                    <span class="element-text">Редактировать</span>
-                </div>
-                {% endif %}
+{% macro plan_menu(plan, current_user, section, increase_events=None, econom_events=None, indicators=None, show_control=False) %}
+
+{% set section_config = {
+    'indicators': {
+        'title':'Показатель',
+        'add_button_id': 'AddIndicatorModalButton',
+        'has_data': True,
+        'is_empty': False
+    },
+    'event-saving': {
+        'title': 'Мероприятие',
+        'add_button_id': 'AddEventsModalBtn',
+        'has_data': plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0,
+        'is_empty': not (plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0)
+    },
+    'event-increase': {
+        'title': 'Мероприятие',
+        'add_button_id': 'AddEventsModalBtn',
+        'has_data': plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0,
+        'is_empty': not (plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length > 0)
+    }
+} %}
+
+{% set config = section_config[section] %}
+{% set is_disabled = plan.is_sent or plan.is_approved %}
+{% set is_owner = plan.user_id == current_user.id %}
+
+<div class="plan-menu">
+    <div class="menu-conteiner">
+        <div class="menu-conteiner-btns">
+            <div class="element add {% if is_disabled or not is_owner %}non{% endif %} {% if config.is_empty and not is_disabled and is_owner %}highlight{% endif %}" id="{{ config.add_button_id }}">
+                <img src="{{ url_for('static', filename='img/icon-add.svg') }}" />
+                <span class="element-text">Добавить</span>
             </div>
-            <div class="menu-conteiner-title">
-                <span>{{ config.title }}</span>
+            {% if config.has_data %}
+            <div class="element del {% if is_disabled or not is_owner %}non{% endif %}" id="tableDeleteButton">
+                <img src="{{ url_for('static', filename='img/icon-del.svg') }}" />
+                <span class="element-text">Удалить</span>
             </div>
+            <div class="element edit {% if is_disabled or not is_owner %}non{% endif %}" id="tableEditButton">
+                <img src="{{ url_for('static', filename='img/icon-edit.svg') }}" />
+                <span class="element-text">Редактировать</span>
+            </div>
+            {% endif %}
         </div>
-        
-        <div class="menu-conteiner">
-            <div class="menu-conteiner-btns">
-                <div class="element btn-disabled" id="">
-                    <img src="{{ url_for('static', filename='img/icon-excel.svg') }}">
-                    <span class="element-text">Экспорт</span>
-                </div>
-                <a href="{% if current_user.is_auditor %}/plans/plan-audit/{{ plan.token }}{% else %}/plans/plan-review/{{ plan.token }}{% endif %}#tickets_link" 
-                    class="element" 
-                    id="">
-                    <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}">
-                    <span class="element-text">Квитанции</span>
-                </a>
-            </div>
-            <div class="menu-conteiner-title">
-                <span>План</span>
-            </div>
+        <div class="menu-conteiner-title">
+            <span>{{ config.title }}</span>
         </div>
-        {#
-        {% if plan.is_draft or plan.is_control %}
-        <div class="menu-conteiner">
-            <div class="menu-conteiner-btns">
-                {% if plan.is_draft %}
-                <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" 
-                      action="/api/change-plan-status/{{ plan.token }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                    <input type="hidden" name="status" value="control" />
-                    <button id="controlPlanButton" data-plan-type="{{ plan.plan_type }}" 
-                            type="submit" class="element">
-                        <img src="{{ url_for('static', filename='img/icon-control.svg') }}">
-                        <span class="element-text">Контроль</span>
-                    </button>
-                </form>
-                {% endif %}
-                {% if plan.is_control %}
-                <div class="element" id="sentPlanButton">
-                    <img src="{{ url_for('static', filename='img/icon-send.svg') }}">
-                    <span class="element-text">Отправить</span>
-                </div>
-                {% endif %}
-            </div>
-            <div class="menu-conteiner-title">
-                <span>Статус</span>
-            </div>
-        </div>
-        {% endif %}
-        #}
     </div>
-{% endmacro %}
 
-{% macro no_data() %}
+    <div class="menu-conteiner">
+        <div class="menu-conteiner-btns">
+            <a href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link" class="element" id="">
+                <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
+                <span class="element-text">Квитанции</span>
+            </a>
+        </div>
+        <div class="menu-conteiner-title">
+            <span>План</span>
+        </div>
+    </div>
+
+    {% if show_control and (current_user.organization.is_region_management or current_user.is_admin) %}
+    <div class="menu-conteiner stat-log-menu">
+        <div class="menu-conteiner-btns">
+            <div class="element stat-log-toggle" id="statLogToggleBtn">
+                <span class="element-text">Логи контроля</span>
+                <span class="toggle-status status-off" id="statLogStatus">Выкл</span>
+            </div>
+            <div class="element stat-indicator-toggle-btn" id="statIndicatorToggleBtn">
+                <span class="element-text">Индикаторы</span>
+                <span class="toggle-status status-off" id="statIndicatorStatus">Выкл</span>
+            </div>
+        </div>
+        <div class="menu-conteiner-title">
+            <span>Контроль</span>
+        </div>
+    </div>
+    {% endif %}
+</div>
 {% endmacro %}
 
 {% macro status_plan(plan, current_user=None) %}
-    <a class="status-plan 
-        {% if plan.is_draft %}status-draft
-        {% elif plan.is_error %}status-error
-        {% elif plan.is_control %}status-control
-        {% elif plan.is_sent %}status-pending
-        {% elif plan.is_approved %}status-approved
-        {% endif %}">
-        
-        {% if plan.is_draft %}
-            {{ icons.draft_icon() }}
-            <span>{{ _('В редакции') }}</span>
-        {% elif plan.is_error %}
-            {{ icons.error_icon() }}
-            <span>{{ _('Есть ошибки') }}</span>
-        {% elif plan.is_control %}
-            {{ icons.control_icon() }}
-            <span>{{ _('Контроль пройден') }}</span>
-        {% elif plan.is_sent %}
-            {{ icons.pending_icon() }}
-            <span>
-                {% if current_user and current_user.is_auditor != true %}
-                    {{ _('На рассмотрении') }}
-                {% else %}
-                    {{ _('Не просмотрен') }}
-                {% endif %}
-            </span>
-        {% elif plan.is_approved %}
-            {{ icons.approved_icon() }}
-            <span>{{ _('Одобрен') }}</span>
-        {% endif %}
-    </a>
+<a class="status-plan 
+  {% if plan.is_draft %}status-draft 
+  {% elif plan.is_error %}status-error 
+  {% elif plan.is_control %}status-control 
+  {% elif plan.is_sent and current_user and current_user.is_auditor and plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', True)|list|length > 0 %}status-sogl
+  {% elif plan.is_sent %}status-sent 
+  {% elif plan.is_approved %}status-approved 
+  {% endif %}">
+  
+  {% if plan.is_draft %}
+    {{ icons.draft_icon() }}
+    <span>{{ _('В редакции') }}</span>
+  {% elif plan.is_error %}
+    {{ icons.error_icon() }}
+    <span>{{ _('Есть ошибки') }}</span>
+  {% elif plan.is_control %}
+    {{ icons.control_icon() }}
+    <span>{{ _('Контроль пройден') }}</span>
+  {% elif plan.is_sent and current_user and current_user.is_auditor %}
+    {% set user_path = plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|first %}
+    {% if user_path and user_path.is_viewed %}
+      {{ icons.approved_icon() }}
+      <span>{{ _('Согласован') }}</span>
+    {% else %}
+      {{ icons.pending_icon() }}
+      <span>{{ _('Не просмотрен') }}</span>
+    {% endif %}
+  {% elif plan.is_sent %}
+    {{ icons.pending_icon() }}
+    <span>{{ _('На согласовании') }}</span>
+  {% elif plan.is_approved %}
+    {{ icons.approved_icon() }}
+    <span>{{ _('Одобрен') }}</span>
+  {% endif %}
+</a>
 {% endmacro %}
 
-{% macro back_header(plan=None, current_user=None, show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
+{% macro back_header(plan=None, current_user=None,
+show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
 <div class="header-cont-for-back">
-    <div class="plan-back-header">
-        <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ back_url }}'">
-            {{ icons.back_icon() }}
-            <span class="tooltip-text">{{ _('Вернуться назад') }}</span>
-            <span class="btn-text">{{ back_text if back_text else _('Назад') }}</span>
-        </button>
+  <div class="plan-back-header">
+    <button
+      type="button"
+      class="svg-btn tooltip-btn"
+      onclick="window.location.href='{{ back_url }}'"
+    >
+      {{ icons.back_icon() }}
+      <span class="tooltip-text">{{ _('Вернуться назад') }}</span>
+      <span class="btn-text">{{ back_text if back_text else _('Назад') }}</span>
+    </button>
 
-        <a class="plan-info">
-            <span class="plan-text">{{ plan_text if plan_text else _('План энергосбережения на') }}</span>
-            {% if show_plan_info and plan %}
-            <span class="plan-year">{{ plan.year }} {{ _('год') }}</span>
-            {% endif %}
-        </a>
-        
-        {% if show_plan_info and plan %}
-        {{ status_plan(plan, current_user) }}
-        {% endif %}
-    </div> 
+    <a class="plan-info">
+      <span class="plan-text"
+        >{{ plan_text if plan_text else _('План мероприятий по энергосбережению
+        на') }}</span
+      >
+      {% if show_plan_info and plan %}
+      <span class="plan-year">{{ plan.year }} {{ _('год') }}</span>
+      {% endif %}
+    </a>
+
+    {% if show_plan_info and plan %} {{ status_plan(plan, current_user) }} {%
+    endif %}
+  </div>
 </div>
-{% endmacro %}
-
-{% macro navigation_header(active_tab='plans', current_user=None) %}
+{% endmacro %} {% macro navigation_header(active_tab='plans', current_user=None)
+%}
 <div class="header-cont">
-    <nav class="navigation-container">
-        <div class="nav-item {% if active_tab == 'plans' %} active{% endif %}" onclick="window.location.href='/plans'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_plans() }}
-                {% if active_tab == 'plans' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Планы') }}</span>
-            <span class="nav-text-mobile">{{ _('Планы') }}</span>
-        </div>
-        
-        {% if current_user and current_user.is_auditor == false %}
-        <div class="nav-item {% if active_tab == 'create' %} active{% endif %}" onclick="window.location.href='/create-plan'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_add() }}
-                {% if active_tab == 'create' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Создать') }}</span>
-            <span class="nav-text-mobile">{{ _('Создать') }}</span>
-        </div>
+  <nav class="navigation-container">
+    <div
+      class="nav-item {% if active_tab == 'plans' %} active{% endif %}"
+      onclick="window.location.href = '/plans'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_plans() }} {% if active_tab == 'plans' %}
+        <div class="active-indicator"></div>
         {% endif %}
-        
-        <div class="nav-item disabled-tab">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_stats() }}
-            </div>
-            <span class="nav-text">{{ _('Статистика') }}</span>
-            <span class="nav-text-mobile">{{ _('Статистика') }}</span>
-        </div>
-        
-        <div class="nav-item {% if active_tab == 'export' %} active{% endif %}" onclick="window.location.href='/export'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_export() }}
-                {% if active_tab == 'export' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Экспорт') }}</span>
-            <span class="nav-text-mobile">{{ _('Экспорт') }}</span>
-        </div>
-        
-        <div class="nav-item {% if active_tab == 'account' %} active{% endif %}" onclick="window.location.href='/profile'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_profile() }}
-                {% if active_tab == 'account' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Кабинет') }}</span>
-            <span class="nav-text-mobile">{{ _('Кабинет') }}</span>
-        </div>
-        
-        {% if current_user and current_user.is_admin == true %}
-        <div class="nav-item {% if active_tab == 'admin' %} active{% endif %}" onclick="window.location.href='/admin'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_admin() }}
-                {% if active_tab == 'admin' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('А-панель') }}</span>
-            <span class="nav-text-mobile">{{ _('А-панель') }}</span>
-        </div>
+      </div>
+      <span class="nav-text">{{ _('Планы') }}</span>
+      <span class="nav-text-mobile">{{ _('Планы') }}</span>
+    </div>
+    {% if current_user.is_auditor == false %}
+    <div
+      class="nav-item {% if active_tab == 'create' %} active{% endif %}"
+      onclick="window.location.href = '/create-plan'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_add() }} {% if active_tab == 'create' %}
+        <div class="active-indicator"></div>
         {% endif %}
-        
-        <div class="active-drop"></div>
-    </nav>
-</div>
-{% endmacro %}
+      </div>
+      <span class="nav-text">{{ _('Создать') }}</span>
+      <span class="nav-text-mobile">{{ _('Создать') }}</span>
+    </div>
+    {% endif %} 
 
-{% macro plan_navigation_header(active_plan_tab='review', plan=None, current_user=None) %}
-<div class="header-cont">
-    <nav class="navigation-container">
-        <div class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-review/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_view() }}
-                {% if active_plan_tab == 'review' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Обзор') }}</span>
-            <span class="nav-text-mobile">{{ _('Обзор') }}</span>
-        </div>
-        
-        {% if current_user and current_user.is_auditor == True %}
-        <div class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-audit/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_audit() }}
-                {% if active_plan_tab == 'audit' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Аудит') }}</span>
-            <span class="nav-text-mobile">{{ _('Аудит') }}</span>
-        </div>
+    <div class="nav-item disabled-tab {% if active_tab == 'stats' %} active {% endif %}" onclick="window.location.href = '/stats'">
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_stats() }} 
+      </div>
+      <span class="nav-text">{{ _('Статистика') }}</span>
+      <span class="nav-text-mobile">{{ _('Статистика') }}</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_tab == 'export' %} active{% endif %}"
+      onclick="window.location.href = '/export'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_export() }} {% if active_tab == 'export' %}
+        <div class="active-indicator"></div>
         {% endif %}
-        
-        <div class="nav-item {% if active_plan_tab == 'directions' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-directions/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_directions() }}
-                {% if active_plan_tab == 'directions' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Направления') }}</span>
-            <span class="nav-text-mobile">{{ _('Напр.') }}</span>
-        </div>
-        
-        <div class="nav-item {% if active_plan_tab == 'events' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-events/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_events() }}
-                {% if active_plan_tab == 'events' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Мероприятия') }}</span>
-            <span class="nav-text-mobile">{{ _('Меропр.') }}</span>
-        </div>
-        
-        <div class="nav-item {% if active_plan_tab == 'indicators' %} active{% endif %}" 
-             onclick="window.location.href='/plans/plan-indicators/{{plan.token}}'">
-            <div class="nav-icon-wrapper">
-                {{ icons.icon_indicators() }}
-                {% if active_plan_tab == 'indicators' %}<div class="active-indicator"></div>{% endif %}
-            </div>
-            <span class="nav-text">{{ _('Показатели') }}</span>
-            <span class="nav-text-mobile">{{ _('Показ.') }}</span>
-        </div>
-        
-        <div class="active-drop"></div>
-    </nav>
+      </div>
+      <span class="nav-text">{{ _('Экспорт') }}</span>
+      <span class="nav-text-mobile">{{ _('Экспорт') }}</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_tab == 'account' %} active{% endif %}"
+      onclick="window.location.href = '/profile'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_profile() }} {% if active_tab == 'account' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Кабинет') }}</span>
+      <span class="nav-text-mobile">{{ _('Кабинет') }}</span>
+    </div>
+
+    {% if current_user and current_user.is_admin == true %}
+    <div
+      class="nav-item {% if active_tab == 'admin' %} active{% endif %}"
+      onclick="window.location.href = '/admin'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_admin() }} {% if active_tab == 'admin' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('А-панель') }}</span>
+      <span class="nav-text-mobile">{{ _('А-панель') }}</span>
+    </div>
+    {% endif %}
+
+    <div class="active-drop"></div>
+  </nav>
 </div>
-{% endmacro %}
+{% endmacro %} {% macro plan_navigation_header(active_plan_tab='review',
+plan=None, current_user=None) %}
+<div class="header-cont">
+  <nav class="navigation-container">
+    
+    {% if current_user.is_auditor == true or current_user.is_admin == true %}
+    <div
+      class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/audit/{{plan.token}}'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_audit() }} {% if active_plan_tab == 'audit' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Проверка') }}</span>
+      <span class="nav-text-mobile">{{ _('Проверка') }}</span>
+    </div>
+    {% endif %}
+    
+    <div
+      class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/review/{{plan.token}}'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_view() }} {% if active_plan_tab == 'review' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Задания') }}</span>
+      <span class="nav-text-mobile">{{ _('Задания') }}</span>
+    </div>
+
+
+    <div
+      class="nav-item {% if active_plan_tab == 'indicators' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/indicators/{{plan.token}}'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_indicators() }} {% if active_plan_tab == 'indicators' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span
+        class="nav-text long-text"
+        title="{{ _('Часть 1. Показатели использования ТЭР') }}"
+        >{{ _('Часть 1. Показатели использования ТЭР') }}</span
+      >
+      <span class="nav-text-mobile">{{ _('Часть') }} 1</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'event-saving' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/events-saving/{{plan.token}}'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_measure_saving() }} {% if active_plan_tab ==
+        'event-saving' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span
+        class="nav-text long-text"
+        title="{{ _('Часть 2. Мероприятия по экономии ТЭР') }}"
+        >{{ _('Часть 2. Мероприятия по экономии ТЭР') }}</span
+      >
+      <span class="nav-text-mobile">{{ _('Часть') }} 2</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'event-increase' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/events-increase/{{plan.token}}'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_measure_increase() }} {% if active_plan_tab ==
+        'event-increase' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span
+        class="nav-text long-text"
+        title="{{ _('Часть 3. Мероприятия по увеличению использования местных ТЭР') }}"
+        >{{ _('Часть 3. Мероприятия по увеличению использования местных ТЭР')
+        }}</span
+      >
+      <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
+    </div>
+  </nav>
+</div>
+{% endmacro %} 
+
+{% macro plan_agree_slider(plan, current_user) %} {% set
+approval_paths = plan.approval_paths|sort(attribute='step_order') %} {% set
+total_steps = approval_paths|length %} {% set completed_steps =
+approval_paths|selectattr('is_viewed', 'equalto', True)|list|length %} {% set
+progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
+%}
+
+<hr />
+<h1 class="name">{{ _('Этапы согласования плана') }}</h1>
+<div class="enplans-approval-slider">
+  <div class="enplans-approval-slider-steps">
+    {% for path in approval_paths %} {% set org = path.organization %} {% set
+    is_completed = path.is_viewed %} {% set is_active = not is_completed and
+    loop.index0 == completed_steps %} {% set is_blocked = not is_completed and
+    loop.index0 > completed_steps %}
+
+    <div
+      class="enplans-approval-step {% if is_completed %}completed {% elif is_active %}active {% elif is_blocked %}blocked{% endif %}"
+    >
+      <div class="enplans-approval-step-icon">
+        {% if is_completed %} {{ icons.icon_check() }} {% elif path.step_type ==
+        'region' %} {{ icons.icon_region() }} {% elif path.step_type ==
+        'coordinator' %} {{ icons.icon_municipal() }} {% elif path.step_type ==
+        'approver' %} {{ icons.icon_higher() }} {% else %} {% endif %}
+      </div>
+
+      <div
+        class="enplans-approval-step-name"
+        title="{{ org.name if org else 'Неизвестно' }}"
+      >
+        {{ org.name if org else 'Неизвестно' }}
+      </div>
+
+      <div class="enplans-approval-step-type">{{ path.step_type_label }}</div>
+
+      <div class="enplans-approval-step-time">
+        {% if is_completed and path.viewed_at %} {{
+        path.viewed_at.strftime('%d.%m.%Y %H:%M') }} {% elif is_active %} {{
+        _('Ожидает') }} {% elif is_blocked %} {{ _('Заблокировано') }} {% else
+        %} {{ _('Ожидает') }} {% endif %}
+      </div>
+
+      <div class="enplans-approval-step-actions">
+        {% if current_user.is_admin %}
+          <button
+            class="enplans-approval-btn"
+            data-action="approve"
+            data-path-id="{{ path.id }}"
+          >
+            {{ _('Подтвердить') }}
+          </button>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="enplans-approval-step empty">
+      <div class="enplans-approval-step-icon">{{ icons.icon_plans() }}</div>
+      <div class="enplans-approval-step-name">
+        {{ _('Путь согласования не определен') }}
+      </div>
+      <div class="enplans-approval-step-time">{{ _('Ожидает настройки') }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="enplans-approval-progress-container">
+    <div
+      class="enplans-approval-progress-line"
+      style="width: {{ progress_width }}%;"
+    ></div>
+  </div>
+
+  <div class="enplans-approval-progress-text">
+    <span>
+      {{ _('Согласован на') }} {{ completed_steps }} {{ _('из') }} {{
+      total_steps }} {{ _('этапов') }} ({{ progress_width|int }}%)
+    </span>
+  </div>
+</div>
+{% endmacro %} 
 
 {% macro tickets_container(plan, current_user) %}
 <div class="tickets-container">
-    {% if plan.tickets %}
-        <div class="tickets-header">
-            <span class="tickets-title">{{ _('Сообщения') }}</span>
-            <div class="tickets-divider"></div>
+  {% if plan.tickets %}
+  <div class="tickets-header">
+    <span class="tickets-title">{{ _('Сообщения') }}</span>
+    <div class="tickets-divider"></div>
+  </div>
+  <div class="tickets-messages-list">
+    {% for ticket in plan.tickets %}
+    <div
+      class="tickets-message {% if ticket.is_owner %}tickets-message-left{% else %}tickets-message-right{% endif %}"
+    >
+      <div class="tickets-message-content">
+        <div class="message-header">
+          {% set sender_name %}
+              {% if ticket.is_owner %}
+                  {{ _('Система') }}
+              {% else %}
+                  {% if ticket.user and ticket.user.organization %}
+                      {{ ticket.user.organization.name }}
+                  {% else %}
+                      {{ _('Система') }}
+                  {% endif %}
+              {% endif %}
+          {% endset %}
+
+          <span class="message-sender" title="{{ sender_name|striptags }}">
+              {{ sender_name }}
+          </span>
+          <span class="message-time">
+            {{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time else
+            '--:--' }}
+          </span>
+          <button
+            class="btn-sender-info"
+            onclick="toggleTicketInfo({{ ticket.id }})"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
         </div>
-    <div class="tickets-messages-list">
-        {% for ticket in plan.tickets %}
-        <div class="tickets-message {% if ticket.is_owner %}tickets-message-left{% else %}tickets-message-right{% endif %}">
-            <div class="tickets-message-content">
-                <div class="message-header">
-                    <span class="message-sender">
-                        {% if ticket.is_owner %}
-                            {{ _('Система') }}
-                        {% else %}
-                            {{ _('Аудитор') }}
-                        {% endif %}
-                    </span>
-                    <span class="message-time">
-                        {{ ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--' }}
-                    </span>
-                    <button class="btn-sender-info" onclick="toggleTicketInfo({{ ticket.id }})">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="message-bubble">
-                    <p class="text-ticket">{{ ticket.note }}</p>
-                    <div class="bubble-status">
-                        {% if ticket.luck %}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#34B7F1"/>
-                        </svg>
-                        {% else %}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#FF5252"/>
-                        </svg>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="message-date">
-                    {{ ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time else '' }}
-                </div>
-            </div>
+
+        <div class="message-bubble">
+          <p class="text-ticket">{{ ticket.note }}</p>
+          <div class="bubble-status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+                fill="#34B7F1"
+              />
+            </svg>
+          </div>
         </div>
-        {% endfor %}
+
+        <div class="message-date">
+          {{ ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time else ''
+          }}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="no-info-container">
+    <div class="empty-state">
+      {{ icons.icon_no_info() }}
+      <h1>{{ _('Нет сообщений') }}</h1>
+      <p class="empty-subtitle">
+        {% if current_user.is_auditor %} {{ _('Начните обсуждение плана') }} {%
+        else %} {{ _('Отправьте план для получения результатов проверки') }} {%
+        endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endmacro %} 
+
+{% macro plans_list_items(plans, current_user,
+show_checkboxes=false, show_actions=true, custom_empty_message=none,
+compact_view=false) %} 
+
+  {% if plans %} 
+    {% for plan in plans %} 
+    {% if show_checkboxes %}
+        <label
+          for="plan-{{ plan.id }}"
+          style="color: black; margin: 0; cursor: pointer"
+        >
+    {% endif %}
+
+    <div
+        class="plan-cont 
+        {% if plan.is_draft %}plan-cont-redac 
+        {% elif plan.is_error %}plan-cont-eror 
+        {% elif plan.is_control %}plan-cont-control 
+        {% elif plan.is_sent and current_user and current_user.is_auditor and plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', True)|list|length > 0 %}plan-cont-sogl
+        {% elif plan.is_sent %}plan-cont-sent 
+        {% elif plan.is_approved %}plan-cont-sub 
+        {% endif %}"
+        data-plan="choose"
+        data-name="{{ (plan.organization.name if plan.organization else '') | lower | e }}"
+        data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}"
+    >
+
+    {% if compact_view %}
+    <div class="plan-cont-column">
+      <div class="plan-cont-column-header">
+        <a class="plan-info">
+          <span class="plan-info" style="font-weight: 600"
+            >{{ _('План на') }} {{ plan.year }} {{ _('год') }}</span
+          >
+          {% if plan.organization.name %}
+          <span class="structure-plan"></span>{{ plan.organization.name |
+          truncate(35, True, '...') }} {% else %} {{ _('План на') }} {% endif %}
+        </a>
+        {{ status_plan(plan, current_user) }}
+      </div>
+      <div class="plan-cont-column-footer">
+        {% if plan.organization.okpo %}
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_ynp() }}</div>
+          <a class="plan-info">{{ plan.organization.ynp }}</a>
+        </div>
+        {% endif %}
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_send() }}</div>
+          <a class="plan-info"
+            >{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '--
+            -- --' }}</a
+          >
+        </div>
+      </div>
     </div>
     {% else %}
-        <div class="no-info-container">
-            <div class="empty-state">
-                {{ icons.icon_no_info() }}
-                <h1>{{ _('Нет сообщений') }}</h1>
-                <p class="empty-subtitle">
-                    {% if current_user.is_auditor %}
-                        {{ _('Начните обсуждение плана') }}
-                    {% else %}
-                        {{ _('Отправьте план для получения сообщений') }}
-                    {% endif %}
-                </p>
-            </div>
+    <div class="plan-cont-column">
+      <div class="plan-cont-column-header">
+        {% if (current_user.is_admin or current_user.is_auditor) and plan.user_id != current_user.id %}
+        <div class="plan-info">
+          <div>
+            {% if plan.organization.name %}
+              <span class="structure-plan"></span>{{ plan.organization.name |truncate(35, True, '...') }} 
+            {% else %} 
+              {{ _('План на') }} 
+            {% endif%}
+          </div>
         </div>
+        {% else %}
+        <a class="plan-info">
+          {{ _('План на') }}
+          <span class="plan-info" style="font-weight: 600"
+            >{{ plan.year }} {{ _('год') }}</span
+          >
+        </a>
+        {% endif %} {{ status_plan(plan, current_user) }}
+      </div>
+
+      
+      <div class="plan-cont-column-footer">
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_eco() }}</div>
+          <a class="data-plan" title="Целевой показатель энергосбережения (%)"
+            >{{ plan.energy_saving or '0,0' }}</a
+          >
+        </div>
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_half() }}</div>
+          <a
+            class="data-plan"
+            title="Целевой показатель по доле местных ТЭР в КПТ (%)"
+            >{{ plan.share_fuel or '0,0' }}</a
+          >
+        </div>
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_saving() }}</div>
+          <a
+            class="data-plan"
+            title="Целевой показатель по экономии ТЭР (т у.т.)"
+            >{{ plan.saving_fuel or '0,0' }}</a
+          >
+        </div>
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_half() }}</div>
+          <a class="data-plan" title="Целевой показатель по доле ВИЭ в КПТ"
+            >{{ plan.share_energy or '0,0' }}</a
+          >
+        </div>
+      </div>
+    </div>
+    <div class="plan-cont-column">
+      <div class="plan-cont-column-header">
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_calendar() }}</div>
+          <a class="plan-info"
+            >{{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '--
+            -- --'}}</a
+          >
+        </div>
+        <div class="plan-cont-column-footer-element">
+          <div class="date-icon black">{{ icons.icon_send() }}</div>
+          <a class="plan-info"
+            >{{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '--
+            -- --' }}</a
+          >
+        </div>
+      </div>
+    </div>
     {% endif %}
+
+    <div class="plan-cont-column">
+      {% if show_checkboxes %}
+      <input
+        type="checkbox"
+        class="black"
+        name="ids"
+        value="{{ plan.id }}"
+        id="plan-{{ plan.id }}"
+      />
+      {% elif show_actions %}
+      <div class="buttons-row">
+        {% set view_url = url_for('plan_bp.plan_audit', token=plan.token) if current_user.is_auditor else url_for('plan_bp.plan_review', token=plan.token) %}
+
+        <button
+            type="button"
+            class="svg-btn tooltip-btn"
+            onclick="window.location.href='{{ view_url }}'"
+        >
+            {{ icons.icon_view() }}
+            <span class="tooltip-text">{{ _('Просмотр') }}</span>
+            <span class="btn-text">{{ _('Просмотр') }}</span>
+        </button>
+        {% if plan.user_id == current_user.id %} {% if not (plan.is_sent or
+        plan.is_approved) %}
+        <form
+          data-modal-form="deletePlanconfirm"
+          action="{{ url_for('views.delete_plan', token=plan.token) }}"
+          method="POST"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button
+            data-modal-trigger="deletePlanconfirm"
+            data-plan-id="{{ plan.id }}"
+            type="submit"
+            class="svg-btn delete-button tooltip-btn"
+          >
+            {{ icons.icon_delete() }}
+            <span class="tooltip-text">{{ _('Удалить') }}</span>
+          </button>
+        </form>
+        {% endif %} {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if show_checkboxes %}
+</label>
+{% endif %} {% endfor %} {% else %}
+<div class="choose-plan">
+  <div class="no-info-container">
+    <div class="empty-state">
+      {{ icons.icon_no_info() }}
+      <h1>
+        {{ custom_empty_message or _('По вашему запросу планов не найдено') }}
+      </h1>
+      <p>{{ _('Попробуйте изменить параметры поиска.') }}</p>
+    </div>
+  </div>
 </div>
+{% endif %} 
 {% endmacro %}
 
-
-{% macro plans_list(plans, current_user, show_checkboxes=false, show_actions=true, custom_empty_message=none) %}
-<div class="plans-area">
-    {% if plans %}
-        {% for plan in plans %}
-            {% if show_checkboxes %}
-                <label for="plan-{{ plan.id }}" style="color: black; margin: 0; cursor: pointer">
-            {% endif %}
-            
-            <div class="plan-cont {% if plan.is_draft %}plan-cont-redac {% elif plan.is_error %}plan-cont-eror {% elif plan.is_control %}plan-cont-control {% elif plan.is_sent %}plan-cont-sent {% elif plan.is_approved %}plan-cont-sub {% endif %}"
-                 data-plan="choose"
-                 data-name="{{ (plan.organization.name if plan.organization else plan.ministry.name if plan.ministry else plan.region.name if plan.region else '') | lower | e }}"
-                 data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}">
-                
-                <div class="plan-cont-column">
-                    <div class="plan-cont-column-header">
-                        <a class="plan-info">
-                            {% if current_user.is_auditor %}
-                                {% if plan.organization.name %}
-                                    <span class="structure-plan">Организация</span>{{ plan.organization.name | truncate(35, True, '...') }}
-                                {% elif plan.ministry.name %}
-                                    <span class="structure-plan">Министерство</span>{{ plan.ministry.name | truncate(35, True, '...') }}
-                                {% elif plan.region.name %}
-                                    <span class="structure-plan">Регион</span>{{ plan.region.name | truncate(35, True, '...') }}
-                                {% endif %}
-                            {% else %}
-                                {{ _('План энергосбережения') }}
-                            {% endif %}
-                            <span class="plan-info" style="font-weight: 600">{{ plan.year }} {{ _('год') }}</span>
-                        </a>
-                        
-                        {{ status_plan(plan, current_user) }}
-                    </div>
-                    
-                    <div class="plan-cont-column-footer">
-                        {% if current_user.is_auditor %}
-                            {% if plan.organization.okpo %}
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_org() }}
-                                <a class="plan-info">{{ plan.organization.okpo }}</a>
-                            </div>
-                            {% endif %}
-                        {% else %}
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_eco() }}
-                                <a class="data-plan" title="Энергосбережение">{{ plan.energy_saving or '0.000' }}</a>
-                            </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля ТЭР">{{ plan.share_fuel or '0.000' }}</a>
-                            </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_saving() }}
-                                <a class="data-plan" title="Экономия топлива">{{ plan.saving_fuel or '0.000' }}</a>
-                            </div>
-                            <div class="plan-cont-column-footer-element">
-                                {{ icons.icon_half() }}
-                                <a class="data-plan" title="Доля энергии">{{ plan.share_energy or '0.000' }}</a>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <div class="plan-cont-column">
-                    <div class="plan-cont-column-header">
-                        {% if not current_user.is_auditor %}
-                        <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Создан') }}: {{ plan.begin_time.strftime('%d-%m-%Y') if plan.begin_time else '-- -- --'}}</a>
-                        </div>
-                        {% endif %}
-                        <div class="plan-cont-column-footer-element">
-                            {{ icons.icon_calendar() }}
-                            <a class="plan-info">{{ _('Подан') }}: {{ plan.sent_time.strftime('%d-%m-%Y') if plan.sent_time else '-- -- --' }}</a>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="plan-cont-column">
-                    {% if show_checkboxes %}
-                        <input type="checkbox" class="black" name="ids" value="{{ plan.id }}" id="plan-{{ plan.id }}">
-                    {% elif show_actions %}
-                        <div class="buttons-row">
-                            <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('views.plan_review', token=plan.token) }}'">
-                                {{ icons.icon_view() }}
-                                <span class="tooltip-text">{{ _('Просмотр') }}</span>
-                                <span class="btn-text">{{ _('Просмотр') }}</span>
-                            </button>
-                            {% if not (plan.is_sent or plan.is_approved or current_user.is_auditor) %}
-                            <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button data-modal-trigger="deletePlan" data-plan-id="{{ plan.id }}" type="submit" class="svg-btn delete-button tooltip-btn">
-                                    {{ icons.icon_delete() }}
-                                    <span class="tooltip-text">{{ _('Удалить') }}</span>
-                                </button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            {% if show_checkboxes %}
-                </label>
-            {% endif %}
-        {% endfor %}
-    {% else %}
-        <div class="choose-plan">
-            <div class="no-info-container">
-                <div class="empty-state">
-                    {{ icons.icon_no_info() }}
-                    <h1>{{ custom_empty_message or _('По вашему запросу планов не найдено') }}</h1>
-                    <p>{{ _('Попробуйте изменить параметры поиска.') }}</p>
-                </div>
-            </div>
-        </div>
-    {% endif %}
+{% macro plans_list(plans, current_user,
+show_checkboxes=false, show_actions=true, custom_empty_message=none,
+compact_view=false) %}
+<div class="plans-area {% if compact_view %}compact-view{% endif %}">
+  {{ plans_list_items(plans, current_user, show_checkboxes, show_actions,
+  custom_empty_message, compact_view) }}
 </div>
-{% endmacro %}
+{% endmacro %} 
 
 {% macro required_legend() %}
-    <div class="required-legend">
-    {{ _('Поля, отмеченные <span class="star">*</span> — обязательны для заполнения') }}
+<div class="required-legend">
+  <span>{{ _('Поля, отмеченные ')|safe }}</span>
+  {#{{ icons.icon_star() }}#} <span class="star">*</span>
+  <span>{{ _('обязательны для заполнения')|safe }}</span>
+</div>
+{% endmacro %} 
+
+{% macro filters_section(years, current_user=none,
+show_search=true, show_status=true, show_year=true, show_regional_search=false,
+selected_status='all', selected_year='all') %}
+<div class="filters-area">
+  {% if show_search %}
+  <div class="input-with-icon">
+    {{ icons.icon_search() }}
+    <input
+      type="text"
+      placeholder="{{ _('Наим. предприятия') }}"
+      class="app-input"
+      id="search-name"
+      value="{{ request.args.get('search_name', '') }}"
+    />
+  </div>
+  <div class="input-with-icon">
+    {{ icons.icon_search() }}
+    <input
+      type="text"
+      placeholder="{{ _('УНП предприятия') }}"
+      class="app-input"
+      id="search-ynp"
+      value="{{ request.args.get('search_ynp', '') }}"
+    />
+  </div>
+  {% endif %} 
+  
+  {% if show_status %}
+    <div class="custom-dropdown" data-filter-type="status">
+      <button type="button" class="dropdown-toggle">
+        <span class="selected-option" id="selected-status">
+          {% if selected_status == 'all' %}
+              {{ _('Статус') }}
+          {% elif selected_status == 'draft' %}
+              {{ _('В редакции') }}
+          {% elif selected_status == 'control' %}
+              {{ _('Контроль пройден') }}
+          {% elif selected_status == 'sent' %}
+              {% if current_user and current_user.is_auditor %}
+                  {{ _('Не просмотренные') }}
+              {% else %}
+                  {{ _('На согласовании') }}
+              {% endif %}
+          {% elif selected_status == 'sogl' %}
+              {{ _('Согласованные') }}
+          {% elif selected_status == 'error' %}
+              {{ _('Есть ошибки') }}
+          {% elif selected_status == 'approved' %}
+              {{ _('Утвержденные') }}
+          {% else %}
+              {{ _('Статус') }}
+          {% endif %}
+        </span>
+        {{ icons.dropdown_arrow() }}
+      </button>
+      <div class="dropdown-menu-filter">
+        <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
+        
+        {% if current_user and current_user.is_auditor %}
+          <div class="dropdown-item" data-value="sent">{{ _('Не просмотренные') }}</div>
+          <div class="dropdown-item" data-value="sogl">{{ _('Согласованные') }}</div>
+        {% else %}
+          <div class="dropdown-item" data-value="draft">{{ _('В редакции') }}</div>
+          <div class="dropdown-item" data-value="control">{{ _('Контроль пройден') }}</div>
+          <div class="dropdown-item" data-value="sent">{{ _('На согласовании') }}</div>
+        {% endif %}
+        
+        <div class="dropdown-item" data-value="error">{{ _('Есть ошибки') }}</div>
+        <div class="dropdown-item" data-value="approved">{{ _('Утвержденные') }}</div>
+      </div>
     </div>
+  {% endif %}
+  
+  {% if show_year %}
+  <div class="custom-dropdown" data-filter-type="year">
+    <button type="button" class="dropdown-toggle">
+      <span class="selected-option" id="selected-year">
+        {% if selected_year == 'all' %}{{ _('Год') }} {% else %}{{ selected_year
+        }}{% endif %}
+      </span>
+      {{ icons.dropdown_arrow() }}
+    </button>
+    <div class="dropdown-menu-filter">
+      <div class="dropdown-item" data-value="all">{{ _('Все года') }}</div>
+      {% for year in years %}
+      <div class="dropdown-item" data-value="{{ year }}">{{ year }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="custom-dropdown" data-filter-type="region">
+    <button type="button" class="dropdown-toggle">
+      <span class="selected-option" id="selected-region">
+        {% if selected_region == 'all' %}{{ _('Регион') }} 
+          {% elif selected_region == '1' %}Брест
+          {% elif selected_region == '2' %}Витебск
+          {% elif selected_region == '3' %}Гомель
+          {% elif selected_region == '4' %}Гродно
+          {% elif selected_region == '5' %}г. Минск 
+          {% elif selected_region == '6' %}Минск
+          {% elif selected_region =='7' %}Могилев
+          {%else %}{{ _('Регион') }}
+        {% endif %}
+      </span>
+      {{ icons.dropdown_arrow() }}
+    </button>
+    <div class="dropdown-menu-filter">
+      <div class="dropdown-item" data-value="all">{{ _('Все регионы') }}</div>
+      <div class="dropdown-item" data-value="1">Брест</div>
+      <div class="dropdown-item" data-value="2">Витебск</div>
+      <div class="dropdown-item" data-value="3">Гомель</div>
+      <div class="dropdown-item" data-value="4">Гродно</div>
+      <div class="dropdown-item" data-value="5">г. Минск</div>
+      <div class="dropdown-item" data-value="6">Минск</div>
+      <div class="dropdown-item" data-value="7">Могилев</div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro plan_count(current_user) %}
+<div class="stats-container">
+  <div class="stats-track">
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number" id="stat-all">-</a>
+        <a class="word-numb">{{ _('Все') }}</a>
+      </div>
+    </div>
+    {% if current_user.is_auditor %}
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-sent" id="stat-sent">-</a>
+        <a class="word-numb">{{ _('Не просмотренные') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-sogl" id="stat-sogl">-</a>
+        <a class="word-numb">{{ _('Согласованные') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    {% else %}
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-redac" id="stat-draft">-</a>
+        <a class="word-numb">{{ _('В редакции') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-control" id="stat-control">-</a>
+        <a class="word-numb">{{ _('Контроль пройден') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-sent" id="stat-sent">-</a>
+        <a class="word-numb">{{ _('На согласовании') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    {% endif %}
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-eror" id="stat-error">-</a>
+        <a class="word-numb">{{ _('Есть ошибки') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    <div class="stat-and-dot">
+      <div class="stat">
+        <a class="stat-number-sub" id="stat-approved">-</a>
+        <a class="word-numb">{{ _('Утвержденные') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+  <div class="progress-line-container">
+    <div class="progress-line-background"></div>
+    <div class="progress-line-active"></div>
+  </div>
+</div>
 {% endmacro %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Показатели') }} - enPlans{%endblock %}
+{% block title %}{{ _('Показатели использования ТЭР') }} - EnPlans{%endblock %}
 {% block content %}
 
 <div class="pers-page-with-table">
@@ -8,47 +8,55 @@
 </div>
 
 <div class="personal-plan-conteiner">
-  {{ component.plan_menu(plan, current_user, 'indicators') }}
+  {{ component.plan_menu(plan, current_user, 'indicators', show_control=True) }}
   <div class="table-container">
-    <table class="main-table" id="indicatorsTable">
+    <table class="main-table" id="indicatorsTable" 
+       data-token="{{ plan.token }}"
+       data-plan-id="{{ plan.id }}"
+       data-plan-year="{{ plan.year }}"
+       data-organization-id="{{ plan.org_id }}"
+       data-is-region-management="{{ current_user.organization.is_region_management|lower }}"
+       data-is-admin="{{ current_user.is_admin|lower }}">
+
       <thead class="main-table-titels">
         <tr>
-          <th rowspan="2" class="resizable" style="white-space: nowrap; border-left: none">
-            <a>Строка {{ icons.icon_sort() }}</a>
-            <div class="resizer"></div>
-          </th>
-          <th rowspan="2" class="resizable" style="white-space: nowrap">
+          <th rowspan="2" class="resizable">
             <a>№ п/п {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="2" class="resizable" style="min-width: 600px">        
-            <a>Основные показатели по использованию ТЭР {{ icons.icon_sort() }}</a>
+            <a>Основные показатели использования ТЭР {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-          <th rowspan="2" class="resizable" style="min-width: 90px">
+          <th rowspan="2" class="resizable" style="max-width: 90px">
             <a>Ед. изм.{{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
-            <a>{{ plan.year - 1}} г. план</a>
-            <div class="resizer"></div>
-          </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
-            <a>{{ plan.year }} г. план</a>
-            <div class="resizer"></div>
-          </th>
-          <th colspan="2" class="resizable" style="min-width: 200px">
-            <a>{{ plan.year + 1}} г. прогноз</a>
-            <div class="resizer"></div>
-          </th>
-          <th rowspan="2" class="resizable">
-            <a>Изменение ТЭР прогнозного года к предыдущему {{ icons.icon_sort() }}</a>
+
+            {% set configs = plan.column_configs|sort(attribute='year') %}
+            {% for config in configs %}
+            <th colspan="2" class="resizable colspan-header" style="max-width: 200px">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                    <a>{{ config.year }} г. {{ config.label }}</a>
+                    {% if not plan.is_draft or (plan.user_id != current_user.id)%}
+                    {%else%}
+                        <span class="edit-header-icon" data-config-id="{{ config.id }}" data-year="{{ config.year }}" data-label="{{ config.label }}" style="cursor: pointer; opacity: 0.5; transition: opacity 0.2s;">
+                            {{ icons.icon_dots() }}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="resizer"></div>
+            </th>
+            {% endfor %}
+
+          <th rowspan="2" class="resizable" style="border-right: none;  max-width: 120px">
+            <a>Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
         </tr>
         <tr>
           <th rowspan="1" class="resizable">
-            <a>в ед. изм. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
@@ -56,7 +64,7 @@
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в ед. изм. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
@@ -64,7 +72,7 @@
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в ед. изм. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич. {{ icons.icon_sort() }}</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
@@ -109,98 +117,334 @@
             8
             <div class="resizer"></div>
           </th>
-          <th class="resizable">
+          <th class="resizable" style="border-right: none;">
             9
-            <div class="resizer"></div>
-          </th>
-          <th class="resizable">
-            10
             <div class="resizer"></div>
           </th>
         </tr>
       </thead>
-      <tbody class="rows">
-        {% set ns = namespace(last_group=none) %} {% for row in indicators %}
-        {% set is_new_group = false %} {% if row.indicator.Group !=
-        ns.last_group %} {% set is_new_group = true %} {% set ns.last_group =
-        row.indicator.Group %} {% endif %}
-
-        <tr
-          class="menu-row {% if is_new_group %}group-header-indicator{% endif %}"
-          data-id="{{ row.id }}"
-        >
-          <td>{{ loop.index }}</td>
-          <td style="text-align: center">
-            {% if is_new_group %} {{ row.indicator.Group|int if
-            row.indicator.Group % 1 == 0 else row.indicator.Group }} {% endif
-            %}
-          </td>
-          <td style="text-align: start">{{ row.indicator.name }}</td>
-          <td style="text-align: start">{{ row.indicator.unit.name }}</td>
-          <td>{{ (row.QYearPrev / row.indicator.CoeffToTut) | round(3) }}</td>
-          <td>{{ row.QYearPrev }}</td>
-          <td>{{ (row.QYearCurr / row.indicator.CoeffToTut) | round(3) }}</td>
-          <td>{{ row.QYearCurr }}</td>
-          <td>{{ (row.QYearNext / row.indicator.CoeffToTut) | round(3) }}</td>
-          <td>{{ row.QYearNext }}</td>
-          <td
-            class="difference-cell"
-            style="{% if (row.QYearNext - row.QYearCurr) < 0 %}background-color: rgb(255, 96, 96, 0.705);{% elif (row.QYearNext - row.QYearCurr) > 0 %}background-color: rgb(96, 255, 122, 0.705);{% endif %}"
-          >
-            {{ row.QYearNext - row.QYearCurr }}
-          </td>
-          <td style="display: none">{{ row.indicator.code }}</td>
-          <td style="display: none" data-group="{{ row.indicator.Group }}">
-            {{ row.indicator.Group }}
-          </td>
+      <tbody class="rows" id="indicators-tbody">
+        <tr>
+          <td colspan="11" style="text-align: center; padding: 50px 0;"><div class="loading-spinner"></div></td>
         </tr>
-        {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const inputIds = ["QYearPrev-edit", "QYearCurr-edit", "QYearNext-edit"];
-    inputIds.forEach((inputId) => {
-      const inputElement = document.getElementById(inputId);
-      const predictionElement = inputElement.nextElementSibling;
-      function updatePredictionValue() {
-        const inputValue = parseFloat(inputElement.value) || 0;
-        const multiplier =
-          parseFloat(predictionElement.dataset.multiplier) || 1;
-        const result = inputValue * multiplier;
 
-        predictionElement.textContent = result.toFixed(3);
-      }
-      inputElement.addEventListener("input", updatePredictionValue);
-      updatePredictionValue();
-    });
+<div id="AddIndicatorModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1 id="modal-title">{{ _('Добавление показателя') }}</h1>
+            {{ icons.icon_close() }}  
+        </div>
+        <div class="modal-body">
+            <div class="progress-modal-bar-container">
+                <div class="progress-modal-bar" id="modal-progress-bar" style="width: 50%"></div>
+            </div> 
+            <div id="step1" class="modal-step">
+              {#
+                <div class="answer-highlight">
+                    <div class="highlight-icon">💡</div>
+                    <p><strong>Выберите</strong> показатель кликнув по нему, а затем нажмите <strong>Далее</strong></p>
+                </div>#}
+                <div class="app-group">
+                    <label>{{ _('Поиск показателя') }}</label>
+                    <div class="input-with-icon">
+                        {{ icons.icon_search() }}
+                        <input type="text" data-action="search-directions" 
+                            placeholder="{{ _('Код или наименование') }}" 
+                            class="app-input" required>
+                    </div>
+                </div>
+                <div class="modal-table-conteiner"> 
+                <table class="modal-table-main" data-action="modal-table-main">
+                    <thead class="modal-table-main-titles">
+                        <tr>
+                            <th style="display: none;">id</th>
+                            <th>Код</th>
+                            <th>Наименование</th>
+                            <th style="text-align: center;">Ед. изм.</th>
+                            <th style="text-align: center;">Коэф.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in indicators_non_madatory %}
+                            <tr>
+                                <td style="display: none;">{{ row.id }}</td>
+                                <td>{{ row.code }}</td>
+                                <td>{{ row.name }}</td>
+                                <td>{{ row.unit.name }}</td>
+                                <td>{{ row.CoeffToTut }}</td>
 
-    const multiplierValueElements =
-      document.querySelectorAll(".multiplier-value");
-    multiplierValueElements.forEach((element) => {
-      element.addEventListener("click", function () {
-        const fieldId = this.dataset.field;
-        const predictionElement = document.querySelector(
-          `#${fieldId}`,
-        ).nextElementSibling;
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                <div class="button-auth-area" id="step1-buttons">
+                    <div></div>
+                    <button type="button" class="svg-btn blue" id="step1-next-btn" data-action="directions-next">
+                        <span class="btn-text">{{ _('Далее') }}</span>
+                        {{ icons.next_icon() }}
+                    </button>
+                </div>
+            </div>
+            <form action="{{ url_for('plan_bp.create_indicator', token=plan.token) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="step2" class="modal-step" style="display: none;">
+                            
+                    <div class="selected-indicator-display" id="selected-indicator-display" style="display: none;">
+                        <div class="selected-indicator-info">
+                            <div class="selected-indicator-label">Выбранный показатель</div>
+                            <div class="selected-indicator-name" id="selected-indicator-name">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="name-section" id="name-section" style="display: none;">
+                        <div class="name-section-title">Наименование</div>
+                        <div class="name-options">
+                          <div class="input-with-icon">
+                            <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
+                          </div>
+                        </div>
+                    </div>
 
-        const newMultiplier = prompt(
-          "Введите новое значение множителя:",
-          predictionElement.dataset.multiplier,
-        );
-        if (newMultiplier !== null && !isNaN(parseFloat(newMultiplier))) {
-          predictionElement.dataset.multiplier = newMultiplier;
-          this.textContent = newMultiplier;
+                    <div class="category-section" id="category-section" style="display: none;">
+                        <!-- <div class="category-section-title">Категория топлива</div> -->
+                        <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="local">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Местные виды топлива и отходы</div>
+                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                </div>
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="renewable">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Возобновляемые источники энергии</div>
+                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                </div>
+                            </label>
+                        </div>
+                        <hr>
+                    </div>
 
-          const inputElement = document.getElementById(fieldId);
-          const inputValue = parseFloat(inputElement.value) || 0;
-          const result = inputValue * parseFloat(newMultiplier);
-          predictionElement.textContent = result.toFixed(3);
-        }
-      });
-    });
-  });
-</script>
+                    <div class="coeff-section">
+                        <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
+                        <div class="coeff-options">
+                            <label class="coeff-option standard-option">
+                                <input type="radio" name="coeff_type" value="standard" checked>
+                                <div class="coeff-option-content">
+                                    <div class="coeff-option-title">Стандартный коэффициент</div>
+                                    <div class="coeff-option-value" id="standard-coeff-value">0.000</div>
+                                </div>
+                            </label>
+                            <label class="coeff-option custom-option">
+                                <input type="radio" name="coeff_type" value="custom">
+                                <div class="coeff-option-content">
+                                    <div class="coeff-option-title">Свой коэффициент</div>
+                                    <div class="coeff-option-value custom-value-input" id="custom-coeff-group" style="display: none;">
+                                        <input type="text" name="custom_coeff" placeholder="0,000" class="custom-coeff-input app-numeric-input-coeff">
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    {% set configs = plan.column_configs|sort(attribute='year') %}
+
+                    <div class="values-section">
+                        <div class="values-section-title">Значения показателя</div>
+                        <div class="values-grid">
+                            <div class="value-card">
+                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" value="0" name="QYearBeforePrev"
+                                        placeholder="0" class="app-numeric-input" data-year="before" required>
+                                </div>
+                                <div class="value-unit" id="unit-name-before">{{ _('ед. изм.') }}</div>
+                                <div class="result-tut" id="result-before">= 0 т.у.т.</div>
+                            </div>
+                            
+                            <div class="value-card">
+                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" value="0" name="QYearPrev"
+                                        placeholder="0" class="app-numeric-input" data-year="prev" required>
+                                </div>
+                                <div class="value-unit" id="unit-name-prev">{{ _('ед. изм.') }}</div>
+                                <div class="result-tut" id="result-prev">= 0 т.у.т.</div>
+                            </div>
+                            
+                            <div class="value-card">
+                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" value="0" name="QYearCurrent"
+                                        placeholder="0" class="app-numeric-input" data-year="current" required>
+                                </div>
+                                <div class="value-unit" id="unit-name-current">{{ _('ед. изм.') }}</div>
+                                <div class="result-tut" id="result-current">= 0 т.у.т.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="app-group" style="display:none;">
+                        <label>id</label>
+                        <div class="input-with-icon">
+                            {{ icons.icon_eco() }}
+                            <input class="app-input" name="id_indicator" data-action="selected-direction" readonly>
+                        </div>  
+                    </div>
+                    
+                    <div class="button-auth-area" id="step2-buttons">
+                        <button type="submit" class="main-btn main-btn-primary" id="submit-indicator-btn">
+                            {{ icons.icon_add() }}
+                            <span class="btn-text">{{ _('Добавить показатель') }}</span>
+                        </button>
+                        <button type="button" class="svg-btn" id="step2-back-btn">
+                            {{ icons.back_icon() }}
+                            <span class="btn-text">{{ _('Назад') }}</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="EditIndicatorModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h1 id="modal-title">{{ _('Редактирование показателя') }}</h1>
+            {{ icons.icon_close() }}  
+        </div>  
+        <div class="modal-body">             
+            <form id="editIndicatorForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="step1" class="modal-step">
+                    
+                    <div class="selected-indicator-display" id="edit-selected-indicator-display" style="display: flex;">
+                        <div class="selected-indicator-info">
+                            <div class="selected-indicator-label">Редактируемый показатель</div>
+                            <div class="selected-indicator-name" id="edit-selected-indicator-name">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="name-section" id="edit-name-section" style="display: none;">
+                        <div class="name-section-title">Наименование</div>
+                        <div class="name-options">
+                          <div class="input-with-icon">
+                            
+                            <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
+                          </div>
+                        </div>
+                    </div>
+
+                    <div class="category-section" id="edit-category-section" style="display: none;">
+                        <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="local">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Местные виды топлива и отходы</div>
+                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                </div>
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="renewable">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Возобновляемые источники энергии</div>
+                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                </div>
+                            </label>
+                        </div>
+                        <hr>
+                    </div>
+                    
+                    <div class="coeff-section" id="edit-coeff-section">
+                        <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
+                        <div class="coeff-options">
+                            <label class="coeff-option standard-option">
+                                <input type="radio" name="coeff_type" value="standard" checked>
+                                <div class="coeff-option-content">
+                                    <div class="coeff-option-title">Стандартный коэффициент</div>
+                                    <div class="coeff-option-value" id="edit-standard-coeff-value">0.000</div>
+                                </div>
+                            </label>
+                            <label class="coeff-option custom-option" id="edit-custom-option" style="display: none;">
+                                <input type="radio" name="coeff_type" value="custom">
+                                <div class="coeff-option-content">
+                                    <div class="coeff-option-title">Свой коэффициент</div>
+                                    <div class="coeff-option-value custom-value-input" id="edit-custom-coeff-group" style="display: none;">
+                                        <input type="text" name="custom_coeff" placeholder="0,000" class="custom-coeff-input app-numeric-input-coeff" id="edit-custom-coeff">
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {% set configs = plan.column_configs|sort(attribute='year') %}
+                    <div class="values-section">
+                        <div class="values-section-title">Значения показателя</div>
+                        <div class="values-grid">
+                            <div class="value-card" id="QYearBeforePrev-edit-nodisplay">
+                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" id="QYearBeforePrev-edit" value="0" name="QYearBeforePrev"
+                                        placeholder="0" class="app-input">
+                                </div>
+                                <div class="value-unit" id="unit-name-before-edit"></div>
+                                <div class="result-tut" id="edit-result-before">= 0 т.у.т.</div>
+                            </div>
+                            
+                            <div class="value-card" id="QYearCurr-edit-nodisplay">
+                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" id="QYearCurr-edit" value="0" name="QYearPrev"
+                                        placeholder="0" class="app-input">
+                                </div>
+                                <div class="value-unit" id="unit-name-prev-edit"></div>
+                                <div class="result-tut" id="edit-result-prev">= 0 т.у.т.</div>
+                            </div>
+                            
+                            <div class="value-card" id="QYearCurrent-edit-nodisplay">
+                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
+                                <div class="input-with-icon">
+                                    {{ icons.icon_half() }}
+                                    <input type="text" id="QYearCurrent-edit" value="0" name="QYearCurrent"
+                                        placeholder="0" class="app-input" required>
+                                </div>
+                                <div class="value-unit" id="unit-name-current-edit"></div>
+                                <div class="result-tut" id="edit-result-current">= 0 т.у.т.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="app-group" style="display:none;">
+                        <label>id</label>
+                        <div class="input-with-icon">
+                            {{ icons.icon_eco() }}
+                            <input class="app-input" name="id_indicator" id="edit-id-indicator" readonly>
+                        </div>  
+                    </div>
+
+                    <div class="button-auth-area">
+                        <button type="submit" class="main-btn main-btn-primary" id="edit-submit-btn">
+                            {{ icons.icon_add() }}
+                            <span class="btn-text">{{ _('Сохранить изменения') }}</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/indicator-calc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/PlanStatControl.js') }}"></script>
 {% endblock %}

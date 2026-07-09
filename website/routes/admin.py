@@ -6,7 +6,7 @@ from flask_login import current_user
 
 from website.models import (
     User, Organization, TimeByMinsk, Plan, Ticket, Unit, 
-    Direction, EconMeasure, EconExec, Indicator, IndicatorUsage, Notification
+    Direction, Event, Indicator, IndicatorUsage, Notification
 )
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -64,8 +64,7 @@ class AdminSetup:
             'ticket': (TicketView, Ticket, 'Тикеты', 'Вспомогательные'),
             'unit': (UnitView, Unit, 'Единицы измерения', 'Справочники'),
             'direction': (DirectionView, Direction, 'Направления', 'Справочники'),
-            'econ_measure': (EconMeasureView, EconMeasure, 'Экономические меры', 'Данные'),
-            'econ_exec': (EconExecView, EconExec, 'Исполнения мер', 'Данные'),
+            'event': (EventView, Event, 'Исполнения мер', 'Данные'),
             'indicator': (IndicatorView, Indicator, 'Показатели', 'Справочники'),
             'indicator_usage': (IndicatorUsageView, IndicatorUsage, 'Использование показателей', 'Данные'),
             'notification': (NotificationView, Notification, 'Уведомления', 'Вспомогательные'),
@@ -103,8 +102,7 @@ class MyMainView(AdminIndexView):
             tickets_count = Ticket.query.count()
             units_count = Unit.query.count()
             directions_count = Direction.query.count()
-            measures_count = EconMeasure.query.count()
-            execs_count = EconExec.query.count()
+            execs_count = Event.query.count()
             indicators_count = Indicator.query.count()
             usages_count = IndicatorUsage.query.count()
             notifications_count = Notification.query.count()
@@ -113,7 +111,7 @@ class MyMainView(AdminIndexView):
             user_data = organization_data = active_users = new_users = 0
             admins_count = auditors_count = respondents_count = orgs_with_users = 0
             plan_data = draft_plans = approved_plans = 0
-            tickets_count = units_count = directions_count = measures_count = 0
+            tickets_count = units_count = directions_count = 0
             execs_count = indicators_count = usages_count = notifications_count = 0
             flash('Ошибка при получении статистики из базы данных', 'error')
 
@@ -124,8 +122,7 @@ class MyMainView(AdminIndexView):
             'tickets': 'ticket.index_view',  # TicketView -> ticket
             'units': 'unit.index_view',  # UnitView -> unit
             'directions': 'direction.index_view',  # DirectionView -> direction
-            'econ_measures': 'econmeasure.index_view',  # EconMeasureView -> econmeasure
-            'econ_execs': 'econexec.index_view',  # EconExecView -> econexec
+            'econ_execs': 'Event.index_view',  # EventView -> Event
             'indicators': 'indicator.index_view',  # IndicatorView -> indicator
             'indicator_usages': 'indicatorusage.index_view',  # IndicatorUsageView -> indicatorusage
             'notifications': 'notification.index_view',  # NotificationView -> notification
@@ -146,7 +143,6 @@ class MyMainView(AdminIndexView):
                         tickets_count=tickets_count,
                         units_count=units_count,
                         directions_count=directions_count,
-                        measures_count=measures_count,
                         execs_count=execs_count,
                         indicators_count=indicators_count,
                         usages_count=usages_count,
@@ -283,8 +279,8 @@ class UserView(SecureModelView):
 
     column_formatters = {
         'organization': lambda v, c, m, p: m.organization.name if m.organization else 'Не назначена',
-        'is_admin': lambda v, c, m, p: '✅ Да' if m.is_admin else '❌ Нет',
-        'is_auditor': lambda v, c, m, p: '✅ Да' if m.is_auditor else '❌ Нет',
+        'is_admin': lambda v, c, m, p: '✅' if m.is_admin else '❌',
+        'is_auditor': lambda v, c, m, p: '✅' if m.is_auditor else '❌',
         'last_active': lambda v, c, m, p: m.last_active.strftime('%d.%m.%Y %H:%M') if m.last_active else '',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else ''
     }
@@ -329,14 +325,14 @@ class UserView(SecureModelView):
         return form
 
 class OrganizationView(SecureModelView):
-    column_list = ['id', 'name', 'okpo', 'ynp', 'ministry_id', 'is_active', 'users']
+    column_list = ['id', 'name', 'okpo', 'ynp', 'is_active', 'users']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'name', 'okpo', 'is_active')
     can_delete = True
     can_create = True
     can_edit = True
     can_export = True
-    form_columns = ['name', 'okpo', 'ynp', 'ministry_id', 'is_active']
+    form_columns = ['name', 'okpo', 'ynp', 'is_active']
     form_args = {
         'name': {
             'label': 'Полное наименование',
@@ -353,27 +349,22 @@ class OrganizationView(SecureModelView):
             'validators': [Length(max=20)],
             'description': 'Учетный номер плательщика'
         },
-        'ministry_id': {
-            'label': 'Министерство',
-            'validators': [Length(max=500)],
-            'description': 'Вышестоящее министерство'
-        },
         'is_active': {
             'label': 'Активна',
             'description': 'Активна ли организация'
         }
     }
-    column_searchable_list = ['name', 'okpo', 'ynp', 'ministry_id']
-    column_filters = ['id', 'is_active', 'ministry_id']
+    column_searchable_list = ['name', 'okpo', 'ynp']
+    column_filters = ['id', 'is_active']
     column_formatters = {
-        'is_active': lambda v, c, m, p: '✅ Да' if m.is_active else '❌ Нет',
+        'is_active': lambda v, c, m, p: '✅' if m.is_active else '❌',
         'users': lambda v, c, m, p: f'{len(m.users)} пользователей' if m.users else 'Нет пользователей'
     }
 
 class PlanView(SecureModelView):
     column_list = ['id',
                    'is_draft', 'is_control', 'is_sent', 'is_error', 'is_approved',
-                   'begin_time', 'change_time', 'sent_time', 'audit_time', 'ministry_id', 'org_id', 'region_id']
+                   'begin_time', 'change_time', 'sent_time', 'audit_time', 'org_id']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'year', 'begin_time', 'change_time', 'sent_time', 'audit_time')
     can_delete = True
@@ -445,7 +436,7 @@ class TicketView(SecureModelView):
     column_filters = ['id', 'luck', 'is_owner', 'plan_id']
 
     column_formatters = {
-        'luck': lambda v, c, m, p: '✅ Да' if m.luck else '❌ Нет',
+        'luck': lambda v, c, m, p: '✅' if m.luck else '❌',
         'is_owner': lambda v, c, m, p: '👤 Да' if m.is_owner else '👥 Нет',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else '',
         'plan': lambda v, c, m, p: f"План #{m.plan.id} ({m.plan.organization.name})" if m.plan else ''
@@ -454,30 +445,25 @@ class TicketView(SecureModelView):
 class UnitView(SecureModelView):
     column_list = ['id', 'code', 'name']
     column_default_sort = ('id', True)
-    column_sortable_list = ('id', 'code', 'name')
+    column_sortable_list = ('id', 'name')
 
     can_delete = True
     can_create = True
     can_edit = True
     can_export = True
-    form_columns = ['code', 'name']
+    form_columns = ['name']
     form_args = {
-        'code': {
-            'label': 'Код',
-            'validators': [DataRequired(), Length(max=400)],
-            'description': 'Код единицы измерения'
-        },
         'name': {
             'label': 'Название',
             'validators': [DataRequired(), Length(max=400)],
             'description': 'Название единицы измерения'
         }
     }
-    column_searchable_list = ['code', 'name']
-    column_filters = ['id', 'code']
+    column_searchable_list = ['name']
+    column_filters = ['id', 'name']
 
 class DirectionView(SecureModelView):
-    column_list = ['id', 'code', 'name', 'unit', 'is_local', 'DateStart', 'DateEnd']
+    column_list = ['id', 'code', 'name', 'unit', 'DateStart', 'DateEnd']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'code', 'name', 'DateStart', 'DateEnd')
 
@@ -486,7 +472,7 @@ class DirectionView(SecureModelView):
     can_edit = True
     can_export = True
 
-    form_columns = ['code', 'name', 'unit', 'is_local', 'DateStart', 'DateEnd']
+    form_columns = ['code', 'name', 'unit', 'is_econom', 'is_increase', 'DateStart', 'DateEnd']
 
     form_args = {
         'code': {
@@ -503,23 +489,28 @@ class DirectionView(SecureModelView):
             'label': 'Единица измерения',
             'description': 'Единица измерения'
         },
-        'is_local': {
-            'label': 'Локальный',
-            'description': 'Является ли локальным'
+        'is_econom': {
+            'label': 'Экономия',
+            'description': 'Является ли экономией'
+        },
+        'is_increase': {
+            'label': 'Увеличение',
+            'description': 'Является ли увеличением'
         }
     }
 
     column_searchable_list = ['code', 'name']
-    column_filters = ['id', 'is_local']
+    column_filters = ['id', 'is_econom', 'is_increase']
 
     column_formatters = {
-        'is_local': lambda v, c, m, p: '🏠 Да' if m.is_local else '🌍 Нет',
+        'is_econom': lambda v, c, m, p: '✅' if m.is_econom else '❌',
+        'is_increase': lambda v, c, m, p: '✅' if m.is_increase else '❌',
         'DateStart': lambda v, c, m, p: m.DateStart.strftime('%d.%m.%Y') if m.DateStart else '',
         'DateEnd': lambda v, c, m, p: m.DateEnd.strftime('%d.%m.%Y') if m.DateEnd else '',
-        'unit': lambda v, c, m, p: f"{m.unit.code} ({m.unit.name})" if m.unit else ''
+        'unit': lambda v, c, m, p: f"({m.unit.name})" if m.unit else ''
     }
 
-class EconMeasureView(SecureModelView):
+class EventsView(SecureModelView):
     column_list = ['id', 'plan', 'direction', 'year_econ', 'estim_econ', 'order']
     column_default_sort = ('id', True)
     column_sortable_list = ('id', 'year_econ', 'estim_econ', 'order')
@@ -565,8 +556,8 @@ class EconMeasureView(SecureModelView):
         'direction': lambda v, c, m, p: f"{m.direction.code} - {m.direction.name}" if m.direction else ''
     }
 
-class EconExecView(SecureModelView):
-    column_list = ['id', 'plan', 'econ_measures', 'name', 'Volume', 'EffTut', 'EffRub',
+class EventView(SecureModelView):
+    column_list = ['id', 'plan', 'name', 'Volume', 'EffTut', 'EffRub',
                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'is_local', 'is_corrected']
     column_default_sort = ('id', True)
 
@@ -575,8 +566,8 @@ class EconExecView(SecureModelView):
     can_edit = True
     can_export = True
 
-    form_columns = ['plan', 'econ_measures', 'name', 'Volume', 'EffTut', 'EffRub',
-                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFin',
+    form_columns = ['plan', 'name', 'Volume', 'EffTut', 'EffRub',
+                    'ExpectedQuarter', 'EffCurrYear', 'Payback', 'VolumeFinCurrentYear',
                     'BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther',
                     'MoneyOwn', 'MoneyLoan', 'MoneyOther', 'is_local', 'is_corrected', 'order']
 
@@ -605,10 +596,9 @@ class EconExecView(SecureModelView):
     column_filters = ['id', 'is_local', 'is_corrected']
 
     column_formatters = {
-        'is_local': lambda v, c, m, p: '🏠 Да' if m.is_local else '🌍 Нет',
-        'is_corrected': lambda v, c, m, p: '✏️ Да' if m.is_corrected else '📄 Нет',
-        'plan': lambda v, c, m, p: f"План #{m.plan.id}" if m.plan else '',
-        'econ_measures': lambda v, c, m, p: f"Мера #{m.econ_measures.id}" if m.econ_measures else ''
+        'is_local': lambda v, c, m, p: '✅' if m.is_local else '❌',
+        'is_corrected': lambda v, c, m, p: 'Да' if m.is_corrected else 'Нет',
+        'plan': lambda v, c, m, p: f"План #{m.plan.id}" if m.plan else ''
     }
 
 class IndicatorView(SecureModelView):
@@ -643,7 +633,7 @@ class IndicatorView(SecureModelView):
     column_filters = ['id', 'IsMandatory', 'Group']
 
     column_formatters = {
-        'IsMandatory': lambda v, c, m, p: '✅ Да' if m.IsMandatory else '❌ Нет',
+        'IsMandatory': lambda v, c, m, p: '✅' if m.IsMandatory else '❌',
         # 'IsSummary': lambda v, c, m, p: '📊 Да' if m.IsSummary else '📈 Нет',
         # 'IsSendRealUnit': lambda v, c, m, p: '📤 Да' if m.IsSendRealUnit else '📥 Нет',
         # 'IsSelfProd': lambda v, c, m, p: '🏭 Да' if m.IsSelfProd else '🏢 Нет',
@@ -651,11 +641,11 @@ class IndicatorView(SecureModelView):
         # 'IsRenewable': lambda v, c, m, p: '♻️ Да' if m.IsRenewable else '⚡ Нет',
         'DateStart': lambda v, c, m, p: m.DateStart.strftime('%d.%m.%Y') if m.DateStart else '',
         'DateEnd': lambda v, c, m, p: m.DateEnd.strftime('%d.%m.%Y') if m.DateEnd else '',
-        'unit': lambda v, c, m, p: f"{m.unit.code} ({m.unit.name})" if m.unit else ''
+        'unit': lambda v, c, m, p: f"({m.unit.name})" if m.unit else ''
     }
 
 class IndicatorUsageView(SecureModelView):
-    column_list = ['id', 'plan', 'indicator', 'QYearPrev', 'QYearCurr', 'QYearNext']
+    column_list = ['id', 'plan', 'indicator', 'QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
     column_default_sort = ('id', True)
 
     can_delete = True
@@ -663,7 +653,7 @@ class IndicatorUsageView(SecureModelView):
     can_edit = True
     can_export = True
 
-    form_columns = ['plan', 'indicator', 'QYearPrev', 'QYearCurr', 'QYearNext']
+    form_columns = ['plan', 'indicator', 'QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
 
     form_args = {
         'plan': {
@@ -714,7 +704,7 @@ class NotificationView(SecureModelView):
     column_searchable_list = ['message']
     column_filters = ['id', 'is_read', 'user_id']
     column_formatters = {
-        'is_read': lambda v, c, m, p: '✅ Да' if m.is_read else '❌ Нет',
+        'is_read': lambda v, c, m, p: '✅' if m.is_read else '❌',
         'created_at': lambda v, c, m, p: m.created_at.strftime('%d.%m.%Y %H:%M') if m.created_at else '',
         'user': lambda v, c, m, p: f"{m.user.email}" if m.user else ''
     }
