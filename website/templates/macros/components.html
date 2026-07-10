@@ -475,9 +475,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       {{ icons.icon_no_info() }}
       <h1>{{ _('Нет сообщений') }}</h1>
       <p class="empty-subtitle">
-        {% if current_user.is_auditor %} {{ _('Начните обсуждение плана') }} {%
-        else %} {{ _('Отправьте план для получения результатов проверки') }} {%
-        endif %}
+       {{ _('Для получения результатов проверки необходимо отправить план') }} 
       </p>
     </div>
   </div>
