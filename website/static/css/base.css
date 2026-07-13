@@ -3659,7 +3659,7 @@ hr {
   background: var(--chat-btn);
   border-radius: 12px;
   padding: 10px 15px;
-  margin-bottom: 10px;
+  /* margin-bottom: 10px; */
   display: flex;
   align-items: center;
   gap: 15px;
@@ -3853,23 +3853,32 @@ hr {
   align-items: center;
 }
 
-
-.name-section{
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 20px;
-
-}
-
 .name-section input{
   padding: 9px 16px;
 }
 
 .name-section-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 15px;
+  color: var(--color-green-text-main);
+  margin: 15px 0 15px 0;
+  text-align: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.name-section-title::before,
+.name-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e5e7eb 80%);
+}
+
+.name-section-title::after {
+  background: linear-gradient(90deg, #e5e7eb 20%, transparent);
 }
 
 .name-options input{
@@ -3877,12 +3886,11 @@ hr {
 }
 
 .category-section {
-  border-radius: 12px;
-  padding: 10px 0;
-  padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.category-section hr{
+.modal-body hr{
   margin: 15px 0 !important;
   border: none;
   height: 1px;
@@ -3899,11 +3907,15 @@ hr {
 .category-options {
   display: flex;
   gap: 15px;
+  flex: 1;
+  height: 110px;
 }
 
 .category-option {
   flex: 1;
+  display: flex;
   cursor: pointer;
+  min-height: 100%;
 }
 
 .category-option input[type="radio"] {
@@ -3917,6 +3929,12 @@ hr {
   transition: all 0.3s ease;
   background: white;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .category-option input[type="radio"]:checked + .category-option-content {
@@ -5306,8 +5324,6 @@ input[type="checkbox"]:focus {
   vertical-align: middle;
   align-items: center;
   margin-top: 10px;
-  margin-bottom: 15px;
-  margin-bottom: 0;
   width: 100%;
   max-width: 1250px;
   box-sizing: border-box;
@@ -6812,7 +6828,7 @@ input[type="checkbox"]:focus {
   border-right: 1px solid var(--border-color);
   color: #334155;
   font-size: 13px;
-  /* text-align: center; */
+  text-align: right;
 }
 
 .main-table tbody tr:hover {
@@ -6907,6 +6923,7 @@ td.stat-no-data {
 .main-table td:first-child {
   padding-left: 20px;
   border-left: none;
+  text-align: start;
 }
 
 .main-table td:last-child {
@@ -7033,11 +7050,7 @@ td.stat-no-data {
   padding: 12px 16px;
   font-weight: 600;
   color: #333;
-  /* background-color: var(--th-background); */
-  /* background-color: #fcfcfc;
-  z-index: 1; */
-  text-align: left;
-  /* border-bottom: 1px solid var(--border-color); */
+  text-align: right;
 }
 
 

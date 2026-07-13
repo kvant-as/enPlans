@@ -195,7 +195,7 @@
                     </div>
                     
                     <div class="name-section" id="name-section" style="display: none;">
-                        <div class="name-section-title">Наименование показателя</div>
+                        <div class="name-section-title">1. Наименование</div>
                         <div class="name-options">
                             <div class="input-with-icon">
                                 <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
@@ -204,7 +204,15 @@
                     </div>
 
                     <div class="category-section" id="category-section" style="display: none;">
+                        <div class="name-section-title">2. Отношение</div>
                         <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="none" checked>
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Никчему не относится</div>
+                                    <div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>
+                                </div>
+                            </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="local">
                                 <div class="category-option-content">
@@ -220,10 +228,10 @@
                                 </div>
                             </label>
                         </div>
-                        <hr>
                     </div>
 
                     <div class="values-section">
+                        <div class="name-section-title">Данные</div>
                         <div class="values-grid">
                             <div class="value-card">
                                 <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
@@ -240,7 +248,7 @@
                                            id="coeff-display-before" value="0,000" 
                                            data-year="before">
                                 </div>
-                                <div class="result-tut" id="result-before">= 0 т.у.т.</div>
+                                <div class="result-tut" id="result-before">= 0 т у.т.</div>
                             </div>
                             
                             <div class="value-card">
@@ -258,7 +266,7 @@
                                            id="coeff-display-prev" value="0,000" 
                                            data-year="prev">
                                 </div>
-                                <div class="result-tut" id="result-prev">= 0 т.у.т.</div>
+                                <div class="result-tut" id="result-prev">= 0 т у.т.</div>
                             </div>
                             
                             <div class="value-card">
@@ -276,7 +284,7 @@
                                            id="coeff-display-current" value="0,000" 
                                            data-year="current">
                                 </div>
-                                <div class="result-tut" id="result-current">= 0 т.у.т.</div>
+                                <div class="result-tut" id="result-current">= 0 т у.т.</div>
                             </div>
                         </div>
                     </div>
@@ -324,16 +332,24 @@
                     </div>
                     
                     <div class="name-section" id="edit-name-section" style="display: none;">
-                        <div class="name-section-title">Наименование показателя</div>
+                        <div class="name-section-title">1. Наименование</div>
                         <div class="name-options">
-                          <div class="input-with-icon">
-                            <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
-                          </div>
+                            <div class="input-with-icon">
+                                <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
+                            </div>
                         </div>
                     </div>
 
                     <div class="category-section" id="edit-category-section" style="display: none;">
+                        <div class="name-section-title">2. Отношение</div>
                         <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="fuel_category" value="none" checked>
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Никчему не относится</div>
+                                    <div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>
+                                </div>
+                            </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="local">
                                 <div class="category-option-content">
@@ -349,10 +365,10 @@
                                 </div>
                             </label>
                         </div>
-                        <hr>
                     </div>
 
                     <div class="values-section">
+                        <div class="name-section-title">Данные</div>
                         <div class="values-grid">
                             <div class="value-card" id="QYearBeforePrev-edit-nodisplay">
                                 <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
@@ -361,7 +377,7 @@
                                     <input type="text" id="QYearBeforePrev-edit" value="0" name="QYearBeforePrev"
                                         placeholder="0" class="app-numeric-input" data-year="before">
                                 </div>
-                                <div class="value-unit" id="unit-name-before-edit"></div>
+                                <div class="value-unit" id="unit-name-before-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
                                     <span class="coeff-label">Коэф:</span>
                                     <input type="text" name="custom_coeff_before" 
@@ -369,7 +385,7 @@
                                            id="edit-coeff-display-before" value="0,000" 
                                            data-year="before">
                                 </div>
-                                <div class="result-tut" id="edit-result-before">= 0 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-before">= 0 т у.т.</div>
                             </div>
                             
                             <div class="value-card" id="QYearCurr-edit-nodisplay">
@@ -379,7 +395,7 @@
                                     <input type="text" id="QYearCurr-edit" value="0" name="QYearPrev"
                                         placeholder="0" class="app-numeric-input" data-year="prev">
                                 </div>
-                                <div class="value-unit" id="unit-name-prev-edit"></div>
+                                <div class="value-unit" id="unit-name-prev-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
                                     <span class="coeff-label">Коэф:</span>
                                     <input type="text" name="custom_coeff_prev" 
@@ -387,7 +403,7 @@
                                            id="edit-coeff-display-prev" value="0,000" 
                                            data-year="prev">
                                 </div>
-                                <div class="result-tut" id="edit-result-prev">= 0 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-prev">= 0 т у.т.</div>
                             </div>
                             
                             <div class="value-card" id="QYearCurrent-edit-nodisplay">
@@ -397,7 +413,7 @@
                                     <input type="text" id="QYearCurrent-edit" value="0" name="QYearCurrent"
                                         placeholder="0" class="app-numeric-input" data-year="current" required>
                                 </div>
-                                <div class="value-unit" id="unit-name-current-edit"></div>
+                                <div class="value-unit" id="unit-name-current-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
                                     <span class="coeff-label">Коэф:</span>
                                     <input type="text" name="custom_coeff_current" 
@@ -405,7 +421,7 @@
                                            id="edit-coeff-display-current" value="0,000" 
                                            data-year="current">
                                 </div>
-                                <div class="result-tut" id="edit-result-current">= 0 т.у.т.</div>
+                                <div class="result-tut" id="edit-result-current">= 0 т у.т.</div>
                             </div>
                         </div>
                     </div>

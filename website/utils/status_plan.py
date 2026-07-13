@@ -132,6 +132,8 @@ def handle_control_status(plan):
         plan.is_draft = plan.is_sent = plan.is_error = plan.is_approved = False
         plan.afch = False
         
+        db.session.commit()
+        
         current_app.logger.info(f"План {plan.id} успешно прошел проверку на контроль")
         return "План прошел проверку на контроль."
         

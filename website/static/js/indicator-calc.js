@@ -84,8 +84,21 @@ class PlanIndicators {
         const formattedCoeff = coeffValue.toFixed(3).replace('.', ',');
         
         const coeffInputs = document.querySelectorAll('#AddIndicatorModal .coeff-input-display');
+        const isTut = unitName === 'т у.т.';
+        
         coeffInputs.forEach(input => {
             input.value = formattedCoeff;
+            if (isTut) {
+                input.readOnly = true;
+                input.style.backgroundColor = '#f5f5f5';
+                input.style.cursor = 'not-allowed';
+                input.style.color = '#999';
+            } else {
+                input.readOnly = false;
+                input.style.backgroundColor = 'white';
+                input.style.cursor = 'text';
+                input.style.color = 'var(--green-main)';
+            }
         });
         
         const unitSpans = document.querySelectorAll('#AddIndicatorModal .value-unit');
@@ -130,11 +143,11 @@ class PlanIndicators {
             let defaultValue = '0';
             
             if (groupNumber === 5) {
-                decimalPlaces = 1;
-                defaultValue = '0,0';
-            } else if (groupNumber === 6 || groupNumber === 7 || groupNumber === 8) {
                 decimalPlaces = 2;
                 defaultValue = '0,00';
+            } else if (groupNumber === 6 || groupNumber === 7 || groupNumber === 8) {
+                decimalPlaces = 1;
+                defaultValue = '0,0';
             } else {
                 decimalPlaces = 0;
                 defaultValue = '0';
@@ -196,9 +209,9 @@ class PlanIndicators {
             if (value === null || value === undefined || isNaN(value)) return '0';
             
             if (groupId === 5) {
-                return value.toFixed(1).replace('.', ',');
-            } else if (groupId === 6 || groupId === 7 || groupId === 8) {
                 return value.toFixed(2).replace('.', ',');
+            } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                return value.toFixed(1).replace('.', ',');
             } else {
                 return Math.round(value).toString().replace('.', ',');
             }
@@ -224,9 +237,9 @@ class PlanIndicators {
                     if (isNaN(value)) value = 0;
                     const tutValue = value * currentCoeff;
                     let formattedResult = formatResultValue(tutValue, groupNumber);
-                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                    resultSpan.textContent = '= ' + formattedResult + ' т у.т.';
                 } else {
-                    resultSpan.textContent = '= 0 т.у.т.';
+                    resultSpan.textContent = '= 0 т у.т.';
                 }
             }
         });
@@ -269,9 +282,9 @@ class PlanIndicators {
                 if (value === null || value === undefined || isNaN(value)) return '';
                 
                 if (groupId === 5) {
-                    return value.toFixed(1).replace('.', ',');
-                } else if (groupId === 6 || groupId === 7 || groupId === 8) {
                     return value.toFixed(2).replace('.', ',');
+                } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+                    return value.toFixed(1).replace('.', ',');
                 } else {
                     return Math.round(value).toString().replace('.', ',');
                 }
@@ -381,6 +394,60 @@ class PlanIndicators {
     }
 }
 
+function checkCategoryRequired() {
+    const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const categorySection = document.getElementById('category-section');
+    const nameSection = document.getElementById('name-section');
+    const submitBtn = document.getElementById('submit-indicator-btn');
+    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
+    const nameInput = document.getElementById('name-section-input');
+    
+    if (!selectedIndicatorName || !categorySection || !nameSection) return;
+    
+    const indicatorText = selectedIndicatorName.textContent;
+    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    
+    function validateForm() {
+        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
+        const isNameFilled = nameInput && nameInput.value.trim() !== '';
+        
+        if (submitBtn) {
+            if (isCategoryRequired) {
+                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
+            } else {
+                submitBtn.disabled = false;
+            }
+        }
+    }
+    
+    if (isCategoryRequired) {
+        categorySection.style.display = 'block';
+        nameSection.style.display = 'block';
+        const noneRadio = document.querySelector('input[name="fuel_category"][value="none"]');
+        if (noneRadio && !Array.from(categoryRadios).some(radio => radio.checked)) {
+            noneRadio.checked = true;
+        }
+        
+        categoryRadios.forEach(radio => {
+            radio.removeEventListener('change', validateForm);
+            radio.addEventListener('change', validateForm);
+        });
+        
+        if (nameInput) {
+            nameInput.removeEventListener('input', validateForm);
+            nameInput.addEventListener('input', validateForm);
+        }
+        
+        validateForm();
+    } else {
+        categorySection.style.display = 'none';
+        nameSection.style.display = 'none';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    }
+}
+
 function Edit_indicator_modal() {
     const EditIndicatorModal = document.getElementById('EditIndicatorModal');
     if (!EditIndicatorModal) return;
@@ -423,11 +490,11 @@ function Edit_indicator_modal() {
         let defaultValue = '0';
         
         if (groupId === 5) {
-            decimalPlaces = 1;
-            defaultValue = '0,0';
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
             decimalPlaces = 2;
             defaultValue = '0,00';
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            decimalPlaces = 1;
+            defaultValue = '0,0';
         } else {
             decimalPlaces = 0;
             defaultValue = '0';
@@ -469,9 +536,9 @@ function Edit_indicator_modal() {
         if (value === null || value === undefined || isNaN(value)) return '';
         
         if (groupId === 5) {
-            return value.toFixed(1).replace('.', ',');
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
             return value.toFixed(2).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(1).replace('.', ',');
         } else {
             return Math.round(value).toString().replace('.', ',');
         }
@@ -508,6 +575,7 @@ function Edit_indicator_modal() {
             const isCoeffEditable = indicatorCodeNum >= 2000 && indicatorCodeNum <= 2024;
             const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
             const isCoeffLocked = ['9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'].includes(indicatorCode);
+            const isTut = unitName === 'т у.т.';
             
             if (isCodes9911to9914) {
                 if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
@@ -541,12 +609,86 @@ function Edit_indicator_modal() {
                 }
             }
             
+            // Устанавливаем категорию топлива
+            if (indicatorCode === '2023' || indicatorCode === '2024') {
+                if (editCategorySection) editCategorySection.style.display = 'block';
+                if (editNameSection) editNameSection.style.display = 'block';
+                
+                if (editNameInput) {
+                    editNameInput.required = true;
+                    if (data.note) {
+                        editNameInput.value = data.note;
+                    }
+                }
+                
+                // Устанавливаем выбранную радио-кнопку
+                const categoryRadios = document.querySelectorAll('#EditIndicatorModal input[name="fuel_category"]');
+                let categoryValue = 'none';
+                if (data.is_local) {
+                    categoryValue = 'local';
+                } else if (data.is_renewable) {
+                    categoryValue = 'renewable';
+                }
+                
+                categoryRadios.forEach(function(radio) {
+                    if (radio.value === categoryValue) {
+                        radio.checked = true;
+                    } else {
+                        radio.checked = false;
+                    }
+                });
+                
+                // Валидация формы
+                function validateEditForm() {
+                    const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
+                    const isNameFilled = editNameInput && editNameInput.value.trim() !== '';
+                    const submitEditBtn = document.getElementById('edit-submit-btn');
+                    
+                    if (submitEditBtn) {
+                        submitEditBtn.disabled = !(isCategoryChecked && isNameFilled);
+                    }
+                }
+                
+                categoryRadios.forEach(function(radio) {
+                    radio.removeEventListener('change', validateEditForm);
+                    radio.addEventListener('change', validateEditForm);
+                });
+                
+                if (editNameInput) {
+                    editNameInput.removeEventListener('input', validateEditForm);
+                    editNameInput.addEventListener('input', validateEditForm);
+                }
+                
+                validateEditForm();
+            } else {
+                if (editCategorySection) editCategorySection.style.display = 'none';
+                if (editNameSection) editNameSection.style.display = 'none';
+                if (editNameInput) {
+                    editNameInput.required = false;
+                    editNameInput.value = '';
+                }
+                const submitEditBtn = document.getElementById('edit-submit-btn');
+                if (submitEditBtn) submitEditBtn.disabled = false;
+            }
+            
             const coeffValue = data.CoeffToTut || 0;
             const formattedCoeff = coeffValue.toFixed(3).replace('.', ',');
             
             const coeffInputs = document.querySelectorAll('#EditIndicatorModal .coeff-input-display');
             coeffInputs.forEach(function(input) {
-                if (isCoeffLocked || !isCoeffEditable) {
+                let valueToSet = formattedCoeff;
+                
+                if (data.coeff_before_prev && input.dataset.year === 'before') {
+                    valueToSet = data.coeff_before_prev.toFixed(3).replace('.', ',');
+                } else if (data.coeff_prev && input.dataset.year === 'prev') {
+                    valueToSet = data.coeff_prev.toFixed(3).replace('.', ',');
+                } else if (data.coeff_current && input.dataset.year === 'current') {
+                    valueToSet = data.coeff_current.toFixed(3).replace('.', ',');
+                }
+                
+                input.value = valueToSet;
+                
+                if (isTut || isCoeffLocked || !isCoeffEditable) {
                     input.readOnly = true;
                     input.style.backgroundColor = '#f5f5f5';
                     input.style.cursor = 'not-allowed';
@@ -556,16 +698,6 @@ function Edit_indicator_modal() {
                     input.style.backgroundColor = 'white';
                     input.style.cursor = 'text';
                     input.style.color = 'var(--green-main)';
-                }
-                
-                if (data.coeff_before_prev && input.dataset.year === 'before') {
-                    input.value = data.coeff_before_prev.toFixed(3).replace('.', ',');
-                } else if (data.coeff_prev && input.dataset.year === 'prev') {
-                    input.value = data.coeff_prev.toFixed(3).replace('.', ',');
-                } else if (data.coeff_current && input.dataset.year === 'current') {
-                    input.value = data.coeff_current.toFixed(3).replace('.', ',');
-                } else {
-                    input.value = formattedCoeff;
                 }
             });
             
@@ -598,65 +730,6 @@ function Edit_indicator_modal() {
                 const valCurrent = data.QYearCurrent ? (data.QYearCurrent / data.used_coeff_current) : null;
                 setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             }
-            
-            function validateEditForm() {
-                const isCategoryChecked = categoryRadios && Array.from(categoryRadios).some(radio => radio.checked);
-                const isNameFilled = editNameInput && editNameInput.value.trim() !== '';
-                const submitEditBtn = document.getElementById('edit-submit-btn');
-                
-                if (submitEditBtn) {
-                    if (indicatorCode === '2023' || indicatorCode === '2024') {
-                        submitEditBtn.disabled = !(isCategoryChecked && isNameFilled);
-                    } else {
-                        submitEditBtn.disabled = false;
-                    }
-                }
-            }
-            
-            const categoryRadios = document.querySelectorAll('#EditIndicatorModal input[name="fuel_category"]');
-            
-            if (indicatorCode === '2023' || indicatorCode === '2024') {
-                if (editCategorySection) editCategorySection.style.display = 'block';
-                if (editNameSection) editNameSection.style.display = 'block';
-                
-                if (editNameInput) {
-                    editNameInput.removeAttribute('required');
-                    editNameInput.required = true;
-                }
-                
-                if (data.note && editNameInput) {
-                    editNameInput.value = data.note;
-                }
-                
-                if (data.is_local) {
-                    const localRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="local"]');
-                    if (localRadio) localRadio.checked = true;
-                } else if (data.is_renewable) {
-                    const renewableRadio = document.querySelector('#EditIndicatorModal input[name="fuel_category"][value="renewable"]');
-                    if (renewableRadio) renewableRadio.checked = true;
-                }
-                
-                categoryRadios.forEach(radio => {
-                    radio.removeEventListener('change', validateEditForm);
-                    radio.addEventListener('change', validateEditForm);
-                });
-                
-                if (editNameInput) {
-                    editNameInput.removeEventListener('input', validateEditForm);
-                    editNameInput.addEventListener('input', validateEditForm);
-                }
-                
-                validateEditForm();
-            } else {
-                if (editCategorySection) editCategorySection.style.display = 'none';
-                if (editNameSection) editNameSection.style.display = 'none';
-                if (editNameInput) {
-                    editNameInput.required = false;
-                    editNameInput.value = '';
-                }
-                const submitEditBtn = document.getElementById('edit-submit-btn');
-                if (submitEditBtn) submitEditBtn.disabled = false;
-            }
 
             const form = document.getElementById('editIndicatorForm');
             if (form) {
@@ -666,7 +739,9 @@ function Edit_indicator_modal() {
                 }
             }
             
-            updateEditTutResults();
+            setTimeout(function() {
+                updateEditTutResults();
+            }, 100);
         })
         .catch(error => {
             console.error('Error fetching indicator data:', error);
@@ -701,9 +776,9 @@ function updateEditTutResults() {
         if (value === null || value === undefined || isNaN(value)) return '0';
         
         if (groupId === 5) {
-            return value.toFixed(1).replace('.', ',');
-        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
             return value.toFixed(2).replace('.', ',');
+        } else if (groupId === 6 || groupId === 7 || groupId === 8) {
+            return value.toFixed(1).replace('.', ',');
         } else {
             return Math.round(value).toString().replace('.', ',');
         }
@@ -711,10 +786,16 @@ function updateEditTutResults() {
     
     const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
     
-    const updateResult = (inputId, resultId) => {
+    const updateResult = function(inputId, resultId) {
         const input = document.getElementById(inputId);
         const resultSpan = document.getElementById(resultId);
-        const coeffInput = document.querySelector(`#EditIndicatorModal .coeff-input-display[data-year="${inputId.split('-')[1] || 'current'}"]`);
+        let year = 'current';
+        if (inputId.includes('Before')) {
+            year = 'before';
+        } else if (inputId.includes('Curr') || inputId.includes('Prev')) {
+            year = 'prev';
+        }
+        const coeffInput = document.querySelector('#EditIndicatorModal .coeff-input-display[data-year="' + year + '"]');
         
         if (input && resultSpan) {
             let currentCoeff = 0;
@@ -724,15 +805,15 @@ function updateEditTutResults() {
             }
             if (isNaN(currentCoeff)) currentCoeff = 0;
             
-            if (input.value && !input.readOnly) {
+            if (input.value) {
                 let inputValue = input.value.replace(',', '.');
                 let value = parseFloat(inputValue);
                 if (isNaN(value)) value = 0;
                 const tutValue = value * currentCoeff;
                 let formattedResult = formatResultValue(tutValue, groupNumber);
-                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+                resultSpan.textContent = '= ' + formattedResult + ' т у.т.';
             } else {
-                resultSpan.textContent = '= 0 т.у.т.';
+                resultSpan.textContent = '= 0 т у.т.';
             }
         }
     };

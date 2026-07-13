@@ -105,7 +105,7 @@ def update_session_activity(token):
 def force_logout():
     response = make_response(redirect(url_for('views.login')))
     response.delete_cookie(SESSION_COOKIE_NAME, path='/')
-    flash('Сессия недействительна или истекла. Пожалуйста, войдите снова.', 'error')
+    flash('Сессия недействительна или истекла. Пожалуйста, войдите снова', 'error')
     return response
 
 def session_required(view_func):

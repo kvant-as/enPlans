@@ -194,7 +194,7 @@ def edit_param():
 @login_required
 def logout():
     logout_user()
-    flash('Выполнен выход из аккаунта.', 'success')
+    flash('Выполнен выход из аккаунта', 'success')
     return redirect(url_for('auth.login'))
 
 
@@ -218,7 +218,7 @@ def delete_profile():
     ).first()
     
     if has_active_plans:
-        flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками.', 'error')
+        flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками', 'error')
         return redirect(url_for('views.profile'))
     
     try:

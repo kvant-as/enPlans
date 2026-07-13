@@ -150,11 +150,9 @@ def process_indicator_data(indicator, QYearBeforePrev_ed, QYearPrev_ed, QYearCur
     if indicator_code in ['2023', '2024'] and not fuel_category and not name_other:
         return None, 'Для данного показателя необходимо выбрать категорию топлива и ввести наименование'
     
-    # Функция для парсинга коэффициента с запятой
     def parse_coeff(value):
         if not value:
             return None
-        # Заменяем запятую на точку
         value = str(value).replace(',', '.')
         return to_decimal_3(value)
     
@@ -241,8 +239,8 @@ def process_indicator_data(indicator, QYearBeforePrev_ed, QYearPrev_ed, QYearCur
             is_local_value = False
             is_renewable_value = True
         else:
-            is_local_value = indicator.is_local
-            is_renewable_value = indicator.is_renewable
+            is_local_value = False
+            is_renewable_value = False
     else:
         is_local_value = indicator.is_local
         is_renewable_value = indicator.is_renewable
@@ -324,7 +322,6 @@ def create_indicator(token):
         db.session.add(new_IndicatorUsage)
         db.session.commit()
         
-        # Проверяем, что сохранилось в БД
         saved = IndicatorUsage.query.get(new_IndicatorUsage.id)
         current_app.logger.info(f'[create_indicator] SAVED IN DB - coeff_before_prev: {saved.coeff_before_prev}, coeff_prev: {saved.coeff_prev}, coeff_current: {saved.coeff_current}')
         current_app.logger.info(f'[create_indicator] SAVED IN DB - QYearBeforePrev: {saved.QYearBeforePrev}, QYearPrev: {saved.QYearPrev}, QYearCurrent: {saved.QYearCurrent}')
@@ -403,7 +400,6 @@ def edit_indicator(token):
         
         db.session.commit()
         
-        # Проверяем, что сохранилось в БД
         saved = IndicatorUsage.query.get(id_indicator)
         current_app.logger.info(f'[edit_indicator] SAVED IN DB - coeff_before_prev: {saved.coeff_before_prev}, coeff_prev: {saved.coeff_prev}, coeff_current: {saved.coeff_current}')
         current_app.logger.info(f'[edit_indicator] SAVED IN DB - QYearBeforePrev: {saved.QYearBeforePrev}, QYearPrev: {saved.QYearPrev}, QYearCurrent: {saved.QYearCurrent}')

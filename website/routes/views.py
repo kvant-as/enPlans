@@ -412,7 +412,7 @@ def create_plan():
                 return to_decimal_2('270.00')
             else:
                 return to_decimal_2('270.00')
-                # flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
+                # flash(f'На {year} год стоимость 1 т у.т. еще не утверждена. План не может быть создан', 'error')
                 # return None
 
         usd_rate_value = get_usd_rate_for_new_plan()
@@ -459,7 +459,7 @@ def create_plan():
         db.session.add_all(configs)
         db.session.commit()
         
-        flash('Новый план создан.', 'success')
+        flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
     
     current_time = TimeByMinsk()
@@ -477,7 +477,7 @@ def edit_plan(token):
         current_plan = g.current_plan
 
         if not current_plan:
-            flash('План не найден или у вас нет прав для его редактирования.', 'error')
+            flash('План не найден или у вас нет прав для его редактирования', 'error')
             return redirect(url_for('views.plans'))
         
         year = request.form.get('year')
@@ -504,7 +504,7 @@ def edit_plan(token):
         current_plan.share_energy = share_energy
         db.session.commit()
         
-        flash('Изменения приняты.', 'success')
+        flash('Изменения приняты', 'success')
         update_ChangeTimePlan(current_plan.id)
         return redirect(url_for('plan_bp.plan_review', token=current_plan.token))  
     else:
@@ -526,12 +526,12 @@ def delete_plan(token):
         current_plan = g.current_plan
         db.session.delete(current_plan)
         db.session.commit()
-        flash('План успешно удален.', 'success')
+        flash('План успешно удален', 'success')
         
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting plan {id}: {str(e)}")
-        flash('Произошла ошибка при удалении плана.', 'error')
+        flash('Произошла ошибка при удалении плана', 'error')
     return redirect(url_for('views.plans'))
     
 @views.route('/check-plan-year')

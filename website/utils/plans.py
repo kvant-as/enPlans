@@ -331,7 +331,7 @@ def other_data_indicatorUpdate(plan_id):
     if not plan:
         return
     
-    logger = logging.getLogger(__name__)
+    current_app.logger = logging.getLogger(__name__)
     
     def get_value(indicator, field_name):
         value = getattr(indicator, field_name)
@@ -362,7 +362,7 @@ def other_data_indicatorUpdate(plan_id):
         try:
             db.session.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении: {e}")
+            current_app.logger.error(f"Ошибка при сохранении: {e}")
             db.session.rollback()
     
     indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
@@ -387,16 +387,16 @@ def other_data_indicatorUpdate(plan_id):
     
     def update_indicator_1796():
         """Обновление индикатора 1796 (сумма местных видов топлива)"""
-        logger.info(f'Calculating local total (1796) for plan {plan.id}')
+        current_app.logger.info(f'Calculating local total (1796) for plan {plan.id}')
         
         indicator_1796 = Indicator.query.filter_by(code='1796').first()
         if not indicator_1796:
-            logger.error('Indicator with code 1796 not found')
+            current_app.logger.error('Indicator with code 1796 not found')
             return
         
         usage_1796 = get_indicator_by_code(indicator_usages, '1796')
         if not usage_1796:
-            logger.warning('IndicatorUsage for 1796 not found')
+            current_app.logger.warning('IndicatorUsage for 1796 not found')
             return
         
         total_local_before_prev = 0
@@ -404,7 +404,7 @@ def other_data_indicatorUpdate(plan_id):
         total_local_current = 0
         
         for usage in indicator_usages:
-            if usage.is_local:
+            if usage.is_local or usage.is_renewable:
                 total_local_before_prev += float(get_value(usage, 'QYearBeforePrev') or 0)
                 total_local_prev += float(get_value(usage, 'QYearPrev') or 0)
                 total_local_current += float(get_value(usage, 'QYearCurrent') or 0)
@@ -413,21 +413,21 @@ def other_data_indicatorUpdate(plan_id):
         usage_1796.QYearPrev = to_decimal_2(total_local_prev)
         usage_1796.QYearCurrent = to_decimal_2(total_local_current)
         
-        logger.info(f'Success sum for 1796')
+        current_app.logger.info(f'Success sum for 1796')
         commit_changes()
     
     def update_indicator_1797():
         """Обновление индикатора 1797 (сумма возобновляемых видов топлива)"""
-        logger.info(f'Calculating renewable total (1797) for plan {plan.id}')
+        current_app.logger.info(f'Calculating renewable total (1797) for plan {plan.id}')
         
         indicator_1797 = Indicator.query.filter_by(code='1797').first()
         if not indicator_1797:
-            logger.error('Indicator with code 1797 not found')
+            current_app.logger.error('Indicator with code 1797 not found')
             return
         
         usage_1797 = get_indicator_by_code(indicator_usages, '1797')
         if not usage_1797:
-            logger.warning('IndicatorUsage for 1797 not found')
+            current_app.logger.warning('IndicatorUsage for 1797 not found')
             return
         
         total_renewable_before_prev = 0
@@ -444,7 +444,7 @@ def other_data_indicatorUpdate(plan_id):
         usage_1797.QYearPrev = to_decimal_2(total_renewable_prev)
         usage_1797.QYearCurrent = to_decimal_2(total_renewable_current)
         
-        logger.info(f'Success sum for 1797')
+        current_app.logger.info(f'Success sum for 1797')
         commit_changes()
     
     def update_indicator_9900():
@@ -465,11 +465,11 @@ def other_data_indicatorUpdate(plan_id):
     
     def update_indicator_9910():
         """Обновление индикатора 9910 (экономия от мероприятий прошлого года) из 9914"""
-        logger.info(f'Calculating econom from events last year (9910) for plan {plan.id}')
+        current_app.logger.info(f'Calculating econom from events last year (9910) for plan {plan.id}')
         
         indicator_9910 = get_indicator_by_code(indicator_usages, '9910')
         if not indicator_9910:
-            logger.warning('Indicator with code 9910 not found')
+            current_app.logger.warning('Indicator with code 9910 not found')
             return
         
         indicator_9914 = get_indicator_by_code(indicator_usages, '9914')
@@ -477,30 +477,30 @@ def other_data_indicatorUpdate(plan_id):
         if indicator_9914:
             value = get_value(indicator_9914, 'QYearCurrent')
             indicator_9910.QYearCurrent = to_decimal_2(value)
-            logger.info(f'Set 9910.QYearCurrent = {value} (from 9914)')
+            current_app.logger.info(f'Set 9910.QYearCurrent = {value} (from 9914)')
         else:
-            logger.warning('Indicator 9914 not found, setting 9910.QYearCurrent = 0')
+            current_app.logger.warning('Indicator 9914 not found, setting 9910.QYearCurrent = 0')
             indicator_9910.QYearCurrent = to_decimal_2(0)
         commit_changes()
     
     def update_indicator_9999():
         """Обновление индикатора 9999 (общая годовая экономия) = 9900 + 9910"""
-        logger.info(f'Calculating 9999 (total econom) for plan {plan.id}')
+        current_app.logger.info(f'Calculating 9999 (total econom) for plan {plan.id}')
         
         indicator_9999 = get_indicator_by_code(indicator_usages, '9999')
         if not indicator_9999:
-            logger.warning('Indicator with code 9999 not found')
+            current_app.logger.warning('Indicator with code 9999 not found')
             return
         
         indicator_9900 = get_indicator_by_code(indicator_usages, '9900')
         indicator_9910 = get_indicator_by_code(indicator_usages, '9910')
         
         if not indicator_9900:
-            logger.warning('Indicator with code 9900 not found')
+            current_app.logger.warning('Indicator with code 9900 not found')
             return
         
         if not indicator_9910:
-            logger.warning('Indicator with code 9910 not found')
+            current_app.logger.warning('Indicator with code 9910 not found')
             return
         
         value_9900 = get_value(indicator_9900, 'QYearCurrent')
@@ -510,16 +510,16 @@ def other_data_indicatorUpdate(plan_id):
         
         indicator_9999.QYearCurrent = to_decimal_2(total)
         
-        logger.info(f'Set 9999.QYearCurrent = {total} (9900: {value_9900} + 9910: {value_9910})')
+        current_app.logger.info(f'Set 9999.QYearCurrent = {total} (9900: {value_9900} + 9910: {value_9910})')
         commit_changes()
     
     def update_indicator_260():
         """Обновление индикатора 260 (суммарное потребление ТЭР)"""
-        logger.info(f'Calculating 260 (total consumption) for plan {plan.id}')
+        current_app.logger.info(f'Calculating 260 (total consumption) for plan {plan.id}')
         
         indicator_260 = get_indicator_by_code(indicator_usages, '260')
         if not indicator_260:
-            logger.warning('Indicator with code 260 not found')
+            current_app.logger.warning('Indicator with code 260 not found')
             return
         
         indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
@@ -529,7 +529,7 @@ def other_data_indicatorUpdate(plan_id):
         indicator_1404 = get_indicator_by_code(indicator_usages, '1404')
         
         if not all([indicator_1000, indicator_1105, indicator_1405, indicator_1104, indicator_1404]):
-            logger.warning('Missing required indicators for 260 calculation')
+            current_app.logger.warning('Missing required indicators for 260 calculation')
             return
         
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
@@ -540,24 +540,24 @@ def other_data_indicatorUpdate(plan_id):
             diff2 = get_value(indicator_1104, period) - get_value(indicator_1404, period)
             result = to_decimal_2(base + diff1 + diff2)
             setattr(indicator_260, period, result)
-            logger.info(f'Set 260.{period} = {result}')
+            current_app.logger.info(f'Set 260.{period} = {result}')
         
         commit_changes()
     
     def update_indicator_9915():
         """Обновление индикатора 9915 (целевой показатель энергосбережения)"""
-        logger.info(f'Calculating 9915 (energy saving target) for plan {plan.id}')
+        current_app.logger.info(f'Calculating 9915 (energy saving target) for plan {plan.id}')
         
         indicator_9915 = get_indicator_by_code(indicator_usages, '9915')
         if not indicator_9915:
-            logger.warning('Indicator with code 9915 not found')
+            current_app.logger.warning('Indicator with code 9915 not found')
             return
         
         indicator_9999 = get_indicator_by_code(indicator_usages, '9999')
         indicator_260 = get_indicator_by_code(indicator_usages, '260')
         
         if not indicator_9999 or not indicator_260:
-            logger.warning('Missing required indicators for 9915 calculation')
+            current_app.logger.warning('Missing required indicators for 9915 calculation')
             return
         
         numerator = get_value(indicator_9999, 'QYearCurrent')
@@ -566,16 +566,16 @@ def other_data_indicatorUpdate(plan_id):
         result = safe_divide(numerator, denominator) * 100
         indicator_9915.QYearCurrent = to_decimal_2(-abs(result))
         
-        logger.info(f'Set 9915.QYearCurrent = {result}')
+        current_app.logger.info(f'Set 9915.QYearCurrent = {result}')
         commit_changes()
     
     def update_indicator_9916():
         """Обновление индикатора 9916 (Целевой показатель по доле местных ТЭР в КПТ)"""
-        logger.info(f'Calculating 9916 (local share) for plan {plan.id}')
+        current_app.logger.info(f'Calculating 9916 (local share) for plan {plan.id}')
         
         indicator_9916 = get_indicator_by_code(indicator_usages, '9916')
         if not indicator_9916:
-            logger.warning('Indicator with code 9916 not found')
+            current_app.logger.warning('Indicator with code 9916 not found')
             return
         
         indicator_1796 = get_indicator_by_code(indicator_usages, '1796')
@@ -584,7 +584,7 @@ def other_data_indicatorUpdate(plan_id):
         indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
         
         if not indicator_1000:
-            logger.warning('Indicator 1000 not found')
+            current_app.logger.warning('Indicator 1000 not found')
             return
         
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
@@ -607,17 +607,17 @@ def other_data_indicatorUpdate(plan_id):
                 result = (numerator / denominator) * 100
             
             setattr(indicator_9916, period, to_decimal_2(result))
-            logger.info(f'Set 9916.{period} = {result}')
+            current_app.logger.info(f'Set 9916.{period} = {result}')
         
         commit_changes()
     
     def update_indicator_9917():
         """Обновление индикатора 9917 (доля возобновляемых источников в КПТ)"""
-        logger.info(f'Calculating 9917 (renewable share) for plan {plan.id}')
+        current_app.logger.info(f'Calculating 9917 (renewable share) for plan {plan.id}')
         
         indicator_9917 = get_indicator_by_code(indicator_usages, '9917')
         if not indicator_9917:
-            logger.warning('Indicator with code 9917 not found')
+            current_app.logger.warning('Indicator with code 9917 not found')
             return
         
         indicator_1797 = get_indicator_by_code(indicator_usages, '1797')
@@ -626,7 +626,7 @@ def other_data_indicatorUpdate(plan_id):
         indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
         
         if not indicator_1000:
-            logger.warning('Indicator 1000 not found')
+            current_app.logger.warning('Indicator 1000 not found')
             return
         
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
@@ -649,7 +649,7 @@ def other_data_indicatorUpdate(plan_id):
                 result = (numerator / denominator) * 100
             
             setattr(indicator_9917, period, to_decimal_2(result))
-            logger.info(f'Set 9917.{period} = {result}')
+            current_app.logger.info(f'Set 9917.{period} = {result}')
         
         commit_changes()
     
@@ -668,7 +668,7 @@ def other_data_indicatorUpdate(plan_id):
         update_ChangeTimePlan(plan.id)
         
     except Exception as e:
-        logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
+        current_app.logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
         db.session.rollback()
 
 def check_and_create_period_directions(plan_id, event_type):
@@ -688,7 +688,7 @@ def check_and_create_period_directions(plan_id, event_type):
                 direction = Direction.query.filter_by(code=code, is_econom=False, is_increase=True).first()
             
             if not direction:
-                logger.warning(f'Direction with code {code} and event_type {event_type} not found')
+                current_app.logger.warning(f'Direction with code {code} and event_type {event_type} not found')
                 continue
             
             existing_event = Event.query.filter_by(
@@ -707,12 +707,12 @@ def check_and_create_period_directions(plan_id, event_type):
                     is_increase=(event_type == 'increase')
                 )
                 db.session.add(new_event)
-                logger.debug(f'Created period event for {event_type}: code={code}, direction_id={direction.id}, plan_id={plan_id}')
+                current_app.logger.debug(f'Created period event for {event_type}: code={code}, direction_id={direction.id}, plan_id={plan_id}')
         
         db.session.commit()
-        logger.debug(f'Period events created for plan_id={plan_id}, event_type={event_type}')
+        current_app.logger.debug(f'Period events created for plan_id={plan_id}, event_type={event_type}')
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Error creating period events for plan_id={plan_id}, event_type={event_type}: {str(e)}')
+        current_app.logger.error(f'Error creating period events for plan_id={plan_id}, event_type={event_type}: {str(e)}')
         raise

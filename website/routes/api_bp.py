@@ -235,7 +235,7 @@ def get_event(id):
         return jsonify(result)
         
     except Exception as e:
-        logger.error(f"Error in get_event: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Error in get_event: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
     
 @api_bp.route('/get-indicator/<int:id>', methods=['GET'])
@@ -384,7 +384,7 @@ def get_events_data(token):
     # logger.debug(f"plan_id: {current_plan.id}")
     # logger.debug(f"period_events count: {len(period_events)}")
     # for pe in period_events:
-    #     logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
+    #     current_app.logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
 
     period_metrics = {}
     for period_event in period_events:
@@ -625,7 +625,7 @@ def get_stat_data(organization_id):
         return jsonify(result)
 
     except Exception as e:
-        logger.error(f"Error getting stat data: {str(e)}")
+        current_app.logger.error(f"Error getting stat data: {str(e)}")
         return jsonify({
             'success': False,
             'message': str(e)

@@ -252,7 +252,7 @@ def export_xlsx_single(plan: Plan):
             ws["B3"].alignment = center
                     
             ws.merge_cells("B4:F4")
-            ws["B4"].value = "_______________ областного (городского)"
+            ws["B4"].value = "_______________"
             ws["B4"].font = regular_font_11
             ws["B4"].alignment = left
                             
