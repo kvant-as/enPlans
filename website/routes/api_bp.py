@@ -235,7 +235,7 @@ def get_event(id):
         return jsonify(result)
         
     except Exception as e:
-        logger.error(f"Error in get_event: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Error in get_event: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
     
 @api_bp.route('/get-indicator/<int:id>', methods=['GET'])
@@ -244,7 +244,9 @@ def get_indicator_api(id):
     try:
         indicator_usage = IndicatorUsage.query.get_or_404(id)
         
-        used_coeff = indicator_usage.custom_coeff_to_tut if indicator_usage.custom_coeff_to_tut is not None else indicator_usage.indicator.CoeffToTut
+        coeff_before = indicator_usage.coeff_before_prev if indicator_usage.coeff_before_prev is not None else indicator_usage.indicator.CoeffToTut
+        coeff_prev = indicator_usage.coeff_prev if indicator_usage.coeff_prev is not None else indicator_usage.indicator.CoeffToTut
+        coeff_current = indicator_usage.coeff_current if indicator_usage.coeff_current is not None else indicator_usage.indicator.CoeffToTut
         
         data = {
             'id': indicator_usage.id,
@@ -254,9 +256,15 @@ def get_indicator_api(id):
             'note': indicator_usage.note,
             'unit_name': indicator_usage.indicator.unit.name if indicator_usage.indicator.unit else '',
             'CoeffToTut': float(indicator_usage.indicator.CoeffToTut) if indicator_usage.indicator.CoeffToTut else 0,
-            'custom_coeff_to_tut': float(indicator_usage.custom_coeff_to_tut) if indicator_usage.custom_coeff_to_tut else None,
-            'used_coeff': float(used_coeff) if used_coeff else 0,
-            'is_custom': indicator_usage.custom_coeff_to_tut is not None,
+            'coeff_before_prev': float(indicator_usage.coeff_before_prev) if indicator_usage.coeff_before_prev else None,
+            'coeff_prev': float(indicator_usage.coeff_prev) if indicator_usage.coeff_prev else None,
+            'coeff_current': float(indicator_usage.coeff_current) if indicator_usage.coeff_current else None,
+            'used_coeff_before': float(coeff_before) if coeff_before else 0,
+            'used_coeff_prev': float(coeff_prev) if coeff_prev else 0,
+            'used_coeff_current': float(coeff_current) if coeff_current else 0,
+            'is_custom_before': indicator_usage.coeff_before_prev is not None,
+            'is_custom_prev': indicator_usage.coeff_prev is not None,
+            'is_custom_current': indicator_usage.coeff_current is not None,
             'QYearBeforePrev': float(indicator_usage.QYearBeforePrev) if indicator_usage.QYearBeforePrev else 0,
             'QYearPrev': float(indicator_usage.QYearPrev) if indicator_usage.QYearPrev else 0,
             'QYearCurrent': float(indicator_usage.QYearCurrent) if indicator_usage.QYearCurrent else 0,
@@ -285,6 +293,14 @@ def get_indicators_data(token):
     
     indicators_data = []
     for row in current_plan_indicators:
+        coeff_before = row.coeff_before_prev if row.coeff_before_prev is not None else row.indicator.CoeffToTut
+        coeff_prev = row.coeff_prev if row.coeff_prev is not None else row.indicator.CoeffToTut
+        coeff_current = row.coeff_current if row.coeff_current is not None else row.indicator.CoeffToTut
+        
+        QYearBeforePrev_unit = float(row.QYearBeforePrev / coeff_before) if row.QYearBeforePrev and coeff_before else 0
+        QYearPrev_unit = float(row.QYearPrev / coeff_prev) if row.QYearPrev and coeff_prev else 0
+        QYearCurrent_unit = float(row.QYearCurrent / coeff_current) if row.QYearCurrent and coeff_current else 0
+        
         indicators_data.append({
             'id': row.id,
             'id_indicator': row.id_indicator,
@@ -294,15 +310,17 @@ def get_indicators_data(token):
             'unit_name': row.indicator.unit.name,
             'group': float(row.indicator.Group) if row.indicator.Group else None,
             'row_n': row.indicator.RowN,
-            'coeff_to_tut': float(row.indicator.CoeffToTut) if row.indicator.CoeffToTut else 1,
+            'coeff_before_prev': float(row.coeff_before_prev) if row.coeff_before_prev else None,
+            'coeff_prev': float(row.coeff_prev) if row.coeff_prev else None,
+            'coeff_current': float(row.coeff_current) if row.coeff_current else None,
             
-            'QYearBeforePrev_unit': float(row.QYearBeforePrev / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearBeforePrev and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
+            'QYearBeforePrev_unit': QYearBeforePrev_unit,
             'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
 
-            'QYearPrev_unit': float(row.QYearPrev / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearPrev and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
+            'QYearPrev_unit': QYearPrev_unit,
             'QYearPrev_tut': float(row.QYearPrev) if row.QYearPrev else 0,
 
-            'QYearCurrent_unit': float(row.QYearCurrent / (row.custom_coeff_to_tut if row.custom_coeff_to_tut is not None else row.indicator.CoeffToTut)) if row.QYearCurrent and ((row.custom_coeff_to_tut is not None and row.custom_coeff_to_tut) or row.indicator.CoeffToTut) else 0,
+            'QYearCurrent_unit': QYearCurrent_unit,
             'QYearCurrent_tut': float(row.QYearCurrent) if row.QYearCurrent else 0,
             
             'difference': float(row.QYearCurrent - row.QYearPrev) if row.QYearCurrent and row.QYearPrev else 0
@@ -366,7 +384,7 @@ def get_events_data(token):
     # logger.debug(f"plan_id: {current_plan.id}")
     # logger.debug(f"period_events count: {len(period_events)}")
     # for pe in period_events:
-    #     logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
+    #     current_app.logger.debug(f"  period_event: id={pe.id}, code={pe.direction.code}, EffCurrYear={pe.EffCurrYear}")
 
     period_metrics = {}
     for period_event in period_events:
@@ -607,7 +625,7 @@ def get_stat_data(organization_id):
         return jsonify(result)
 
     except Exception as e:
-        logger.error(f"Error getting stat data: {str(e)}")
+        current_app.logger.error(f"Error getting stat data: {str(e)}")
         return jsonify({
             'success': False,
             'message': str(e)

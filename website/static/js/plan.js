@@ -1,5 +1,3 @@
-
-
 var NumericInputHandler = {
     init: function(selector, options) {
         var defaults = {
@@ -676,9 +674,17 @@ class TableContextMenu {
             return;
         }
         
-        if (this.selectedRow && this.selectedRow !== row) {
-            this.selectedRow.classList.remove('active-row');
+        if (row.classList.contains('active-row')) {
+            row.classList.remove('active-row');
+            this.selectedRow = null;
+            this.updateButtonsState();
+            this.hideContextMenu();
+            return;
         }
+        
+        this.table.querySelectorAll('.active-row').forEach(r => {
+            r.classList.remove('active-row');
+        });
         
         row.classList.add('active-row');
         this.selectedRow = row;
@@ -981,60 +987,6 @@ const TableCollapseManager = (function() {
         }
     };
 })();
-
-
-
-
-
-function checkCategoryRequired() {
-    const selectedIndicatorName = document.getElementById('selected-indicator-name');
-    const categorySection = document.getElementById('category-section');
-    const nameSection = document.getElementById('name-section');
-    const submitBtn = document.getElementById('submit-indicator-btn');
-    const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
-    const nameInput = document.getElementById('name-section-input');
-    
-    if (!selectedIndicatorName || !categorySection || !nameSection) return;
-    
-    const indicatorText = selectedIndicatorName.textContent;
-    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
-    
-    function validateForm() {
-        const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
-        const isNameFilled = nameInput && nameInput.value.trim() !== '';
-        
-        if (submitBtn) {
-            if (isCategoryRequired) {
-                submitBtn.disabled = !(isCategoryChecked && isNameFilled);
-            } else {
-                submitBtn.disabled = false;
-            }
-        }
-    }
-    
-    if (isCategoryRequired) {
-        categorySection.style.display = 'block';
-        nameSection.style.display = 'block';
-        
-        categoryRadios.forEach(radio => {
-            radio.removeEventListener('change', validateForm);
-            radio.addEventListener('change', validateForm);
-        });
-        
-        if (nameInput) {
-            nameInput.removeEventListener('input', validateForm);
-            nameInput.addEventListener('input', validateForm);
-        }
-        
-        validateForm();
-    } else {
-        categorySection.style.display = 'none';
-        nameSection.style.display = 'none';
-        if (submitBtn) {
-            submitBtn.disabled = false;
-        }
-    }
-}
 
 class SendModalPreview {
     constructor(modalId) {

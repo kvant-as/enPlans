@@ -177,5 +177,14 @@ def create_app():
             10: 'Октября', 11: 'Ноября', 12: 'Декабря'
         }
         return f"{date.day} {months[date.month]} {date.year}"
+    
+    @app.template_filter('comma_decimal')
+    def comma_decimal(value):
+        if value is None:
+            return ""
+        try:
+            return str(value).replace('.', ',')
+        except (ValueError, TypeError):
+            return str(value).replace('.', ',')
             
     return app

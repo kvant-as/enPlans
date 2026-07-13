@@ -245,7 +245,7 @@ class EventModalManager {
             effCurrYear = effTut;
             effCurrYearInput.value = this.formatNumber(effCurrYear, 2);
             
-            const warningMessage = `Эффект в текущем году (${this.formatNumber(effCurrYear, 2)} т.у.т.) не может превышать общий эффект (${this.formatNumber(effTut, 2)} т.у.т.)`;
+            const warningMessage = `Эффект в текущем году (${this.formatNumber(effCurrYear, 2)} т у.т.) не может превышать общий эффект (${this.formatNumber(effTut, 2)} т у.т.)`;
             this.showEffCurrYearWarning(warningMessage);
             
             effCurrYearInput.classList.add('is-invalid');
