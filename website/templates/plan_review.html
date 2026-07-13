@@ -5,7 +5,7 @@
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header('review', plan, current_user) }}
-  <div class="personal-acc-conteiner" style="margin-top: 0">
+  <div class="personal-acc-conteiner">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
@@ -95,7 +95,7 @@
             {{ icons.icon_eco() }}
             <input
               type="text"
-              value="{{ plan.energy_saving }}"
+              value="{{ plan.energy_saving|comma_decimal }}"
               placeholder="0,0"
               class="app-input"
             />
@@ -107,7 +107,7 @@
             {{ icons.icon_half() }}
             <input
               type="text"
-              value="{{ plan.share_fuel }}"
+              value="{{ plan.share_fuel|comma_decimal }}"
               placeholder="0,0"
               class="app-input"
             />
@@ -121,7 +121,7 @@
             {{ icons.icon_saving() }}
             <input
               type="text"
-              value="{{ plan.saving_fuel }}"
+              value="{{ plan.saving_fuel|comma_decimal }}"
               placeholder="0,0"
               class="app-input"
             />
@@ -133,7 +133,7 @@
             {{ icons.icon_half() }}
             <input
               type="text"
-              value="{{ plan.share_energy }}"
+              value="{{ plan.share_energy|comma_decimal }}"
               placeholder="0,0"
               class="app-input"
             />
@@ -144,34 +144,17 @@
     {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False and current_user.is_admin == False%}
       {{ component.plan_agree_slider(plan, current_user) }}
     {%endif%} 
-    {% if current_user.is_auditor == False and current_user.is_admin == False%}
+
+    {#{% if current_user.is_auditor == False and current_user.is_admin == False%}#}
       <hr>
       <h1 class="name">{{ _('Результаты проверки') }}</h1>
       {{ component.tickets_container(plan, current_user) }}
-    {%endif%}
+    {#{%endif%}#}
+
     <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
       <div class="dates-list">
-        
-        <div class="date-item" data-type="saving">
-          <div class="date-icon">
-              {{ icons.icon_measure_saving() }}
-          </div>
-          <div class="date-content">
-              <div class="date-info">
-                  <span class="date-label">{{ _('Потребление') }}</span>
-                  {% if plan.plan_type == 'org_small' %}
-                      <span class="date-day" style="color: var(--green-main);">До 25 тыс. т.</span>
-                  {% elif plan.plan_type == 'org_large' %}
-                      <span class="date-day" style="color: var(--green-main);">Более 25 тыс. т.</span>
-                  {% else %}
-                      <span class="date-empty">—</span>
-                  {% endif %}
-              </div>
-          </div>
-        </div>
-
         <div class="date-item" data-type="created">
           <div class="date-icon">
             {{ icons.icon_calendar() }}
@@ -222,6 +205,24 @@
             </div>
           </div>
         </div>
+
+        <div class="date-item" data-type="saving">
+          <div class="date-icon">
+              {{ icons.icon_measure_saving() }}
+          </div>
+          <div class="date-content">
+              <div class="date-info">
+                  <span class="date-label">{{ _('Потребление') }}</span>
+                  {% if plan.plan_type == 'org_small' %}
+                      <span class="date-day">До 25 тыс. т.</span>
+                  {% elif plan.plan_type == 'org_large' %}
+                      <span class="date-day">Более 25 тыс. т.</span>
+                  {% else %}
+                      <span class="date-empty">—</span>
+                  {% endif %}
+              </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -258,7 +259,7 @@
             class="radio-org-input"
           />
           <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_half_2() }}
+            {{ icons.icon_org() }}
             <div class="radio-org-subtitle">Организация с потреблением</div>
             <div class="radio-org-title">Более 25 тыс. т у.т.</div>
           </div>
@@ -331,7 +332,6 @@
                 </div>
                 
                 <div class="button-auth-area">
-                    <div></div>
                     <button type="button" class="svg-btn blue" id="step1-next-btn" disabled>
                         <span class="btn-text">{{ _('Далее') }}</span>
                         {{ icons.next_icon() }}

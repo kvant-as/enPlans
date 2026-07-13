@@ -284,9 +284,23 @@ class IndicatorUsage(db.Model):
     is_local = db.Column(db.Boolean, default=False)
     is_renewable = db.Column(db.Boolean, default=False)
     
-    custom_coeff_to_tut = db.Column(Numeric(scale=3), nullable=True)
+    coeff_before_prev = db.Column(Numeric(scale=3), nullable=True)
+    coeff_prev = db.Column(Numeric(scale=3), nullable=True)         
+    coeff_current = db.Column(Numeric(scale=3), nullable=True)
+    
     indicator = db.relationship("Indicator", back_populates="indicators_usage")
     plan = db.relationship("Plan", back_populates="indicators_usage")
+
+    def get_coeff_for_year(self, year_type):
+        base_coeff = self.indicator.CoeffToTut
+        
+        if year_type == 'before':
+            return self.coeff_before_prev if self.coeff_before_prev is not None else base_coeff
+        elif year_type == 'prev':
+            return self.coeff_prev if self.coeff_prev is not None else base_coeff
+        elif year_type == 'current':
+            return self.coeff_current if self.coeff_current is not None else base_coeff
+        return base_coeff
 
     def as_dict(self):
         return {
@@ -296,15 +310,12 @@ class IndicatorUsage(db.Model):
             'QYearBeforePrev': self.QYearBeforePrev,
             'QYearPrev': self.QYearPrev,
             'QYearCurrent': self.QYearCurrent,
-            'CoeffToTut': self.get_coeff_to_tut(), 
+            'coeff_before_prev': self.coeff_before_prev,
+            'coeff_prev': self.coeff_prev,
+            'coeff_current': self.coeff_current,
+            'CoeffToTut': self.get_coeff_for_year('current'),
             'name': self.indicator.name
         }
-        
-    def get_coeff_to_tut(self):
-        if self.custom_coeff_to_tut is not None:
-            return self.custom_coeff_to_tut
-        return self.indicator.CoeffToTut
-
 
 class Notification(db.Model):
     __tablename__ = 'notifications'

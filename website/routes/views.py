@@ -412,7 +412,7 @@ def create_plan():
                 return to_decimal_2('270.00')
             else:
                 return to_decimal_2('270.00')
-                # flash(f'На {year} год стоимость 1 т.у.т. еще не утверждена. План не может быть создан.', 'error')
+                # flash(f'На {year} год стоимость 1 т у.т. еще не утверждена. План не может быть создан', 'error')
                 # return None
 
         usd_rate_value = get_usd_rate_for_new_plan()

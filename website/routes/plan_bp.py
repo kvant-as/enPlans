@@ -138,6 +138,129 @@ def api_update_column_label(token):
         current_app.logger.exception(f'Error updating column label: {str(e)}')
         return jsonify({'success': False, 'error': str(e)}), 500
     
+def process_indicator_data(indicator, QYearBeforePrev_ed, QYearPrev_ed, QYearCurrent_ed, 
+                           custom_coeff_before, custom_coeff_prev, custom_coeff_current,
+                           fuel_category, name_other, is_edit=False, indicator_usage=None):
+    
+    indicator_code = indicator.code
+    
+    current_app.logger.info(f'[process_indicator_data] Starting processing for indicator {indicator_code}, is_edit={is_edit}')
+    current_app.logger.info(f'[process_indicator_data] Received coeffs - before: {custom_coeff_before}, prev: {custom_coeff_prev}, current: {custom_coeff_current}')
+    
+    if indicator_code in ['2023', '2024'] and not fuel_category and not name_other:
+        return None, 'Для данного показателя необходимо выбрать категорию топлива и ввести наименование'
+    
+    def parse_coeff(value):
+        if not value:
+            return None
+        value = str(value).replace(',', '.')
+        return to_decimal_3(value)
+    
+    if is_edit and indicator_usage:
+        indicator_code_num = int(indicator_code) if indicator_code.isdigit() else 0
+        is_coeff_editable = 2000 <= indicator_code_num <= 2024
+        
+        current_app.logger.info(f'[process_indicator_data] Edit mode: is_coeff_editable={is_coeff_editable}')
+        
+        if is_coeff_editable:
+            if custom_coeff_before:
+                coeff_before = parse_coeff(custom_coeff_before)
+                indicator_usage.coeff_before_prev = coeff_before if coeff_before != indicator.CoeffToTut else None
+                current_app.logger.info(f'[process_indicator_data] Set coeff_before_prev={indicator_usage.coeff_before_prev} (raw: {custom_coeff_before})')
+            else:
+                indicator_usage.coeff_before_prev = None
+                current_app.logger.info('[process_indicator_data] coeff_before_prev set to None')
+                
+            if custom_coeff_prev:
+                coeff_prev = parse_coeff(custom_coeff_prev)
+                indicator_usage.coeff_prev = coeff_prev if coeff_prev != indicator.CoeffToTut else None
+                current_app.logger.info(f'[process_indicator_data] Set coeff_prev={indicator_usage.coeff_prev} (raw: {custom_coeff_prev})')
+            else:
+                indicator_usage.coeff_prev = None
+                current_app.logger.info('[process_indicator_data] coeff_prev set to None')
+                
+            if custom_coeff_current:
+                coeff_current = parse_coeff(custom_coeff_current)
+                indicator_usage.coeff_current = coeff_current if coeff_current != indicator.CoeffToTut else None
+                current_app.logger.info(f'[process_indicator_data] Set coeff_current={indicator_usage.coeff_current} (raw: {custom_coeff_current})')
+            else:
+                indicator_usage.coeff_current = None
+                current_app.logger.info('[process_indicator_data] coeff_current set to None')
+        else:
+            indicator_usage.coeff_before_prev = None
+            indicator_usage.coeff_prev = None
+            indicator_usage.coeff_current = None
+            current_app.logger.info('[process_indicator_data] Coefficients not editable, set all to None')
+        
+        used_coeff_before = indicator_usage.get_coeff_for_year('before')
+        used_coeff_prev = indicator_usage.get_coeff_for_year('prev')
+        used_coeff_current = indicator_usage.get_coeff_for_year('current')
+        
+        current_app.logger.info(f'[process_indicator_data] Used coeffs - before: {used_coeff_before}, prev: {used_coeff_prev}, current: {used_coeff_current}')
+        
+        coeff_before = indicator_usage.coeff_before_prev
+        coeff_prev = indicator_usage.coeff_prev
+        coeff_current = indicator_usage.coeff_current
+        
+    else:
+        coeff_before = parse_coeff(custom_coeff_before)
+        coeff_prev = parse_coeff(custom_coeff_prev)
+        coeff_current = parse_coeff(custom_coeff_current)
+        
+        current_app.logger.info(f'[process_indicator_data] Create mode: parsed coeffs - before: {coeff_before}, prev: {coeff_prev}, current: {coeff_current}')
+        
+        if coeff_before is not None and coeff_before == indicator.CoeffToTut:
+            coeff_before = None
+            current_app.logger.info('[process_indicator_data] coeff_before equals standard, set to None')
+        if coeff_prev is not None and coeff_prev == indicator.CoeffToTut:
+            coeff_prev = None
+            current_app.logger.info('[process_indicator_data] coeff_prev equals standard, set to None')
+        if coeff_current is not None and coeff_current == indicator.CoeffToTut:
+            coeff_current = None
+            current_app.logger.info('[process_indicator_data] coeff_current equals standard, set to None')
+        
+        used_coeff_before = coeff_before if coeff_before is not None else indicator.CoeffToTut
+        used_coeff_prev = coeff_prev if coeff_prev is not None else indicator.CoeffToTut
+        used_coeff_current = coeff_current if coeff_current is not None else indicator.CoeffToTut
+        
+        current_app.logger.info(f'[process_indicator_data] Used coeffs - before: {used_coeff_before}, prev: {used_coeff_prev}, current: {used_coeff_current}')
+    
+    QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * used_coeff_before) if QYearBeforePrev_ed is not None else None
+    QYearPrev = to_decimal_2(QYearPrev_ed * used_coeff_prev) if QYearPrev_ed is not None else None
+    QYearCurrent = to_decimal_2(QYearCurrent_ed * used_coeff_current) if QYearCurrent_ed is not None else None
+    
+    current_app.logger.info(f'[process_indicator_data] Calculated values - before: {QYearBeforePrev}, prev: {QYearPrev}, current: {QYearCurrent}')
+    
+    if indicator_code in ['2023', '2024'] and fuel_category:
+        if fuel_category == 'local':
+            is_local_value = True
+            is_renewable_value = False
+        elif fuel_category == 'renewable':
+            is_local_value = False
+            is_renewable_value = True
+        else:
+            is_local_value = False
+            is_renewable_value = False
+    else:
+        is_local_value = indicator.is_local
+        is_renewable_value = indicator.is_renewable
+    
+    result = {
+        'QYearBeforePrev': QYearBeforePrev,
+        'QYearPrev': QYearPrev,
+        'QYearCurrent': QYearCurrent,
+        'coeff_before_prev': coeff_before,
+        'coeff_prev': coeff_prev,
+        'coeff_current': coeff_current,
+        'is_local': is_local_value,
+        'is_renewable': is_renewable_value,
+        'note': name_other
+    }
+    
+    current_app.logger.info(f'[process_indicator_data] Final result: {result}')
+    
+    return result, None
+
 @plan_bp.route('/create-indicator/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -151,13 +274,14 @@ def create_indicator(token):
         QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
         QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
         id_indicator = request.form.get('id_indicator')
-        coeff_type = request.form.get('coeff_type')
-        custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
         name_other = str(request.form.get('name_other'))
-
-        # current_app.logger.info(f'Attempting to create indicator for plan {current_plan.id}')
-        # current_app.logger.debug(f'Form data: QYearBeforePrev_ed={QYearBeforePrev_ed}, QYearPrev_ed={QYearPrev_ed}, QYearCurrent_ed={QYearCurrent_ed}, id_indicator={id_indicator}, coeff_type={coeff_type}, custom_coeff_raw={custom_coeff_raw}, fuel_category={fuel_category}')
+        
+        custom_coeff_before = request.form.get('custom_coeff_before')
+        custom_coeff_prev = request.form.get('custom_coeff_prev')
+        custom_coeff_current = request.form.get('custom_coeff_current')
+        
+        current_app.logger.info(f'[create_indicator] Raw form data - coeff_before: {custom_coeff_before}, coeff_prev: {custom_coeff_prev}, coeff_current: {custom_coeff_current}')
 
         if not id_indicator:
             current_app.logger.warning('Empty indicator')
@@ -171,67 +295,41 @@ def create_indicator(token):
             flash('Показатель не найден', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
-        current_app.logger.info(f'Found indicator: code={indicator.code}, name={indicator.name}, CoeffToTut={indicator.CoeffToTut}, is_local={indicator.is_local}, is_renewable={indicator.is_renewable}')
+        data, error = process_indicator_data(
+            indicator, QYearBeforePrev_ed, QYearPrev_ed, QYearCurrent_ed,
+            custom_coeff_before, custom_coeff_prev, custom_coeff_current,
+            fuel_category, name_other
+        )
         
-        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
-            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
+        if error:
+            flash(error, 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
-        
-        if coeff_type == 'custom' and custom_coeff_raw:
-            try:
-                used_coeff = to_decimal_3(custom_coeff_raw)
-                custom_coeff_value = used_coeff
-                current_app.logger.info(f'Using custom coefficient: {used_coeff}')
-            except Exception as e:
-                current_app.logger.error(f'Error parsing custom coefficient: {e}')
-                flash('Некорректное значение коэффициента', 'error')
-                return redirect(url_for('plan_bp.plan_indicators', token=token))
-        else:
-            used_coeff = indicator.CoeffToTut
-            custom_coeff_value = None
-            current_app.logger.info(f'Using standard coefficient: {used_coeff}')
-
-        QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * used_coeff)
-        QYearPrev = to_decimal_2(QYearPrev_ed * used_coeff)
-        QYearCurrent = to_decimal_2(QYearCurrent_ed * used_coeff)
-        
-        if indicator.code in ['2023', '2024'] and fuel_category:
-            if fuel_category == 'local':
-                is_local_value = True
-                is_renewable_value = False
-                current_app.logger.info(f'Setting is_local=True for indicator {indicator.code}')
-            elif fuel_category == 'renewable':
-                is_local_value = False
-                is_renewable_value = True
-                current_app.logger.info(f'Setting is_renewable=True for indicator {indicator.code}')
-            else:
-                is_local_value = indicator.is_local
-                is_renewable_value = indicator.is_renewable
-        else:
-            is_local_value = indicator.is_local
-            is_renewable_value = indicator.is_renewable
-            current_app.logger.debug(f'Using indicator default values: is_local={is_local_value}, is_renewable={is_renewable_value}')
 
         new_IndicatorUsage = IndicatorUsage(
             id_plan=current_plan.id,
             id_indicator=id_indicator,
-            QYearBeforePrev=QYearBeforePrev,
-            QYearPrev=QYearPrev,
-            QYearCurrent=QYearCurrent,
-            custom_coeff_to_tut=custom_coeff_value,
-            is_local=is_local_value,
-            is_renewable=is_renewable_value,
-            note=name_other
+            QYearBeforePrev=data['QYearBeforePrev'],
+            QYearPrev=data['QYearPrev'],
+            QYearCurrent=data['QYearCurrent'],
+            coeff_before_prev=data['coeff_before_prev'],
+            coeff_prev=data['coeff_prev'],
+            coeff_current=data['coeff_current'],
+            is_local=data['is_local'],
+            is_renewable=data['is_renewable'],
+            note=data['note']
         )
         
         db.session.add(new_IndicatorUsage)
         db.session.commit()
+        
+        saved = IndicatorUsage.query.get(new_IndicatorUsage.id)
+        current_app.logger.info(f'[create_indicator] SAVED IN DB - coeff_before_prev: {saved.coeff_before_prev}, coeff_prev: {saved.coeff_prev}, coeff_current: {saved.coeff_current}')
+        current_app.logger.info(f'[create_indicator] SAVED IN DB - QYearBeforePrev: {saved.QYearBeforePrev}, QYearPrev: {saved.QYearPrev}, QYearCurrent: {saved.QYearCurrent}')
+        
         other_data_indicatorUpdate(current_plan.id)
         update_ChangeTimePlan(current_plan.id)
         
         current_app.logger.info(f'Successfully created indicator usage with id {new_IndicatorUsage.id} for plan {current_plan.id}')
-
         flash('Показатель добавлен', 'success')
         return redirect(url_for('plan_bp.plan_indicators', token=token))
     
@@ -261,84 +359,54 @@ def edit_indicator(token):
             flash('Показатель не принадлежит указанному плану', 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
+        indicator = indicator_usage.indicator
+        indicator_code = indicator.code
+        
         QYearBeforePrev_ed = to_decimal_2(request.form.get('QYearBeforePrev'))
         QYearPrev_ed = to_decimal_2(request.form.get('QYearPrev'))
         QYearCurrent_ed = to_decimal_2(request.form.get('QYearCurrent'))
-        coeff_type = request.form.get('coeff_type')
-        custom_coeff_raw = request.form.get('custom_coeff')
         fuel_category = request.form.get('fuel_category')
         name_other = str(request.form.get('name_other'))
         
-        indicator = indicator_usage.indicator
-        indicator_code = indicator.code
-        indicator_code_num = int(indicator_code) if indicator_code.isdigit() else 0
+        custom_coeff_before = request.form.get('custom_coeff_before')
+        custom_coeff_prev = request.form.get('custom_coeff_prev')
+        custom_coeff_current = request.form.get('custom_coeff_current')
         
-        is_coeff_editable = 2000 <= indicator_code_num <= 2024
-        is_codes_9911_9914 = indicator_code in ['9911', '9912', '9913', '9914']
+        current_app.logger.info(f'[edit_indicator] Raw form data - coeff_before: {custom_coeff_before}, coeff_prev: {custom_coeff_prev}, coeff_current: {custom_coeff_current}')
+        current_app.logger.info(f'[edit_indicator] Current indicator usage coeffs before update - before: {indicator_usage.coeff_before_prev}, prev: {indicator_usage.coeff_prev}, current: {indicator_usage.coeff_current}')
         
-        current_app.logger.info(f'Editing indicator usage {id_indicator} for plan {current_plan.id}')
-        current_app.logger.debug(f'Indicator code: {indicator_code}, is_coeff_editable: {is_coeff_editable}, is_codes_9911_9914: {is_codes_9911_9914}')
+        data, error = process_indicator_data(
+            indicator, QYearBeforePrev_ed, QYearPrev_ed, QYearCurrent_ed,
+            custom_coeff_before, custom_coeff_prev, custom_coeff_current,
+            fuel_category, name_other, is_edit=True, indicator_usage=indicator_usage
+        )
         
-        if indicator.code in ['2023', '2024'] and not fuel_category and not name_other:
-            current_app.logger.warning(f'Indicator {indicator.code} requires fuel category and Note but not provided')
-            flash('Для данного показателя необходимо выбрать категорию топлива и ввести наименование', 'error')
+        if error:
+            flash(error, 'error')
             return redirect(url_for('plan_bp.plan_indicators', token=token))
         
-        if is_coeff_editable and coeff_type == 'custom' and custom_coeff_raw:
-            try:
-                custom_coeff_raw = custom_coeff_raw.replace(',', '.')
-                used_coeff = to_decimal_3(custom_coeff_raw)
-                custom_coeff_value = used_coeff
-                current_app.logger.info(f'Using custom coefficient: {used_coeff}')
-            except Exception as e:
-                current_app.logger.error(f'Error parsing custom coefficient: {e}')
-                flash('Некорректное значение коэффициента', 'error')
-                return redirect(url_for('plan_bp.plan_indicators', token=token))
-        else:
-            used_coeff = indicator.CoeffToTut
-            custom_coeff_value = None
-            current_app.logger.info(f'Using standard coefficient: {used_coeff}')
-        
-        QYearBeforePrev = to_decimal_2(QYearBeforePrev_ed * used_coeff)
-        QYearPrev = to_decimal_2(QYearPrev_ed * used_coeff)
-        QYearCurrent = to_decimal_2(QYearCurrent_ed * used_coeff)
-        
-        if indicator_code in ['2023', '2024'] and fuel_category:
-            if fuel_category == 'local':
-                is_local_value = True
-                is_renewable_value = False
-                current_app.logger.info(f'Setting is_local=True for indicator {indicator_code}')
-            elif fuel_category == 'renewable':
-                is_local_value = False
-                is_renewable_value = True
-                current_app.logger.info(f'Setting is_renewable=True for indicator {indicator_code}')
-            else:
-                is_local_value = indicator_usage.is_local
-                is_renewable_value = indicator_usage.is_renewable
-        else:
-            is_local_value = indicator_usage.is_local
-            is_renewable_value = indicator_usage.is_renewable
+        is_codes_9911_9914 = indicator_code in ['9911', '9912', '9913', '9914']
         
         if is_codes_9911_9914:
-            indicator_usage.QYearCurrent = QYearCurrent
-            current_app.logger.info(f'Updated only QYearCurrent for {indicator_code}')
+            indicator_usage.QYearCurrent = data['QYearCurrent']
         else:
-            indicator_usage.QYearBeforePrev = QYearBeforePrev
-            indicator_usage.QYearPrev = QYearPrev
-            indicator_usage.QYearCurrent = QYearCurrent
-            current_app.logger.info(f'Updated all QYear fields for {indicator_code}')
+            indicator_usage.QYearBeforePrev = data['QYearBeforePrev']
+            indicator_usage.QYearPrev = data['QYearPrev']
+            indicator_usage.QYearCurrent = data['QYearCurrent']
         
-        if is_coeff_editable:
-            indicator_usage.custom_coeff_to_tut = custom_coeff_value
-            current_app.logger.info(f'Updated custom coefficient for {indicator_code}')
-        
-        indicator_usage.is_local = is_local_value
-        indicator_usage.is_renewable = is_renewable_value
-        indicator_usage.note=name_other
+        indicator_usage.is_local = data['is_local']
+        indicator_usage.is_renewable = data['is_renewable']
+        indicator_usage.note = data['note']
         
         db.session.commit()
+        
+        saved = IndicatorUsage.query.get(id_indicator)
+        current_app.logger.info(f'[edit_indicator] SAVED IN DB - coeff_before_prev: {saved.coeff_before_prev}, coeff_prev: {saved.coeff_prev}, coeff_current: {saved.coeff_current}')
+        current_app.logger.info(f'[edit_indicator] SAVED IN DB - QYearBeforePrev: {saved.QYearBeforePrev}, QYearPrev: {saved.QYearPrev}, QYearCurrent: {saved.QYearCurrent}')
+        
         other_data_indicatorUpdate(current_plan.id)
         update_ChangeTimePlan(current_plan.id)
+        
         current_app.logger.info(f'Successfully updated indicator usage {id_indicator} for plan {current_plan.id}')
         flash('Показатель успешно обновлен', 'success')
         return redirect(url_for('plan_bp.plan_indicators', token=token))
@@ -348,7 +416,8 @@ def edit_indicator(token):
         current_app.logger.error(f'Error editing indicator: {str(e)}', exc_info=True)
         flash(f'Ошибка при редактировании показателя: {str(e)}', 'error')
         return redirect(url_for('plan_bp.plan_indicators', token=token))
-
+    
+    
 @plan_bp.route('/delete-indicator/<int:id>', methods=['POST'])
 @user_with_all_params()
 @login_required

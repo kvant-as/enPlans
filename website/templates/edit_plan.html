@@ -7,9 +7,7 @@
   <div class="personal-acc-conteiner" style="margin-top: 15px;">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('Редактирование плана') }}</a>
-      </div>
-      <div class="header-content-right">
+        <a class="name">{{ _('Редактирование плана') }}</a>
       </div>
     </div>
 
@@ -17,7 +15,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Год') }}</label>
+          <label>{{ _('Год') }} <span class="required-star">*</span></label>
           <div class="input-with-icon">
             {{ icons.icon_calendar() }}
             <input
@@ -46,26 +44,26 @@
       <br />
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель энергосбережения') }} (%)</label>
+          <label>{{ _('Целевой показатель энергосбережения') }} (%) <span class="required-star">*</span></label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
               type="text"
               name="energy_saving"
-              value="{{ plan.energy_saving }}"
+              value="{{ plan.energy_saving|comma_decimal }}"
               required
               class="app-numeric-input-negative-one-decimal"
             />
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%) <span class="required-star">*</span></label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
               type="text"
               name="share_fuel"
-              value="{{ plan.share_fuel }}"
+              value="{{ plan.share_fuel|comma_decimal  }}"
               required
               class="app-numeric-input-one-decimal"
               required
@@ -75,32 +73,34 @@
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }} <span class="required-star">*</span></label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
               type="text"
               name="saving_fuel"
-              value="{{ plan.saving_fuel }}"
+              value="{{ plan.saving_fuel|comma_decimal  }}"
               class="app-numeric-input-one-decimal"
               required
             />
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%) <span class="required-star">*</span></label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
               type="text"
               name="share_energy"
-              value="{{ plan.share_energy }}"
+              value="{{ plan.share_energy|comma_decimal  }}"
               class="app-numeric-input-one-decimal"
               required
             />
           </div>
         </div>
       </div>
+      
+      {{ component.required_legend() }}
       <div class="button-area">
         <button id="editPlanButton" type="submit" class="main-btn main-btn-primary">
           {{ icons.icon_edit() }}

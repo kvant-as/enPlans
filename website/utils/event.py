@@ -34,7 +34,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
         _, _, cost_error = update_plan_rates(current_plan)
         if cost_error:
             current_app.logger.error(f'Error getting cost per toe: {cost_error}')
-            raise ValueError(f'Невозможно получить стоимость т.у.т.: {cost_error}')
+            raise ValueError(f'Невозможно получить стоимость т у.т.: {cost_error}')
         COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
     
     current_app.logger.info(f'Processing event data: plan_id={current_plan.id}, USD_RATE={USD_RATE}, COST_PER_TOE_USD={COST_PER_TOE_USD}')

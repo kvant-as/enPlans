@@ -475,9 +475,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       {{ icons.icon_no_info() }}
       <h1>{{ _('Нет сообщений') }}</h1>
       <p class="empty-subtitle">
-        {% if current_user.is_auditor %} {{ _('Начните обсуждение плана') }} {%
-        else %} {{ _('Отправьте план для получения результатов проверки') }} {%
-        endif %}
+       {{ _('Для получения результатов проверки необходимо отправить план') }} 
       </p>
     </div>
   </div>
@@ -679,9 +677,7 @@ compact_view=false) %}
 {% endif %} 
 {% endmacro %}
 
-{% macro plans_list(plans, current_user,
-show_checkboxes=false, show_actions=true, custom_empty_message=none,
-compact_view=false) %}
+{% macro plans_list(plans, current_user, show_checkboxes=false, show_actions=true, custom_empty_message=none, compact_view=false) %}
 <div class="plans-area {% if compact_view %}compact-view{% endif %}">
   {{ plans_list_items(plans, current_user, show_checkboxes, show_actions,
   custom_empty_message, compact_view) }}
@@ -696,16 +692,14 @@ compact_view=false) %}
 </div>
 {% endmacro %} 
 
-{% macro filters_section(years, current_user=none,
-show_search=true, show_status=true, show_year=true, show_regional_search=false,
-selected_status='all', selected_year='all') %}
+{% macro filters_section(years, current_user=none, show_search=true, show_status=true, show_year=true, show_regional_search=false, selected_status='all', selected_year='all') %}
 <div class="filters-area">
   {% if show_search %}
   <div class="input-with-icon">
     {{ icons.icon_search() }}
     <input
       type="text"
-      placeholder="{{ _('Наим. предприятия') }}"
+      placeholder="{{ _('Предприятие') }}"
       class="app-input"
       id="search-name"
       value="{{ request.args.get('search_name', '') }}"

@@ -32,13 +32,13 @@ def send_activation_email(email):
 def sign_def(email, password1, password2):
     if email and password1:
         if User.query.filter(func.lower(User.email) == func.lower(email)).first():
-            flash('Пользователь с таким email уже существует.', 'error')
+            flash('Пользователь с таким email уже существует', 'error')
             return redirect(url_for('auth.sign'))
         elif not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email):
-            flash('Некорректный адрес электронной почты.', 'error')
+            flash('Некорректный адрес электронной почты', 'error')
             return redirect(url_for('auth.sign'))
         elif password1 != password2:
-            flash('Ошибка в подтверждении пароля.', 'error')
+            flash('Ошибка в подтверждении пароля', 'error')
             return redirect(url_for('auth.sign'))
         else:
             session['temp_user'] = {
@@ -47,10 +47,10 @@ def sign_def(email, password1, password2):
             }
             session.permanent = True
             send_activation_email(email) 
-            flash('Проверьте свою почту для активации аккаунта.', 'success')
+            flash('Проверьте свою почту для активации аккаунта', 'success')
             return redirect(url_for('auth.code'))
     else:
-        flash('Введите данные для регистрации.', 'error')
+        flash('Введите данные для регистрации', 'error')
         return redirect(url_for('auth.sign'))
 
 def activate_account():
@@ -71,7 +71,7 @@ def activate_account():
         flash('Почта подтверждена, заполните необходимые данные для продолжения!', 'success')
         return redirect(url_for('auth.param'))        
     else:
-        flash('Некорректный код активации.', 'error')
+        flash('Некорректный код активации', 'error')
         return redirect(url_for('auth.code')) 
          
 def add_param(first_name, last_name, patronymic_name, phone, organization_id=None, user_type='respondent', post=None):
