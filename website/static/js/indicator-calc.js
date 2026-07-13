@@ -16,36 +16,6 @@ class PlanIndicators {
         const addModal = document.getElementById('AddIndicatorModal');
         if (!addModal) return;
 
-        const standardRadio = addModal.querySelector('input[name="coeff_type"][value="standard"]');
-        const customRadio = addModal.querySelector('input[name="coeff_type"][value="custom"]');
-        const customCoeffGroup = addModal.querySelector('#custom-coeff-group');
-        const customCoeffInput = addModal.querySelector('input[name="custom_coeff"]');
-
-        if (standardRadio && customRadio && customCoeffGroup) {
-            standardRadio.addEventListener('change', () => {
-                if (standardRadio.checked) {
-                    customCoeffGroup.style.display = 'none';
-                    if (customCoeffInput) customCoeffInput.value = '';
-                    this.updateTutResults();
-                }
-            });
-
-            customRadio.addEventListener('change', () => {
-                if (customRadio.checked) {
-                    customCoeffGroup.style.display = 'block';
-                    this.updateTutResults();
-                }
-            });
-        }
-
-        if (customCoeffInput) {
-            customCoeffInput.addEventListener('input', () => {
-                if (customRadio && customRadio.checked) {
-                    this.updateTutResults();
-                }
-            });
-        }
-
         const table = addModal.querySelector('[data-action="modal-table-main"]');
         if (table) {
             table.querySelectorAll('tbody tr').forEach(row => {
@@ -60,6 +30,12 @@ class PlanIndicators {
             input.addEventListener('input', this.updateTutResults.bind(this));
         });
 
+        const coeffInputs = addModal.querySelectorAll('.coeff-input-display');
+        coeffInputs.forEach(input => {
+            input.removeEventListener('input', this.updateTutResults.bind(this));
+            input.addEventListener('input', this.updateTutResults.bind(this));
+        });
+
         this.updateTutResults();
     }
 
@@ -67,46 +43,14 @@ class PlanIndicators {
         const editModal = document.getElementById('EditIndicatorModal');
         if (!editModal) return;
 
-        const standardRadio = editModal.querySelector('input[name="coeff_type"][value="standard"]');
-        const customRadio = editModal.querySelector('input[name="coeff_type"][value="custom"]');
-        const customCoeffGroup = editModal.querySelector('#edit-custom-coeff-group');
-        const customCoeffInput = editModal.querySelector('#edit-custom-coeff');
-
-        if (standardRadio && customRadio && customCoeffGroup) {
-            standardRadio.removeEventListener('change', this.handleEditStandardChange);
-            customRadio.removeEventListener('change', this.handleEditCustomChange);
-            
-            this.handleEditStandardChange = () => {
-                if (standardRadio.checked) {
-                    customCoeffGroup.style.display = 'none';
-                    if (customCoeffInput) customCoeffInput.value = '';
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            
-            this.handleEditCustomChange = () => {
-                if (customRadio.checked) {
-                    customCoeffGroup.style.display = 'block';
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            
-            standardRadio.addEventListener('change', this.handleEditStandardChange);
-            customRadio.addEventListener('change', this.handleEditCustomChange);
-        }
-
-        if (customCoeffInput) {
-            customCoeffInput.removeEventListener('input', this.handleEditCustomInput);
-            this.handleEditCustomInput = () => {
-                if (customRadio && customRadio.checked) {
-                    if (typeof updateEditTutResults === 'function') updateEditTutResults();
-                }
-            };
-            customCoeffInput.addEventListener('input', this.handleEditCustomInput);
-        }
-
         const numericInputs = editModal.querySelectorAll('.app-numeric-input');
         numericInputs.forEach(input => {
+            input.removeEventListener('input', updateEditTutResults);
+            input.addEventListener('input', updateEditTutResults);
+        });
+
+        const coeffInputs = editModal.querySelectorAll('.coeff-input-display');
+        coeffInputs.forEach(input => {
             input.removeEventListener('input', updateEditTutResults);
             input.addEventListener('input', updateEditTutResults);
         });
@@ -117,7 +61,6 @@ class PlanIndicators {
         const selectedDisplay = document.getElementById('selected-indicator-display');
         const selectedName = document.getElementById('selected-indicator-name');
         const idIndicatorInput = document.querySelector('input[name="id_indicator"]');
-        const standardCoeffSpan = document.getElementById('standard-coeff-value');
         
         const code = row.cells[1]?.textContent.trim() || '';
         const name = row.cells[2]?.textContent.trim() || '';
@@ -136,11 +79,14 @@ class PlanIndicators {
             idIndicatorInput.value = indicatorId;
         }
         
-        if (standardCoeffSpan) {
-            let coeffValue = parseFloat(coeff.replace(',', '.'));
-            if (isNaN(coeffValue)) coeffValue = 0;
-            standardCoeffSpan.textContent = coeffValue.toFixed(3).replace('.', ',');
-        }
+        let coeffValue = parseFloat(coeff.replace(',', '.'));
+        if (isNaN(coeffValue)) coeffValue = 0;
+        const formattedCoeff = coeffValue.toFixed(3).replace('.', ',');
+        
+        const coeffInputs = document.querySelectorAll('#AddIndicatorModal .coeff-input-display');
+        coeffInputs.forEach(input => {
+            input.value = formattedCoeff;
+        });
         
         const unitSpans = document.querySelectorAll('#AddIndicatorModal .value-unit');
         unitSpans.forEach(span => {
@@ -169,7 +115,6 @@ class PlanIndicators {
         
         this.updateTutResults();
     }
-
 
     initAddNumericInputsByGroup(groupNumber) {
         const inputs = [
@@ -237,39 +182,6 @@ class PlanIndicators {
     }
 
     updateTutResults() {
-        let currentCoeff = null;
-        const coeffTypeRadio = document.querySelector('#AddIndicatorModal input[name="coeff_type"]:checked');
-        
-        if (!coeffTypeRadio) {
-            const standardCoeffSpan = document.getElementById('standard-coeff-value');
-            if (standardCoeffSpan) {
-                let coeffText = standardCoeffSpan.textContent.replace(',', '.');
-                currentCoeff = parseFloat(coeffText);
-            }
-        } else {
-            const coeffType = coeffTypeRadio.value;
-            
-            if (coeffType === 'standard') {
-                const coeffSpan = document.getElementById('standard-coeff-value');
-                if (coeffSpan) {
-                    let coeffText = coeffSpan.textContent.replace(',', '.');
-                    currentCoeff = parseFloat(coeffText);
-                }
-            } else {
-                const customInput = document.querySelector('#AddIndicatorModal input[name="custom_coeff"]');
-                if (customInput && customInput.value) {
-                    let customText = customInput.value.replace(',', '.');
-                    currentCoeff = parseFloat(customText);
-                } else {
-                    currentCoeff = 0;
-                }
-            }
-        }
-        
-        if (currentCoeff === null || isNaN(currentCoeff)) {
-            currentCoeff = 0;
-        }
-        
         const activeRow = document.querySelector('[data-action="modal-table-main"] tbody tr.active-row');
         let groupValue = '';
         if (activeRow) {
@@ -295,9 +207,17 @@ class PlanIndicators {
         const years = ['before', 'prev', 'current'];
         years.forEach((year) => {
             const input = document.querySelector(`#AddIndicatorModal input[data-year="${year}"]`);
+            const coeffInput = document.querySelector(`#AddIndicatorModal .coeff-input-display[data-year="${year}"]`);
             const resultSpan = document.getElementById(`result-${year}`);
             
-            if (input && resultSpan) {
+            if (input && resultSpan && coeffInput) {
+                let currentCoeff = 0;
+                if (coeffInput.value) {
+                    let coeffText = coeffInput.value.replace(',', '.');
+                    currentCoeff = parseFloat(coeffText);
+                }
+                if (isNaN(currentCoeff)) currentCoeff = 0;
+                
                 if (input.value) {
                     let inputValue = input.value.replace(',', '.');
                     let value = parseFloat(inputValue);
@@ -587,6 +507,7 @@ function Edit_indicator_modal() {
             const indicatorCodeNum = parseInt(indicatorCode);
             const isCoeffEditable = indicatorCodeNum >= 2000 && indicatorCodeNum <= 2024;
             const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
+            const isCoeffLocked = ['9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'].includes(indicatorCode);
             
             if (isCodes9911to9914) {
                 if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
@@ -620,43 +541,33 @@ function Edit_indicator_modal() {
                 }
             }
             
-            const coeffSection = document.getElementById('edit-coeff-section');
-            const customOption = document.getElementById('edit-custom-option');
+            const coeffValue = data.CoeffToTut || 0;
+            const formattedCoeff = coeffValue.toFixed(3).replace('.', ',');
             
-            if (isCoeffEditable) {
-                coeffSection.style.display = 'block';
-                customOption.style.display = 'block';
-            } else {
-                coeffSection.style.display = 'block';
-                customOption.style.display = 'none';
-                const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
-                if (standardRadio) {
-                    standardRadio.checked = true;
+            const coeffInputs = document.querySelectorAll('#EditIndicatorModal .coeff-input-display');
+            coeffInputs.forEach(function(input) {
+                if (isCoeffLocked || !isCoeffEditable) {
+                    input.readOnly = true;
+                    input.style.backgroundColor = '#f5f5f5';
+                    input.style.cursor = 'not-allowed';
+                    input.style.color = '#999';
+                } else {
+                    input.readOnly = false;
+                    input.style.backgroundColor = 'white';
+                    input.style.cursor = 'text';
+                    input.style.color = 'var(--green-main)';
                 }
-            }
-            
-            const standardCoeffSpan = document.getElementById('edit-standard-coeff-value');
-            if (standardCoeffSpan) {
-                standardCoeffSpan.textContent = data.CoeffToTut.toFixed(3).replace('.', ',');
-            }
-            
-            const customCoeffGroup = document.getElementById('edit-custom-coeff-group');
-            const customCoeffInput = document.getElementById('edit-custom-coeff');
-            const standardRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="standard"]');
-            const customRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"][value="custom"]');
-            
-            if (isCoeffEditable && data.is_custom && data.custom_coeff_to_tut) {
-                if (customRadio) customRadio.checked = true;
-                if (customCoeffGroup) customCoeffGroup.style.display = 'block';
-                if (customCoeffInput) customCoeffInput.value = data.custom_coeff_to_tut.toFixed(3).replace('.', ',');
-            } else {
-                if (standardRadio) standardRadio.checked = true;
-                if (customCoeffGroup) customCoeffGroup.style.display = 'none';
-                if (customCoeffInput) customCoeffInput.value = '';
-            }
-            
-            const usedCoeff = data.used_coeff;
-            const coeffValue = usedCoeff ? usedCoeff : data.CoeffToTut;
+                
+                if (data.coeff_before_prev && input.dataset.year === 'before') {
+                    input.value = data.coeff_before_prev.toFixed(3).replace('.', ',');
+                } else if (data.coeff_prev && input.dataset.year === 'prev') {
+                    input.value = data.coeff_prev.toFixed(3).replace('.', ',');
+                } else if (data.coeff_current && input.dataset.year === 'current') {
+                    input.value = data.coeff_current.toFixed(3).replace('.', ',');
+                } else {
+                    input.value = formattedCoeff;
+                }
+            });
             
             const setFormattedValue = (inputId, value, groupId) => {
                 const input = document.getElementById(inputId);
@@ -672,26 +583,26 @@ function Edit_indicator_modal() {
             if (isCodes9911to9914) {
                 setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
                 setFormattedValue('QYearCurr-edit', null, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / data.used_coeff_current) : null;
                 setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else if (!isSpecialGroup) {
-                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / coeffValue) : null;
-                const valPrev = data.QYearPrev ? (data.QYearPrev / coeffValue) : null;
+                const valBeforePrev = data.QYearBeforePrev ? (data.QYearBeforePrev / data.used_coeff_before) : null;
+                const valPrev = data.QYearPrev ? (data.QYearPrev / data.used_coeff_prev) : null;
                 setFormattedValue('QYearBeforePrev-edit', valBeforePrev, groupNumber);
                 setFormattedValue('QYearCurr-edit', valPrev, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / data.used_coeff_current) : null;
                 setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             } else {
                 setFormattedValue('QYearBeforePrev-edit', null, groupNumber);
                 setFormattedValue('QYearCurr-edit', null, groupNumber);
-                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / coeffValue) : null;
+                const valCurrent = data.QYearCurrent ? (data.QYearCurrent / data.used_coeff_current) : null;
                 setFormattedValue('QYearCurrent-edit', valCurrent, groupNumber);
             }
             
             function validateEditForm() {
                 const isCategoryChecked = categoryRadios && Array.from(categoryRadios).some(radio => radio.checked);
                 const isNameFilled = editNameInput && editNameInput.value.trim() !== '';
-                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
+                const submitEditBtn = document.getElementById('edit-submit-btn');
                 
                 if (submitEditBtn) {
                     if (indicatorCode === '2023' || indicatorCode === '2024') {
@@ -743,7 +654,7 @@ function Edit_indicator_modal() {
                     editNameInput.required = false;
                     editNameInput.value = '';
                 }
-                const submitEditBtn = document.getElementById('submit-edit-indicator-btn');
+                const submitEditBtn = document.getElementById('edit-submit-btn');
                 if (submitEditBtn) submitEditBtn.disabled = false;
             }
 
@@ -764,42 +675,9 @@ function Edit_indicator_modal() {
 }
 
 function updateEditTutResults() {
-    let currentCoeff = null;
-    const coeffTypeRadio = document.querySelector('#EditIndicatorModal input[name="coeff_type"]:checked');
-    
-    if (!coeffTypeRadio) {
-        const standardCoeffSpan = document.getElementById('edit-standard-coeff-value');
-        if (standardCoeffSpan) {
-            let coeffText = standardCoeffSpan.textContent.replace(',', '.');
-            currentCoeff = parseFloat(coeffText);
-        }
-    } else {
-        const coeffType = coeffTypeRadio.value;
-        
-        if (coeffType === 'standard') {
-            const coeffSpan = document.getElementById('edit-standard-coeff-value');
-            if (coeffSpan) {
-                let coeffText = coeffSpan.textContent.replace(',', '.');
-                currentCoeff = parseFloat(coeffText);
-            }
-        } else {
-            const customInput = document.getElementById('edit-custom-coeff');
-            if (customInput && customInput.value) {
-                let customText = customInput.value.replace(',', '.');
-                currentCoeff = parseFloat(customText);
-            } else {
-                currentCoeff = 0;
-            }
-        }
-    }
-    
-    if (currentCoeff === null || isNaN(currentCoeff)) {
-        currentCoeff = 0;
-    }
-    
     const activeRow = document.querySelector('.rows .active-row');
-    let indicatorCode = '';
     let groupValue = '';
+    let indicatorCode = '';
     
     if (activeRow) {
         const codeCell = activeRow.querySelector('td:nth-child(12)');
@@ -833,57 +711,39 @@ function updateEditTutResults() {
     
     const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
     
-    if (isCodes9911to9914) {
-        const currentInput = document.getElementById('QYearCurrent-edit');
-        const resultSpan = document.getElementById('edit-result-current');
+    const updateResult = (inputId, resultId) => {
+        const input = document.getElementById(inputId);
+        const resultSpan = document.getElementById(resultId);
+        const coeffInput = document.querySelector(`#EditIndicatorModal .coeff-input-display[data-year="${inputId.split('-')[1] || 'current'}"]`);
         
-        if (currentInput && resultSpan && currentInput.value) {
-            let inputValue = currentInput.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) value = 0;
-            const tutValue = value * currentCoeff;
-            let formattedResult = formatResultValue(tutValue, groupNumber);
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        } else if (resultSpan) {
-            resultSpan.textContent = '= 0 т.у.т.';
-        }
-    } else if (isSpecialGroup) {
-        const currentInput = document.getElementById('QYearCurrent-edit');
-        const resultSpan = document.getElementById('edit-result-current');
-        
-        if (currentInput && resultSpan && currentInput.value) {
-            let inputValue = currentInput.value.replace(',', '.');
-            let value = parseFloat(inputValue);
-            if (isNaN(value)) value = 0;
-            const tutValue = value * currentCoeff;
-            let formattedResult = formatResultValue(tutValue, groupNumber);
-            resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-        } else if (resultSpan) {
-            resultSpan.textContent = '= 0 т.у.т.';
-        }
-    } else {
-        const inputs = [
-            { id: 'QYearBeforePrev-edit', resultId: 'edit-result-before' },
-            { id: 'QYearCurr-edit', resultId: 'edit-result-prev' },
-            { id: 'QYearCurrent-edit', resultId: 'edit-result-current' }
-        ];
-        
-        inputs.forEach(function(item) {
-            const input = document.getElementById(item.id);
-            const resultSpan = document.getElementById(item.resultId);
-            
-            if (input && resultSpan) {
-                if (input.value && !input.readOnly) {
-                    let inputValue = input.value.replace(',', '.');
-                    let value = parseFloat(inputValue);
-                    if (isNaN(value)) value = 0;
-                    const tutValue = value * currentCoeff;
-                    let formattedResult = formatResultValue(tutValue, groupNumber);
-                    resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
-                } else {
-                    resultSpan.textContent = '= 0 т.у.т.';
-                }
+        if (input && resultSpan) {
+            let currentCoeff = 0;
+            if (coeffInput && coeffInput.value) {
+                let coeffText = coeffInput.value.replace(',', '.');
+                currentCoeff = parseFloat(coeffText);
             }
-        });
+            if (isNaN(currentCoeff)) currentCoeff = 0;
+            
+            if (input.value && !input.readOnly) {
+                let inputValue = input.value.replace(',', '.');
+                let value = parseFloat(inputValue);
+                if (isNaN(value)) value = 0;
+                const tutValue = value * currentCoeff;
+                let formattedResult = formatResultValue(tutValue, groupNumber);
+                resultSpan.textContent = '= ' + formattedResult + ' т.у.т.';
+            } else {
+                resultSpan.textContent = '= 0 т.у.т.';
+            }
+        }
+    };
+    
+    if (isCodes9911to9914) {
+        updateResult('QYearCurrent-edit', 'edit-result-current');
+    } else if (isSpecialGroup) {
+        updateResult('QYearCurrent-edit', 'edit-result-current');
+    } else {
+        updateResult('QYearBeforePrev-edit', 'edit-result-before');
+        updateResult('QYearCurr-edit', 'edit-result-prev');
+        updateResult('QYearCurrent-edit', 'edit-result-current');
     }
 }

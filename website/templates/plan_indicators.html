@@ -143,11 +143,6 @@
                 <div class="progress-modal-bar" id="modal-progress-bar" style="width: 50%"></div>
             </div> 
             <div id="step1" class="modal-step">
-              {#
-                <div class="answer-highlight">
-                    <div class="highlight-icon">💡</div>
-                    <p><strong>Выберите</strong> показатель кликнув по нему, а затем нажмите <strong>Далее</strong></p>
-                </div>#}
                 <div class="app-group">
                     <label>{{ _('Поиск показателя') }}</label>
                     <div class="input-with-icon">
@@ -158,32 +153,30 @@
                     </div>
                 </div>
                 <div class="modal-table-conteiner"> 
-                <table class="modal-table-main" data-action="modal-table-main">
-                    <thead class="modal-table-main-titles">
-                        <tr>
-                            <th style="display: none;">id</th>
-                            <th>Код</th>
-                            <th>Наименование</th>
-                            <th style="text-align: center;">Ед. изм.</th>
-                            <th style="text-align: center;">Коэф.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in indicators_non_madatory %}
+                    <table class="modal-table-main" data-action="modal-table-main">
+                        <thead class="modal-table-main-titles">
                             <tr>
-                                <td style="display: none;">{{ row.id }}</td>
-                                <td>{{ row.code }}</td>
-                                <td>{{ row.name }}</td>
-                                <td>{{ row.unit.name }}</td>
-                                <td>{{ row.CoeffToTut }}</td>
-
+                                <th style="display: none;">id</th>
+                                <th>Код</th>
+                                <th>Наименование</th>
+                                <th style="text-align: center;">Ед. изм.</th>
+                                <th style="text-align: center;">Коэф.</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for row in indicators_non_madatory %}
+                                <tr>
+                                    <td style="display: none;">{{ row.id }}</td>
+                                    <td>{{ row.code }}</td>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.unit.name }}</td>
+                                    <td>{{ row.CoeffToTut }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
                 <div class="button-auth-area" id="step1-buttons">
-                    <div></div>
                     <button type="button" class="svg-btn blue" id="step1-next-btn" data-action="directions-next">
                         <span class="btn-text">{{ _('Далее') }}</span>
                         {{ icons.next_icon() }}
@@ -202,16 +195,15 @@
                     </div>
                     
                     <div class="name-section" id="name-section" style="display: none;">
-                        <div class="name-section-title">Наименование</div>
+                        <div class="name-section-title">Наименование показателя</div>
                         <div class="name-options">
-                          <div class="input-with-icon">
-                            <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
-                          </div>
+                            <div class="input-with-icon">
+                                <input type="text" name="name_other" id="name-section-input" placeholder="Введите наименование" class="app-input">
+                            </div>
                         </div>
                     </div>
 
                     <div class="category-section" id="category-section" style="display: none;">
-                        <!-- <div class="category-section-title">Категория топлива</div> -->
                         <div class="category-options">
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="local">
@@ -231,31 +223,7 @@
                         <hr>
                     </div>
 
-                    <div class="coeff-section">
-                        <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
-                        <div class="coeff-options">
-                            <label class="coeff-option standard-option">
-                                <input type="radio" name="coeff_type" value="standard" checked>
-                                <div class="coeff-option-content">
-                                    <div class="coeff-option-title">Стандартный коэффициент</div>
-                                    <div class="coeff-option-value" id="standard-coeff-value">0.000</div>
-                                </div>
-                            </label>
-                            <label class="coeff-option custom-option">
-                                <input type="radio" name="coeff_type" value="custom">
-                                <div class="coeff-option-content">
-                                    <div class="coeff-option-title">Свой коэффициент</div>
-                                    <div class="coeff-option-value custom-value-input" id="custom-coeff-group" style="display: none;">
-                                        <input type="text" name="custom_coeff" placeholder="0,000" class="custom-coeff-input app-numeric-input-coeff">
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    {% set configs = plan.column_configs|sort(attribute='year') %}
-
                     <div class="values-section">
-                        <div class="values-section-title">Значения показателя</div>
                         <div class="values-grid">
                             <div class="value-card">
                                 <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
@@ -265,6 +233,13 @@
                                         placeholder="0" class="app-numeric-input" data-year="before" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-before">{{ _('ед. изм.') }}</div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_before" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="coeff-display-before" value="0,000" 
+                                           data-year="before">
+                                </div>
                                 <div class="result-tut" id="result-before">= 0 т.у.т.</div>
                             </div>
                             
@@ -276,6 +251,13 @@
                                         placeholder="0" class="app-numeric-input" data-year="prev" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-prev">{{ _('ед. изм.') }}</div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_prev" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="coeff-display-prev" value="0,000" 
+                                           data-year="prev">
+                                </div>
                                 <div class="result-tut" id="result-prev">= 0 т.у.т.</div>
                             </div>
                             
@@ -287,6 +269,13 @@
                                         placeholder="0" class="app-numeric-input" data-year="current" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-current">{{ _('ед. изм.') }}</div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_current" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="coeff-display-current" value="0,000" 
+                                           data-year="current">
+                                </div>
                                 <div class="result-tut" id="result-current">= 0 т.у.т.</div>
                             </div>
                         </div>
@@ -335,10 +324,9 @@
                     </div>
                     
                     <div class="name-section" id="edit-name-section" style="display: none;">
-                        <div class="name-section-title">Наименование</div>
+                        <div class="name-section-title">Наименование показателя</div>
                         <div class="name-options">
                           <div class="input-with-icon">
-                            
                             <input type="text" name="name_other" id="edit-name-section-input" placeholder="Введите наименование" class="app-input">
                           </div>
                         </div>
@@ -363,41 +351,24 @@
                         </div>
                         <hr>
                     </div>
-                    
-                    <div class="coeff-section" id="edit-coeff-section">
-                        <div class="coeff-section-title">Коэффициент перевода в т.у.т.</div>
-                        <div class="coeff-options">
-                            <label class="coeff-option standard-option">
-                                <input type="radio" name="coeff_type" value="standard" checked>
-                                <div class="coeff-option-content">
-                                    <div class="coeff-option-title">Стандартный коэффициент</div>
-                                    <div class="coeff-option-value" id="edit-standard-coeff-value">0.000</div>
-                                </div>
-                            </label>
-                            <label class="coeff-option custom-option" id="edit-custom-option" style="display: none;">
-                                <input type="radio" name="coeff_type" value="custom">
-                                <div class="coeff-option-content">
-                                    <div class="coeff-option-title">Свой коэффициент</div>
-                                    <div class="coeff-option-value custom-value-input" id="edit-custom-coeff-group" style="display: none;">
-                                        <input type="text" name="custom_coeff" placeholder="0,000" class="custom-coeff-input app-numeric-input-coeff" id="edit-custom-coeff">
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
 
-                    {% set configs = plan.column_configs|sort(attribute='year') %}
                     <div class="values-section">
-                        <div class="values-section-title">Значения показателя</div>
                         <div class="values-grid">
                             <div class="value-card" id="QYearBeforePrev-edit-nodisplay">
                                 <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearBeforePrev-edit" value="0" name="QYearBeforePrev"
-                                        placeholder="0" class="app-input">
+                                        placeholder="0" class="app-numeric-input" data-year="before">
                                 </div>
                                 <div class="value-unit" id="unit-name-before-edit"></div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_before" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="edit-coeff-display-before" value="0,000" 
+                                           data-year="before">
+                                </div>
                                 <div class="result-tut" id="edit-result-before">= 0 т.у.т.</div>
                             </div>
                             
@@ -406,9 +377,16 @@
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearCurr-edit" value="0" name="QYearPrev"
-                                        placeholder="0" class="app-input">
+                                        placeholder="0" class="app-numeric-input" data-year="prev">
                                 </div>
                                 <div class="value-unit" id="unit-name-prev-edit"></div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_prev" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="edit-coeff-display-prev" value="0,000" 
+                                           data-year="prev">
+                                </div>
                                 <div class="result-tut" id="edit-result-prev">= 0 т.у.т.</div>
                             </div>
                             
@@ -417,9 +395,16 @@
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearCurrent-edit" value="0" name="QYearCurrent"
-                                        placeholder="0" class="app-input" required>
+                                        placeholder="0" class="app-numeric-input" data-year="current" required>
                                 </div>
                                 <div class="value-unit" id="unit-name-current-edit"></div>
+                                <div class="value-coeff">
+                                    <span class="coeff-label">Коэф:</span>
+                                    <input type="text" name="custom_coeff_current" 
+                                           class="coeff-input-display app-numeric-input-coeff" 
+                                           id="edit-coeff-display-current" value="0,000" 
+                                           data-year="current">
+                                </div>
                                 <div class="result-tut" id="edit-result-current">= 0 т.у.т.</div>
                             </div>
                         </div>

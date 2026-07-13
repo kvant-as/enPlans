@@ -284,7 +284,10 @@ class IndicatorUsage(db.Model):
     is_local = db.Column(db.Boolean, default=False)
     is_renewable = db.Column(db.Boolean, default=False)
     
-    custom_coeff_to_tut = db.Column(Numeric(scale=3), nullable=True)
+    coeff_before_prev = db.Column(Numeric(scale=3), nullable=True)
+    coeff_prev = db.Column(Numeric(scale=3), nullable=True)         
+    coeff_current = db.Column(Numeric(scale=3), nullable=True)
+    
     indicator = db.relationship("Indicator", back_populates="indicators_usage")
     plan = db.relationship("Plan", back_populates="indicators_usage")
 
@@ -299,12 +302,6 @@ class IndicatorUsage(db.Model):
             'CoeffToTut': self.get_coeff_to_tut(), 
             'name': self.indicator.name
         }
-        
-    def get_coeff_to_tut(self):
-        if self.custom_coeff_to_tut is not None:
-            return self.custom_coeff_to_tut
-        return self.indicator.CoeffToTut
-
 
 class Notification(db.Model):
     __tablename__ = 'notifications'

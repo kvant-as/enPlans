@@ -1,5 +1,3 @@
-
-
 var NumericInputHandler = {
     init: function(selector, options) {
         var defaults = {
@@ -676,9 +674,17 @@ class TableContextMenu {
             return;
         }
         
-        if (this.selectedRow && this.selectedRow !== row) {
-            this.selectedRow.classList.remove('active-row');
+        if (row.classList.contains('active-row')) {
+            row.classList.remove('active-row');
+            this.selectedRow = null;
+            this.updateButtonsState();
+            this.hideContextMenu();
+            return;
         }
+        
+        this.table.querySelectorAll('.active-row').forEach(r => {
+            r.classList.remove('active-row');
+        });
         
         row.classList.add('active-row');
         this.selectedRow = row;
@@ -981,10 +987,6 @@ const TableCollapseManager = (function() {
         }
     };
 })();
-
-
-
-
 
 function checkCategoryRequired() {
     const selectedIndicatorName = document.getElementById('selected-indicator-name');
