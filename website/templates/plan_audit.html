@@ -16,7 +16,8 @@
 
 {% set can_cancel = (user_has_viewed_current and (not next_path or not next_path.is_viewed)) or plan.is_error or plan.is_approved %}
 
-{% set can_change_status = can_audit and plan.afch %} 
+{% set can_change_status = can_audit and plan.afch %}
+{% set can_change_status_appr = can_audit %} 
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
@@ -49,7 +50,7 @@
       </div>
     </div>
 
-    <div class = "plan-menu">
+    <div class = "plan-menu" style="margin-bottom: 15px;">
       <div class="menu-conteiner">
         <div class="menu-conteiner-btns">
           <form id="to_deletePlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
@@ -73,8 +74,8 @@
               <button
                   id="confirmPlanButton"
                   type="submit"
-                  class="element {% if not can_change_status %}non{% endif %}"
-                  {% if not can_change_status %}disabled{% endif %}>
+                  class="element {% if not can_change_status_appr %}non{% endif %}"
+                  {% if not can_change_status_appr %}disabled{% endif %}>
                   <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
                   <span class="btn-text">
                       {% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
@@ -110,10 +111,10 @@
         <button
           id="sent_mesPlanButton"
           type="submit"
-          class="sent-message-btn blue"
+          class="chat-btn"
         >
-          {{ icons.icon_send() }}
-          <span>{{ _('Отправить') }}</span>
+          {{ icons.icon_chatbtn() }}
+          <span class="btn-text">Отправить</span>
         </button>
       </div>
     </form>

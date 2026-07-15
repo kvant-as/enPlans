@@ -401,16 +401,16 @@ class PlanView(SecureModelView):
     }
 
 class TicketView(SecureModelView):
-    column_list = ['id', 'plan', 'begin_time', 'luck', 'is_owner', 'note']
+    column_list = ['id', 'plan', 'begin_time', 'luck', 'is_system', 'note']
     column_default_sort = ('begin_time', True)
-    column_sortable_list = ('id', 'begin_time', 'luck', 'is_owner')
+    column_sortable_list = ('id', 'begin_time', 'luck', 'is_system')
 
     can_delete = True
     can_create = True
     can_edit = True
     can_export = True
 
-    form_columns = ['plan', 'luck', 'is_owner', 'note']
+    form_columns = ['plan', 'luck', 'is_system', 'note']
 
     form_args = {
         'plan': {
@@ -421,7 +421,7 @@ class TicketView(SecureModelView):
             'label': 'Успешно',
             'description': 'Успешно ли выполнен тикет'
         },
-        'is_owner': {
+        'is_system': {
             'label': 'Владелец',
             'description': 'Является ли пользователь владельцем'
         },
@@ -433,11 +433,11 @@ class TicketView(SecureModelView):
     }
 
     column_searchable_list = ['note']
-    column_filters = ['id', 'luck', 'is_owner', 'plan_id']
+    column_filters = ['id', 'luck', 'is_system', 'plan_id']
 
     column_formatters = {
         'luck': lambda v, c, m, p: '✅' if m.luck else '❌',
-        'is_owner': lambda v, c, m, p: '👤 Да' if m.is_owner else '👥 Нет',
+        'is_system': lambda v, c, m, p: '👤 Да' if m.is_system else '👥 Нет',
         'begin_time': lambda v, c, m, p: m.begin_time.strftime('%d.%m.%Y %H:%M') if m.begin_time else '',
         'plan': lambda v, c, m, p: f"План #{m.plan.id} ({m.plan.organization.name})" if m.plan else ''
     }

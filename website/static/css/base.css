@@ -5661,6 +5661,7 @@ input[type="checkbox"]:focus {
 .tickets-messages-list {
   padding: 0 16px 16px 16px;
   max-height: 700px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5721,7 +5722,7 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   color: var(--telegram-text);
   opacity: 0.9;
-  max-width: 310px;
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6031,55 +6032,64 @@ input[type="checkbox"]:focus {
   font-weight: 700;
 }
 
-.bottom_tickets_arrea{
+.bottom_tickets_arrea {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   width: 100%;
   gap: 15px;
-  margin: 15px 0;  
+  margin-top: 15px;  
   box-sizing: border-box;
   border: 1px solid var(--border-color);
-  border-radius: 100px;
+  border-radius: 13px;
   background: var(--blur1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 22px 0 rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, opacity 0.3s ease;
+  padding: 5px 5px 5px 20px;
 }
 
 .textarea-wrapper {
   position: relative;
-  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
-.bottom_tickets_arrea .sent-textarea {
-  box-sizing: border-box;
+.sent-textarea {
   width: 100%;
-  border-radius: 100px;
   border: none;
   outline: none;
   resize: none;
   font-size: 14px;
   font-family: inherit;
-  padding: 15px 70px 15px 20px;
-  min-height: 52px;
-  max-height: 200px;
-  overflow-y: auto;
+  padding: 12px 0;
+  margin-right: 70px;
+  box-sizing: border-box;
   line-height: 1.5;
-  transition: height 0.2s ease;
+  background: transparent;
+}
+
+.sent-textarea::placeholder {
+  color: var(--text-subtitle2);
 }
 
 .char-counter {
   position: absolute;
-  right: 20px;
-  bottom: 50%;
-  transform: translateY(50%);
+  right: 10px;
+  top: 22px;
+  transform: translateY(-50%);
   font-size: 12px;
   color: #aaa;
   pointer-events: none;
   transition: color 0.3s ease;
   white-space: nowrap;
+}
+
+.bottom_tickets_arrea .chat-btn{
+  top: 5px;
+  right: 10px;
 }
 
 .char-counter.warning {
@@ -6094,55 +6104,6 @@ input[type="checkbox"]:focus {
   color: #d32f2f;
   font-weight: 600;
 }
-
-.bottom_tickets_arrea .sent-textarea::placeholder {
-  color: var(--text-subtitle2);
-}
-
-.sent-message-btn{
-  border-radius: 100px;
-  border: none;
-  font-weight: 500;
-  padding: 5px 10px;
-  text-align: center;
-  align-items: center;
-  margin: 5px;
-  display: flex;
-  gap: 7px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.sent-message-btn svg{
-  width: 20px;
-  height: 20px;
-}
-
-
-.sent-message-btn span {
-  display: none;
-  font-size: 13px;
-  font-weight: 400;
-  color: white;
-  white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-.sent-message-btn:hover span {
-  display: inline;
-}
-
-.sent-message-btn:hover{
-  border-color: var(--primary);
-  transform: translateX(-2px);
-  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
-}
-
-.sent-message-btn.blue {
-  color: rgb(255, 255, 255);
-  background: linear-gradient(135deg, #00628f 0%, #0084ff 100%) !important;
-}
-
 
 .answer-highlight {
   background: var(--green-light-back);
@@ -7275,7 +7236,8 @@ td.stat-no-data {
 }
 
 .modal-header h1{
-  font-size: 17px !important;
+  font-size: 15.75px;
+  font-weight: 500;
 }
 
 .modal-header-icon{
@@ -9094,7 +9056,7 @@ label {
 .stat-indicator {
     position: absolute;
     top: 4px;
-    right: 4px;
+    left: 4px;
     width: 10px;
     height: 10px;
     border-radius: 50%;

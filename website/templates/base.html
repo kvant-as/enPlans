@@ -357,9 +357,7 @@
                     ></textarea>
                     <div class="button-group">
                     <button class="chat-btn" onclick="ChatModule.sendMessage()">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                        </svg>
+                        {{ icons.icon_chatbtn() }}
                         <span class="btn-text">Отправить</span>
                     </button>
                    {# <button class="chat-btn attach-btn" onclick="ChatModule.attachFile()">

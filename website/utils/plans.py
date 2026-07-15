@@ -157,7 +157,7 @@ def update_ChangeTimePlan(id):
         new_ticket = Ticket(
             note='Внесение изменений пользователем.',
             luck = True,
-            is_owner = True,
+            is_system = True,
             plan_id=plan.id,
             begin_time=TimeByMinsk()
         )

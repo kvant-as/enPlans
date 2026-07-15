@@ -214,9 +214,11 @@
               <div class="date-info">
                   <span class="date-label">{{ _('Потребление') }}</span>
                   {% if plan.plan_type == 'org_small' %}
-                      <span class="date-day">До 25 тыс. т.</span>
+                      <span class="date-day">До</span>
+                      <span class="date-time">25 тыс. т.</span>
                   {% elif plan.plan_type == 'org_large' %}
-                      <span class="date-day">Более 25 тыс. т.</span>
+                      <span class="date-day">Более</span>
+                      <span class="date-time">25 тыс. т.</span>
                   {% else %}
                       <span class="date-empty">—</span>
                   {% endif %}

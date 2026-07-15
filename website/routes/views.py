@@ -16,7 +16,7 @@ from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required
 
-from ..models import News, User, Organization, Plan, Ticket, Indicator, IndicatorUsage
+from ..models import News, PlanColumnConfig, User, Organization, Plan, Ticket, Indicator, IndicatorUsage
 from .. import db
 
 from functools import wraps
@@ -480,16 +480,17 @@ def edit_plan(token):
             flash('План не найден или у вас нет прав для его редактирования', 'error')
             return redirect(url_for('views.plans'))
         
-        year = request.form.get('year')
+        new_year = int(request.form.get('year'))
+        old_year = current_plan.year
         
         existing_plan = Plan.query.filter(
             Plan.user_id == current_user.id,
-            Plan.year == year,
+            Plan.year == new_year,
             Plan.token != token 
         ).first()
         
         if existing_plan:
-            flash(f'У вас уже есть другой план на {year} год!', 'error')
+            flash(f'У вас уже есть другой план на {new_year} год!', 'error')
             return redirect(url_for('views.plans'))
         
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
@@ -497,11 +498,19 @@ def edit_plan(token):
         saving_fuel = to_decimal_1(request.form.get('saving_fuel'))
         share_energy = to_decimal_1(request.form.get('share_energy'))
 
-        current_plan.year = year
+        current_plan.year = new_year
         current_plan.energy_saving = energy_saving
         current_plan.share_fuel = share_fuel
         current_plan.saving_fuel = saving_fuel
         current_plan.share_energy = share_energy
+        
+        year_shift = new_year - old_year
+        
+        configs = PlanColumnConfig.query.filter_by(plan_id=current_plan.id).all()
+        
+        for config in configs:
+            config.year = config.year + year_shift
+        
         db.session.commit()
         
         flash('Изменения приняты', 'success')
@@ -514,7 +523,7 @@ def edit_plan(token):
             'edit_plan.html',
             current_user=current_user,
             plan=plan
-        )   
+        )
     
 @views.route('/delete-plan/<token>', methods=['POST'])
 @user_with_all_params()
