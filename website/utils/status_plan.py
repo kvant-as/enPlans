@@ -212,6 +212,14 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
 
 def handle_sent_without_check_status(plan, current_user):
     try:
+        current_path = PlanApprovalPath.query.filter_by(
+            plan_id=plan.id,
+            is_viewed=False
+        ).order_by(PlanApprovalPath.step_order).first()
+        
+        if current_path and current_path.organization_id != current_user.organization_id:
+            return {'error': 'У вас нет прав для отмены изменений на этом этапе'}
+        
         plan.is_sent = True
         plan.is_draft = False
         plan.is_control = False
@@ -261,14 +269,14 @@ def handle_sent_without_check_status(plan, current_user):
             
             notification = Notification(
                 user_id=plan.user_id,
-                message=f"План {plan.year} возвращен в статус рассмотрения. Все шаги согласования сброшены.",
+                message=f"План {plan.year} возвращен в статус рассмотрения.",
                 created_at=TimeByMinsk()
             )
             db.session.add(notification)
         
         db.session.commit()
         
-        return {'message': 'План возвращен в изначальное состояние. Все шаги согласования сброшены.'}
+        return {'message': 'План возвращен в изначальное состояние.'}
         
     except Exception as e:
         db.session.rollback()

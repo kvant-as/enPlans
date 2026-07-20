@@ -11,17 +11,19 @@
 
     {% block extra_css %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
     {% endblock %}
 
     <title>{% block title %}{{ _('EnPlans - Формирование планов мероприятий по энергосбережению') }}{% endblock %}</title>
+    <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   </head>
   <body>
     {% import 'macros/svg_icons.html' as icons %}
     {% import 'macros/affects.html' as affects %}
     {% import 'macros/components.html' as component %}
 
-    <header>
+    <header class="fixed-header">
         <nav>
             <div class="header-aside" onclick="window.location.href='/'">
                 <div class="logo-wrapper {% if current_user and current_user.is_authenticated %}
@@ -34,7 +36,7 @@
                 </div>
                 <div class="header-aside-text">
                     <a class="title">EnPlans</a>
-                    <span>{{ _('Формирование планов мероприятий по энергосбережению') }}</span>
+                    <span class="subtitle">{{ _('Формирование планов мероприятий по энергосбережению') }}</span>
                 </div>
             </div>
             
@@ -386,6 +388,7 @@
         <script src="{{ url_for('static', filename='js/base.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
         <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/header.js') }}"></script>
         <script>
         document.addEventListener('DOMContentLoaded', () => {
             messageFlash.init();

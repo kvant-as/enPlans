@@ -60,6 +60,7 @@ class PlanIndicators {
         const row = event.currentTarget;
         const selectedDisplay = document.getElementById('selected-indicator-display');
         const selectedName = document.getElementById('selected-indicator-name');
+        const selectedCode = document.getElementById('selected-indicator-code');
         const idIndicatorInput = document.querySelector('input[name="id_indicator"]');
         
         const code = row.cells[1]?.textContent.trim() || '';
@@ -70,7 +71,10 @@ class PlanIndicators {
         const group = row.querySelector('td[data-group]')?.getAttribute('data-group') || '';
         
         if (selectedName) {
-            selectedName.textContent = `${code} - ${name}`;
+            selectedName.textContent = `${name}`;
+        }        
+        if (selectedCode) {
+            selectedCode.textContent = `${code}`;
         }
         if (selectedDisplay) {
             selectedDisplay.style.display = 'block';
@@ -269,6 +273,9 @@ class PlanIndicators {
         
         let lastGroup = null;
         
+        const specialCodes = ['1796', '1797', '9916', '9917', '1425', '1424'];
+        const reverseCodes = ['1000', '1105', '1405', '1104', '1404', '260'];
+        
         indicators.forEach((row, index) => {
             const isNewGroup = row.group !== lastGroup;
             lastGroup = row.group;
@@ -290,6 +297,70 @@ class PlanIndicators {
                 }
             };
             
+            // Определение стиля для ячейки разницы
+            let backgroundColor = '';
+            let iconHtml = '';
+            let textColor = '';
+            
+            if (row.group === 5 || row.group === 6) {
+                // Для групп 5 и 6 - без заливки
+            } else if (row.difference !== null && row.difference !== undefined && !isNaN(row.difference) && row.difference !== 0) {
+                const code = String(row.code || '');
+                const isSpecialCode = specialCodes.includes(code);
+                const isReverseCode = reverseCodes.includes(code);
+                
+                const useReverseColoring = 
+                    isSpecialCode ||
+                    (row.is_local === true && row.group === 1) ||
+                    [1.1, 1.2, 2, 3, 4, 5, 6, 7, 8].some(g => Math.abs(row.group - g) < 0.01);
+                
+                const isNegative = row.difference < 0;
+                const formattedValue = formatValue(row.difference, row.group);
+                
+                // Определяем цвета для полной заливки ячейки
+                let color, bgColor, icon;
+                if (useReverseColoring) {
+                    if (isNegative) {
+                        // Снижение - красный (плохо)
+                        color = '#dc3545';
+                        bgColor = 'rgba(220, 53, 69, 0.12)';
+                        icon = '↓';
+                    } else {
+                        // Увеличение - зеленый (хорошо)
+                        color = '#28a745';
+                        bgColor = 'rgba(40, 167, 69, 0.12)';
+                        icon = '↑';
+                    }
+                } else {
+                    if (isNegative) {
+                        // Снижение - зеленый (хорошо - экономия)
+                        color = '#28a745';
+                        bgColor = 'rgba(40, 167, 69, 0.12)';
+                        icon = '↓';
+                    } else {
+                        // Увеличение - красный (плохо - перерасход)
+                        color = '#dc3545';
+                        bgColor = 'rgba(220, 53, 69, 0.12)';
+                        icon = '↑';
+                    }
+                }
+                
+                backgroundColor = bgColor;
+                textColor = color;
+                iconHtml = `<span style="color: ${color}; font-weight: 600; margin-right: 4px;">${icon}</span>`;
+            }
+            
+            // Формируем содержимое ячейки
+            let cellContent = '';
+            if (row.group === 5 || row.group === 6) {
+                cellContent = 'x';
+            } else if (row.difference !== null && row.difference !== undefined && !isNaN(row.difference) && row.difference !== 0) {
+                const formattedValue = formatValue(row.difference, row.group);
+                cellContent = `${iconHtml}<span style="color: ${textColor}; font-weight: 600;">${formattedValue}</span>`;
+            } else {
+                cellContent = formatValue(row.difference, row.group);
+            }
+            
             tr.innerHTML = `
                 <td style="text-align: center; display: none;">${index + 1}</td>
                 <td style="text-align: center">${isNewGroup ? (Number.isInteger(row.group) ? row.group : row.group) : ''}</td>
@@ -303,8 +374,8 @@ class PlanIndicators {
                 <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_tut, row.group)}</td>
                 <td>${formatValue(row.QYearCurrent_unit, row.group)}</td>
                 <td>${formatValue(row.QYearCurrent_tut, row.group)}</td>
-                <td class="difference-cell" style="border-right: none; ${row.difference < 0 ? 'background-color: rgb(96, 255, 122, 0.705);' : (row.difference > 0 ? 'background-color: rgb(255, 96, 96, 0.705);' : '')}">
-                    ${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.difference, row.group)}
+                <td class="difference-cell" style="border-right: none; text-align: center; background-color: ${backgroundColor};">
+                    ${cellContent}
                 </td>
                 <td style="display: none">${row.code}</td>
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
@@ -396,6 +467,7 @@ class PlanIndicators {
 
 function checkCategoryRequired() {
     const selectedIndicatorName = document.getElementById('selected-indicator-name');
+    const selectedIndicatorCode = document.getElementById('selected-indicator-code');
     const categorySection = document.getElementById('category-section');
     const nameSection = document.getElementById('name-section');
     const submitBtn = document.getElementById('submit-indicator-btn');
@@ -404,8 +476,10 @@ function checkCategoryRequired() {
     
     if (!selectedIndicatorName || !categorySection || !nameSection) return;
     
-    const indicatorText = selectedIndicatorName.textContent;
-    const isCategoryRequired = indicatorText.includes('2023') || indicatorText.includes('2024');
+    const indicatorText = 'selectedIndicatorName.textContent';
+    const indicatorTextCode = selectedIndicatorCode ? selectedIndicatorCode.textContent : '';
+    
+    const isCategoryRequired = indicatorTextCode.includes('2023') || indicatorTextCode.includes('2024');
     
     function validateForm() {
         const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
@@ -560,7 +634,8 @@ function Edit_indicator_modal() {
             const editSelectedIndicatorName = document.getElementById('edit-selected-indicator-name');
             if (editSelectedIndicatorName && data.name) {
                 const indicatorCode = data.code || '';
-                const displayName = indicatorCode ? indicatorCode + ' - ' + data.name : data.name;
+                const displayName = data.name;
+                // const displayName = indicatorCode ? indicatorCode + ' - ' + data.name : data.name;
                 editSelectedIndicatorName.textContent = displayName;
             }
             

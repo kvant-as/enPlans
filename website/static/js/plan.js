@@ -2838,9 +2838,6 @@ class ExportPlansLoader {
             modal.className = 'export-progress-modal';
             modal.innerHTML = `
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h1>Формирование архива</h1>
-                    </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar-fill"></div>
                     </div>

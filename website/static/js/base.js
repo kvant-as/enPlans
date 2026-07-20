@@ -233,9 +233,6 @@ const Notifications = {
         if (!data || data.length === 0) {
             this.notifListEl.innerHTML = `
                 <div class='empty-state'>
-                    <svg viewBox='0 0 24 24' fill='none'>
-                        <path d='M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' fill='#E6E6E6'></path>
-                    </svg>
                     <h1>Нет уведомлений</h1>
                 </div>
             `;

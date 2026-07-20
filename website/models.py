@@ -152,6 +152,7 @@ class Plan(db.Model):
     user = db.relationship("User", back_populates="plans")
     organization = db.relationship("Organization", foreign_keys=[org_id], back_populates="plans")
 
+
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)

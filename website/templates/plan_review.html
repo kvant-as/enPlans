@@ -5,7 +5,7 @@
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header('review', plan, current_user) }}
-  <div class="personal-acc-conteiner">
+  <div class="personal-acc-conteiner planed">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
@@ -33,7 +33,6 @@
                       <span>{{ _('Отменить отправку') }}</span>
                     </button>
                 </form>
-                <hr>
                 <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                   <input type="hidden" name="status" value="control" />
@@ -44,6 +43,16 @@
                     </button>
                 </form>
                 <hr>
+                <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button 
+                      type="submit"
+                      class="nav-menu-item {% if not plan.tickets %}disabled{% endif %}"
+                      {% if not plan.tickets %}disabled{% endif %}>
+                      {{ icons.icon_print() }}
+                      <span>{{ _('Распечатать сообщения') }}</span>
+                  </button>
+                </form>
                 <button class="nav-menu-item" onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
                     {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) %}disabled{% endif %}>
                     {{ icons.icon_edit() }}
@@ -141,17 +150,18 @@
         </div>
       </div>
 
-    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False and current_user.is_admin == False%}
-      {{ component.plan_agree_slider(plan, current_user) }}
-    {%endif%} 
-
     {#{% if current_user.is_auditor == False and current_user.is_admin == False%}#}
       <hr>
       <h1 class="name">{{ _('Результаты проверки') }}</h1>
       {{ component.tickets_container(plan, current_user) }}
     {#{%endif%}#}
 
-    <hr>
+   
+
+      {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == False and current_user.is_admin == False%}
+      {{ component.plan_agree_slider(plan, current_user) }}
+    {%endif%} 
+ <hr>
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
       <div class="dates-list">
@@ -205,7 +215,7 @@
             </div>
           </div>
         </div>
-
+        {#
         <div class="date-item" data-type="saving">
           <div class="date-icon">
               {{ icons.icon_measure_saving() }}
@@ -224,7 +234,7 @@
                   {% endif %}
               </div>
           </div>
-        </div>
+        </div>#}
       </div>
     </div>
   </div>

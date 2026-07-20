@@ -22,7 +22,7 @@
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header('audit', plan, current_user) }}
-  <div class="personal-acc-conteiner">
+  <div class="personal-acc-conteiner planed">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name" style="padding-bottom: 0">{{ _('Проверка плана мероприятий по энергосбережению') }}</a>
@@ -42,6 +42,16 @@
                     <button id="cancel_auditPlanButton" class="nav-menu-item {% if not can_cancel %}disabled{% endif %}" {% if not can_cancel %}disabled{% endif %}>
                         {{ icons.icon_cancel() }}
                         <span>{{ _('Отменить изменения') }}</span>
+                    </button>
+                  </form>
+                  <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button 
+                        type="submit"
+                        class="nav-menu-item {% if not plan.tickets %}disabled{% endif %}"
+                        {% if not plan.tickets %}disabled{% endif %}>
+                        {{ icons.icon_print() }}
+                        <span>{{ _('Распечатать сообщения') }}</span>
                     </button>
                   </form>
                 </div>

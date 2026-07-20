@@ -564,7 +564,7 @@ def other_data_indicatorUpdate(plan_id):
         denominator = get_value(indicator_260, 'QYearPrev')
         
         result = safe_divide(numerator, denominator) * 100
-        indicator_9915.QYearCurrent = to_decimal_2(-abs(result))
+        indicator_9915.QYearCurrent = to_decimal_1(-abs(result))
         
         current_app.logger.info(f'Set 9915.QYearCurrent = {result}')
         commit_changes()
@@ -590,7 +590,7 @@ def other_data_indicatorUpdate(plan_id):
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
         
         for period in periods:
-            numerator = Decimal('0')
+            numerator = Decimal('0.0')
             
             if indicator_1796:
                 numerator += get_value(indicator_1796, period)
@@ -602,11 +602,11 @@ def other_data_indicatorUpdate(plan_id):
             denominator = get_value(indicator_1000, period)
             
             if denominator == 0:
-                result = Decimal('0')
+                result = Decimal('0.0')
             else:
                 result = (numerator / denominator) * 100
             
-            setattr(indicator_9916, period, to_decimal_2(result))
+            setattr(indicator_9916, period, to_decimal_1(result))
             current_app.logger.info(f'Set 9916.{period} = {result}')
         
         commit_changes()
@@ -632,7 +632,7 @@ def other_data_indicatorUpdate(plan_id):
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
         
         for period in periods:
-            numerator = Decimal('0')
+            numerator = Decimal('0.0')
             
             if indicator_1797:
                 numerator += get_value(indicator_1797, period)
@@ -644,11 +644,11 @@ def other_data_indicatorUpdate(plan_id):
             denominator = get_value(indicator_1000, period)
             
             if denominator == 0:
-                result = Decimal('0')
+                result = Decimal('0.0')
             else:
                 result = (numerator / denominator) * 100
             
-            setattr(indicator_9917, period, to_decimal_2(result))
+            setattr(indicator_9917, period, to_decimal_1(result))
             current_app.logger.info(f'Set 9917.{period} = {result}')
         
         commit_changes()

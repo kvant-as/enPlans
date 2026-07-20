@@ -66,7 +66,7 @@
     <div class="menu-conteiner stat-log-menu">
         <div class="menu-conteiner-btns">
             <div class="element stat-log-toggle" id="statLogToggleBtn">
-                <span class="element-text">Логи контроля</span>
+                <span class="element-text">Информация</span>
                 <span class="toggle-status status-off" id="statLogStatus">Выкл</span>
             </div>
             <div class="element stat-indicator-toggle-btn" id="statIndicatorToggleBtn">
@@ -120,8 +120,7 @@
 </a>
 {% endmacro %}
 
-{% macro back_header(plan=None, current_user=None,
-show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
+{% macro back_header(plan=None, current_user=None, show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
 <div class="header-cont-for-back">
   <div class="plan-back-header">
     <button
@@ -130,7 +129,6 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
       onclick="window.location.href='{{ back_url }}'"
     >
       {{ icons.back_icon() }}
-      <span class="tooltip-text">{{ _('Вернуться назад') }}</span>
       <span class="btn-text">{{ back_text if back_text else _('Назад') }}</span>
     </button>
 
@@ -148,8 +146,9 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
     endif %}
   </div>
 </div>
-{% endmacro %} {% macro navigation_header(active_tab='plans', current_user=None)
-%}
+{% endmacro %} 
+
+{% macro navigation_header(active_tab='plans', current_user=None)%}
 <div class="header-cont">
   <nav class="navigation-container">
     <div
@@ -227,13 +226,12 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
       <span class="nav-text-mobile">{{ _('А-панель') }}</span>
     </div>
     {% endif %}
-
-    <div class="active-drop"></div>
   </nav>
 </div>
-{% endmacro %} {% macro plan_navigation_header(active_plan_tab='review',
-plan=None, current_user=None) %}
-<div class="header-cont">
+{% endmacro %} 
+
+{% macro plan_navigation_header(active_plan_tab='review', plan=None, current_user=None) %}
+<div class="header-cont planed">
   <nav class="navigation-container">
     
     {% if current_user.is_auditor == true or current_user.is_admin == true %}
