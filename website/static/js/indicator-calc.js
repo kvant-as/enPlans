@@ -275,6 +275,7 @@ class PlanIndicators {
         
         const specialCodes = ['1796', '1797', '9916', '9917', '1425', '1424'];
         const reverseCodes = ['1000', '1105', '1405', '1104', '1404', '260'];
+        const localFuelCodes = ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022'];
         
         indicators.forEach((row, index) => {
             const isNewGroup = row.group !== lastGroup;
@@ -297,50 +298,44 @@ class PlanIndicators {
                 }
             };
             
-            // Определение стиля для ячейки разницы
             let backgroundColor = '';
             let iconHtml = '';
             let textColor = '';
             
             if (row.group === 5 || row.group === 6) {
-                // Для групп 5 и 6 - без заливки
             } else if (row.difference !== null && row.difference !== undefined && !isNaN(row.difference) && row.difference !== 0) {
                 const code = String(row.code || '');
-                const isSpecialCode = specialCodes.includes(code);
-                const isReverseCode = reverseCodes.includes(code);
                 
-                const useReverseColoring = 
-                    isSpecialCode ||
-                    (row.is_local === true && row.group === 1) ||
+                const isCase11 = 
+                    specialCodes.includes(code) ||
+                    row.is_local === true ||
+                    localFuelCodes.includes(code) ||
+                    (row.is_renewable === true && row.is_local === true) ||
                     [1.1, 1.2, 2, 3, 4, 5, 6, 7, 8].some(g => Math.abs(row.group - g) < 0.01);
                 
                 const isNegative = row.difference < 0;
                 const formattedValue = formatValue(row.difference, row.group);
                 
-                // Определяем цвета для полной заливки ячейки
                 let color, bgColor, icon;
-                if (useReverseColoring) {
+                
+                if (isCase11) {
                     if (isNegative) {
-                        // Снижение - красный (плохо)
                         color = '#dc3545';
-                        bgColor = 'rgba(220, 53, 69, 0.12)';
+                        bgColor = 'rgba(220, 53, 69, 0.15)';
                         icon = '↓';
                     } else {
-                        // Увеличение - зеленый (хорошо)
                         color = '#28a745';
-                        bgColor = 'rgba(40, 167, 69, 0.12)';
+                        bgColor = 'rgba(40, 167, 69, 0.15)';
                         icon = '↑';
                     }
                 } else {
                     if (isNegative) {
-                        // Снижение - зеленый (хорошо - экономия)
                         color = '#28a745';
-                        bgColor = 'rgba(40, 167, 69, 0.12)';
+                        bgColor = 'rgba(40, 167, 69, 0.15)';
                         icon = '↓';
                     } else {
-                        // Увеличение - красный (плохо - перерасход)
                         color = '#dc3545';
-                        bgColor = 'rgba(220, 53, 69, 0.12)';
+                        bgColor = 'rgba(220, 53, 69, 0.15)';
                         icon = '↑';
                     }
                 }
@@ -350,7 +345,6 @@ class PlanIndicators {
                 iconHtml = `<span style="color: ${color}; font-weight: 600; margin-right: 4px;">${icon}</span>`;
             }
             
-            // Формируем содержимое ячейки
             let cellContent = '';
             if (row.group === 5 || row.group === 6) {
                 cellContent = 'x';

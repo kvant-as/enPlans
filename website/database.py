@@ -109,7 +109,6 @@ def filling_database(db):
         from .models import User, Organization, Unit, Direction, Indicator, Region, News
         current_app.logger.debug('Filling is in progress...')
 
-
         ### REGION DATA ###
         region_data = [
             (1, 'Брестская область'),
@@ -303,22 +302,16 @@ def filling_database(db):
                 current_app.logger.info('The migration of organizations has been successfully completed')
             except Exception as e:
                 current_app.logger.error(f'Migration error: {str(e)}')
-                db.session.rollback()
-                
-        ### ----------- ###
+                db.session.rollback()       
         
         org_migration()
+        ### ----------- ###
 
         ### USER DATA ###
         users_data = [
-            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 54),
-            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, 290),
-
-            ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 413),
-            ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 124),
-
-            ('', 'testrespondent@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, False, 290),
-            
+            ('', os.getenv('admin_email'), os.getenv('admin_name'), os.getenv('admin_secondname'), os.getenv('admin_patr'), os.getenv('admin_phone'), True, False, 54),
+            ('', os.getenv('testuser_email'), os.getenv('testuser_name'), os.getenv('testuser_secondname'), os.getenv('testuser_patr'), os.getenv('testuser_phone'), False, False, 290),
+            ('', os.getenv('testuserdepart_email_1'), os.getenv('testuserdepart_name_1'), os.getenv('testuserdepart_secondname_1'), os.getenv('testuserdepart_patr_1'), os.getenv('testuserdepart_phone_1'), False, False, 290),
             ('', 'testauditorMinskobl@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 783),
             ('', 'testauditorGancevichi@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 728),
             ('', 'testauditorNesvig@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 792),
@@ -326,10 +319,8 @@ def filling_database(db):
         ]
 
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
-            if email == os.getenv('testuser'):
-                password = os.getenv('testuserpass')
-            elif email == os.getenv('auditoremailNadzor'):
-                password = os.getenv('auditoremailNadzorpass')
+            if email == os.getenv('testuserdepart_email_1'):
+                password = os.getenv('testuserdepart_pass_1')
             else:
                 password = os.getenv('userpass')
             
@@ -532,7 +523,8 @@ def filling_database(db):
             (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 10, False, False),
             (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 11, False, False),
             (3, '2010', 'газ природный попутный', 1.300, False, 1, 12, True, False),  # is_local = True
-            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2011', 'торф топливный фрезерный', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2025', 'торф топливный кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
             (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 14, True, False),  # is_local = True
             (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 15, True, False),  # is_local = True
             (1, '2014', 'биогаз', 1.000, False, 1, 16, False, True),  # is_renewable = True
@@ -593,12 +585,6 @@ def filling_database(db):
             True, 
             TimeByMinsk(), 
             1),
-            # ('Новый дизайн интерфейса', 
-            # 'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 
-            # 'design.png', 
-            # True, 
-            # TimeByMinsk(), 
-            # 1),
         ]
 
         for title, content, image_url, is_published, published_at, views_count in news_data:
@@ -619,6 +605,5 @@ def filling_database(db):
             import_stat_files(db)
         except Exception as e:
             current_app.logger.error(f'Ошибка при импорте статистических файлов: {str(e)}')
-        
     else:
         current_app.logger.debug('The database already contains the data!')

@@ -348,26 +348,31 @@ body {
   margin: 0;
   z-index: 1000;
   height: 60px;
-  transition: all var(--animation-speed) var(--animation-easing);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   width: var(--default-width);
   max-width: 1900px;
   padding: 0 var(--default-padding-x);
   font-size: 16px;
   font-weight: 500;
   border-radius: var(--default-border-radius);
-  border: var(--default-border);
+
+}
+
+.fixed-header * {
+  transition: all var(--animation-speed) var(--animation-easing);
 }
 
 .fixed-header.bubble {
   background: var(--bubble-bg-color);
   backdrop-filter: blur(var(--bubble-blur-amount));
   -webkit-backdrop-filter: blur(var(--bubble-blur-amount));
-  border-bottom: var(--bubble-border);
   box-shadow: var(--bubble-shadow);
   padding: 0 var(--bubble-padding-x);
   width: var(--bubble-width);
   border-radius: var(--bubble-border-radius);
-  animation: bubbleAppear var(--animation-speed) var(--animation-easing) forwards;
+  top: var(--bubble-top);
+  max-width: 1250px;
+  box-sizing: border-box;
 }
 
 .fixed-header.bubble-reverse {
@@ -2208,7 +2213,6 @@ input::placeholder {
   white-space: nowrap;
   width: 100%;
   height: 55.20px;
-  max-width: 1250px;
   box-sizing: border-box;
   z-index: 100;
 }
@@ -2435,9 +2439,10 @@ input::placeholder {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: auto;
+  height: fit-content;
   top: 80px;
   z-index: 90;
+  max-width: 1250px;
 }
 
 .header-cont.planed{
@@ -4618,12 +4623,17 @@ input[type="checkbox"]:focus {
   z-index: 999;
 }
 
+.no-results-row {
+  text-align: center;
+}
+
 .no-results-row td {
   font-style: italic;
-  text-align: center;
+  text-align: center !important;  
   font-weight: 500 !important;
-  font-size: 11px !important;
-  padding: 30px 0 !important;
+  font-size: 12px !important;
+  padding: 2ch 0 !important;
+  vertical-align: middle;
 }
 
 .bottom_tickets_arrea {
@@ -7164,6 +7174,7 @@ main {
   opacity: 1;
   transition: opacity 3s ease-in-out;
 }
+
 @keyframes gradient-animation {
   0% {
     background: linear-gradient(615deg, var(--color1), var(--color2), var(--green-main));
@@ -7178,6 +7189,7 @@ main {
     opacity: 1;
   }
 }
+
 .bg-grid {
   position: fixed;
   top: 0;
@@ -7191,13 +7203,15 @@ main {
   z-index: -2;
   filter: blur(0.3px);
 }
+
 .modern-container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 30px 20px;
   width: calc(100% - 40px);
-  margin-top: 60px;
+  margin-top: 80px;
 }
+
 .modern-hero {
   display: flex;
   flex-direction: column;
@@ -7205,6 +7219,7 @@ main {
   margin-bottom: 60px;
   animation: fadeInUp 0.8s ease-out;
 }
+
 .hero-glass {
   background: var(--glass);
   backdrop-filter: blur(20px);
@@ -7216,6 +7231,7 @@ main {
   overflow: hidden;
   width: calc(100% - 162px);
 }
+
 .hero-glass::before {
   content: '';
   position: absolute;
@@ -7228,6 +7244,7 @@ main {
   animation: rotate 20s linear infinite;
   z-index: -1;
 }
+
 @keyframes rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -7678,10 +7695,6 @@ main {
   .submit-button:active {
     transform: scale(0.96);
   }
-  .personal-acc-conteiner {
-    margin-bottom: 80px;
-    margin-top: 10px;
-  }
   .stat {
     width: calc(100%);
     padding: 20px 0;
@@ -8118,15 +8131,13 @@ main {
 
 @media (max-width: 1080px) {
   .header-cont {
-    position: fixed;
-    bottom: 10px;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    padding: 0;
-    height: 60px;
-    margin: 0;
+    top: auto !important;
+    bottom: 20px !important;
+    max-width: 100%;
+    width: calc(100% - 40px);
+    padding: 0 20px;
   }
+
   .navigation-container {
     height: 100%;
     margin: 0;
@@ -8140,6 +8151,14 @@ main {
     transition: transform 0.3s ease, opacity 0.3s ease;
     justify-content: space-around;
     align-items: center;
+  }
+
+  .personal-acc-conteiner {
+    margin-top: 75px;
+  }
+
+  .personal-acc-conteiner.planed{
+    margin-top: 140px;
   }
 
   .nav-item {
@@ -8222,9 +8241,6 @@ main {
 }
 
 @media (max-width: 320px) {
-  .header-cont {
-    height: 55px;
-  }
   .nav-icon {
     width: 20px;
     height: 20px;
@@ -8233,10 +8249,8 @@ main {
     font-size: 9px;
   }
 }
+
 @media (min-width: 481px) and (max-width: 768px) {
-  .header-cont {
-    height: 65px;
-  }
   .nav-icon {
     width: 24px;
     height: 24px;

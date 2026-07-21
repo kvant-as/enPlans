@@ -42,7 +42,7 @@
             
             <div class="header-bside">
                 {% if not current_user.is_authenticated %}        
-                    <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='/#contacts-cont'">
+                    <button type="button" class="svg-btn tooltip-btn" onclick="navigateToSection('contacts-cont')">
                         {{ icons.icon_contacts() }}
                         <span class="tooltip-text">{{ _('Контакты') }}</span>
                     </button>
@@ -124,7 +124,7 @@
                                 {{ icons.icon_news() }}
                                 <span>{{ _('Новости') }}</span>
                             </button>
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/#contacts-cont'">
+                            <button type="button" class="nav-menu-item" onclick="navigateToSection('contacts-cont')">
                                 {{ icons.icon_contacts() }}
                                 <span>{{ _('Контакты') }}</span>
                             </button>
