@@ -275,7 +275,6 @@ class PlanIndicators {
         
         const specialCodes = ['1796', '1797', '9916', '9917', '1425', '1424'];
         const reverseCodes = ['1000', '1105', '1405', '1104', '1404', '260'];
-        const localFuelCodes = ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022'];
         
         indicators.forEach((row, index) => {
             const isNewGroup = row.group !== lastGroup;
@@ -308,10 +307,11 @@ class PlanIndicators {
                 
                 const isCase11 = 
                     specialCodes.includes(code) ||
-                    row.is_local === true ||
-                    localFuelCodes.includes(code) ||
-                    (row.is_renewable === true && row.is_local === true) ||
-                    [1.1, 1.2, 2, 3, 4, 5, 6, 7, 8].some(g => Math.abs(row.group - g) < 0.01);
+                    (row.group === 1 && row.is_local === true);
+                
+                const isCase12 = 
+                    reverseCodes.includes(code) ||
+                    (row.group === 1 && row.is_local === false);
                 
                 const isNegative = row.difference < 0;
                 const formattedValue = formatValue(row.difference, row.group);

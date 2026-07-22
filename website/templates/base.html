@@ -210,79 +210,79 @@
     {% endif %}
 
     {% if change_orgUser_modal %}
-    <div id="orgUserModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
-                {{ icons.icon_close() }}  
-            </div>
-            
-            <div class="modal-body">
-                <div id="step1" class="modal-step">
-                    <div class="app-group">
-                        <label id="search-label">{{ _('Поиск организации') }}</label>
-                        <div class="input-with-icon">
-                            {{ icons.icon_search() }}
-                            <input type="text" data-action="search-organization" 
-                                placeholder="{{ _('ОКПО или наименование') }}" 
-                                class="app-input" required>
-                        </div>
-                    </div>
-                    <div class = "spravochniki_area">
-                        <div class="organizations-table-container">
-                            <table class="organizations-table" data-action="organization-table">
-                                <thead>
-                                    <tr>
-                                        <th style="display: none;">id</th>           
-                                        <th>{{ _('Наименование') }}</th>
-                                        <th style="text-align: center;">{{ _('ОКПО') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
-                        </div>             
-                    </div> 
-
-                    <div class="pagination-area" id="paginationArea" style="display: none;">
-                        <div class="pagination-container">
-                            <button id="prevPageBtn" class="pagination-btn prev-btn" aria-label="Предыдущая страница">
-                                <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                                </svg>
-                            </button>
-                            
-                            <div class="pagination-pages">
-                                <span id="currentPage" class="page-current">1</span>
-                                <span class="page-separator">/</span>
-                                <span id="totalPages" class="page-total">1</span>
+        <div id="orgUserModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
+                    {{ icons.icon_close() }}  
+                </div>
+                
+                <div class="modal-body">
+                    <div id="step1" class="modal-step">
+                        <div class="app-group">
+                            <label id="search-label">{{ _('Поиск организации') }}</label>
+                            <div class="input-with-icon">
+                                {{ icons.icon_search() }}
+                                <input type="text" data-action="search-organization" 
+                                    placeholder="{{ _('ОКПО или наименование') }}" 
+                                    class="app-input" required>
                             </div>
-                            
-                            <button id="nextPageBtn" class="pagination-btn next-btn" aria-label="Следующая страница">
-                                <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
-                                </svg>
-                            </button>
                         </div>
-                    </div>
-                    
-                    <form method="POST" action="{{ url_for('views.edit_user_org') }}" id="selection-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="id_org" data-action="selected-org">
-                        <input type="hidden" name="item_type" data-action="selected-item-type">
+                        <div class = "spravochniki_area">
+                            <div class="organizations-table-container">
+                                <table class="organizations-table" data-action="organization-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="display: none;">id</th>           
+                                            <th>{{ _('Наименование') }}</th>
+                                            <th style="text-align: center;">{{ _('ОКПО') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>             
+                        </div> 
+
+                        <div class="pagination-area" id="paginationArea" style="display: none;">
+                            <div class="pagination-container">
+                                <button id="prevPageBtn" class="pagination-btn prev-btn" aria-label="Предыдущая страница">
+                                    <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                                    </svg>
+                                </button>
+                                
+                                <div class="pagination-pages">
+                                    <span id="currentPage" class="page-current">1</span>
+                                    <span class="page-separator">/</span>
+                                    <span id="totalPages" class="page-total">1</span>
+                                </div>
+                                
+                                <button id="nextPageBtn" class="pagination-btn next-btn" aria-label="Следующая страница">
+                                    <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         
-                        <div class="button-auth-area">
-                            <div></div>
-                            <button type="submit" class="main-btn main-btn-primary" data-action="submit">
-                                {{ icons.icon_confirm() }}
-                                <span class="btn-text">{{ _('Сохранить организацию') }}</span>
-                            </button>
-                        </div>
-                    </form>
+                        <form method="POST" action="{{ url_for('views.edit_user_org') }}" id="selection-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="id_org" data-action="selected-org">
+                            <input type="hidden" name="item_type" data-action="selected-item-type">
+                            
+                            <div class="button-auth-area">
+                                <div></div>
+                                <button type="submit" class="main-btn main-btn-primary" data-action="submit">
+                                    {{ icons.icon_confirm() }}
+                                    <span class="btn-text">{{ _('Сохранить организацию') }}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
     {% endif %}
 
     {% if not chat_widget %}
@@ -378,6 +378,69 @@
             </div>
         </div>
     {% endif %}
+
+    <div id="system-welcom-modal-profile" class="modal" style="display: none;">
+        <div class="info-modal-content">
+            {{ icons.icon_close() }}
+            <div class="info-modal-content">
+                <div class="modal-slides-container">
+                    <div class="modal-slide active">
+                        <div class="slide-counter">1/3</div>
+                        <div class="slide-layout">
+                            <div class="slide-info">
+                                <h3>Добро пожаловать</h3>
+                                <p><strong>Enplans</strong> - Автоматизированный комплекс для создания и представления для согласования планов мероприятий по энергосбережению организаций</p>
+                            </div>
+                            <div class="slide-image">
+                                <div class="image-placeholder">
+                                    <img src="{{ url_for('static', filename='img/info-news/welcome-slide.png')}}" alt="welcome">
+                                </div>
+                            </div>
+                        </div>
+                    </div>  
+
+                    <div class="modal-slide">
+                        <div class="slide-counter">2/3</div>
+                        <div class="slide-layout">
+                            <div class="slide-info">
+                                <h3>Интрукция по работе</h3>
+                                <p>Ознакомьтесь с подробной <a href="/FAQ#create-plan" class="instruction-link">инструкцией</a> по работе в системе. Также вы можете скачать <a href="{{ url_for('static', filename='files/Enplans_Instruction.pdf') }}" class="instruction-link" target="_blank">PDF-версию инструкции</a> для офлайн-просмотра. Для быстрых ответов на вопросы перейдите в раздел <a href="/FAQ" class="instruction-link">Часто задаваемые вопросы</a>.</p>
+                            </div>
+                            <div class="slide-image">
+                                <div class="image-placeholder">
+                                    <img src="{{ url_for('static', filename='img/info-news/inst-slide.png')}}" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>  
+                    <div class="modal-slide">
+                        <div class="slide-counter">3/3</div>
+                        <div class="slide-layout">
+                            <div class="slide-info">
+                                <h3>None</h3>
+                                <p>Нет информации</p>
+                            </div>
+                            <div class="slide-image">
+                                <div class="image-placeholder">
+                                    <img  style = "transform: scale(1.3);" src="{{ url_for('static', filename='img/info-news/non-slide.png')}}" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>  
+
+                    <div class="slides-navigation-vertical">
+                        <button class="slide-prev-vertical" aria-label="Предыдущий слайд">
+                            {{ icons.icon_prev_slide() }}
+                        </button>
+                        <button class="slide-next-vertical" aria-label="Следующий слайд">
+                            {{ icons.icon_next_slide() }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <main> 
     <div id="flash-container"></div>
 

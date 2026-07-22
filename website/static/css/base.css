@@ -5498,10 +5498,12 @@ input[type="checkbox"]:focus {
   justify-content: center;
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
+
 .modal.active {
   opacity: 1;
   visibility: visible;
 }
+
 .modal.active-delay {
   opacity: 1;
   visibility: visible;
@@ -5538,14 +5540,17 @@ input[type="checkbox"]:focus {
   transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
   border: 1px solid var(--border-color);
 }
+
 .modal.active .modal-content {
   opacity: 1;
   transform: scale(1);
 }
+
 .modal.active-delay .modal-content {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
+
 .modal:not(.active) .modal-content {
   transition: all 0.3s cubic-bezier(0.6, -0.28, 0.74, 0.05);
 }
@@ -5560,14 +5565,17 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   color: var(--black);
 }
+
 .modal-header h1 {
   font-size: 15.75px;
   font-weight: 500;
 }
+
 .modal-header-icon {
   width: 20px;
   height: 20px;
 }
+
 .modal-header .close {
   background: rgba(32, 32, 32, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -5584,6 +5592,7 @@ input[type="checkbox"]:focus {
   z-index: 1;
   fill: var(--white);
 }
+
 .modal-header .close:hover {
   background: rgba(255, 0, 0, 0.8);
   border-color: var(--border-color);
@@ -5594,12 +5603,15 @@ input[type="checkbox"]:focus {
   font-size: 14px;
   color: var(--text-subtitle2);
 }
+
 .modal-subtext .first-child {
   margin-bottom: 10px;
 }
+
 .modal-body {
   max-height: 90vh;
 }
+
 .modal-body hr {
   margin: 15px 0 !important;
   border: none;
@@ -5852,6 +5864,328 @@ button[disabled] {
   font-weight: 500;
   margin: 0;
   text-align: center;
+}
+
+
+.info-modal-content {
+    border-radius: 20px;
+    background-color: rgb(255, 255, 255);
+    border: 1px solid rgb(255, 255, 255);
+    width: fit-content;
+    height: fit-content;
+    min-width: 400px;
+    max-width: 1100px;
+    max-height: 80vh;
+    position: relative;
+    margin: 0 10px;
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    margin: 0;
+}
+
+.modal.active .info-modal-content {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+.modal-slides-container {
+    position: relative;
+    width: 100%;
+}
+
+.slide-layout {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.slide-info {
+    flex: 1 1 50%;
+    max-width: 50%;
+    padding-left: 40px;
+}
+
+.slide-counter {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    font-size: 1.1rem;
+    color: #000000;
+    margin: 0;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.9;
+    z-index: 2;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    border-radius: 10px;
+    
+}   
+
+.instruction-link {
+    color: var(--blue-txt-link);
+    text-decoration: none; 
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid transparent; 
+    cursor: pointer;
+}
+
+.instruction-link:hover {
+    color: #0056b3;
+    border-bottom-color: currentColor; 
+    text-decoration: none;
+}
+
+.instruction-link:active {
+    color: #004085;
+    transform: translateY(1px);
+}
+
+.slide-info h3 {
+    color: #000000;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin: 0 0 16px 0;
+    letter-spacing: -0.3px;
+}
+
+.slide-info p {
+    color: #757575;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    font-size: 1rem;
+}
+
+.slide-info ul, 
+.slide-info ol {
+    color: #2d3748;
+    line-height: 1.8;
+    padding-left: 0;
+    margin-bottom: 25px;
+    list-style: none;
+}
+
+.slide-info ul li {
+    margin-bottom: 4px;
+    padding-left: 28px;
+    position: relative;
+}
+
+.slide-info ul li::before {
+    content: "●";
+    color: #4299e1;
+    font-size: 18px;
+    position: absolute;
+    left: 0;
+    top: -2px;
+}
+
+.slide-info ol {
+    counter-reset: item;
+}
+
+.slide-info ol li {
+    counter-increment: item;
+    margin-bottom: 4px;
+    padding-left: 28px;
+    position: relative;
+}
+
+.slide-image {
+    flex: 1 1 50%;
+    max-width: 50%;
+    display: flex;
+    justify-content: right;
+    align-items: center;    
+    margin: 10px;
+    margin-left: none;
+    background: rgb(243, 243, 243);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.image-placeholder {
+    width: 100% !important;
+    max-width: 800px;
+    height: auto;
+    aspect-ratio: 1/1;
+
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+
+.image-placeholder img {
+    width: 100%;
+    height: auto;
+    transform: scale(1.6);
+    transform-origin: left;
+    object-fit: cover;
+    box-sizing: border-box;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+
+}
+
+.video-play-button {
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    border: none;
+    z-index: 2;
+}
+
+.video-play-button:hover {
+    transform: scale(1.1);
+    background: #ffffff;
+}
+
+.video-play-button svg {
+    width: 30px;
+    height: 30px;
+}
+
+.video-play-button svg path {
+    fill: #333;
+}
+
+
+.slides-navigation-vertical {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+
+}
+
+.slide-prev-vertical,
+.slide-next-vertical {
+    pointer-events: auto;
+    background: rgba(32, 32, 32, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    margin: 0 -24px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.slide-prev-vertical svg,
+.slide-next-vertical svg{
+    width: 24px;
+    height: 24px;
+
+}
+
+.slide-prev-vertical:hover,
+.slide-next-vertical:hover {
+    background: var(--green-back-gradient);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.slide-prev-vertical:active,
+.slide-next-vertical:active {
+    transform: scale(0.95);
+}
+
+@keyframes slideFadeInfoModal {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.modal-slide {
+    display: none;
+    animation: slideFadeInfoModal 0.4s ease;
+}
+
+.modal-slide.active {
+    display: block;
+}
+
+.info-modal-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.info-modal-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.info-modal-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.info-modal-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.modal_table .but_tr td:first-child {
+    text-align: left;
+}
+
+.modal_table .but_tr td:last-child {
+    text-align: right;
+}
+
+.close {
+    background: rgba(32, 32, 32, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    width: 22px;
+    height: 22px;
+    padding: 7px;
+    position: absolute;
+    color: white;
+    top: 20px;
+    right: 20px;    
+    cursor: pointer;
+    transition: 0.3s all ease-out;
+    z-index: 1;
+    fill: white;
+}
+
+.close:hover {
+    background: rgba(255, 0, 0, 0.8);
+    border-color: var(--border-color);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
@@ -6983,11 +7317,13 @@ main {
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   animation: cookieBannerSlideUp 0.5s forwards;
 }
+
 .cookie-banner.show {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
+
 .cookie-banner-content {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
@@ -7001,9 +7337,11 @@ main {
   gap: 20px;
   flex-wrap: wrap;
 }
+
 .cookie-banner:hover .cookie-banner-content {
   box-shadow: var(--glow);
 }
+
 .cookie-banner-icon {
   flex-shrink: 0;
   width: 40px;
@@ -7016,13 +7354,16 @@ main {
   color: var(--primary);
   transition: transform 0.3s ease;
 }
+
 .cookie-banner:hover .cookie-banner-icon {
   transform: rotate(10deg);
 }
+
 .cookie-banner-text {
   flex: 1;
   min-width: 250px;
 }
+
 .cookie-banner-text p {
   margin: 0;
   font-size: 14px;
@@ -7030,6 +7371,7 @@ main {
   color: var(--text);
   font-weight: 500;
 }
+
 .cookie-banner-text a {
   color: var(--primary);
   text-decoration: underline;
@@ -7037,10 +7379,12 @@ main {
   transition: all 0.2s ease;
   position: relative;
 }
+
 .cookie-banner-text a:hover {
   color: var(--primary-dark);
   text-decoration: none;
 }
+
 .cookie-banner-text a::after {
   content: '';
   position: absolute;
@@ -7053,16 +7397,19 @@ main {
   transform-origin: right;
   transition: transform 0.3s ease;
 }
+
 .cookie-banner-text a:hover::after {
   transform: scaleX(1);
   transform-origin: left;
 }
+
 .cookie-banner-buttons {
   display: flex;
   gap: 12px;
   flex-shrink: 0;
   align-items: center;
 }
+
 .cookie-banner-buttons .submit-button {
   padding: 8px 24px;
   font-size: 13px;
@@ -7072,6 +7419,7 @@ main {
   position: relative;
   overflow: hidden;
 }
+
 .cookie-banner-buttons .submit-button::before {
   content: '';
   position: absolute;
@@ -7084,9 +7432,11 @@ main {
   transition: all 0.6s ease;
   opacity: 0;
 }
+
 .cookie-banner-buttons .submit-button:hover::before {
   animation: shine 1.5s ease-in-out;
 }
+
 .cookie-banner-buttons .no-submit-button {
   padding: 8px 24px;
   font-size: 13px;
@@ -7096,11 +7446,13 @@ main {
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
+
 .cookie-banner-buttons .no-submit-button:hover {
   background: var(--button-grey-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
 .cookie-banner-buttons .no-submit-button:active {
   transform: translateY(0);
 }

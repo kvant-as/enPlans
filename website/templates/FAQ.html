@@ -41,6 +41,10 @@
                 <span class="question-icon">✨</span>
                 Создание плана
               </a>
+              <a href="#difference-calculation" class="question-link-modern">
+                <span class="question-icon">🧮</span>
+                Расчет разницы в показателях
+              </a>
               <a href="#audit-data" class="question-link-modern">
                 <span class="question-icon">📊</span>
                 Согласование планов
@@ -48,6 +52,10 @@
               <a href="#export" class="question-link-modern">
                 <span class="question-icon">📤</span>
                 Экспорт плана
+              </a>
+              <a href="#plans" class="question-link-modern">
+                <span class="question-icon">📈</span>
+                Виды планов
               </a>
             </div>
           </div>
@@ -60,18 +68,6 @@
               <a href="#ecp-certificate" class="question-link-modern">
                 <span class="question-icon">🔐</span>
                 Цифровая подпись
-              </a>
-            </div>
-          </div>
-
-          <div class="category-modern">
-            <div class="category-header-modern">
-              <h3>Планы энергосбережения</h3>
-            </div>
-            <div class="questions-list-modern">
-              <a href="#plans" class="question-link-modern">
-                <span class="question-icon">📈</span>
-                Виды планов
               </a>
             </div>
           </div>
@@ -145,95 +141,147 @@
           </div>
         </article>
 
-        <article class="answer-active-modern" id="getting-started">
-          <div class="answer-header-modern">
-            <h1 class="answer-title-modern">Как начать работу с системой?</h1>
+      <article class="answer-active-modern" id="getting-started">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как начать работу с системой?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Начать работу с EnPlans просто даже для новичков. Следуйте этому
+              пошаговому руководству, и вы сможете создать свой первый план за
+              15 минут.
+            </p>
           </div>
-          <div class="answer-body-modern">
-            <div class="answer-text">
-              <p>
-                Начать работу с EnPlans просто даже для новичков. Следуйте этому
-                пошаговому руководству, и вы сможете создать свой первый план за
-                15 минут.
-              </p>
-            </div>
-            <div class="steps-container">
-              <div class="step-item">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                  <h4>Регистрация и настройка аккаунта</h4>
-                  <p>
-                    Используйте электронную почту для регистрации. После
-                    подтверждения укажите личную информацию.
-                  </p>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                  <h4>Выбор организации</h4>
-                  <p>
-                    Выберите организацию за которую вы будете отчитываться, это
-                    может быть: предприятие, министерство или регион.
-                  </p>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h4>Создание первого плана</h4>
-                  <p>
-                    Перейдите на страницу <strong>Создать план</strong>, укажите год и
-                    заполните необходимые данные.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="video-container">
-              <video controls poster="/static/img/faq/video-poster.png">
-                <source src="/static/video/sign-demo.mp4" type="video/mp4" />
-                Ваш браузер не поддерживает видео.
-              </video>
-              <div class="video-caption">
-                <h5>Быстрый старт с EnPlans</h5>
-                <p>Посмотрите как начать работу с EnPlans</p>
-              </div>
-            </div>
-            <div class="answer-text">
-              <h3>Чеклист для начала работы:</h3>
-              <div class="checklist-container">
-                <h4 class="checklist-header">Проверьте готовность к работе</h4>
-                <p class="checklist-subtitle">
-                  Выполните все пункты для полноценной работы в системе
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Регистрация</h4>
+                <p>
+                  Укажите электронную почту, придумайте пароль и подтвердите его. 
+                  На указанную почту придет код подтверждения.
                 </p>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Электронная почта подтверждена</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Заполнены личные данные</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Выбрана организация</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span
-                    >Ознакомление с руководством пользователя или же с FAQ</span
-                  >
-                </label>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step1.png" alt="Регистрация" class="faq-image">
+                </div>
               </div>
             </div>
-            <div class="answer-navigation">
-              <a href="#what-is" class="nav-btn next">
-                {{ icons.back_icon() }}
-                <span>Предыдущий вопрос</span>
-              </a>
-            <div> 
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Подтверждение Электронного адреса</h4>
+                <p>
+                  Введите код из письма
+                </p>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step2.png" alt="Подтверждение" class="faq-image">
+                </div>
+              </div>
+            </div>
+            
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Ввод персональных данных</h4>
+                <p>
+                  Заполните личные данные: ФИО, номер телефона и должность.
+                </p>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step3.png" alt="персональные данные" class="faq-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <h4>Выбор типа пользователя</h4>
+                <p>
+                  Выберите один из вариантов:
+                </p>
+                <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                  <li><strong>Респондент</strong> — создает и заполняет планы</li>
+                  <li><strong>Аудитор</strong> — проверяет планы</li>
+                  <li><strong>Утверждающая организация</strong> — утверждает планы</li>
+                </ul>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step4.png" alt="Выбор типа пользователя" class="faq-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <h4>Поиск и выбор организации</h4>
+                <p>
+                  Используйте поиск, чтобы найти свою организацию по названию, УНП, или ОКПО. Затем нажмите "Зарегистрироваться".
+                </p>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step5.png" alt="Поиск организации" class="faq-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">5</div>
+              <div class="step-content">
+                <h4>Переход в профиль</h4>
+                <p>
+                  После выбора организации и нажатия кнопки "Зарегистрироваться" вы будете автоматически перенаправлены на страницу профиля.
+                </p>
+                <div class="faq-image-wrapper">
+                  <img src="/static/img/faq/register-step6.png" alt="Переход в профиль" class="faq-image">
+                </div>
+              </div>
+            </div>
           </div>
-        </article>
+
+          <div class="answer-text">
+            <h3>Чеклист для начала работы:</h3>
+            <div class="checklist-container">
+              <h4 class="checklist-header">Проверьте готовность к работе</h4>
+              <p class="checklist-subtitle">
+                Выполните все пункты для полноценной работы в системе
+              </p>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Подтверждена электронная почта</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Заполнены личные данные</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Выбран тип пользователя</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Выбрана организация</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Ознакомление с руководством пользователя или FAQ</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#what-is" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#create-plan" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
 
         <article class="answer-active-modern" id="create-plan">
           <div class="answer-header-modern">
@@ -249,6 +297,7 @@
                 Система проведет вас через все необходимые этапы.
               </p>
             </div>
+
             <div class="steps-container">
               <div class="step-item">
                 <div class="step-number">1</div>
@@ -259,15 +308,46 @@
                     нажмите соответствующую кнопку на панели управления на
                     странице <strong>Планы</strong>.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/create-plan-step1.png" alt="Переход к созданию плана" class="faq-image">
+                  </div>
                 </div>
               </div>
+
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
+                  <h4>Заполнение базовых параметров</h4>
+                  <p>
+                    Укажите обязательные параметры: год, показатель
+                    энергосбережения, задания по экономии ТЭР, долю местных ТЭР
+                    и ВИЭ.
+                  </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/create-plan-step2.png" alt="Заполнение базовых параметров" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Открытие плана</h4>
+                  <p>
+                    После ввода обязательных параметров вы будете перенаправлены на страницу с планами. Нажмите <strong>«Просмотр»</strong> для открытия плана и перехода к заполнению данных.
+                  </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/open-plan.png" alt="Открытие плана" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
                   <h4>Выбор типа плана</h4>
                   <p>
-                    Определите категорию организации по объему
-                    энергопотребления:
+                    Определите категорию организации по объему энергопотребления:
                   </p>
 
                   <div class="plan-type-cards">
@@ -275,67 +355,38 @@
                       <div class="plan-type-icon">📋</div>
                       <h5 class="plan-type-title">До 25 тыс. т. у. т.</h5>
                       <p class="plan-type-description">
-                        Упрощенный формат отчетности для организаций с меньшим
-                        потреблением
+                        Упрощенный формат отчетности для организаций с меньшим потреблением
                       </p>
                     </div>
-
                     <div class="plan-type-card">
                       <div class="plan-type-icon">📊</div>
                       <h5 class="plan-type-title">Более 25 тыс. т. у. т.</h5>
                       <p class="plan-type-description">
-                        Расширенный формат с детальными расчетами для крупных
-                        потребителей
+                        Расширенный формат с детальными расчетами для крупных потребителей
                       </p>
                     </div>
                   </div>
 
-                  <div class="plan-type-info">
-                    <p>
-                      <strong>Выбор влияет на:</strong> структуру экспорта,
-                      требования к данным, детализацию отчетности и процесс
-                      аудита.
-                    </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/create-plan-step4.png" style="max-height: 300px; width: auto;" alt="Выбор типа плана" class="faq-image">
                   </div>
                 </div>
               </div>
+
               <div class="step-item">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h4>Выбор базовых параметров</h4>
-                  <p>
-                    Укажите обязательные параметры: год, показатель
-                    энергосбережения, задания по экономии ТЭР, долю местных ТЭР
-                    и ВИЭ.
-                  </p>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">4</div>
+                <div class="step-number">5</div>
                 <div class="step-content">
                   <h4>Заполнение данных</h4>
                   <p>
-                    Внесите информацию о энергопотреблении, заполнив таблицы
-                    направлений, мероприятий и показателей.
+                    Внесите информацию о энергопотреблении, заполнив таблицы мероприятий и показателей.
                   </p>
                 </div>
               </div>
             </div>
-            <div class="video-container">
-              <video controls poster="/static/img/faq/video-poster.png">
-                <source src="/static/video/work-demo.mp4" type="video/mp4" />
-                Ваш браузер не поддерживает видео.
-              </video>
-              <div class="video-caption">
-                <h5>Создание плана</h5>
-                <p>Посмотрите как создать и заполнить план в EnPlans</p>
-              </div>
-            </div>
+
             <div class="feature-card warn">
               <h4>Важно</h4>
-              <p>Все изменения фиксируются в
-                системе автоматически после нажатия кнопок <strong>Применить изменения</strong>
-                или <strong>Добавить</strong>.</p>
+              <p>Все изменения фиксируются в системе автоматически после нажатия кнопок <strong>Применить изменения</strong> или <strong>Добавить</strong>.</p>
             </div>
 
             <div class="plan-after-creation">
@@ -343,13 +394,11 @@
               <div class="plan-features">
                 <div class="plan-feature-item">
                   <span class="plan-feature-check">✓</span>
-                  <span class="plan-feature-text"
-                    >Контроль плана с последующей отправкой на проверку</span
-                  >
+                  <span class="plan-feature-text">Заполнение таблиц показателей и меропрятий</span>
                 </div>
                 <div class="plan-feature-item">
                   <span class="plan-feature-check">✓</span>
-                  <span class="plan-feature-text">Просмотр статистики</span>
+                  <span class="plan-feature-text">Контроль плана с последующей отправкой на проверку</span>
                 </div>
                 <div class="plan-feature-item">
                   <span class="plan-feature-check">✓</span>
@@ -357,8 +406,13 @@
                 </div>
               </div>
             </div>
+
             <div class="answer-navigation">
-              <a href="#audit-data" class="nav-btn next">
+              <a href="#what-is" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#difference-calculation" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -375,31 +429,42 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Согласование планов в EnPlans выполняется специально назначенными
-                аудиторами — ....
+                Согласование и утверждение планов в EnPlans выполняется специально назначенными аудиторами. Процесс проверки включает несколько этапов.
               </p>
             </div>
+
             <div class="steps-container">
               <div class="step-item">
                 <div class="step-number">1</div>
                 <div class="step-content">
                   <h4>Получение плана</h4>
                   <p>
-                    Аудитор получает план в статусе "Не просмотренный" в своем
-                    интерфейсе.
+                    Изначальный статус плана <strong>"Не просмотрен"</strong>.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/plan-unviewed.png" alt="Статус Не просмотренный" class="faq-image faq-image-md">
+                  </div>
                 </div>
               </div>
+
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
                   <h4>Проверка данных</h4>
                   <p>
-                    Аудитор последовательно проверяет основные показатели,
-                    таблицы данных, мероприятия по экономии и местным ТЭР.
+                    Последовательная проверка данных:
                   </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li>основные показатели (энергосбережение, доля местных ТЭР и ВИЭ)</li>
+                    <li>мероприятия по экономии и увеличению ТЭР</li>
+                    <li>показатели ТЭР</li>
+                  </ul>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/plan-check.png" alt="Проверка плана" class="faq-image faq-image-md">
+                  </div>
                 </div>
               </div>
+
               <div class="step-item">
                 <div class="step-number">3</div>
                 <div class="step-content">
@@ -413,8 +478,7 @@
                       <div class="option-content">
                         <div class="option-title">Есть ошибки</div>
                         <div class="option-description">
-                          Указываются конкретные ошибки, план возвращается на
-                          доработку
+                          Указываются конкретные ошибки, план возвращается на доработку
                         </div>
                       </div>
                     </div>
@@ -423,8 +487,7 @@
                       <div class="option-content">
                         <div class="option-title">Одобрить</div>
                         <div class="option-description">
-                          План соответствует требованиям, переводится в статус
-                          "Согласован"
+                          План соответствует требованиям, переводится в статус "Согласован"
                         </div>
                       </div>
                     </div>
@@ -433,26 +496,18 @@
                       <div class="option-content">
                         <div class="option-title">Отменить</div>
                         <div class="option-description">
-                          План переходит в изначальное состояние для аудитора
-                          "Не просмотренный"
+                          План переходит в изначальное состояние "Не просмотренный"
                         </div>
                       </div>
                     </div>
+                  </div>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/plan-verdict.png" alt="Вынесение вердикта" class="faq-image faq-image-md">
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="video-container">
-              <video controls poster="/static/img/faq/video-poster.png">
-                <source src="/static/video/audit-report.mp4" type="video/mp4" />
-                Ваш браузер не поддерживает видео.
-              </video>
-              <div class="video-caption">
-                <h5>Проверка планов</h5>
-                <p>Посмотрите как проверять планы</p>
-              </div>
-            </div>
             <div class="after-inspection">
               <h3>Что происходит после проверки?</h3>
               <div class="inspection-outcomes">
@@ -461,34 +516,37 @@
                     <div class="outcome-icon"><span>✗</span></div>
                     <h4 class="outcome-title">Если есть ошибки</h4>
                     <p class="outcome-description">
-                      План возвращается респонденту с комментариями. Статус
-                      меняется на "Есть ошибки"
+                      План возвращается респонденту с комментариями. Статус меняется на <strong>"Есть ошибки"</strong>
                     </p>
                   </div>
                   <div class="outcome-item outcome-approved">
                     <div class="outcome-icon"><span>✓</span></div>
                     <h4 class="outcome-title">Если Согласовано</h4>
                     <p class="outcome-description">
-                      План переводится в статус "Согласован" и считается официально
-                      принятым
+                      План переводится в статус <strong>"Согласован"</strong> и считается официально принятым
                     </p>
                   </div>
                   <div class="outcome-item outcome-canceled">
                     <div class="outcome-icon"><span>↩️</span></div>
                     <h4 class="outcome-title">Если отменено</h4>
                     <p class="outcome-description">
-                      Статус плана возвращается к изначальному для аудитора статусу
+                      Статус плана возвращается к изначальному <strong>"Не просмотренный"</strong>
                     </p>
                   </div>
                 </div>
               </div>
             </div>
+
+            <div class="feature-card" style="background: #fdfaf0;">
+              <h4>Важно</h4>
+              <p>Все изменения статуса плана автоматически фиксируются в системе и отображаются в истории изменений.</p>
+            </div>
+
             <div class="answer-navigation">
-              <a href="#create-plan" class="nav-btn">
+              <a href="#create-plan" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-
               <a href="#export" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
@@ -509,6 +567,7 @@
                 подачи.
               </p>
             </div>
+
             <div class="steps-container">
               <div class="step-item">
                 <div class="step-number">1</div>
@@ -517,8 +576,12 @@
                   <p>
                     В меню плана выберите <strong>Экспорт</strong>.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/export-step1.png" alt="Переход к экспорту" class="faq-image">
+                  </div>
                 </div>
               </div>
+
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
@@ -527,19 +590,27 @@
                     Выберите формат файла <strong>xlsx</strong>, <strong>pdf</strong>, <strong>xml</strong>, используйте
                     фильтры по статусу и году, отметьте нужные планы.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/export-step2.png" alt="Настройка параметров экспорта" class="faq-image">
+                  </div>
                 </div>
               </div>
+
               <div class="step-item">
                 <div class="step-number">3</div>
                 <div class="step-content">
                   <h4>Формирование и скачивание</h4>
                   <p>
                     Нажмите кнопку <strong>Экспортировать</strong>. Система автоматически
-                    сформирует файл и предложит его скачать.
+                    сформирует архив с выыбранным форматом файла/файлов и предложит его скачать.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/export-step3.png" alt="Формирование и скачивание" class="faq-image">
+                  </div>
                 </div>
               </div>
             </div>
+
             <div class="features-grid">
               <div class="feature-card">
                 <div class="feature-icon">📈</div>
@@ -566,13 +637,16 @@
                 </p>
               </div>
             </div>
+
             <div class="answer-navigation">
-              <a href="#audit-data" class="nav-btn prev"
-                ><i>{{ icons.back_icon() }}</i> Предыдущий вопрос</a
-              >
-              <a href="#plans" class="nav-btn next"
-                >Следующий вопрос <i> {{ icons.next_icon() }}</i></a
-              >
+              <a href="#audit-data" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#plans" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
@@ -796,6 +870,195 @@
             </div>
           </div>
         </article>
+
+        <article class="answer-active-modern" id="difference-calculation">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Как рассчитывается разница в таблице "Показатели"?</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                В таблице <strong>«Показатели ТЭР»</strong> столбец <strong>«Изменение ТЭР прогнозного года к предыдущему (увеличение +, снижение -)»</strong> рассчитывается автоматически на основе введенных данных.
+              </p>
+            </div>
+           
+            <h3>Как это работает?</h3>
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Ввод значений</h4>
+                  <p>
+                    Пользователь вводит значения для каждого показателя в его единицах измерения (тонны, тыс. м³, Гкал, тыс. кВт·ч и т.д.) в полях прогнозного и предыдущего года.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Пересчет в т у.т.</h4>
+                  <p>
+                    Система автоматически пересчитывает введенные значения в <strong>тонны условного топлива (т у.т.)</strong> с учетом коэффициента пересчета:
+                  </p>
+                  <div class="feature-card" style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 8px 0; text-align: center;">
+                    <span style="font-family: monospace;">Значение в т у.т. = Значение в ед.изм. × Коэффициент пересчета</span>
+                  </div>
+                  <p class="feature-description" style="font-size: 14px; color: #666;">
+                    Коэффициент пересчета может быть скорректирован для каждого года отдельно.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Расчет разницы</h4>
+                  <p>
+                    Разница вычисляется как разность между значениями прогнозного и предыдущего года в т у.т.:
+                  </p>
+                  <div class="feature-card" style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 8px 0; text-align: center;">
+                    <span style="font-family: monospace;">Разница = Прогнозный год − Предыдущий год</span>
+                  </div>
+                  <ul class="feature-list">
+                    <li>Положительная разница → <span class="text-danger">увеличение (+)</span></li>
+                    <li>Отрицательная разница → <span class="text-success">снижение (-)</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <h3>Цветовая индикация</h3>
+            <div class="answer-text">
+              <p>Ячейка с разницей автоматически окрашивается в зависимости от типа показателя:</p>
+            </div>
+
+            <div class="features-grid modern-grid">
+              <div class="feature-card modern-card modern-card-success">
+                <div class="card-content">
+                  <h4 class="card-title">Для местных видов топлива и включая:</h4>
+                  <div class="card-divider"></div>
+                  <ul class="card-list">
+                    <li>виды КПТ, которые включаются в строку <span class="highlight-text">«из него местные виды топлива и отходы»</span></li>
+                    <li><span class="highlight-text">«из него местные виды топлива и отходы»</span></li>
+                    <li><span class="highlight-text">«из них возобновляемые»</span></li>
+                    <li><span class="highlight-text">«Целевой показатель по доле местных ТЭР в КПТ»</span></li>
+                    <li><span class="highlight-text">«Целевой показатель по доле возобновляемых источников энергии в КПТ»</span></li>
+                    <li><span class="highlight-text">«энергия воды, ветра, солнца, геотермальных источников»</span></li>
+                  </ul>
+                  <div class="color-indicator">
+                    <div class="color-badge color-badge-danger">
+                      <span class="arrow-down">↓</span> Снижение — <span class="color-label">красный</span>
+                    </div>
+                    <div class="color-badge color-badge-success">
+                      <span class="arrow-up">↑</span> Увеличение — <span class="color-label">зеленый</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="feature-card modern-card modern-card-warning">
+                <div class="card-content">
+                  <h4 class="card-title">Для не местных видов топлива и включая:</h4>
+                  <div class="card-divider"></div>
+                  <ul class="card-list">
+                    <li>виды КПТ, которые <span class="highlight-text">не</span> включаются в строку <span class="highlight-text">«из него местные виды топлива и отходы»</span></li>
+                    <li><span class="highlight-text">«Котельно-печное топливо (КПТ), израсходовано всего, в том числе:»</span></li>
+                    <li><span class="highlight-text">«Электроэнергия, израсходовано всего»</span></li>
+                    <li><span class="highlight-text">«Электроэнергия, выработанная собственными энергоисточниками, в том числе:»</span></li>
+                    <li><span class="highlight-text">«Теплоэнергия, израсходовано всего»</span></li>
+                    <li><span class="highlight-text">«Теплоэнергия, произведенная собственными энергоисточниками, в том числе:»</span></li>
+                    <li><span class="highlight-text">«Суммарное потребление ТЭР»</span></li>
+                  </ul>
+                  <div class="color-indicator">
+                    <div class="color-badge color-badge-success">
+                      <span class="arrow-down">↓</span> Снижение — <span class="color-label">зеленый</span>
+                    </div>
+                    <div class="color-badge color-badge-danger">
+                      <span class="arrow-up">↑</span> Увеличение — <span class="color-label">красный</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <h3>Пример расчета</h3>
+            <div class="feature-card" style="overflow-x: auto; padding: 0; margin-bottom: 20px;">
+              <table class="example-table">
+                <thead>
+                  <tr>
+                    <th>Показатель</th>
+                    <th>Ед. изм.</th>
+                    <th>Пред. год (ед.)</th>
+                    <th>Пред. год (т у.т.)</th>
+                    <th>Прогноз (ед.)</th>
+                    <th>Прогноз (т у.т.)</th>
+                    <th>Разница</th>
+                    <th>Тип</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Газ природный</td>
+                    <td>тыс. м³</td>
+                    <td>100</td>
+                    <td>115,0</td>
+                    <td>95</td>
+                    <td>109,3</td>
+                    <td class="text-danger">↓ -5,7</td>
+                    <td><span class="badge-local badge-local-true">Местный</span></td>
+                  </tr>
+                  <tr>
+                    <td>Газ природный</td>
+                    <td>тыс. м³</td>
+                    <td>100</td>
+                    <td>115,0</td>
+                    <td>120</td>
+                    <td>138,0</td>
+                    <td class="text-success">↑ +23,0</td>
+                    <td><span class="badge-local badge-local-true">Местный</span></td>
+                  </tr>
+                  <tr>
+                    <td>Дрова</td>
+                    <td>пл. м³</td>
+                    <td>50</td>
+                    <td>11,4</td>
+                    <td>80</td>
+                    <td>18,2</td>
+                    <td class="text-danger">↑ +6,8</td>
+                    <td><span class="badge-local">Неместный</span></td>
+                  </tr>
+                  <tr>
+                    <td>Дрова</td>
+                    <td>пл. м³</td>
+                    <td>50</td>
+                    <td>11,4</td>
+                    <td>30</td>
+                    <td>6,8</td>
+                    <td class="text-success">↓ -4,6</td>
+                    <td><span class="badge-local">Неместный</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="feature-card">
+              <h4>Важно</h4>
+              <p class="feature-description">Разница пересчитывается <strong>автоматически</strong> при любом изменении значений. Для корректного расчета убедитесь, что коэффициенты пересчета установлены правильно.</p>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#create-plan" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#audit-data" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
+            </div>
+          </div>
+        </article>
+
       </div>
     </div>
   </div>

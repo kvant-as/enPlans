@@ -314,6 +314,9 @@ def get_indicators_data(token):
             'coeff_prev': float(row.coeff_prev) if row.coeff_prev else None,
             'coeff_current': float(row.coeff_current) if row.coeff_current else None,
             
+            'is_local': row.indicator.is_local,
+            'is_renewable': row.indicator.is_renewable,
+            
             'QYearBeforePrev_unit': QYearBeforePrev_unit,
             'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
 

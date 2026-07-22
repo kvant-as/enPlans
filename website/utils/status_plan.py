@@ -217,8 +217,8 @@ def handle_sent_without_check_status(plan, current_user):
             is_viewed=False
         ).order_by(PlanApprovalPath.step_order).first()
         
-        if current_path and current_path.organization_id != current_user.organization_id:
-            return {'error': 'У вас нет прав для отмены изменений на этом этапе'}
+        # if current_path and current_path.organization_id != current_user.organization_id:
+        #     return {'error': 'У вас нет прав для отмены изменений на этом этапе'}
         
         plan.is_sent = True
         plan.is_draft = False

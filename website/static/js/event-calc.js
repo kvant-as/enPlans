@@ -904,9 +904,9 @@ class EventModalManager {
             'change-EffTut-edit-model': data.EffTut || '',
             'change-EffRub-edit-model': data.EffRub || '',
             'change-ExpectedQuarter-edit-model': data.ExpectedQuarter || '',
-            'change-EffCurrYear-edit-model': data.EffCurrYear || '',
-            'change-Payback-edit-model': data.Payback || '',
-            'change-VolumeFinCurrentYear-edit-model': data.VolumeFinCurrentYear || '',
+            'change-EffCurrYear-edit-model': data.EffCurrYear ? this.formatNumber(parseFloat(data.EffCurrYear), 2) : '0,00',
+            'change-Payback-edit-model': data.Payback ? this.formatNumber(parseFloat(data.Payback), 1) : '0,0',
+            'change-VolumeFinCurrentYear-edit-model': data.VolumeFinCurrentYear ? this.formatNumber(parseFloat(data.VolumeFinCurrentYear), 0) : '0',
             'change-BudgetState-edit-model': data.BudgetState || '0',
             'change-BudgetRep-edit-model': data.BudgetRep || '0',
             'change-BudgetLoc-edit-model': data.BudgetLoc || '0',
@@ -931,9 +931,87 @@ class EventModalManager {
         }
     }
 
+    validateEditEffCurrYear() {
+        const effTutInput = document.getElementById('change-EffTut-edit-model');
+        const effCurrYearInput = document.getElementById('change-EffCurrYear-edit-model');
+        
+        if (!effTutInput || !effCurrYearInput) return;
+        
+        const effTut = this.parseNumber(effTutInput.value);
+        let effCurrYear = this.parseNumber(effCurrYearInput.value);
+        
+        if (effCurrYear > effTut) {
+            effCurrYear = effTut;
+            effCurrYearInput.value = this.formatNumber(effCurrYear, 2);
+            
+            // Показываем предупреждение
+            this.showEditEffCurrYearWarning(
+                `Эффект в текущем году (${this.formatNumber(effCurrYear, 2)} т у.т.) не может превышать общий эффект (${this.formatNumber(effTut, 2)} т у.т.)`
+            );
+            
+            effCurrYearInput.classList.add('is-invalid');
+            setTimeout(() => {
+                effCurrYearInput.classList.remove('is-invalid');
+            }, 7000);
+        } else {
+            const warningSpan = document.getElementById('edit-eff-curr-year-warning');
+            if (warningSpan) {
+                warningSpan.style.display = 'none';
+            }
+            effCurrYearInput.classList.remove('is-invalid');
+        }
+    }
+
+    showEditEffCurrYearWarning(message) {
+        let warningSpan = document.getElementById('edit-eff-curr-year-warning');
+        
+        if (!warningSpan) {
+            const effCurrYearInput = document.getElementById('change-EffCurrYear-edit-model');
+            if (effCurrYearInput && effCurrYearInput.parentNode) {
+                const parentDiv = effCurrYearInput.parentNode;
+                const relativeDiv = parentDiv.querySelector('.position-relative');
+                
+                if (relativeDiv) {
+                    warningSpan = document.createElement('span');
+                    warningSpan.id = 'edit-eff-curr-year-warning';
+                    warningSpan.className = 'text-danger small mt-1';
+                    warningSpan.style.display = 'none';
+                    warningSpan.style.fontSize = '12px';
+                    warningSpan.style.marginTop = '5px';
+                    relativeDiv.appendChild(warningSpan);
+                } else {
+                    warningSpan = document.createElement('span');
+                    warningSpan.id = 'edit-eff-curr-year-warning';
+                    warningSpan.className = 'text-danger small';
+                    warningSpan.style.display = 'none';
+                    warningSpan.style.fontSize = '12px';
+                    warningSpan.style.marginTop = '5px';
+                    warningSpan.style.color = '#dc3545';
+                    effCurrYearInput.insertAdjacentElement('afterend', warningSpan);
+                }
+            }
+        }
+        
+        if (warningSpan) {
+            warningSpan.textContent = message || 'Эффект в текущем году не может превышать общий эффект';
+            warningSpan.style.display = 'block';
+            
+            setTimeout(() => {
+                if (warningSpan) {
+                    warningSpan.style.display = 'none';
+                }
+            }, 4000);
+        }
+    }
+
+
     initEditCalculations() {
         const self = this;
         
+        const validateEditFields = () => {
+            self.validateEditEffCurrYear();
+        };
+
         const updateEditCalculations = () => {
             let eventType = self._currentEventType;
             if (!eventType) {
@@ -1024,6 +1102,8 @@ class EventModalManager {
                 paybackInput.value = self.formatNumber(payback, 1);
                 paybackInput.readOnly = true;
             }
+
+            validateEditFields();
         };
 
         const editFields = [
@@ -1036,7 +1116,8 @@ class EventModalManager {
             'change-MoneyOwn-edit-model', 
             'change-MoneyLoan-edit-model',
             'change-MoneyOther-edit-model',
-            'change-VolumeFinCurrentYear-edit-model'
+            'change-VolumeFinCurrentYear-edit-model',
+            'change-EffCurrYear-edit-model'
         ];
 
         editFields.forEach(fieldId => {
@@ -1046,6 +1127,12 @@ class EventModalManager {
                 input.addEventListener('input', updateEditCalculations);
             }
         });
+        
+        const effTutInput = document.getElementById('change-EffTut-edit-model');
+        if (effTutInput) {
+            effTutInput.removeEventListener('input', validateEditFields);
+            effTutInput.addEventListener('input', validateEditFields);
+        }
 
         setTimeout(updateEditCalculations, 100);
         setTimeout(updateEditCalculations, 300);
@@ -1086,6 +1173,8 @@ function setValueIfExists(elementId, value) {
         element.value = value;
     }
 }
+
+
 
 function validateAndEnableButton() {
     const addModal = document.getElementById('AddEventModal');
