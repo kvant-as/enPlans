@@ -502,6 +502,94 @@
   max-width: 100%;
 }
 
+/* Стили для карточек контроля */
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.control-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+}
+
+.control-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.control-card-header .icon {
+  font-size: 24px;
+}
+
+.control-card-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+
+.control-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.control-list li {
+  padding: 5px 0;
+  font-size: 14px;
+  color: #495057;
+  border-bottom: 1px solid #f1f3f5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-list li:last-child {
+  border-bottom: none;
+}
+
+.control-list .marker {
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.control-list .marker.blue-marker {
+  color: #4a90d9;
+}
+
+.control-list .marker.green-marker {
+  color: #28a745;
+}
+
+.control-list .marker.orange-marker {
+  color: #fd7e14;
+}
+
+.control-list .marker.purple-marker {
+  color: #6f42c1;
+}
+
+@media (max-width: 768px) {
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .faq-image {
     max-width: 100%;

@@ -49,6 +49,10 @@
                 <span class="question-icon">🧮</span>
                 Расчет разницы в показателях
               </a>
+              <a href="#plan-control-send" class="question-link-modern">
+                <span class="question-icon">✅</span>
+                Контроль и отправка плана
+              </a>
               <a href="#audit-data" class="question-link-modern">
                 <span class="question-icon">📊</span>
                 Согласование планов
@@ -1240,56 +1244,56 @@
               </div>
 
               <div class="step-item">
-  <div class="step-number">3</div>
-  <div class="step-content">
-    <h4>Заполнение данных мероприятия</h4>
-    <p>
-      После выбора направления заполните следующие поля:
-    </p>
-    <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
-      <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
-      <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
-      <li><strong>Условно-годовой экономический эффект, т у.т.</strong> — в тоннах условного топлива</li>
-      <li><strong>Условно-годовой экономический эффект, руб.</strong> — <span style="color: #4a90d9; font-weight: 500;">рассчитывается автоматически</span> на основе текущего курса доллара и стоимости 1 т у.т.</li>
-      <li><strong>Ожидаемый срок внедрения</strong> — квартал (1-4)</li>
-      <li><strong>Ожидаемый экономический эффект в текущем году, т у.т.</strong></li>
-    </ul>
-    
-    <div class="feature-card">
-      <p style="font-size: 14px; color: #333; margin: 0 0 6px 0;">
-        <strong>Поле «Условно-годовой экономический эффект, руб.»</strong> рассчитывается автоматически по формуле:
-      </p>
-      <div style="background: #ffffff; padding: 10px; border-radius: 4px; margin: 6px 0; text-align: center; font-family: monospace; font-size: 16px; border: 1px solid #e9ecef;">
-        Эффект (руб.) = Эффект (т у.т.) × Стоимость 1 т у.т. (USD) × Курс доллара (BYN)
-      </div>
-      <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 12px 0;">
-        Курс доллара и стоимость 1 т у.т. указываются на титульном листе плана.
-      </p>
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Заполнение данных мероприятия</h4>
+                  <p>
+                    После выбора направления заполните следующие поля:
+                  </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
+                    <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
+                    <li><strong>Условно-годовой экономический эффект, т у.т.</strong> — в тоннах условного топлива</li>
+                    <li><strong>Условно-годовой экономический эффект, руб.</strong> — <span style="color: #4a90d9; font-weight: 500;">рассчитывается автоматически</span> на основе текущего курса доллара и стоимости 1 т у.т.</li>
+                    <li><strong>Ожидаемый срок внедрения</strong> — квартал (1-4)</li>
+                    <li><strong>Ожидаемый экономический эффект в текущем году, т у.т.</strong></li>
+                  </ul>
+                  
+                  <div class="feature-card">
+                    <p style="font-size: 14px; color: #333; margin: 0 0 6px 0;">
+                      <strong>Поле «Условно-годовой экономический эффект, руб.»</strong> рассчитывается автоматически по формуле:
+                    </p>
+                    <div style="background: #ffffff; padding: 10px; border-radius: 4px; margin: 6px 0; text-align: center; font-family: monospace; font-size: 16px; border: 1px solid #e9ecef;">
+                      Эффект (руб.) = Эффект (т у.т.) × Стоимость 1 т у.т. (USD) × Курс доллара (BYN)
+                    </div>
+                    <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 12px 0;">
+                      Курс доллара и стоимость 1 т у.т. указываются на титульном листе плана.
+                    </p>
 
-      <div class="feature-card warn" style="margin: 0;">
-        <p style="font-size: 14px; color: #333; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 20px;"></span>
-          <strong>Важное ограничение:</strong>
-        </p>
-        <p style="font-size: 14px; color: #555; margin: 0 0 6px 0;">
-          <strong>Ожидаемый экономический эффект от внедрения мероприятия в текущем году</strong> 
-          <span style="color: #dc3545; font-weight: 600;">не может превышать</span> 
-          <strong>Условно-годовой экономический эффект, т у.т.</strong>
-        </p>
-        <div style="background: #ffffff; padding: 8px 12px; border-radius: 4px; margin: 6px 0; text-align: center; border: 1px solid #ffc107; font-size: 14px;">
-          <span style="color: #856404;">Эффект в текущем году ≤ Условно-годовой эффект (т у.т.)</span>
-        </div>
-        <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 0 0;">
-          При превышении система отобразит предупреждение и не позволит сохранить мероприятие.
-        </p>
-      </div>
-    </div>
+                    <div class="feature-card warn" style="margin: 0;">
+                      <p style="font-size: 14px; color: #333; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 20px;"></span>
+                        <strong>Важное ограничение:</strong>
+                      </p>
+                      <p style="font-size: 14px; color: #555; margin: 0 0 6px 0;">
+                        <strong>Ожидаемый экономический эффект от внедрения мероприятия в текущем году</strong> 
+                        <span style="color: #dc3545; font-weight: 600;">не может превышать</span> 
+                        <strong>Условно-годовой экономический эффект, т у.т.</strong>
+                      </p>
+                      <div style="background: #ffffff; padding: 8px 12px; border-radius: 4px; margin: 6px 0; text-align: center; border: 1px solid #ffc107; font-size: 14px;">
+                        <span style="color: #856404;">Эффект в текущем году ≤ Условно-годовой эффект (т у.т.)</span>
+                      </div>
+                      <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 0 0;">
+                        При превышении система отобразит предупреждение и не позволит сохранить мероприятие.
+                      </p>
+                    </div>
+                  </div>
 
-    <div class="faq-image-wrapper ogr">
-      <img src="/static/img/faq/fill-economy-event.png" alt="Заполнение мероприятия по экономии" class="faq-image">
-    </div>
-  </div>
-</div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/fill-economy-event.png" alt="Заполнение мероприятия по экономии" class="faq-image">
+                  </div>
+                </div>
+              </div>
 
               <div class="step-item">
                 <div class="step-number">4</div>
@@ -1298,6 +1302,11 @@
                   <p>
                     Укажите источники финансирования мероприятия и нажмите на "Добавить мероприятие" для сохранения данных.
                   </p>
+                   <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0;">
+                    <p style="font-size: 14px; color: #333; margin: 0; font-weight: 600;">
+                      <span style="font-size: 18px;"></span> Для показателей с двойным эффектом (Экономия и Увеличение), финансы не указываются.
+                    </p>
+                  </div>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/economy-financing.png" alt="Финансовые показатели" class="faq-image">
                   </div>
@@ -1326,8 +1335,16 @@
             <h3>Раздел 3. Мероприятия по увеличению использования местных ТЭР</h3>
             <div class="answer-text">
               <p>
-                В этом разделе отражаются мероприятия, направленные на увеличение использования местных топливно-энергетических ресурсов.
+                В этом разделе отражаются мероприятия, направленные на увеличение использования местных топливно-энергетических ресурсов. Процесс заполнения аналогичен разделу 2, но с одним отличием:
               </p>
+              <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0; border-left: 4px solid #4a90d9;">
+                <p style="font-size: 14px; color: #333; margin: 0;">
+                  <strong>Отличие раздела 3:</strong>
+                </p>
+                <p style="font-size: 14px; color: #555; margin: 6px 0 0 0;">
+                  Поле <strong>«Ожидаемое увеличение использования местных ТЭР в текущем году, т у.т.»</strong> пользователь заполняет <strong>самостоятельно</strong>, без ограничений по сравнению с условно-годовым эффектом.
+                </p>
+              </div>
             </div>
 
             <div class="steps-container">
@@ -1347,30 +1364,53 @@
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <h4>Заполнение данных мероприятия</h4>
+                  <h4>Выбор направления</h4>
                   <p>
-                    Укажите следующие данные:
+                    В открывшемся окне выберите направление энергосбережения из справочника (коды 1610-1699).
                   </p>
-                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
-                    <li><strong>Код направления</strong> — из справочника направлений энергосбережения (1610-1699)</li>
-                    <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
-                    <li><strong>Единица измерения</strong> — автоматически подставляется по коду</li>
-                    <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
-                    <li><strong>Условно-годовое увеличение использования местных ТЭР</strong> — в т у.т. и тыс. руб.</li>
-                    <li><strong>Ожидаемый срок внедрения</strong> — квартал</li>
-                    <li><strong>Ожидаемое увеличение использования местных ТЭР</strong> — в т у.т.</li>
-                    <li><strong>Срок окупаемости</strong> — лет (для мероприятий с двойным эффектом)</li>
-                    <li><strong>Объем финансирования</strong> — тыс. руб.</li>
-                    <li><strong>Источники финансирования</strong> — бюджетные, собственные, кредиты</li>
-                  </ul>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/fill-local-event.png" alt="Заполнение мероприятия по увеличению местных ТЭР" class="faq-image">
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/choose-local-event.png" alt="Выбор направления для местных ТЭР" class="faq-image">
                   </div>
                 </div>
               </div>
 
               <div class="step-item">
                 <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Заполнение данных мероприятия</h4>
+                  <p>
+                    После выбора направления заполните следующие поля:
+                  </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
+                    <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
+                    <li><strong>Условно-годовое увеличение использования местных ТЭР, т у.т.</strong> — в тоннах условного топлива</li>
+                    <li><strong>Условно-годовое увеличение использования местных ТЭР, руб.</strong> — <span style="color: #4a90d9; font-weight: 500;">рассчитывается автоматически</span></li>
+                    <li><strong>Ожидаемый срок внедрения</strong> — квартал (1-4)</li>
+                    <li><strong>Ожидаемое увеличение использования местных ТЭР в текущем году, т у.т.</strong> — <span style="color: #28a745; font-weight: 500;">заполняется пользователем самостоятельно</span></li>
+                  </ul>
+
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/fill-local-event.png" alt="Заполнение мероприятия по увеличению местных ТЭР" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Финансовые показатели</h4>
+                  <p>
+                    Укажите источники финансирования мероприятия и нажмите на "Добавить мероприятие" для сохранения данных.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/local-financing.png" alt="Финансовые показатели" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">5</div>
                 <div class="step-content">
                   <h4>Итоговые строки</h4>
                   <p>
@@ -1400,6 +1440,216 @@
                 <span>Предыдущий вопрос</span>
               </a>
               <a href="#difference-calculation" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <article class="answer-active-modern" id="plan-control-send">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Контроль и отправка плана</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                Перед отправкой плана на согласование система проводит автоматическую проверку заполнения всех разделов. После успешного прохождения контроля план можно отправить на согласование и утверждение.
+              </p>
+            </div>
+
+            <h3>Контроль заполнения плана</h3>
+            <div class="answer-text">
+              <p>
+                Система автоматически проверяет корректность заполнения всех разделов плана. Контроль осуществляется по следующим направлениям:
+              </p>
+            </div>
+
+            <div class="control-grid">
+
+              <div class="control-card blue">
+                <div class="control-card-header">
+                  <span class="icon">📋</span>
+                  <h4>Обязательные поля</h4>
+                </div>
+                <ul class="control-list">
+                  <li><span class="marker blue-marker">•</span> Период (год)</li>
+                  <li><span class="marker blue-marker">•</span> Вид документа</li>
+                  <li><span class="marker blue-marker">•</span> Наименование организации</li>
+                  <li><span class="marker blue-marker">•</span> Код ОКПО (12 знаков)</li>
+                  <li><span class="marker blue-marker">•</span> Региональное управление</li>
+                  <li><span class="marker blue-marker">•</span> Должность и ФИО руководителя</li>
+                  <li><span class="marker blue-marker">•</span> Контактные данные исполнителя</li>
+                  <li><span class="marker blue-marker">•</span> Курс доллара</li>
+                </ul>
+              </div>
+
+              <div class="control-card green">
+                <div class="control-card-header">
+                  <span class="icon">📊</span>
+                  <h4>Часть 1. Показатели ТЭР</h4>
+                </div>
+                <ul class="control-list">
+                  <li><span class="marker green-marker">✓</span> Сумма строк 2-22 = строка 1</li>
+                  <li><span class="marker green-marker">✓</span> Электроэнергия: т у.т. = тыс. кВт·ч × 0,123</li>
+                  <li><span class="marker green-marker">✓</span> Теплоэнергия: т у.т. = Гкал × 0,143</li>
+                  <li><span class="marker green-marker">✓</span> СПТЭР = КПТ + ЭЭ + ТЭ (с учетом знаков)</li>
+                  <li><span class="marker green-marker">✓</span> Экономия ТЭР ≥ заданию на титуле</li>
+                  <li><span class="marker green-marker">✓</span> Доля местных ТЭР ≥ заданию на титуле</li>
+                  <li><span class="marker green-marker">✓</span> Доля ВИЭ ≥ заданию на титуле</li>
+                </ul>
+              </div>
+
+              <div class="control-card orange">
+                <div class="control-card-header">
+                  <span class="icon">📈</span>
+                  <h4>Часть 2. Мероприятия по экономии</h4>
+                </div>
+                <ul class="control-list">
+                  <li><span class="marker orange-marker">•</span> Сквозная нумерация строк</li>
+                  <li><span class="marker orange-marker">•</span> Код направления из справочника</li>
+                  <li><span class="marker orange-marker">•</span> Эффект (руб.) = Эффект (т у.т.) × стоимость 1 т у.т. × курс</li>
+                  <li><span class="marker orange-marker">•</span> Эффект в текущем году ≤ общему эффекту</li>
+                  <li><span class="marker orange-marker">•</span> Срок окупаемости ≤ 10 лет</li>
+                  <li><span class="marker orange-marker">•</span> Сумма источников = общему финансированию</li>
+                </ul>
+              </div>
+
+              <div class="control-card purple">
+                <div class="control-card-header">
+                  <span class="icon">🌿</span>
+                  <h4>Часть 3. Увеличение местных ТЭР</h4>
+                </div>
+                <ul class="control-list">
+                  <li><span class="marker purple-marker">•</span> Коды направлений только 1610-1699</li>
+                  <li><span class="marker purple-marker">•</span> Сквозная нумерация строк</li>
+                  <li><span class="marker purple-marker">•</span> Эффект (руб.) = Эффект (т у.т.) × стоимость 1 т у.т. × курс</li>
+                  <li><span class="marker purple-marker">•</span> Сумма источников = общему финансированию</li>
+                </ul>
+              </div>
+
+            </div>
+            <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0; border-left: 4px solid #4a90d9;">
+              <p style="font-size: 14px; color: #333; margin: 0;">
+                <strong>Контроль по нарастающим периодам:</strong>
+              </p>
+              <ul style="padding-left: 20px; margin: 6px 0; font-size: 14px; color: #555;">
+                <li>январь-декабрь ≥ январь-сентябрь ≥ январь-июнь ≥ январь-март</li>
+                <li>Значения по периодам должны соответствовать итоговым строкам</li>
+              </ul>
+            </div>
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Контроль плана</h4>
+                  <p>
+                    На странице с заданиями плана необходимо выбрать Пройти контроль.
+                  </p>
+                    <div class="faq-image-wrapper ogr">
+                      <img src="/static/img/faq/plan-control.png" alt="Контроль плана" class="faq-image">
+                    </div>
+                </div>
+              </div>
+            
+
+            <h3>Отправка плана на согласование</h3>
+            <div class="answer-text">
+              <p>
+                После успешного прохождения контроля план можно отправить на согласование и утверждение. Процесс отправки включает несколько шагов:
+              </p>
+            </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Отправить план</h4>
+                <p>
+                  На странице с заданиями плана необходимо выбрать Отправить план.
+                </p>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/send-plan-btn.png" alt="Выбор согласующих организаций" class="faq-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Выбор организаций для согласования</h4>
+                  <p>
+                    В первом шаге выберите организации, которые будут согласовывать план. Можно выбрать несколько организаций.
+                  </p>
+                  <div class="feature-card" style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                    <p style="font-size: 14px; color: #666; margin: 0;">
+                      <strong>Автоматический выбор:</strong> Первая организация для согласования автоматически определяется как региональное управление по надзору за рациональным использованием ТЭР.
+                    </p>
+                  </div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-step1.png" alt="Выбор согласующих организаций" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Выбор утверждающей организации</h4>
+                  <p>
+                    На втором шаге выберите организацию, которая будет утверждать план. Можно выбрать только одну организацию.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-step2.png" alt="Выбор утверждающей организации" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Загрузка сертификата ЭЦП</h4>
+                  <p>
+                    Для отправки плана необходимо прикрепить файл сертификата электронной цифровой подписи (.cer).
+                  </p>
+                  <div class="feature-card warn" style="margin-top: 10px;">
+                    <h4>Важно</h4>
+                    <p>ПОКА ЧТО ОТКЛЮЧЕНО</p>
+                  </div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-step3.png" alt="Загрузка сертификата" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <h4>Путь согласования</h4>
+              <p class="feature-description">
+                После отправки план проходит следующий путь в зависимости от того какие огранизации были выбраны при отправке плана на проверку.
+              </p>
+              <div class="faq-image-wrapper">
+                <img src="/static/img/faq/approval-path.png" alt="Путь согласования" class="faq-image">
+              </div>
+            </div>
+
+            <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0;">
+              <p style="font-size: 14px; color: #333; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">ℹ️</span>
+                <strong>Примечание:</strong>
+              </p>
+              <p style="font-size: 14px; color: #555; margin: 6px 0 0 0; padding-left: 34px;">
+                Ошибки при заполнении плана отображаются в интерфейсе с пояснением, что именно требуется исправить.
+              </p>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#fill-plan" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#audit-data" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
