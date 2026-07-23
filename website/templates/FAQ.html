@@ -41,6 +41,10 @@
                 <span class="question-icon">✨</span>
                 Создание плана
               </a>
+              <a href="#fill-plan" class="question-link-modern">
+                <span class="question-icon">📝</span>
+                Заполнение плана
+              </a>
               <a href="#difference-calculation" class="question-link-modern">
                 <span class="question-icon">🧮</span>
                 Расчет разницы в показателях
@@ -1052,6 +1056,350 @@
                 <span>Предыдущий вопрос</span>
               </a>
               <a href="#audit-data" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <article class="answer-active-modern" id="fill-plan">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Заполнение плана энергоэффективности</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                После создания плана и выбора типа (до 25 тыс. т у.т. или свыше 25 тыс. т у.т.) необходимо заполнить три основных раздела:
+              </p>
+            </div>
+
+            <h3>Раздел 1. Показатели использования ТЭР</h3>
+            <div class="answer-text">
+              <p>
+                В этом разделе отражаются объемы потребления топливно-энергетических ресурсов за отчетный, оценочный и прогнозный периоды.
+              </p>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Добавление показателей</h4>
+                  <p>
+                    При создании плана таблица показателей пустая. Для добавления показателя нажмите кнопку <strong>«Добавить»</strong> в левом верхнем углу страницы.
+                  </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/add-indicator.png" alt="Добавление показателя" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Выбор показателя из справочника</h4>
+                  <p>
+                    В открывшемся окне выберите необходимый показатель кликнув левой кнопкой мыши.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/select-indicator.png" alt="Выбор показателя" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Ввод значений</h4>
+                  <p>
+                    Для каждого показателя необходимо ввести значения. Пользователь может самостоятельно выбирать, какие года отображать в столбцах, и вводить значения в <strong>тоннах условного топлива (т у.т.)</strong>.
+                  </p>
+                  
+                  <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0;">
+                    <p style="font-size: 14px; color: #333; margin: 0;">
+                      <strong>Как это работает:</strong>
+                    </p>
+                    <ul style="padding-left: 20px; margin: 6px 0; font-size: 14px; color: #555;">
+                      <li>Пользователь вводит значение в <strong>т у.т.</strong> в поле прогнозного года</li>
+                      <li>Система автоматически пересчитывает его в <strong>натуральные единицы измерения</strong> (тонны, тыс. м³, Гкал и т.д.) с учетом коэффициента пересчета</li>
+                      <li>Коэффициент пересчета можно <strong>редактировать вручную</strong> для каждого года отдельно</li>
+                      <li>Если единица измерения показателя — <strong>т у.т.</strong>, редактирование коэффициента <strong>заблокировано</strong></li>
+                    </ul>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0;">
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #e9ecef;">
+                      <span style="font-size: 13px; color: #666;">Ввод в</span>
+                      <div style="font-weight: 600; color: #4a90d9; font-size: 16px;">т у.т.</div>
+                      <span style="font-size: 12px; color: #888;">↓</span>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; text-align: center; border: 1px solid #e9ecef;">
+                      <span style="font-size: 13px; color: #666;">Автоматический пересчет в</span>
+                      <div style="font-weight: 600; color: #28a745; font-size: 16px;">натуральные единицы</div>
+                      <span style="font-size: 12px; color: #888;">с учетом коэффициента</span>
+                    </div>
+                  </div>
+
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/enter-indicator-values.png" alt="Ввод значений показателя" class="faq-image">
+                  </div>
+
+                  <div class="feature-card" style="background: #f0f7ff; padding: 12px; border-radius: 6px; margin: 8px 0;">
+                    <p style="font-size: 14px; color: #333; margin: 0; font-weight: 600;">
+                      <span style="font-size: 18px;"></span> Для показателей «прочие отходы» и «прочие виды топлива» заполнение отличается:
+                    </p>
+                    <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                      <li>Необходимо дополнительно ввести <strong>наименование</strong> конкретного вида отхода или топлива</li>
+                      <li>Выбрать категорию из выпадающего списка:</li>
+                    </ul>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0;">
+                      <div style="background: #e3f2fd; padding: 8px 12px; border-radius: 4px; text-align: center; font-size: 13px; color: #1565c0;">
+                        Импортируемые виды топлива
+                      </div>
+                      <div style="background: #e8f5e9; padding: 8px 12px; border-radius: 4px; text-align: center; font-size: 13px; color: #2e7d32;">
+                        Местные виды топлива и отходы
+                      </div>
+                      <div style="background: #fff3e0; padding: 8px 12px; border-radius: 4px; text-align: center; font-size: 13px; color: #e65100;">
+                        Возобновляемые источники энергии
+                      </div>
+                    </div>
+                    <p style="font-size: 13px; color: #888; margin: 4px 0 0 0;">
+                      От выбранной категории зависит, будет ли показатель включен в строки «из него местные виды топлива и отходы» и «из них возобновляемые».
+                    </p>
+                  </div>
+
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/enter-indicator-values-dif.png" alt="Ввод значений показателя" class="faq-image">
+                  </div>
+
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Редактирование и удаление показателей</h4>
+                  <p>
+                    Для редактирования показателя нажмите кнопку <strong>«✎»</strong> в строке показателя или в меню над таблицей. Для удаления — кнопку <strong>«✕»</strong>.
+                  </p>
+                  <div class="feature-card warn" style="margin-top: 10px;">
+                    <h4>Обратите внимание</h4>
+                    <p>Некоторые показатели не могут быть удалены:</p>
+                    <ul style="padding-left: 20px; margin: 6px 0; font-size: 14px; color: #555;">
+                      <li>Котельно-печное топливо (КПТ) всего</li>
+                      <li>из него местные виды топлива и отходы</li>
+                      <li>из них возобновляемые</li>
+                      <li>Суммарное потребление ТЭР</li>
+                      <li>Электроэнергия всего</li>
+                      <li>Теплоэнергия всего</li>
+                      <li>Целевой показатель энергосбережения</li>
+                      <li>Доля местных ТЭР в КПТ</li>
+                      <li>Доля ВИЭ в КПТ</li>
+                    </ul>
+                  </div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/edit-indicator.png" alt="Редактирование показателя" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h3>Раздел 2. Мероприятия по экономии ТЭР</h3>
+            <div class="answer-text">
+              <p>
+                В этом разделе отражаются мероприятия, направленные на сокращение потребления топливно-энергетических ресурсов.
+              </p>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Добавление мероприятия</h4>
+                  <p>
+                    Нажмите кнопку <strong>«Добавить»</strong> в таблице мероприятий по экономии ТЭР.
+                  </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/add-economy-event.png" alt="Добавление мероприятия по экономии" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Выбор направления</h4>
+                  <p>
+                    В открывшемся окне выберите направление энергосбережения из справочника, кликнув по строке.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/choose-economy-event.png" alt="Выбор направления" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+  <div class="step-number">3</div>
+  <div class="step-content">
+    <h4>Заполнение данных мероприятия</h4>
+    <p>
+      После выбора направления заполните следующие поля:
+    </p>
+    <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+      <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
+      <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
+      <li><strong>Условно-годовой экономический эффект, т у.т.</strong> — в тоннах условного топлива</li>
+      <li><strong>Условно-годовой экономический эффект, руб.</strong> — <span style="color: #4a90d9; font-weight: 500;">рассчитывается автоматически</span> на основе текущего курса доллара и стоимости 1 т у.т.</li>
+      <li><strong>Ожидаемый срок внедрения</strong> — квартал (1-4)</li>
+      <li><strong>Ожидаемый экономический эффект в текущем году, т у.т.</strong></li>
+    </ul>
+    
+    <div class="feature-card">
+      <p style="font-size: 14px; color: #333; margin: 0 0 6px 0;">
+        <strong>Поле «Условно-годовой экономический эффект, руб.»</strong> рассчитывается автоматически по формуле:
+      </p>
+      <div style="background: #ffffff; padding: 10px; border-radius: 4px; margin: 6px 0; text-align: center; font-family: monospace; font-size: 16px; border: 1px solid #e9ecef;">
+        Эффект (руб.) = Эффект (т у.т.) × Стоимость 1 т у.т. (USD) × Курс доллара (BYN)
+      </div>
+      <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 12px 0;">
+        Курс доллара и стоимость 1 т у.т. указываются на титульном листе плана.
+      </p>
+
+      <div class="feature-card warn" style="margin: 0;">
+        <p style="font-size: 14px; color: #333; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;"></span>
+          <strong>Важное ограничение:</strong>
+        </p>
+        <p style="font-size: 14px; color: #555; margin: 0 0 6px 0;">
+          <strong>Ожидаемый экономический эффект от внедрения мероприятия в текущем году</strong> 
+          <span style="color: #dc3545; font-weight: 600;">не может превышать</span> 
+          <strong>Условно-годовой экономический эффект, т у.т.</strong>
+        </p>
+        <div style="background: #ffffff; padding: 8px 12px; border-radius: 4px; margin: 6px 0; text-align: center; border: 1px solid #ffc107; font-size: 14px;">
+          <span style="color: #856404;">Эффект в текущем году ≤ Условно-годовой эффект (т у.т.)</span>
+        </div>
+        <p class="feature-description" style="font-size: 13px; color: #888; margin: 4px 0 0 0;">
+          При превышении система отобразит предупреждение и не позволит сохранить мероприятие.
+        </p>
+      </div>
+    </div>
+
+    <div class="faq-image-wrapper ogr">
+      <img src="/static/img/faq/fill-economy-event.png" alt="Заполнение мероприятия по экономии" class="faq-image">
+    </div>
+  </div>
+</div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Финансовые показатели</h4>
+                  <p>
+                    Укажите источники финансирования мероприятия и нажмите на "Добавить мероприятие" для сохранения данных.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/economy-financing.png" alt="Финансовые показатели" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                  <h4>Итоговые строки</h4>
+                  <p>
+                    Система автоматически рассчитывает итоговые значения по разделам:
+                  </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li><strong>Итого по разделу 2.1</strong> — для первоначальных мероприятий</li>
+                    <li><strong>Итого по разделу 2.2</strong> — для мероприятий, добавленных при корректировке</li>
+                    <li><strong>Всего экономия ТЭР</strong> — сумма по разделам 2.1 и 2.2</li>
+                  </ul>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/economy-totals.png" alt="Итоговые значения экономии" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h3>Раздел 3. Мероприятия по увеличению использования местных ТЭР</h3>
+            <div class="answer-text">
+              <p>
+                В этом разделе отражаются мероприятия, направленные на увеличение использования местных топливно-энергетических ресурсов.
+              </p>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Добавление мероприятия</h4>
+                  <p>
+                    Нажмите кнопку <strong>«Добавить»</strong> в таблице мероприятий по увеличению использования местных ТЭР.
+                  </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/add-local-event.png" alt="Добавление мероприятия по увеличению местных ТЭР" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Заполнение данных мероприятия</h4>
+                  <p>
+                    Укажите следующие данные:
+                  </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li><strong>Код направления</strong> — из справочника направлений энергосбережения (1610-1699)</li>
+                    <li><strong>Наименование мероприятия</strong> — описание мероприятия</li>
+                    <li><strong>Единица измерения</strong> — автоматически подставляется по коду</li>
+                    <li><strong>Объем внедрения</strong> — в соответствующих единицах</li>
+                    <li><strong>Условно-годовое увеличение использования местных ТЭР</strong> — в т у.т. и тыс. руб.</li>
+                    <li><strong>Ожидаемый срок внедрения</strong> — квартал</li>
+                    <li><strong>Ожидаемое увеличение использования местных ТЭР</strong> — в т у.т.</li>
+                    <li><strong>Срок окупаемости</strong> — лет (для мероприятий с двойным эффектом)</li>
+                    <li><strong>Объем финансирования</strong> — тыс. руб.</li>
+                    <li><strong>Источники финансирования</strong> — бюджетные, собственные, кредиты</li>
+                  </ul>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/fill-local-event.png" alt="Заполнение мероприятия по увеличению местных ТЭР" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Итоговые строки</h4>
+                  <p>
+                    Система автоматически рассчитывает итоговые значения по разделам:
+                  </p>
+                  <ul style="padding-left: 20px; margin: 8px 0; font-size: 14px; color: #555;">
+                    <li><strong>Итого по разделу 3.1</strong> — для первоначальных мероприятий</li>
+                    <li><strong>Итого по разделу 3.2</strong> — для мероприятий, добавленных при корректировке</li>
+                    <li><strong>Всего увеличение использования местных ТЭР</strong> — сумма по разделам 3.1 и 3.2</li>
+                  </ul>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/local-totals.png" alt="Итоговые значения увеличения местных ТЭР" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <h4>Важно</h4>
+              <p class="feature-description">Все изменения в таблицах фиксируются в системе автоматически после нажатия кнопок <strong>«Применить изменения»</strong> или <strong>«Добавить»</strong>.</p>
+              <p class="feature-description" style="margin-top: 8px;">Перед отправкой плана на согласование система проводит автоматический контроль заполнения всех разделов.</p>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#create-plan" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#difference-calculation" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>

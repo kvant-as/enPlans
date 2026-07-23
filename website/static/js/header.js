@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     //     }, { passive: true });
     // });
 
-    document.querySelectorAll('.modal-table-conteiner').forEach(el => {
+    document.querySelectorAll('.modal-table-conteiner', '.stat-log-textarea').forEach(el => {
         el.addEventListener('wheel', (e) => {
             e.stopPropagation();
         }, { passive: true });

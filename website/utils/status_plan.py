@@ -136,7 +136,7 @@ def handle_control_status(plan):
         db.session.commit()
         
         current_app.logger.info(f"План {plan.id} успешно прошел проверку на контроль")
-        return "План прошел проверку на контроль."
+        return "План прошел проверку на контроль"
         
     except Exception as e:
         current_app.logger.error(f"Критическая ошибка в handle_control_status для плана {plan.id if hasattr(plan, 'id') else 'unknown'}: {e}", exc_info=True)

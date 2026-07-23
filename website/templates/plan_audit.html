@@ -337,7 +337,21 @@
     const counter = document.querySelector('.char-counter');
     if (!counter) return;
     
+    const sendButton = document.getElementById('sent_mesPlanButton');
+    if (!sendButton) return;
+    
     const maxLength = parseInt(textarea.getAttribute('maxlength')) || 500;
+    
+    function updateButtonState() {
+        const hasText = textarea.value.trim().length > 0;
+        if (hasText) {
+            sendButton.removeAttribute('disabled');
+            sendButton.classList.remove('disabled');
+        } else {
+            sendButton.setAttribute('disabled', 'disabled');
+            sendButton.classList.add('disabled');
+        }
+    }
     
     function updateCounter() {
         const currentLength = textarea.value.length;
@@ -363,6 +377,7 @@
     textarea.addEventListener('input', function() {
         updateCounter();
         autoResize();
+        updateButtonState();
     });
     
     textarea.addEventListener('focus', function() {
@@ -371,6 +386,7 @@
     
     updateCounter();
     autoResize();
+    updateButtonState();
 });
 </script>
 {% endblock %}

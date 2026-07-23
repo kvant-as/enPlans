@@ -28,6 +28,7 @@ const messageFlash = (function() {
     let container;
     let messages = []; 
     const DISPLAY_TIME = 30000; 
+    let autoRemoveTimers = {};
 
     function init() {
         container = document.getElementById(containerId);
@@ -47,7 +48,8 @@ const messageFlash = (function() {
 
     function _showMessage(msgObj) {
         const alertBox = document.createElement('div');
-        alertBox.className = `custom-alert ${msgObj.type === 'error' ? 'alert-danger' : 'alert-success'} collapsed`;
+        alertBox.className = `custom-alert ${msgObj.type === 'error' ? 'alert-danger' : 'alert-success'}`;
+        alertBox.dataset.msgId = msgObj.id;
 
         const imgSrc = msgObj.type === 'error'
             ? '/static/img/Error.svg'
@@ -79,7 +81,7 @@ const messageFlash = (function() {
                     hintElement.textContent = 'нажмите для сворачивания';
                     alertBox.classList.remove('collapsed');
                     alertBox.classList.add('expanded');
-                } else if (alertBox.classList.contains('expanded')) {
+                } else {
                     pElement.textContent = displayText;
                     hintElement.textContent = 'нажмите для развертывания';
                     alertBox.classList.remove('expanded');
@@ -93,46 +95,83 @@ const messageFlash = (function() {
             removeMessage(alertBox, msgObj);
         });
 
-        container.appendChild(alertBox);
+        container.insertBefore(alertBox, container.firstChild);
 
-        const now = Date.now();
-        const elapsed = now - msgObj.createdAt;
-        const remaining = Math.max(DISPLAY_TIME - elapsed, 0);
+        const timerId = setTimeout(() => {
+            if (container.contains(alertBox)) {
+                removeMessage(alertBox, msgObj);
+            }
+        }, DISPLAY_TIME);
+        
+        autoRemoveTimers[msgObj.id] = timerId;
 
-        if (remaining > 0) {
-            setTimeout(() => {
-                if (container.contains(alertBox)) {
-                    removeMessage(alertBox, msgObj);
-                }
-            }, remaining);
-        } else {
-            removeMessage(alertBox, msgObj);
-        }
+        updateMessagesDisplay();
     }
 
     function removeMessage(alertBox, msgObj) {
+        if (autoRemoveTimers[msgObj.id]) {
+            clearTimeout(autoRemoveTimers[msgObj.id]);
+            delete autoRemoveTimers[msgObj.id];
+        }
+
         alertBox.classList.add('removing');
         setTimeout(() => {
             if (container.contains(alertBox)) container.removeChild(alertBox);
-            messages = messages.filter(m => m.msg !== msgObj.msg);
+            messages = messages.filter(m => m.id !== msgObj.id);
             localStorage.setItem('flashMessages', JSON.stringify(messages));
-            renderMessages();
+            updateMessagesDisplay();
         }, 300);
     }
 
     function addMessage(msg, type='success') {
-        const msgObj = { msg, type, createdAt: Date.now() };
-        messages.push(msgObj);
+        const msgObj = { 
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            msg, 
+            type, 
+            createdAt: Date.now() 
+        };
+        messages.unshift(msgObj);
         localStorage.setItem('flashMessages', JSON.stringify(messages));
-        renderMessages();
+        _showMessage(msgObj);
     }
 
     function renderMessages() {
         container.innerHTML = '';
-        messages.forEach(_showMessage);
-        container.querySelectorAll('.custom-alert').forEach((el, index) => {
-            if (index !== container.children.length - 1) {
-                el.classList.add('collapsed');
+        Object.keys(autoRemoveTimers).forEach(key => {
+            clearTimeout(autoRemoveTimers[key]);
+            delete autoRemoveTimers[key];
+        });
+
+        messages.sort((a, b) => b.createdAt - a.createdAt);
+        messages.forEach(msg => _showMessage(msg));
+    }
+
+    function updateMessagesDisplay() {
+        const alerts = container.querySelectorAll('.custom-alert');
+        
+        alerts.forEach((alert, index) => {
+            const pElement = alert.querySelector('.p_message_cont p');
+            const hintElement = alert.querySelector('.expand-hint');
+            const msgObj = messages.find(m => m.id === alert.dataset.msgId);
+            
+            if (index === 0) {
+                alert.classList.remove('collapsed');
+                alert.classList.add('expanded');
+                if (msgObj && msgObj.msg.length > 80) {
+                    pElement.textContent = msgObj.msg;
+                    if (hintElement) {
+                        hintElement.textContent = 'нажмите для сворачивания';
+                    }
+                }
+            } else {
+                alert.classList.add('collapsed');
+                alert.classList.remove('expanded');
+                if (msgObj && msgObj.msg.length > 80) {
+                    pElement.textContent = msgObj.msg.substring(0, 80) + '...';
+                    if (hintElement) {
+                        hintElement.textContent = 'нажмите для развертывания';
+                    }
+                }
             }
         });
     }
