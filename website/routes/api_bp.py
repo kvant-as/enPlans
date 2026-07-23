@@ -314,6 +314,9 @@ def get_indicators_data(token):
             'coeff_prev': float(row.coeff_prev) if row.coeff_prev else None,
             'coeff_current': float(row.coeff_current) if row.coeff_current else None,
             
+            'is_local': row.indicator.is_local,
+            'is_renewable': row.indicator.is_renewable,
+            
             'QYearBeforePrev_unit': QYearBeforePrev_unit,
             'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
 
@@ -558,10 +561,10 @@ def get_stat_data(organization_id):
             '1000': {'report': '12-tek', 'row': '110', 'col': '1'},
             '1104': {'report': '12-tek', 'row': '110', 'col': '2'},
             '1105': {'report': '12-tek', 'row': '110', 'col': '3'},
-            '9900': {'report': '12-tek', 'row': '110', 'col': '5'},
+            # '9900': {'report': '12-tek', 'row': '110', 'col': '5'},
             '1404': {'report': '12-tek', 'row': '140', 'col': '5'},
             '1424': {'report': '12-tek', 'row': '142', 'col': '5'},
-            '9915': {'report': '12-tek', 'row': '110', 'col': '4'},
+            # '9915': {'report': '12-tek', 'row': '110', 'col': '4'},
             '1405': {'report': '12-tek', 'row': '140', 'col': '4'},
             '1425': {'report': '12-tek', 'row': '142', 'col': '4'},
             '260': {'report': '12-tek', 'row': '260', 'col': '1'},

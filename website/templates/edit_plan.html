@@ -1,10 +1,10 @@
 {% extends "base.html" %} {% block title %}{{ _('Обзор') }} - EnPlans{% endblock
 %} {% block content %}
 
-{{ component.back_header(plan, current_user) }}
 
 <div class="pers-page">
-  <div class="personal-acc-conteiner" style="margin-top: 15px;">
+  {{ component.back_header(plan, current_user) }}
+  <div class="personal-acc-conteiner" style="margin-top: 140px;">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name">{{ _('Редактирование плана') }}</a>

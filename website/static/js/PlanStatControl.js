@@ -144,7 +144,7 @@ class PlanStatControl {
         
         this.logContainer.innerHTML = `
             <div class="stat-log-header">
-                <span class="stat-log-title">Логи контроля</span>
+                <span class="stat-log-title">Информация</span>
                 <button class="stat-log-clear-btn" title="Очистить логи">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 6L6 18"/>
@@ -517,9 +517,7 @@ class PlanStatControl {
                 <span>·</span>
                 <span id="stat-report-display"></span>
             </div>
-            <div class="tooltip-plan">
-                План: <strong id="stat-plan-display"></strong>
-            </div>
+          
         `;
         
         document.body.appendChild(this.tooltipElement);
@@ -532,13 +530,12 @@ class PlanStatControl {
         const yearDisplay = this.tooltipElement.querySelector('#stat-year-display');
         const codeDisplay = this.tooltipElement.querySelector('#stat-code-display');
         const reportDisplay = this.tooltipElement.querySelector('#stat-report-display');
-        const planDisplay = this.tooltipElement.querySelector('#stat-plan-display');
-        
+
         valueDisplay.textContent = statValue;
         yearDisplay.textContent = year;
         codeDisplay.textContent = `Код ${code}`;
         reportDisplay.textContent = report;
-        planDisplay.textContent = planValue;
+       
         
         this.tooltipElement.style.display = 'block';
         this.updateTooltipPosition(event);

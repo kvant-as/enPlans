@@ -2838,9 +2838,6 @@ class ExportPlansLoader {
             modal.className = 'export-progress-modal';
             modal.innerHTML = `
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h1>Формирование архива</h1>
-                    </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar-fill"></div>
                     </div>
@@ -3089,29 +3086,32 @@ document.addEventListener('DOMContentLoaded', function() {
         initEditableHeaders();
     }
     
-    const selectAllBtn = document.getElementById('selectAllBtn');
-    if (selectAllBtn) {
-        window.exportPlansLoader = new ExportPlansLoader({
-            initialStatus: window.initialStatus || 'all',
-            initialYear: window.initialYear || 'all',
-            perPage: 5,
-            containerId: 'plans-container',
-            loadMoreBtnId: 'load-more-btn',
-            searchNameId: 'search-name',
-            searchYnp: 'search-ynp',
-            selectAllId: 'selectAllBtn',
-            exportFormId: 'exportForm'
-        });
-    } else {
-        window.plansLoader = new PlansLoader({
-            initialStatus: window.initialStatus || 'all',
-            initialYear: window.initialYear || 'all',
-            perPage: 5,
-            containerId: 'plans-container',
-            loadMoreBtnId: 'load-more-btn',
-            searchNameId: 'search-name',
-            searchYnp: 'search-ynp'
-        });
+    const plans_container = document.getElementById('plans-container');
+    if(plans_container){
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        if (selectAllBtn) {
+            window.exportPlansLoader = new ExportPlansLoader({
+                initialStatus: window.initialStatus || 'all',
+                initialYear: window.initialYear || 'all',
+                perPage: 5,
+                containerId: 'plans-container',
+                loadMoreBtnId: 'load-more-btn',
+                searchNameId: 'search-name',
+                searchYnp: 'search-ynp',
+                selectAllId: 'selectAllBtn',
+                exportFormId: 'exportForm'
+            });
+        } else {
+            window.plansLoader = new PlansLoader({
+                initialStatus: window.initialStatus || 'all',
+                initialYear: window.initialYear || 'all',
+                perPage: 5,
+                containerId: 'plans-container',
+                loadMoreBtnId: 'load-more-btn',
+                searchNameId: 'search-name',
+                searchYnp: 'search-ynp'
+            });
+        }
     }
 
     const formEventeForm = document.getElementById('editEventeForm');
