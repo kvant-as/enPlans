@@ -3,7 +3,7 @@
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user, show_plan_info=False, back_url='/profile', plan_text = ('Редактирование профиля')) }}
-  <div class="personal-acc-conteiner" style="margin-top: 15px;">
+  <div class="personal-acc-conteiner" style="margin-top: 140px;">
     <a class="name">{{ _('Редактирование профиля') }}</a>
 
     <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">

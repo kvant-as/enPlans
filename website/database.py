@@ -109,7 +109,6 @@ def filling_database(db):
         from .models import User, Organization, Unit, Direction, Indicator, Region, News
         current_app.logger.debug('Filling is in progress...')
 
-
         ### REGION DATA ###
         region_data = [
             (1, 'Брестская область'),
@@ -303,21 +302,21 @@ def filling_database(db):
                 current_app.logger.info('The migration of organizations has been successfully completed')
             except Exception as e:
                 current_app.logger.error(f'Migration error: {str(e)}')
-                db.session.rollback()
-                
-        ### ----------- ###
+                db.session.rollback()       
         
         org_migration()
+        ### ----------- ###
 
         ### USER DATA ###
         users_data = [
-            ('', os.getenv('adminemail1'), os.getenv('adminname1'), os.getenv('adminsecondname1'), os.getenv('adminpatr1'), os.getenv('adminphone1'), True, False, 54),
-            ('', os.getenv('adminemail2'), os.getenv('adminname2'), os.getenv('adminsecondname2'), os.getenv('adminpatr2'), os.getenv('adminphone2'), False, False, 290),
-
-            ('', os.getenv('testuser'), 'Иванов', 'Иван', 'Иванович', '+375173382562', False, False, 413),
-            ('', os.getenv('auditoremailNadzor'), 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 124),
-
-            ('', 'testrespondent@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, False, 290),
+            ('', os.getenv('admin_email'), os.getenv('admin_name'), os.getenv('admin_secondname'), os.getenv('admin_patr'), os.getenv('admin_phone'), True, False, 54),
+            ('', os.getenv('testuser_email_1'), os.getenv('testuser_name_1'), os.getenv('testuser_secondname_1'), os.getenv('testuser_patr_1'), os.getenv('testuser_phone_1'), False, False, 290),
+            ('', os.getenv('testuser_email_2'), os.getenv('testuser_name_2'), os.getenv('testuser_secondname_2'), os.getenv('testuser_patr_2'), os.getenv('testuser_phone_2'), False, False, 290),
+            
+            
+            ('', os.getenv('testuserdepart_email_1'), os.getenv('testuserdepart_name_1'), os.getenv('testuserdepart_secondname_1'), os.getenv('testuserdepart_patr_1'), os.getenv('testuserdepart_phone_1'), False, False, 290),
+            ('', os.getenv('testuserdepart_email_2'), os.getenv('testuserdepart_name_2'), os.getenv('testuserdepart_secondname_2'), os.getenv('testuserdepart_patr_2'), os.getenv('testuserdepart_phone_2'), False, False, 290),
+            
             
             ('', 'testauditorMinskobl@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 783),
             ('', 'testauditorGancevichi@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 728),
@@ -326,10 +325,10 @@ def filling_database(db):
         ]
 
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
-            if email == os.getenv('testuser'):
-                password = os.getenv('testuserpass')
-            elif email == os.getenv('auditoremailNadzor'):
-                password = os.getenv('auditoremailNadzorpass')
+            if email == os.getenv('testuserdepart_email_1'):
+                password = os.getenv('testuserdepart_pass_1')
+            elif email == os.getenv('testuserdepart_email_2'):
+                password = os.getenv('testuserdepart_pass_2')
             else:
                 password = os.getenv('userpass')
             
@@ -354,8 +353,8 @@ def filling_database(db):
             (1, 'т у.т.'),
             (2, 'тонн'),
             (3, 'тыс. куб. м'),
-            (4, 'т. усл. влажн.'),
-            (5, 'пл. куб. м'),
+            (4, 'т усл. влажн.'),
+            (5, 'плотн. куб. м'),
             (6, 'тыс. кВт · ч'),
             (7, 'Гкал'),
             (8, 'шт.'),
@@ -519,7 +518,7 @@ def filling_database(db):
 
         ### Indicator DATA ###
         indicator_data = [
-            (1, '1000', 'Котельно-печное топливо израсходовано всего, в том числе', 1.000, True, 1, 1, False, False),
+            (1, '1000', 'Котельно-печное топливо (КПТ), израсходовано всего, в том числе:', 1.000, True, 1, 1, False, False),
             
             (3, '2000', 'газ природный', 1.150, False, 1, 2, False, False),
             (2, '2001', 'мазут топочный', 1.370, False, 1, 3, False, False),
@@ -532,7 +531,8 @@ def filling_database(db):
             (1, '2008', 'метано-водородная фракция производства полиэтилена', 1.000, False, 1, 10, False, False),
             (1, '2009', 'отработанные нефтепродукты', 1.000, False, 1, 11, False, False),
             (3, '2010', 'газ природный попутный', 1.300, False, 1, 12, True, False),  # is_local = True
-            (4, '2011', 'торф топливный фрезерный и кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2011', 'торф топливный фрезерный', 0.340, False, 1, 13, True, False),  # is_local = True
+            (4, '2025', 'торф топливный кусковой', 0.340, False, 1, 13, True, False),  # is_local = True
             (4, '2012', 'брикеты и полубрикеты торфяные', 0.600, False, 1, 14, True, False),  # is_local = True
             (1, '2013', 'использованные автопокрышки', 1.000, False, 1, 15, True, False),  # is_local = True
             (1, '2014', 'биогаз', 1.000, False, 1, 16, False, True),  # is_renewable = True
@@ -551,11 +551,11 @@ def filling_database(db):
             (1, '1796', 'из него местные виды топлива и отходы', 1.000, True, 1.1, 3, False, False),
             (1, '1797', 'из них возобновляемые', 1.000, True, 1.2, 4, False, False),
             
-            (6, '1105', 'Электроэнергия израсходовано всего', 0.123, True, 2, 5, False, False),
-            (6, '1405', 'Электроэнергия, выработанная собственными энергоисточниками, в том числе', 0.123, True, 2, 6, False, False),
+            (6, '1105', 'Электроэнергия, израсходовано всего', 0.123, True, 2, 5, False, False),
+            (6, '1405', 'Электроэнергия, выработанная собственными энергоисточниками, в том числе:', 0.123, True, 2, 6, False, False),
             (6, '1425', 'энергия воды, ветра, солнца, геотермальных источников', 0.123, True, 2, 7, False, False),
-            (7, '1104', 'Теплоэнергия израсходовано всего', 0.143, True, 3, 8, False, False),
-            (7, '1404', 'Теплоэнергия, произведенная собственными энергоисточниками, в том числе', 0.143, True, 3, 9, False, False),
+            (7, '1104', 'Теплоэнергия, израсходовано всего', 0.143, True, 3, 8, False, False),
+            (7, '1404', 'Теплоэнергия, произведенная собственными энергоисточниками, в том числе:', 0.143, True, 3, 9, False, False),
             (7, '1424', 'энергия воды, ветра, солнца, геотермальных источников', 0.143, True, 3, 10, False, False),
             (1, '260', 'Суммарное потребление ТЭР', 1.000, True, 4, 11, False, False),
             
@@ -587,18 +587,12 @@ def filling_database(db):
         db.session.commit()
         
         news_data = [
-            ('Формирование планов мероприятий по энергосбережению', 
-            'Автоматизированный комплекс для создания и представления для согласования планов мероприятий по энергосбережению организаций. Система позволяет формировать планы, отслеживать их выполнение и получать аналитические отчеты по энергоэффективности.', 
+            ('Начало тестирования', 
+            'EnPlans - инструмент для управления энергосбережением. Начинаем тестирование системы, которая автоматизирует создание планов мероприятий, контроль их исполнения и подготовку аналитики по энергоэффективности организаций. Перед началом работы ознакомьтесь с руководством пользователя в разделе Помощь.', 
             'update_v2.png', 
             True, 
             TimeByMinsk(), 
             1),
-            # ('Новый дизайн интерфейса', 
-            # 'Представляем обновлённый дизайн личного кабинета и навигации. Интерфейс стал более удобным и интуитивно понятным.', 
-            # 'design.png', 
-            # True, 
-            # TimeByMinsk(), 
-            # 1),
         ]
 
         for title, content, image_url, is_published, published_at, views_count in news_data:
@@ -619,6 +613,5 @@ def filling_database(db):
             import_stat_files(db)
         except Exception as e:
             current_app.logger.error(f'Ошибка при импорте статистических файлов: {str(e)}')
-        
     else:
         current_app.logger.debug('The database already contains the data!')

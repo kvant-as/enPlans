@@ -16,12 +16,13 @@
 
 {% set can_cancel = (user_has_viewed_current and (not next_path or not next_path.is_viewed)) or plan.is_error or plan.is_approved %}
 
-{% set can_change_status = can_audit and plan.afch %} 
+{% set can_change_status = can_audit and plan.afch %}
+{% set can_change_status_appr = can_audit %} 
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
   {{ component.plan_navigation_header('audit', plan, current_user) }}
-  <div class="personal-acc-conteiner">
+  <div class="personal-acc-conteiner planed">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name" style="padding-bottom: 0">{{ _('Проверка плана мероприятий по энергосбережению') }}</a>
@@ -43,13 +44,23 @@
                         <span>{{ _('Отменить изменения') }}</span>
                     </button>
                   </form>
+                  <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button 
+                        type="submit"
+                        class="nav-menu-item {% if not plan.tickets %}disabled{% endif %}"
+                        {% if not plan.tickets %}disabled{% endif %}>
+                        {{ icons.icon_print() }}
+                        <span>{{ _('Распечатать сообщения') }}</span>
+                    </button>
+                  </form>
                 </div>
             </div>
         </div>
       </div>
     </div>
 
-    <div class = "plan-menu">
+    <div class = "plan-menu" style="margin-bottom: 15px;">
       <div class="menu-conteiner">
         <div class="menu-conteiner-btns">
           <form id="to_deletePlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
@@ -73,8 +84,8 @@
               <button
                   id="confirmPlanButton"
                   type="submit"
-                  class="element {% if not can_change_status %}non{% endif %}"
-                  {% if not can_change_status %}disabled{% endif %}>
+                  class="element {% if not can_change_status_appr %}non{% endif %}"
+                  {% if not can_change_status_appr %}disabled{% endif %}>
                   <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
                   <span class="btn-text">
                       {% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
@@ -110,10 +121,10 @@
         <button
           id="sent_mesPlanButton"
           type="submit"
-          class="sent-message-btn blue"
+          class="chat-btn"
         >
-          {{ icons.icon_send() }}
-          <span>{{ _('Отправить') }}</span>
+          {{ icons.icon_chatbtn() }}
+          <span class="btn-text">Отправить</span>
         </button>
       </div>
     </form>
@@ -326,7 +337,21 @@
     const counter = document.querySelector('.char-counter');
     if (!counter) return;
     
+    const sendButton = document.getElementById('sent_mesPlanButton');
+    if (!sendButton) return;
+    
     const maxLength = parseInt(textarea.getAttribute('maxlength')) || 500;
+    
+    function updateButtonState() {
+        const hasText = textarea.value.trim().length > 0;
+        if (hasText) {
+            sendButton.removeAttribute('disabled');
+            sendButton.classList.remove('disabled');
+        } else {
+            sendButton.setAttribute('disabled', 'disabled');
+            sendButton.classList.add('disabled');
+        }
+    }
     
     function updateCounter() {
         const currentLength = textarea.value.length;
@@ -352,6 +377,7 @@
     textarea.addEventListener('input', function() {
         updateCounter();
         autoResize();
+        updateButtonState();
     });
     
     textarea.addEventListener('focus', function() {
@@ -360,6 +386,7 @@
     
     updateCounter();
     autoResize();
+    updateButtonState();
 });
 </script>
 {% endblock %}

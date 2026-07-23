@@ -152,12 +152,13 @@ class Plan(db.Model):
     user = db.relationship("User", back_populates="plans")
     organization = db.relationship("Organization", foreign_keys=[org_id], back_populates="plans")
 
+
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)
     begin_time = db.Column(db.DateTime)
     luck = db.Column(db.Boolean, default=False)
-    is_owner = db.Column(db.Boolean, default=False)
+    is_system = db.Column(db.Boolean, default=False)
     note = db.Column(db.String(500), nullable=False)
     plan_id = db.Column(db.Integer, db.ForeignKey('plans.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))

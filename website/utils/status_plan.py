@@ -1,5 +1,6 @@
 from datetime import timedelta
 from flask import current_app
+from flask_login import current_user
 from ..models import db, Plan, Ticket, Notification, PlanApprovalPath, Organization, TimeByMinsk
   
 def handle_draft_status(plan):
@@ -135,7 +136,7 @@ def handle_control_status(plan):
         db.session.commit()
         
         current_app.logger.info(f"План {plan.id} успешно прошел проверку на контроль")
-        return "План прошел проверку на контроль."
+        return "План прошел проверку на контроль"
         
     except Exception as e:
         current_app.logger.error(f"Критическая ошибка в handle_control_status для плана {plan.id if hasattr(plan, 'id') else 'unknown'}: {e}", exc_info=True)
@@ -211,6 +212,14 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
 
 def handle_sent_without_check_status(plan, current_user):
     try:
+        current_path = PlanApprovalPath.query.filter_by(
+            plan_id=plan.id,
+            is_viewed=False
+        ).order_by(PlanApprovalPath.step_order).first()
+        
+        # if current_path and current_path.organization_id != current_user.organization_id:
+        #     return {'error': 'У вас нет прав для отмены изменений на этом этапе'}
+        
         plan.is_sent = True
         plan.is_draft = False
         plan.is_control = False
@@ -232,7 +241,7 @@ def handle_sent_without_check_status(plan, current_user):
                 ticket = Ticket(
                     note="Проверка отменена. План возвращен на этап рассмотрения.",
                     luck=True,
-                    is_owner=True,
+                    is_system=True,
                     plan_id=plan.id,
                     begin_time=TimeByMinsk()
                 )
@@ -252,7 +261,7 @@ def handle_sent_without_check_status(plan, current_user):
             ticket = Ticket(
                 note="Отмена изменений. Все шаги согласования сброшены, план возвращен в изначальный статус.",
                 luck=True,
-                is_owner=True,
+                is_system=True,
                 plan_id=plan.id,
                 begin_time=TimeByMinsk()
             ) 
@@ -260,14 +269,14 @@ def handle_sent_without_check_status(plan, current_user):
             
             notification = Notification(
                 user_id=plan.user_id,
-                message=f"План {plan.year} возвращен в статус рассмотрения. Все шаги согласования сброшены.",
+                message=f"План {plan.year} возвращен в статус рассмотрения.",
                 created_at=TimeByMinsk()
             )
             db.session.add(notification)
         
         db.session.commit()
         
-        return {'message': 'План возвращен в изначальное состояние. Все шаги согласования сброшены.'}
+        return {'message': 'План возвращен в изначальное состояние.'}
         
     except Exception as e:
         db.session.rollback()
@@ -289,8 +298,8 @@ def handle_error_status(plan):
         ticket = Ticket(
             note="В плане нашли ошибки, статус изменен на Есть ошибки.",
             luck=True,
-            is_owner=True,
             plan_id=plan.id,
+            user_id=current_user.id,
             begin_time=TimeByMinsk(),
         )
         db.session.add(ticket)
@@ -313,9 +322,6 @@ def handle_approved_status(plan, current_user):
     try:
         if not current_user.organization_id:
             return {'error': 'У пользователя не указана организация'}
-        
-        if not plan.afch:
-            return {'error': 'Сначала необходимо отправить сообщение с замечаниями или подтверждением'}
         
         current_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
@@ -357,7 +363,8 @@ def handle_approved_status(plan, current_user):
             ticket = Ticket(
                 note="План согласован и утвержден",
                 luck=True,
-                is_owner=True,
+                is_system=True,
+                user_id=current_user.id,
                 plan_id=plan.id,
                 begin_time=TimeByMinsk()
             )
@@ -375,7 +382,7 @@ def handle_approved_status(plan, current_user):
             ticket = Ticket(
                 note="План был согласован и передан в следующую стадию проверки.",
                 luck=True,
-                is_owner=True,
+                user_id=current_user.id,
                 plan_id=plan.id,
                 begin_time=TimeByMinsk()
             )

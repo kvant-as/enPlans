@@ -160,7 +160,7 @@
                                 <th>Код</th>
                                 <th>Наименование</th>
                                 <th style="text-align: center;">Ед. изм.</th>
-                                <th style="text-align: center;">Коэф.</th>
+                                <th style="text-align: center;">Коэфф.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -191,6 +191,7 @@
                         <div class="selected-indicator-info">
                             <div class="selected-indicator-label">Выбранный показатель</div>
                             <div class="selected-indicator-name" id="selected-indicator-name">-</div>
+                            <div class="selected-indicator-name" id="selected-indicator-code" style="display: none;" ></div>
                         </div>
                     </div>
                     
@@ -209,22 +210,22 @@
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="none" checked>
                                 <div class="category-option-content">
-                                    <div class="category-option-title">Никчему не относится</div>
-                                    <div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>
+                                    <div class="category-option-title">Импортируемые виды топлива</div>
+                                    {#<div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>#}
                                 </div>
                             </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="local">
                                 <div class="category-option-content">
                                     <div class="category-option-title">Местные виды топлива и отходы</div>
-                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                    {#<div class="category-option-desc">Топливо, произведенное на территории области</div>#}
                                 </div>
                             </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="renewable">
                                 <div class="category-option-content">
                                     <div class="category-option-title">Возобновляемые источники энергии</div>
-                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                    {#<div class="category-option-desc">Энергия из возобновляемых источников</div>#}
                                 </div>
                             </label>
                         </div>
@@ -242,7 +243,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-before">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_before" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="coeff-display-before" value="0,000" 
@@ -260,7 +261,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-prev">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_prev" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="coeff-display-prev" value="0,000" 
@@ -278,7 +279,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-current">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_current" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="coeff-display-current" value="0,000" 
@@ -346,22 +347,22 @@
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="none" checked>
                                 <div class="category-option-content">
-                                    <div class="category-option-title">Никчему не относится</div>
-                                    <div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>
+                                    <div class="category-option-title">Импортируемые виды топлива</div>
+                                    {#<div class="category-option-desc">Показатель не относится к местным видам топлива или возобновляемым источникам энергии</div>#}
                                 </div>
                             </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="local">
                                 <div class="category-option-content">
                                     <div class="category-option-title">Местные виды топлива и отходы</div>
-                                    <div class="category-option-desc">Топливо, произведенное на территории области</div>
+                                    {#<div class="category-option-desc">Топливо, произведенное на территории области</div>#}
                                 </div>
                             </label>
                             <label class="category-option">
                                 <input type="radio" name="fuel_category" value="renewable">
                                 <div class="category-option-content">
                                     <div class="category-option-title">Возобновляемые источники энергии</div>
-                                    <div class="category-option-desc">Энергия из возобновляемых источников</div>
+                                    {#<div class="category-option-desc">Энергия из возобновляемых источников</div>#}
                                 </div>
                             </label>
                         </div>
@@ -379,7 +380,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-before-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_before" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="edit-coeff-display-before" value="0,000" 
@@ -397,7 +398,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-prev-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_prev" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="edit-coeff-display-prev" value="0,000" 
@@ -415,7 +416,7 @@
                                 </div>
                                 <div class="value-unit" id="unit-name-current-edit">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
-                                    <span class="coeff-label">Коэф:</span>
+                                    <span class="coeff-label">Коэфф:</span>
                                     <input type="text" name="custom_coeff_current" 
                                            class="coeff-input-display app-numeric-input-coeff" 
                                            id="edit-coeff-display-current" value="0,000" 
