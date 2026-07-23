@@ -310,8 +310,14 @@ def filling_database(db):
         ### USER DATA ###
         users_data = [
             ('', os.getenv('admin_email'), os.getenv('admin_name'), os.getenv('admin_secondname'), os.getenv('admin_patr'), os.getenv('admin_phone'), True, False, 54),
-            ('', os.getenv('testuser_email'), os.getenv('testuser_name'), os.getenv('testuser_secondname'), os.getenv('testuser_patr'), os.getenv('testuser_phone'), False, False, 290),
+            ('', os.getenv('testuser_email_1'), os.getenv('testuser_name_1'), os.getenv('testuser_secondname_1'), os.getenv('testuser_patr_1'), os.getenv('testuser_phone_1'), False, False, 290),
+            ('', os.getenv('testuser_email_2'), os.getenv('testuser_name_2'), os.getenv('testuser_secondname_2'), os.getenv('testuser_patr_2'), os.getenv('testuser_phone_2'), False, False, 290),
+            
+            
             ('', os.getenv('testuserdepart_email_1'), os.getenv('testuserdepart_name_1'), os.getenv('testuserdepart_secondname_1'), os.getenv('testuserdepart_patr_1'), os.getenv('testuserdepart_phone_1'), False, False, 290),
+            ('', os.getenv('testuserdepart_email_2'), os.getenv('testuserdepart_name_2'), os.getenv('testuserdepart_secondname_2'), os.getenv('testuserdepart_patr_2'), os.getenv('testuserdepart_phone_2'), False, False, 290),
+            
+            
             ('', 'testauditorMinskobl@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 783),
             ('', 'testauditorGancevichi@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 728),
             ('', 'testauditorNesvig@gmail.com', 'Иванов', 'Иван', 'Иванович', '+375173385051', False, True, 792),
@@ -321,6 +327,8 @@ def filling_database(db):
         for post, email, first_name, last_name, patronymic_name, phone, is_admin, is_auditor, organization_id in users_data:
             if email == os.getenv('testuserdepart_email_1'):
                 password = os.getenv('testuserdepart_pass_1')
+            elif email == os.getenv('testuserdepart_email_2'):
+                password = os.getenv('testuserdepart_pass_2')
             else:
                 password = os.getenv('userpass')
             
