@@ -6,12 +6,13 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script>
-      // Применяем тему до отрисовки страницы, чтобы не было "мигания" светлой темой.
+      // Применяем тему до отрисовки страницы, чтобы не было "мигания".
+      // По умолчанию — светлая тема, независимо от системных настроек;
+      // тёмная включается только явным выбором пользователя (переключатель).
       (function () {
         try {
           var saved = localStorage.getItem('enplans-theme');
-          var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.setAttribute('data-theme', saved || 'light');
         } catch (e) {}
       })();
     </script>
@@ -91,13 +92,11 @@
                     {{ icons.icon_news() }}
                     <span class="tooltip-text">{{ _('Новости') }}</span>
                 </button>
-                {#
                 <button type="button" class="svg-btn tooltip-btn theme-toggle" id="themeToggle" style="margin: 0;">
                     {{ icons.icon_theme_sun() }}
                     {{ icons.icon_theme_moon() }}
                     <span class="tooltip-text">{{ _('Тема оформления') }}</span>
                 </button>
-                #}
                 
 
                 {#
@@ -346,8 +345,9 @@
                                 <div class="message-text">
                                     Добрый день! <br>
                                     Выберите, пожалуйста, отделение, соответствующее вашему вопросу:<br>
-                                    • <strong>Нет организации</strong> — если у вас нет организации или вопросы по регистрации<br>
+                                    • <strong>Нет организации</strong> — в программе нет вашей организации<br>
                                     • <strong>Заполнение плана</strong> — у вас возникли вопросы по заполнению плана<br>
+                                    • <strong>Изменить данные организации</strong> — наименование, ОКПО, УНП или регион<br>
                                     • <strong>Другое</strong> — все остальные вопросы
                                 </div>
                             </div>
@@ -362,6 +362,11 @@
                         <div class="chat-option" onclick="ChatModule.selectChatType('compl-plan')">
                             <div class="chat-option-info">
                                 <div class="chat-option-title">Заполнение плана</div>
+                            </div>
+                        </div>
+                        <div class="chat-option" onclick="ChatModule.selectChatType('org-edit')">
+                            <div class="chat-option-info">
+                                <div class="chat-option-title">Изменить данные организации</div>
                             </div>
                         </div>
                         <div class="chat-option" onclick="ChatModule.selectChatType('dif')">

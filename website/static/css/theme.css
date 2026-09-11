@@ -2,9 +2,10 @@
    Тёмная тема EnPlans.
 
    Активируется атрибутом html[data-theme="dark"] (theme.js,
-   переключатель — кнопка #themeToggle в шапке). Без явного выбора
-   пользователя тема следует системной (prefers-color-scheme) и
-   обновляется на лету при её смене.
+   переключатель — кнопка #themeToggle в шапке). По умолчанию — светлая
+   тема, системные настройки (prefers-color-scheme) не учитываются;
+   тёмная включается только явным выбором пользователя и запоминается
+   в localStorage.
 
    Как устроено:
    1) переопределяем "нейтральные" переменные base.css — фон, текст,
@@ -45,9 +46,6 @@ html[data-theme] select {
   transition: var(--theme-transition);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { color-scheme: dark; }
-}
 :root[data-theme="dark"] { color-scheme: dark; }
 
 /* ------------------------------------------------------------ *
@@ -65,7 +63,20 @@ html[data-theme] select {
   --placeholder-color: #6b7480;
   --table-titles-background: rgba(255, 255, 255, 0.04);
   --th-background: #1a1e24;
+  --border-color-th: #232830;
   --icon-back-gray: rgb(160, 160, 160);
+
+  /* было rgb(253, 253, 253) — все .app-input/.app-numeric-input-*
+     (в т.ч. plans-area, coeff-инпуты) иначе оставались белыми полями
+     на тёмной странице */
+  --background-grey-input: #1a1e24;
+  --color-readonly: rgba(255, 255, 255, 0.4);
+
+  /* используются в hero/features/contact (лендинг) и в .main-btn-outline —
+     не пересекаются с --text-title/--text-subtitle, отдельная пара */
+  --text: #eef1f5;
+  --text-secondary: #9aa3af;
+  --border: rgba(148, 184, 182, 0.35);
 
   --blur1: rgba(24, 28, 34, 0.55);
   --blur2: rgba(0, 0, 0, 0.35);
@@ -2056,4 +2067,88 @@ html[data-theme] select {
     radial-gradient(900px circle at 0% 0%, rgba(68, 204, 228, 0.22), transparent 55%),
     radial-gradient(900px circle at 100% 15%, rgba(68, 204, 228, 0.16), transparent 55%),
     radial-gradient(950px circle at 20% 100%, rgba(0, 121, 143, 0.28), transparent 55%);
+}
+
+/* ------------------------------------------------------------ *
+ * 14) Долив по конкретным запросам: contact-methods, plans-area,
+ * navigation-container, year-picker-panel, modal-header,
+ * modal-table-main-titles, app-input/app-numeric-input-coeff.
+ * Везде та же причина, что и в правиле 6 — var(--black)/var(--white)
+ * использованы как текст/поверхность точечно, сам var не трогаем.
+ * ------------------------------------------------------------ */
+
+/* website/static/css/base.css :: .contact-method (текст: var(--black)) */
+:root[data-theme="dark"] .contact-method {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .nav-text-mobile (текст: var(--black),
+   не подхватывается фиксом .nav-item .nav-text — отдельный класс) */
+:root[data-theme="dark"] .nav-text-mobile {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .year-picker-panel / .year-picker-trigger
+   (фон: var(--white)) */
+:root[data-theme="dark"] .year-picker-panel,
+:root[data-theme="dark"] .year-picker-trigger:focus-visible,
+:root[data-theme="dark"] .year-picker.open .year-picker-trigger {
+  background-color: #1b2027;
+}
+/* website/static/css/base.css :: .year-picker-option (текст: var(--black));
+   .selected/.disabled исключены — у них свой цвет (белый на зелёном /
+   приглушённый var(--color-readonly)), не должны терять его из-за
+   специфичности :root[data-theme] */
+:root[data-theme="dark"] .year-picker-option:not(.selected):not(.disabled) {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .modal-header (текст: var(--black)) */
+:root[data-theme="dark"] .modal-header {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .modal-table-main-titles /
+   .modal-table-main th:hover (текст: var(--black)) */
+:root[data-theme="dark"] .modal-table-main-titles,
+:root[data-theme="dark"] .modal-table-main th:hover {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .plan-cont:hover / .plan-org-name /
+   .plan-org-param — чёрные бордеры/иконка, невидимые на статусных
+   плашках в тёмной теме */
+:root[data-theme="dark"] .plan-cont:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+:root[data-theme="dark"] .plan-org-name,
+:root[data-theme="dark"] .plan-org-param {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+:root[data-theme="dark"] svg {
+  color: var(--text-title);
+}
+
+/* website/static/css/base.css :: .app-input / .app-numeric-input* —
+   фон уже тёмный (--background-grey-input, см. правило 1), но явного
+   цвета текста в base.css нет (расчёт на чёрный по умолчанию), а
+   focus-состояние сажает белый фон (var(--white)) поверх зелёной рамки.
+   :not([readonly]):not(.disabled) — чтобы не перебить более специфичное
+   правило .app-input[readonly] { color: var(--color-readonly) } из base.css */
+:root[data-theme="dark"] .app-input:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-coeff:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-negative:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-one-decimal:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-negative-one-decimal:not([readonly]):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-integer:not([readonly]):not(.disabled) {
+  color: var(--text-title);
+}
+:root[data-theme="dark"] .app-input:focus:not(.readonly):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input:focus:not(.readonly):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-negative:focus:not(.readonly):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-one-decimal:focus:not(.readonly):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-negative-one-decimal:focus:not(.readonly):not(.disabled),
+:root[data-theme="dark"] .app-numeric-input-integer:focus:not(.readonly):not(.disabled) {
+  background-color: #1b2027;
 }

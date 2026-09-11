@@ -9,7 +9,7 @@ from flask_login import (
 from common_models import current_utc_time
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan, validate_period_values
 from website.routes.auth import user_with_all_params
-from website.routes.views import owner_only
+from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
 from website.user import send_email
 
@@ -97,6 +97,7 @@ def plan_indicators(token):
 
 @plan_bp.route('/update-column-label/<token>', methods=['POST'])
 @login_required
+@reader_forbidden
 def api_update_column_label(token):
     try:
         from flask import current_app
@@ -288,6 +289,7 @@ def _indicator_action_response(token, message, category='success'):
 @login_required
 @owner_only
 @session_required
+@reader_forbidden
 def create_indicator(token):
     try:
         current_plan = g.current_plan
@@ -358,6 +360,7 @@ def create_indicator(token):
 @login_required
 @owner_only
 @session_required
+@reader_forbidden
 def edit_indicator(token):
     try:
         id_indicator = request.form.get('id_indicator')
@@ -431,6 +434,7 @@ def edit_indicator(token):
 @user_with_all_params()
 @login_required
 @session_required
+@reader_forbidden
 def delete_indicator(id):
     indicator = IndicatorUsage.query.get_or_404(id)
     current_plan = Plan.query.get_or_404(indicator.id_plan)
@@ -560,6 +564,7 @@ def _event_action_response(message, category='success', event_type=None, token=N
 @login_required
 @owner_only
 @session_required
+@reader_forbidden
 def create_event(token):
     current_plan = g.current_plan
     
@@ -602,6 +607,7 @@ def create_event(token):
 @user_with_all_params()
 @login_required
 @session_required
+@reader_forbidden
 def edit_event(id):
     try:
         current_app.logger.info(f'Starting edit event with id={id}')
@@ -750,6 +756,7 @@ def edit_event(id):
 @user_with_all_params()
 @login_required
 @session_required
+@reader_forbidden
 def delete_eventes(id):
     current_event = Event.query.get_or_404(id)
     current_plan = Plan.query.get_or_404(current_event.id_plan)
@@ -799,6 +806,7 @@ def delete_eventes(id):
 @user_with_all_params()
 @login_required
 @owner_only
+@reader_forbidden
 def api_change_plan_status(token):
     plan = Plan.query.filter_by(token=token).first()
     

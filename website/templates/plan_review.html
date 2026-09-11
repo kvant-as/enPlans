@@ -23,7 +23,7 @@
               <button
                 id="sentPlanButton"
                 class="nav-menu-item"
-                {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error %}
+                {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}
                   disabled
                 {% endif %}
               >
@@ -37,7 +37,7 @@
                 <button
                   type="submit"
                   class="nav-menu-item"
-                  {% if not (plan.is_sent == true and plan.user_id == current_user.id) %}
+                  {% if not (plan.is_sent == true and plan.user_id == current_user.id) or current_user.is_reader %}
                     disabled
                   {% endif %}
                 >
@@ -52,7 +52,7 @@
                 <button
                   id="controlPlanButton"
                   class="nav-menu-item"
-                  {% if not plan.is_draft or (plan.user_id != current_user.id) %}
+                  {% if not plan.is_draft or (plan.user_id != current_user.id) or current_user.is_reader %}
                     disabled
                   {% endif %}
                 >
@@ -80,7 +80,7 @@
               <button
                 class="nav-menu-item"
                 onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-                {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) %}
+                {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}
                   disabled
                 {% endif %}
               >
@@ -94,7 +94,7 @@
                   type="submit"
                   data-modal-trigger="deletePlan"
                   class="nav-menu-item delete-item"
-                  {% if plan.is_sent or plan.is_approved or (plan.user_id != current_user.id) %}
+                  {% if plan.is_sent or plan.is_approved or (plan.user_id != current_user.id) or current_user.is_reader %}
                     disabled
                   {% endif %}
                 >

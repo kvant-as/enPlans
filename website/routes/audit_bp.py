@@ -11,7 +11,7 @@ from io import BytesIO
 from flask import send_file
 import os
 
-from website.routes.views import owner_only
+from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
 from common_models import current_utc_time
 from website.models import Plan, PlanTicket, PlanApprovalPath
@@ -163,6 +163,7 @@ def print_tickets(token):
 @login_required
 @owner_only
 @session_required
+@reader_forbidden
 def create_ticket(token):
     current_plan = g.current_plan
     if not current_plan:

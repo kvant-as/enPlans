@@ -1,5 +1,6 @@
 """EnPlans admin — model registry for the shared engine (common_models.admin)."""
 
+from flask import url_for
 from werkzeug.security import generate_password_hash
 
 from common_models.admin import AdminSite, Field as F
@@ -30,6 +31,44 @@ def _news_on_save(obj, creating):
             obj.published_at = current_utc_time()
     else:
         obj.published_at = None
+
+
+def _support_chat_rows():
+    """Открытые обращения «Другое» из виджета виртуального помощника —
+    уходят живому администратору, минуя ИИ (см. routes/chat_bp.py и
+    routes/admin_support.py). Показываем последние на главной странице
+    админки, чтобы можно было сразу перейти и ответить."""
+    from .routes.chat_bp import SUPPORT_CHAT_TYPE
+
+    rows = []
+    chats = (
+        Chat.query.filter_by(chat_type=SUPPORT_CHAT_TYPE)
+        .order_by(Chat.updated_at.desc())
+        .limit(12)
+        .all()
+    )
+    for c in chats:
+        last = (
+            ChatMessage.query.filter_by(chat_id=c.id)
+            .order_by(ChatMessage.created_at.desc())
+            .first()
+        )
+        preview = (last.content or "") if last else ""
+        if len(preview) > 90:
+            preview = preview[:90].rstrip() + "…"
+        author = c.created_by
+        if author:
+            full = f"{author.last_name or ''} {author.first_name or ''}".strip()
+            name = author.fio or full or author.email or f"Чат №{c.id}"
+        else:
+            name = f"Чат №{c.id}"
+        rows.append({
+            "title": name,
+            "subtitle": preview,
+            "meta": c.updated_at.strftime("%d.%m %H:%M") if c.updated_at else "",
+            "url": url_for("admin_support.thread", chat_id=c.id),
+        })
+    return rows
 
 # --------------------------------------------------------------------------- #
 #  Основные
@@ -350,6 +389,13 @@ site.dashboard(
     greeting_attr="first_name",
     stats=["news", "plan", "user", "organization"],
     online_count=lambda: count_online("enplans"),
+    panels=[
+        {
+            "title": "Обращения «Другое»",
+            "rows": _support_chat_rows,
+            "empty": "Открытых обращений нет",
+        },
+    ],
     actions=[
         {
             "label": "Заполнить базу данных",

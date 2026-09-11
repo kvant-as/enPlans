@@ -186,24 +186,29 @@ def update_ChangeTimePlan(id):
     db.session.commit()
 
 def get_plans_by_okpo():
-    okpo_digit = str(current_user.organization.okpo)[-4]
-    """Фильтрация по 4-ой цифре с конца OKPO: {okpo_digit}"""
-    
+    """Фильтрация по 4-ой цифре с конца ОКПО организации пользователя —
+    кроме admin/is_reader, которые видят всё вне зависимости от ОКПО (и
+    могут вообще не иметь привязанной организации, поэтому эта ветка
+    проверяется первой, до обращения к current_user.organization)."""
     status_filter = or_(
         Plan.is_sent == True,
-        Plan.is_error == True, 
+        Plan.is_error == True,
         Plan.is_approved == True
     )
-    
-    if current_user.is_admin or (current_user.is_auditor and str(current_user.organization.okpo)[-4] == "8"):
-        return Plan.query.filter(
-            status_filter
-        ).order_by(Plan.year.asc())
-    else:
-        return Plan.query.join(Organization).filter(
-            status_filter,
-            func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
-        ).order_by(Plan.year.asc())
+
+    if current_user.is_admin or current_user.is_reader:
+        return Plan.query.filter(status_filter).order_by(Plan.year.asc())
+
+    org_okpo = str(current_user.organization.okpo) if current_user.organization else ''
+    okpo_digit = org_okpo[-4] if len(org_okpo) >= 4 else None
+
+    if current_user.is_auditor and okpo_digit == "8":
+        return Plan.query.filter(status_filter).order_by(Plan.year.asc())
+
+    return Plan.query.join(Organization).filter(
+        status_filter,
+        func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
+    ).order_by(Plan.year.asc())
 
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_ynp="", region_id=None, page=1, per_page=5):
     try:
@@ -230,7 +235,10 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                         )
                     )\
                     .distinct()
-        elif user.is_admin:
+        elif user.is_admin or user.is_reader:
+            # is_reader — читатель, видит все планы (как admin), но
+            # изменить/создать ничего не может (см. reader_forbidden в
+            # routes/views.py и одноимённый декоратор в plan_bp.py/audit_bp.py)
             base_query = Plan.query.order_by(
                 db.case(
                     (Plan.user_id == user.id, 0),

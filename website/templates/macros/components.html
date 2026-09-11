@@ -152,7 +152,7 @@ current_user=None)%}
       <span class="nav-text">{{ _('Планы') }}</span>
       <span class="nav-text-mobile">{{ _('Планы') }}</span>
     </div>
-    {% if current_user.is_auditor == false %}
+    {% if current_user.is_auditor == false and current_user.is_reader == false %}
     <div
       class="nav-item {% if active_tab == 'create' %} active{% endif %}"
       onclick="window.location.href = '/create-plan'"
@@ -560,7 +560,7 @@ show_checkboxes %}
           <span class="tooltip-text">{{ _('Просмотр') }}</span>
           <span class="btn-text">{{ _('Просмотр') }}</span>
         </button>
-        {% if plan.user_id == current_user.id %} {% if not (plan.is_sent or
+        {% if plan.user_id == current_user.id and not current_user.is_reader %} {% if not (plan.is_sent or
         plan.is_approved) %}
         <form
           data-modal-form="deletePlanconfirm"

@@ -116,6 +116,7 @@ def create_app():
     from .routes.audit_bp import audit_bp
     from .routes.stat_bp import bp as stat_bp
     from .routes.db_bp import db_bp
+    from .routes.admin_support import admin_support_bp
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
@@ -125,7 +126,8 @@ def create_app():
     app.register_blueprint(audit_bp, url_prefix='/')
     app.register_blueprint(stat_bp, url_prefix='/stat-reports')
     app.register_blueprint(db_bp, url_prefix='/database')
-    
+    app.register_blueprint(admin_support_bp, url_prefix='/admin/support-chats')
+
     common_templates = str(files('common_models') / 'templates')
 
     app.jinja_loader.searchpath = [

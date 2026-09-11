@@ -4,54 +4,226 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ _('Страница не найдена') }} — EnPlans</title>
+
+  <script>
+    // Та же логика, что в base.html — подхватываем тему пользователя (по
+    // умолчанию светлая), чтобы страница не мигала не тем цветом при заходе
+    // "в никуда".
+    (function () {
+      try {
+        var saved = localStorage.getItem('enplans-theme');
+        document.documentElement.setAttribute('data-theme', saved || 'light');
+      } catch (e) {}
+    })();
+  </script>
+
   <style>
+    :root {
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --card-border: #e9ecef;
+      --ink: #2c3e50;
+      --muted: #6c757d;
+      --muted-2: #97a3ad;
+      --accent: #00798f;
+      --accent-2: #009bb6;
+      --glow: rgba(0, 155, 182, 0.55);
+      /* цвет самой лампы — отдельно от фирменной бирюзы (кнопки/заголовок её не трогают) */
+      --filament-off: #d6cfc2;
+      --bulb-on: #ffb300;
+      --bulb-glow: rgba(255, 179, 0, 0.55);
+    }
+    html[data-theme="dark"] {
+      --bg: #12151a;
+      --card-bg: #1c2027;
+      --card-border: #2b313b;
+      --ink: #eef1f5;
+      --muted: #9aa3af;
+      --muted-2: #6b7480;
+      --accent: #44cce4;
+      --accent-2: #67d6e9;
+      --glow: rgba(103, 214, 233, 0.6);
+      --filament-off: #423c33;
+      --bulb-on: #ffd166;
+      --bulb-glow: rgba(255, 209, 102, 0.65);
+    }
+
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body {
       display: flex; align-items: center; justify-content: center;
-      background: #f4f6f8; color: #2c3e50;
-      font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      padding: 24px;
+      background: var(--bg); color: var(--ink);
+      font: 15px/1.5 'Montserrat', -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      padding: 24px; overflow-x: hidden;
+      transition: background-color .3s ease, color .3s ease;
     }
-    .box { width: 100%; max-width: 460px; text-align: center; }
-    .icon {
-      color: #dc3545; margin-bottom: 12px;
-      animation: bounce 3s ease-in-out infinite;
+
+    .wrap { width: 100%; max-width: 480px; text-align: center; position: relative; }
+
+    /* блуждающие "искры" энергии вокруг сцены */
+    .spark {
+      position: absolute; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent-2); opacity: 0;
+      animation: drift 4.5s ease-in infinite;
     }
-    @keyframes bounce { 0%,20%,50%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } 60% { transform: translateY(-3px); } }
-    h1 { font-size: 3.5rem; font-weight: 700; margin: 0; line-height: 1; }
-    h2 { font-size: 1.35rem; font-weight: 600; color: #495057; margin: 6px 0 0; }
+    .spark:nth-child(1) { left: 8%;  top: 70%; animation-delay: .2s; }
+    .spark:nth-child(2) { left: 88%; top: 62%; animation-delay: 1.4s; }
+    .spark:nth-child(3) { left: 18%; top: 30%; animation-delay: 2.6s; }
+    .spark:nth-child(4) { left: 80%; top: 24%; animation-delay: 3.4s; }
+    @keyframes drift {
+      0%   { opacity: 0; transform: translateY(0) scale(.6); }
+      15%  { opacity: .8; }
+      100% { opacity: 0; transform: translateY(-70px) scale(1.1); }
+    }
+
+    /* ---------- лампочка ---------- */
+    .bulb-scene {
+      position: relative; width: 148px; height: 190px; margin: 0 auto;
+      animation: jitter 3.4s linear 1;
+    }
+
+    .bulb-glow {
+      position: absolute; left: 50%; top: 62px; width: 130px; height: 130px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--bulb-glow) 0%, transparent 68%);
+      filter: blur(2px);
+      animation: flicker-glow 3.4s linear 1, breathe-glow 3.6s ease-in-out 3.4s infinite;
+    }
+
+    .bulb-svg { position: relative; z-index: 1; }
+    .bulb-svg .glass { stroke: var(--muted-2); }
+    .bulb-svg .base   { stroke: var(--muted-2); }
+    .bulb-svg .filament {
+      stroke: var(--filament-off);
+      animation: flicker-filament 3.4s linear 1, breathe-filament 3.6s ease-in-out 3.4s infinite;
+    }
+
+    /* Явное мигание с "подвисанием": лампа несколько раз срывается в
+       ровный свет, затем надолго проваливается в темноту (28%-45% —
+       как будто зависла), дёргается ещё пару раз и только потом гаснет
+       в устойчивый дежурный отблеск. */
+    @keyframes flicker-glow {
+      0%       { opacity: 0; }
+      3%       { opacity: 1; }
+      7%       { opacity: .06; }
+      11%      { opacity: 1; }
+      15%      { opacity: .08; }
+      19%      { opacity: .9; }
+      23%      { opacity: 1; }
+      26%      { opacity: .05; }
+      28%, 45% { opacity: 0; }            /* "подвисла" в темноте */
+      49%      { opacity: .7; }
+      52%      { opacity: 0; }
+      56%      { opacity: 1; }
+      60%      { opacity: .1; }
+      65%      { opacity: 1; }
+      70%      { opacity: .5; }
+      100%     { opacity: .38; }
+    }
+    @keyframes flicker-filament {
+      0%       { stroke: var(--filament-off); }
+      3%       { stroke: var(--bulb-on); }
+      7%       { stroke: var(--filament-off); }
+      11%      { stroke: var(--bulb-on); }
+      15%      { stroke: var(--filament-off); }
+      19%      { stroke: var(--bulb-on); }
+      23%      { stroke: var(--bulb-on); }
+      26%      { stroke: var(--filament-off); }
+      28%, 45% { stroke: var(--filament-off); }
+      49%      { stroke: var(--bulb-on); }
+      52%      { stroke: var(--filament-off); }
+      56%      { stroke: var(--bulb-on); }
+      60%      { stroke: var(--filament-off); }
+      65%      { stroke: var(--bulb-on); }
+      100%     { stroke: var(--bulb-on); }
+    }
+    /* дрожь колбы синхронно со сбоями — гаснет к моменту, когда лампа
+       "успокаивается" в дежурном режиме */
+    @keyframes jitter {
+      0%, 27%, 46%, 100% { transform: translate(0, 0) rotate(0deg); }
+      3%   { transform: translate(1px, -1px) rotate(-1deg); }
+      11%  { transform: translate(-1px, 1px) rotate(1deg); }
+      19%  { transform: translate(1px, 1px) rotate(-1deg); }
+      23%  { transform: translate(-1px, -1px) rotate(1deg); }
+      49%  { transform: translate(1px, 0) rotate(-1deg); }
+      56%  { transform: translate(-1px, 1px) rotate(1deg); }
+      65%  { transform: translate(1px, -1px) rotate(-1deg); }
+      70%  { transform: translate(0, 1px) rotate(0deg); }
+    }
+    @keyframes breathe-glow {
+      0%, 100% { opacity: .3; }
+      50%      { opacity: .6; }
+    }
+    @keyframes breathe-filament {
+      0%, 100% { stroke: var(--bulb-on); opacity: .55; }
+      50%      { stroke: var(--bulb-on); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bulb-scene, .bulb-glow, .bulb-svg .filament, .spark { animation: none !important; }
+      .bulb-glow { opacity: .5; }
+      .bulb-svg .filament { stroke: var(--bulb-on); opacity: .8; }
+    }
+
+    h1.code {
+      font-size: 4rem; font-weight: 800; line-height: 1; margin: 18px 0 0;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      animation: breathe-filament 3.6s ease-in-out 3.4s infinite;
+    }
+    h2 { font-size: 1.2rem; font-weight: 600; color: var(--ink); margin: 8px 0 0; }
+
     .card {
-      margin-top: 20px; background: #fff; border: 1px solid #e9ecef;
-      border-radius: 10px; padding: 28px 24px;
+      margin-top: 22px; background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 24px; transition: background-color .3s ease, border-color .3s ease;
     }
-    p { color: #6c757d; font-size: .95rem; margin: 0 0 20px; }
+    p { color: var(--muted); font-size: .95rem; margin: 0 0 20px; }
     .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
     .btn {
       display: inline-flex; align-items: center; gap: .5rem;
-      padding: .7rem 1.4rem; border: 1px solid transparent; border-radius: 8px;
-      font: inherit; font-weight: 500; text-decoration: none; cursor: pointer;
+      padding: .7rem 1.4rem; border: 1px solid transparent; border-radius: 999px;
+      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+      transition: transform .15s ease, filter .15s ease, background-color .15s ease, color .15s ease;
     }
-    .btn-outline { background: transparent; border-color: #6c757d; color: #6c757d; }
-    .btn-outline:hover { background: #6c757d; color: #fff; }
-    .btn-primary { background: #00798f; color: #fff; }
-    .btn-primary:hover { background: #026476; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-outline { background: transparent; border-color: var(--card-border); color: var(--muted); }
+    .btn-outline:hover { background: var(--card-border); color: var(--ink); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #fff; box-shadow: 0 8px 20px -8px var(--glow);
+    }
+    .btn-primary:hover { filter: brightness(1.07); }
   </style>
 </head>
 <body>
-  <div class="box">
-    <div class="icon">
-      <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
-        <path d="M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M9 9L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <div class="wrap">
+    <span class="spark"></span><span class="spark"></span><span class="spark"></span><span class="spark"></span>
+
+
+
+    <div class="bulb-scene">
+      <div class="bulb-glow"></div>
+      <svg class="bulb-svg" width="148" height="190" viewBox="0 0 148 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="glass" d="M74 12C46.4 12 24 34.4 24 62C24 79.6 33.1 95 47 103.9C51.6 106.9 54 111.9 54 117.1V122H94V117.1C94 111.9 96.4 106.9 101 103.9C114.9 95 124 79.6 124 62C124 34.4 101.6 12 74 12Z"
+              stroke-width="4" stroke-linejoin="round"/>
+        <path class="filament" d="M60 68L64 96L74 78L84 96L88 68" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <line class="filament" x1="66" y1="60" x2="66" y2="68" stroke-width="4" stroke-linecap="round"/>
+        <line class="filament" x1="82" y1="60" x2="82" y2="68" stroke-width="4" stroke-linecap="round"/>
+        <path class="base" d="M56 122H92V132C92 133.1 91.1 134 90 134H58C56.9 134 56 133.1 56 132V122Z" stroke-width="4" stroke-linejoin="round"/>
+        <line class="base" x1="58" y1="142" x2="90" y2="142" stroke-width="4" stroke-linecap="round"/>
+        <line class="base" x1="58" y1="152" x2="90" y2="152" stroke-width="4" stroke-linecap="round"/>
+        <line class="base" x1="58" y1="162" x2="90" y2="162" stroke-width="4" stroke-linecap="round"/>
+        <path class="base" d="M62 172H86C86 178.6 80.6 184 74 184C67.4 184 62 178.6 62 172Z" stroke-width="4" stroke-linejoin="round"/>
       </svg>
     </div>
-    <h1>404</h1>
-    <h2>{{ _('Страница не найдена') }}</h2>
+
+    <h1 class="code">404</h1>
+    <h2>{{ _('Лампочка перегорела') }}</h2>
+
     <div class="card">
       <p>
-        {{ _('Запрашиваемая страница не существует или была перемещена.') }}
+        {{ _('Такой страницы не существует или она была перемещена — а мы, кажется, случайно перевели её в режим энергосбережения.') }}
       </p>
       <div class="actions">
         <button onclick="history.back()" class="btn btn-outline">{{ _('Назад') }}</button>

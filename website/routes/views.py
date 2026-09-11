@@ -47,8 +47,9 @@ def owner_only(f):
             return redirect(url_for('views.plans', user=current_user.id))
         
         has_access = (
-            current_user.is_admin or 
-            current_user.is_auditor or 
+            current_user.is_admin or
+            current_user.is_auditor or
+            current_user.is_reader or
             plan.user_id == current_user.id
         )
         
@@ -57,6 +58,25 @@ def owner_only(f):
             return redirect(url_for('views.plans', user=current_user.id))
     
         g.current_plan = plan
+        return f(*args, **kwargs)
+    return decorated_function
+
+def reader_forbidden(f):
+    """Блокирует действие для роли "Читатель" (User.is_reader) — читатель
+    видит все планы (см. get_filtered_plans/get_plans_by_okpo в utils/plans.py
+    и is_reader в has_access выше), но не может ничего создавать или менять.
+    По аналогии с ErespondentN (routes/views.py: change_category_report /
+    rollbackreport / send_comment). AJAX-запросы (X-Requested-With) получают
+    JSON — как и остальные единые ответы в plan_bp.py — вместо редиректа,
+    который fetch() не сможет разобрать как JSON."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_reader and not current_user.is_admin:
+            message = 'У вас нет доступа к этому действию'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            return redirect(request.referrer or url_for('views.plans'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -194,6 +214,7 @@ def edit_user_org():
 @login_required
 @session_required
 @owner_only
+@reader_forbidden
 def edit_plan_type(token):
     try:
         entity_type = request.form.get('entity_type')
@@ -384,6 +405,7 @@ def news_post(id):
 @user_with_all_params()
 @login_required
 @session_required
+@reader_forbidden
 def create_plan():
     if request.method == 'POST':
         year = int(request.form.get('year'))
@@ -507,6 +529,7 @@ def create_plan():
 @owner_only
 @login_required
 @session_required
+@reader_forbidden
 def edit_plan(token):
     if request.method == 'POST':
         current_plan = g.current_plan
@@ -581,6 +604,7 @@ def edit_plan(token):
 @owner_only
 @login_required
 @session_required
+@reader_forbidden
 def delete_plan(token):
     try:
         current_plan = g.current_plan
