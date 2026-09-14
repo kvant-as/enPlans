@@ -16,11 +16,11 @@ endblock %} {% block content %}
 
     <div class="auth-choose" role="tablist">
       <a class="auth-tab" href="/login" role="tab" aria-selected="true">
-        {{ icons.icon_login2() }}
+        {{ icons.icon_login() }}
         <span>{{ _('Вход') }}</span></a
       >
       <a class="auth-tab active" href="/sign" role="tab" aria-selected="false">
-        {{ icons.icon_login() }}
+        {{ icons.icon_proflie() }}
         <span>{{ _('Регистрация') }}</span>
       </a>
     </div>
@@ -40,12 +40,13 @@ endblock %} {% block content %}
       </div>
 
       <div class="form-group">
-        <label for="password">{{ _('Пароль') }}</label>
+        <label for="reg-password1">{{ _('Пароль') }}</label>
         <div class="password-input-wrapper">
           <input
             type="password"
             name="password1"
-            id="password"
+            id="reg-password1"
+            minlength="5"
             maxlength="10"
             placeholder="Введите пароль"
             class="auth-input"
@@ -59,14 +60,16 @@ endblock %} {% block content %}
             {{ icons.eye_open() }} {{ icons.eye_closed() }}
           </button>
         </div>
+        <div data-cm-pwmeter="#reg-password1" data-min="5"></div>
       </div>
       <div class="form-group">
-        <label for="password">{{ _('Подтвердить пароль') }}</label>
+        <label for="reg-password2">{{ _('Подтвердить пароль') }}</label>
         <div class="password-input-wrapper">
           <input
             type="password"
             name="password2"
-            id="password"
+            id="reg-password2"
+            minlength="5"
             maxlength="10"
             placeholder="Введите пароль"
             class="auth-input"
@@ -80,10 +83,17 @@ endblock %} {% block content %}
             {{ icons.eye_open() }} {{ icons.eye_closed() }}
           </button>
         </div>
+        <div
+          data-cm-pwmatch
+          data-password="#reg-password1"
+          data-confirm="#reg-password2"
+          data-submit=".auth-form button[type='submit']"
+          data-min="5"
+        ></div>
       </div>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="main-btn main-btn-primary">
-        {{ icons.icon_login() }}
+        {{ icons.icon_proflie() }}
         <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
       </button>
     </form>
@@ -91,5 +101,6 @@ endblock %} {% block content %}
 </div>
 
 {{ affects.blurback() }}
+{{ cm_forms_assets() }}
 
 {% endblock %}

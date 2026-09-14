@@ -16,11 +16,11 @@
 
     <div class="auth-choose" role="tablist">
       <a class="auth-tab active" href="/login" role="tab" aria-selected="true">
-        {{ icons.icon_login2() }}
+        {{ icons.icon_login() }}
         <span>{{ _('Вход') }}</span>
       </a>
       <a class="auth-tab" href="/sign" role="tab" aria-selected="false">
-        {{ icons.icon_login() }} {{ _('Регистрация') }}
+        {{ icons.icon_proflie() }} {{ _('Регистрация') }}
       </a>
     </div>
 
@@ -60,7 +60,7 @@
       </div>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="main-btn main-btn-primary">
-        {{ icons.icon_login2() }}
+        {{ icons.icon_login() }}
         <span class="btn-text">{{ _('Войти') }}</span>
       </button>
     </form>

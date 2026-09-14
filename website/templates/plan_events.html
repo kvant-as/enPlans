@@ -2,8 +2,8 @@
 
 {% if event_type == 'saving' %}
   {% set title = _('Мероприятия по экономии топливно-энергетических ресурсов') %}
-  {% set section_title = '2.1 Мероприятия по экономии ТЭР (первоначальная редакция)' %}
-  {% set section_changes_title = '2.2 Мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)' %}
+  {% set section_title = 'Раздел 2.1 Мероприятия по экономии ТЭР (первоначальная редакция)' %}
+  {% set section_changes_title = 'Раздел 2.2 Мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)' %}
   {% set eff_label = 'Условно-годовой экономический эффект' %}
   {% set eff_curr_label = 'Ожидаемый экономический эффект от внедрения мероприятия в текущем году, т у.т.' %}
   {% set empty_message = 'Нет мероприятий по экономии ТЭР' %}
@@ -15,8 +15,8 @@
 
 {% else %}
   {% set title = _('Мероприятия по увеличению использования местных топливно-энергетических ресурсов') %}
-  {% set section_title = '3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)' %}
-  {% set section_changes_title = '3.2 Мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)' %}
+  {% set section_title = 'Раздел 3.1 Мероприятия по увеличению использования местных ТЭР (первоначальная редакция)' %}
+  {% set section_changes_title = 'Раздел 3.2 Мероприятия по увеличению использования местных ТЭР (включенные в план при внесении в него изменений)' %}
   {% set eff_label = 'Условно-годовое увеличение использования местных ТЭР' %}
   {% set eff_curr_label = 'Ожидаемое увеличение использования местных ТЭР в текущем году, т у.т.' %}
   {% set empty_message = 'Нет мероприятий по увеличению использования местных ТЭР' %}
@@ -31,6 +31,20 @@
 {% block title %}{{ title }} - EnPlans{% endblock %}
 
 {% block content %}
+
+{% macro icon_columns_2() %}
+<svg class="icon-two-col" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3" y="4" width="7" height="16" rx="1.5"/>
+  <rect x="14" y="4" width="7" height="16" rx="1.5"/>
+</svg>
+{% endmacro %}
+
+{% macro icon_columns_1() %}
+<svg class="icon-one-col" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="4" width="16" height="16" rx="1.5"/>
+  <path d="M4 12h16"/>
+</svg>
+{% endmacro %}
 
 <div class="pers-page-with-table">
   {{ component.back_header(plan, current_user) }}
@@ -80,7 +94,7 @@
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
-              <a>Общий объем финансирования в текущем году, руб. {{ icons.icon_sort() }}</a>
+              <a>Общий объем финансирования, руб. {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
             <th rowspan="3" class="resizable vertical-text">
@@ -158,8 +172,8 @@
           </tr>
         </thead>
         
-        <tr class="group-header" data-target="non-local-content" style="border-top: none !important;">
-          <td colspan="19">
+        <tr class="group-header" data-target="non-local-content">
+          <td colspan="19" style="border-bottom: 1px solid var(--border-color);">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_title }}</span>
@@ -173,7 +187,7 @@
         </tbody>
         
         <tr class="group-header" data-target="local-content" >
-          <td colspan="19">
+          <td colspan="19" style="border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important;">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_changes_title }}</span>
@@ -186,14 +200,14 @@
           </tr>
         </tbody>
         
-        <tr class="group-header" data-target="other-content">
+        <!-- <tr class="group-header" data-target="other-content">
           <td colspan="19">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>Другое</span>
             </div>
           </td>
-        </tr>
+        </tr> -->
         <tbody id="other-content" class="rows">
           <tr>
             <td colspan="19"></td>
@@ -214,10 +228,14 @@
 </div>
 
 <div id="AddEventModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content event-modal-content">
         <div class="modal-header">
             <h1 id="modal-title">{{ _('Добавление мероприятия') }}</h1>
-            {{ icons.icon_close() }}  
+            <button type="button" class="layout-toggle-btn" data-action="toggle-field-layout" title="{{ _('Расположение полей: в 1 или 2 столбца') }}">
+                {{ icon_columns_2() }}
+                {{ icon_columns_1() }}
+            </button>
+            {{ icons.icon_close() }}
         </div>
         <input type="hidden" id="plan-token" value="{{ plan.token }}">
         <div class="modal-body">   
@@ -272,13 +290,33 @@
                 </div>
             </div>
 
-            <form action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST">
+            <form id="addEventForm" action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST">
                 <div id="step2" class="modal-step" style="display: none;">
+                    <div class="category-section" id="event-category-section">
+                        <div class="name-section-title">Тип мероприятия</div>
+                        <div class="category-options">
+                            <label class="category-option">
+                                <input type="radio" name="event_category" value="local" checked>
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Первоначальная редакция</div>
+                                    <div class="category-option-desc">Мероприятие относится к первоначальной редакции</div>
+                                </div>
+                            </label>
+                            <label class="category-option">
+                                <input type="radio" name="event_category" value="corrected">
+                                <div class="category-option-content">
+                                    <div class="category-option-title">Включенные в план при внесении в него изменений</div>
+                                    <div class="category-option-desc">Мероприятие включено в план при внесении изменений</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="name-section-title">Заполнение мероприятия</div>
                     <div class="app-group">
                         <label>[3] {{ _('Наименование мероприятия') }}</label>
                         <div class="input-with-icon">
                             {{ icons.icon_measure() }}
-                            <input type="text" name="name" placeholder="{{ _('Наименование') }}" class="app-input" required>
+                            <input type="text" name="name" placeholder="{{ _('Введите наименование') }}" class="app-input capitalize-first-input" required>
                         </div>
                     </div>
                     <div class="app-group">
@@ -307,10 +345,23 @@
                     <div class="row-app-group">
                         <div class="app-group">
                             <label>[8] {{ _('Ожидаемый срок внедрения мероприятия, квартал') }}</label>
-                            <div class="input-with-icon">
+                            <div class="input-with-icon quarter-selector-wrapper">
                                 {{ icons.icon_calendar() }}
-                                <input type="number" name="ExpectedQuarter" min="1" max="4" pattern="[1-4]" inputmode="numeric" value="4"
-                                class="app-input" oninput="this.value = this.value.replace(/[^1-4]/g, '').slice(0, 1)" required>
+                                <input type="text" name="ExpectedQuarter" id="expected-quarter-input" class="app-input quarter-input" placeholder="Выберите квартал" readonly required>
+                                <div class="quarter-popup" id="quarter-popup">
+                                    <div class="quarter-grid">
+                                        <button type="button" class="quarter-btn" data-value="1">1</button>
+                                        <button type="button" class="quarter-btn" data-value="2">2</button>
+                                        <button type="button" class="quarter-btn" data-value="3">3</button>
+                                        <button type="button" class="quarter-btn" data-value="4">4</button>
+                                        <button type="button" class="quarter-btn" data-value="1-2">1-2</button>
+                                        <button type="button" class="quarter-btn" data-value="1-3">1-3</button>
+                                        <button type="button" class="quarter-btn" data-value="1-4">1-4</button>
+                                        <button type="button" class="quarter-btn" data-value="2-3">2-3</button>
+                                        <button type="button" class="quarter-btn" data-value="2-4">2-4</button>
+                                        <button type="button" class="quarter-btn" data-value="3-4">3-4</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="app-group">
@@ -366,10 +417,13 @@
                             </div>
                         </div> 
                         <div class="app-group">
-                            <label>[11] {{ _('Общий объем финансирования в текущем году, руб.') }}</label>
+                            <label>[11] {{ _('Общий объем финансирования, руб.') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="text" value="0" name="ObchVolumeFin" class="app-numeric-input-integer">
+                            </div>
+                            <div id="obch-volume-fin-warning" class="error-message-modern" style="display: none;">
+                                {{ _('Общий объем финансирования не может быть меньше объема финансирования в текущем году') }}
                             </div>
                         </div>
                     </div>
@@ -407,7 +461,7 @@
                     </div> 
                     <div class="row-app-group">
                         <div class="app-group">
-                            <label>[16] {{ _('другие') }}</label>
+                            <label>[16] {{ _('другие бюджетные средства') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_half() }}
                                 <input type="number" name="BudgetOther" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
@@ -474,10 +528,14 @@
 </div>
 
 <div id="EditEventModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content event-modal-content">
         <div class="modal-header">
             <h1 id="modal-title">{{ _('Редактирование мероприятия') }}</h1>
-            {{ icons.icon_close() }}  
+            <button type="button" class="layout-toggle-btn" data-action="toggle-field-layout" title="{{ _('Расположение полей: в 1 или 2 столбца') }}">
+                {{ icon_columns_2() }}
+                {{ icon_columns_1() }}
+            </button>
+            {{ icons.icon_close() }}
         </div>
         <div class="modal-body">
             <div class="progress-modal-bar-container">
@@ -490,11 +548,31 @@
 
                 <div id="steps-edit">
                     <div id="step1" class="modal-step">
+                        <div class="category-section" id="edit-event-category-section">
+                            <div class="name-section-title">Тип мероприятия</div>
+                            <div class="category-options">
+                                <label class="category-option">
+                                    <input type="radio" name="event_category" id="edit-event-category-local" value="local">
+                                    <div class="category-option-content">
+                                        <div class="category-option-title">Первоначальная редакция</div>
+                                        <div class="category-option-desc">Мероприятие относится к первоначальной редакции</div>
+                                    </div>
+                                </label>
+                                <label class="category-option">
+                                    <input type="radio" name="event_category" id="edit-event-category-corrected" value="corrected">
+                                    <div class="category-option-content">
+                                        <div class="category-option-title">Включенные в план при внесении в него изменений</div>
+                                        <div class="category-option-desc">Мероприятие включено в план при внесении изменений</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="name-section-title">Заполнение мероприятия</div>
                         <div class="app-group">
                             <label>[3] {{ _('Наименование мероприятия') }}</label>
                             <div class="input-with-icon">
                                 {{ icons.icon_measure() }}
-                                <input type="text" id="change-name-edit-model" name="name" placeholder="{{ _('Наименование') }}" class="app-input" required>
+                                <input type="text" id="change-name-edit-model" name="name" placeholder="{{ _('Введите наименование') }}" class="app-input capitalize-first-input" required>
                             </div>
                         </div>
                         <div class="app-group">
@@ -526,9 +604,23 @@
                         <div class="row-app-group">
                             <div class="app-group">
                                 <label>[8] {{ _('Ожидаемый срок внедрения мероприятия, квартал') }}</label>
-                                <div class="input-with-icon">
+                                <div class="input-with-icon quarter-selector-wrapper">
                                     {{ icons.icon_calendar() }}
-                                    <input type="number" name="ExpectedQuarter" min="1" max="4" pattern="[1-4]" inputmode="numeric" id="change-ExpectedQuarter-edit-model" placeholder="Квартал" class="app-input" oninput="this.value = this.value.replace(/[^1-4]/g, '').slice(0, 1)" required>
+                                    <input type="text" name="ExpectedQuarter" id="edit-expected-quarter-input" class="app-input quarter-input" placeholder="Выберите квартал" readonly required>
+                                    <div class="quarter-popup" id="edit-quarter-popup">
+                                        <div class="quarter-grid">
+                                            <button type="button" class="quarter-btn" data-value="1">1</button>
+                                            <button type="button" class="quarter-btn" data-value="2">2</button>
+                                            <button type="button" class="quarter-btn" data-value="3">3</button>
+                                            <button type="button" class="quarter-btn" data-value="4">4</button>
+                                            <button type="button" class="quarter-btn" data-value="1-2">1-2</button>
+                                            <button type="button" class="quarter-btn" data-value="1-3">1-3</button>
+                                            <button type="button" class="quarter-btn" data-value="1-4">1-4</button>
+                                            <button type="button" class="quarter-btn" data-value="2-3">2-3</button>
+                                            <button type="button" class="quarter-btn" data-value="2-4">2-4</button>
+                                            <button type="button" class="quarter-btn" data-value="3-4">3-4</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="app-group">
@@ -580,10 +672,13 @@
                                 </div>
                             </div>
                             <div class="app-group">
-                                <label>[11] {{ _('Общий объем финансирования в текущем году, руб.') }}</label>
+                                <label>[11] {{ _('Общий объем финансирования, руб.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="change-ObchVolumeFin-edit-model" name="ObchVolumeFin" placeholder="0" class="app-numeric-input-integer" value="0">
+                                </div>
+                                <div id="edit-obch-volume-fin-warning" class="error-message-modern" style="display: none;">
+                                    {{ _('Общий объем финансирования не может быть меньше объема финансирования в текущем году') }}
                                 </div>
                             </div>
                         </div>
@@ -621,7 +716,7 @@
                         </div> 
                         <div class="row-app-group">
                             <div class="app-group">
-                                <label>[16] {{ _('другие') }}</label>
+                                <label>[16] {{ _('другие бюджетные средства') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="number" id="change-BudgetOther-edit-model" name="BudgetOther" placeholder="0" class="app-numeric-input-integer" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
@@ -683,6 +778,7 @@
 
                 <div id="period-step" class="modal-step" style="display: none;">
                     <input type="hidden" name="edit_type" value="period">
+                    <input type="hidden" id="period-code-hidden" name="period_code" value="">
                     <div class="selected-indicator-display" style="margin-bottom: 30px;">
                         <div class="selected-indicator-info">
                             <div class="selected-indicator-label">{{ _('Период') }}</div>
@@ -695,9 +791,10 @@
                             {{ icons.icon_half() }}
                             <input type="text" id="period-EffCurrYear-edit" name="EffCurrYear" placeholder="0,00" class="app-numeric-input">
                         </div>
+                        <div id="period-warning" class="error-message-modern" style="display: none;"></div>
                     </div>
                     <div class="button-auth-area">
-                        <button type="submit" class="main-btn main-btn-primary">
+                        <button type="submit" id="period-submit-btn" class="main-btn main-btn-primary">
                             {{ icons.icon_add() }}
                             <span class="btn-text">{{ _('Сохранить изменения') }}</span>
                         </button>
@@ -710,4 +807,56 @@
 
 
 <script src="{{ url_for('static', filename='js/event-calc.js') }}"></script>
+<script>
+    // Переключатель расположения полей формы в модалках мероприятия
+    // (в 1 столбец / в 2 столбца) — предпочтение общее для обеих модалок
+    // (добавление и редактирование) и запоминается между визитами.
+    (function () {
+        var STORAGE_KEY = 'enplans-event-modal-layout';
+
+        function applyLayout(layout) {
+            document.querySelectorAll('.event-modal-content').forEach(function (modal) {
+                modal.classList.toggle('single-column', layout === 'single');
+            });
+        }
+
+        var savedLayout = null;
+        try { savedLayout = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+        if (savedLayout) applyLayout(savedLayout);
+
+        document.querySelectorAll('.layout-toggle-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var modal = btn.closest('.event-modal-content');
+                var next = modal.classList.contains('single-column') ? 'double' : 'single';
+                applyLayout(next);
+                try { localStorage.setItem(STORAGE_KEY, next); } catch (e) {}
+            });
+        });
+
+        // Кнопка нужна только на тех шагах формы, где реально есть пары
+        // полей в 2 столбца (поиск направления, поквартальная правка и
+        // т.п. — однoколоночные сами по себе, переключать там нечего).
+        // Шаги показываются/скрываются через element.style.display в
+        // event-calc.js в разных местах — вместо того чтобы дублировать
+        // эту логику, просто следим за изменениями style на шагах.
+        function updateToggleVisibility(modalContent) {
+            var toggle = modalContent.querySelector('.layout-toggle-btn');
+            if (!toggle) return;
+            var hasVisibleColumns = Array.prototype.some.call(
+                modalContent.querySelectorAll('.modal-step'),
+                function (step) {
+                    return step.style.display !== 'none' && step.querySelector('.row-app-group');
+                }
+            );
+            toggle.classList.toggle('is-hidden', !hasVisibleColumns);
+        }
+
+        document.querySelectorAll('.event-modal-content').forEach(function (modalContent) {
+            updateToggleVisibility(modalContent);
+            new MutationObserver(function () {
+                updateToggleVisibility(modalContent);
+            }).observe(modalContent, { attributes: true, attributeFilter: ['style'], subtree: true });
+        });
+    })();
+</script>
 {% endblock %}

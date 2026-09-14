@@ -21,15 +21,15 @@
       <thead class="main-table-titels">
         <tr>
           <th rowspan="2" class="resizable">
-            <a>№ п/п {{ icons.icon_sort() }}</a>
+            <a>№ п/п</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="2" class="resizable" style="min-width: 600px">        
-            <a>Основные показатели использования ТЭР {{ icons.icon_sort() }}</a>
+            <a>Основные показатели использования ТЭР</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="2" class="resizable" style="max-width: 90px">
-            <a>Ед. изм.{{ icons.icon_sort() }}</a>
+            <a>Ед. изм.</a>
             <div class="resizer"></div>
           </th>
 
@@ -56,27 +56,27 @@
         </tr>
         <tr>
           <th rowspan="1" class="resizable">
-            <a>в нат. велич. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич.</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т.</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в нат. велич. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич.</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т.</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в нат. велич. {{ icons.icon_sort() }}</a>
+            <a>в нат. велич.</a>
             <div class="resizer"></div>
           </th>
           <th rowspan="1" class="resizable">
-            <a>в т у. т. {{ icons.icon_sort() }}</a>
+            <a>в т у. т.</a>
             <div class="resizer"></div>
           </th>
         </tr>
@@ -160,17 +160,17 @@
                                 <th>Код</th>
                                 <th>Наименование</th>
                                 <th style="text-align: center;">Ед. изм.</th>
-                                <th style="text-align: center;">Коэфф.</th>
+                                <th style="display: none;">Коэфф.</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in indicators_non_madatory %}
                                 <tr>
                                     <td style="display: none;">{{ row.id }}</td>
-                                    <td>{{ row.code }}</td>
+                                    <td data-group="{{ row.Group }}" data-is-custom="{{ 'true' if row.is_custom else 'false' }}">{{ row.code }}</td>
                                     <td>{{ row.name }}</td>
                                     <td>{{ row.unit.name }}</td>
-                                    <td>{{ row.CoeffToTut }}</td>
+                                    <td style="display: none;">{{ row.CoeffToTut }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -183,7 +183,7 @@
                     </button>
                 </div>
             </div>
-            <form action="{{ url_for('plan_bp.create_indicator', token=plan.token) }}" method="POST">
+            <form id="addIndicatorForm" action="{{ url_for('plan_bp.create_indicator', token=plan.token) }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div id="step2" class="modal-step" style="display: none;">
                             

@@ -61,11 +61,27 @@
     <form method="POST" id="exportForm" action="/export-to/xlsx">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div id="plans-container"></div>
-      <div id="load-more-container" style="text-align: center; margin-top: 20px; display: none;">
-        <button id="load-more-btn" class="load-more-btn">
-          <span class="loading-spinner" style="display: none;"></span>
-          <span class="btn-text">{{ _('Загрузить еще') }}</span>
-        </button>
+
+      <div class="pagination-area" id="pagination-area" style="display: none;">
+          <div class="pagination-container">
+              <button id="prev-page-btn" class="pagination-btn prev-btn" aria-label="Предыдущая страница">
+                  <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                  </svg>
+              </button>
+              
+              <div class="pagination-pages">
+                  <span id="current-page" class="page-current">1</span>
+                  <span class="page-separator">/</span>
+                  <span id="total-pages" class="page-total">1</span>
+              </div>
+              
+              <button id="next-page-btn" class="pagination-btn next-btn" aria-label="Следующая страница">
+                  <svg class="pagination-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                  </svg>
+              </button>
+          </div>
       </div>
       <div class="button-area">
         <button type="submit" class="main-btn main-btn-primary" id="exportBtn" disabled>

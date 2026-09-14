@@ -208,6 +208,13 @@ const NotificationPopup = {
 
     toggle: function () {
         this.popup.classList.toggle("show");
+        // Каждое открытие подтягивает свежий первый экран уведомлений —
+        // иначе бейдж и список могли разойтись, если что-то пришло, пока
+        // попап был закрыт (а фоновое обновление раз в минуту теперь
+        // трогает только сам бейдж, не список — см. Notifications.refreshBadge).
+        if (this.popup.classList.contains("show") && typeof Notifications !== 'undefined') {
+            Notifications.load();
+        }
     },
 
     hide: function () {
@@ -229,36 +236,29 @@ const Notifications = {
     perPage: 3,
     hasMore: true,
     isLoading: false,
+    unreadTotal: 0,
     allNotifications: [],
+    initialized: false,
 
-    async load(reset = true) {
+    // Полная (пере)загрузка первой страницы — при первом заходе на
+    // страницу и при каждом открытии попапа. Список действительно
+    // перерисовывается целиком, но это ожидаемо: пользователь ещё не
+    // успел никуда прокрутить только что открытый попап.
+    async load() {
         if (this.isLoading) return;
-        if (!reset && !this.hasMore) return;
-        
         this.isLoading = true;
-        
-        if (reset) {
-            this.page = 1;
-            this.allNotifications = [];
-            this.hasMore = true;
-            this.notifListEl.innerHTML = '';
-        }
-        
+        this.page = 1;
+        this.hasMore = true;
+
         try {
-            const response = await fetch(`/api/notifications?page=${this.page}&per_page=${this.perPage}`);
+            const response = await fetch(`/api/notifications?page=1&per_page=${this.perPage}`);
             const data = await response.json();
-            
+
+            this.allNotifications = data.notifications;
             this.hasMore = data.has_next;
-            this.allNotifications = reset ? data.notifications : [...this.allNotifications, ...data.notifications];
-            
-            this.render(this.allNotifications);
-            
-            if (this.hasMore) {
-                this.showLoadMore();
-            } else {
-                this.hideLoadMore();
-            }
-            
+            this.renderAll(this.allNotifications);
+            this.updateCounter(data.unread_total);
+            this.updateLoadMoreVisibility();
         } catch (err) {
             console.error("Ошибка загрузки уведомлений:", err);
         } finally {
@@ -266,8 +266,81 @@ const Notifications = {
         }
     },
 
-    render(data) {
-        this.notifListEl.innerHTML = ""; 
+    // Дозагрузка "предыдущих" — дописывает новые карточки в конец списка,
+    // не трогая уже отрисованные, чтобы не сбрасывать прокрутку попапа
+    // (раньше весь список каждый раз перерисовывался заново, и попап
+    // всегда прыгал наверх — из-за этого дозагрузка и выглядела странно).
+    async loadMore() {
+        if (this.isLoading || !this.hasMore) return;
+        this.isLoading = true;
+        this.setLoadMoreState('loading');
+        const nextPage = this.page + 1;
+
+        try {
+            const response = await fetch(`/api/notifications?page=${nextPage}&per_page=${this.perPage}`);
+            const data = await response.json();
+
+            this.page = nextPage;
+            this.hasMore = data.has_next;
+            this.allNotifications = [...this.allNotifications, ...data.notifications];
+            this.appendNotifications(data.notifications);
+            this.updateCounter(data.unread_total);
+        } catch (err) {
+            console.error("Ошибка загрузки уведомлений:", err);
+        } finally {
+            this.isLoading = false;
+            this.updateLoadMoreVisibility();
+        }
+    },
+
+    // Лёгкое периодическое обновление (раз в минуту) — только счётчик на
+    // колокольчике. Раньше сюда вызывался полный init(), который заново
+    // сбрасывал список на первую страницу и навешивал ещё один обработчик
+    // на кнопку "Отметить все" при каждом тике — если попап был открыт,
+    // его содержимое каждую минуту дёргалось и терялась прокрутка.
+    async refreshBadge() {
+        try {
+            const response = await fetch(`/api/notifications?page=1&per_page=1`);
+            const data = await response.json();
+            this.updateCounter(data.unread_total);
+        } catch (err) {
+            console.error("Ошибка обновления счётчика уведомлений:", err);
+        }
+    },
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    buildNotifNode(n) {
+        const notif = document.createElement("div");
+        notif.classList.add("notif");
+        notif.dataset.id = n.id;
+        if (!n.is_read) {
+            notif.classList.add("unread");
+        }
+
+        const formattedTime = this.formatNotificationTime(n.created_at);
+
+        notif.innerHTML = `
+            <div class="notif-message">${this.escapeHtml(n.message)}</div>
+            <div class="notif-time">${formattedTime}</div>
+        `;
+
+        notif.addEventListener('click', () => {
+            if (!n.is_read) {
+                this.markAsRead(n.id);
+            }
+        });
+
+        return notif;
+    },
+
+    renderAll(data) {
+        this.notifListEl.innerHTML = "";
 
         if (!data || data.length === 0) {
             this.notifListEl.innerHTML = `
@@ -275,39 +348,20 @@ const Notifications = {
                     <h1>Нет уведомлений</h1>
                 </div>
             `;
-            this.hideCounter();
-            this.hideLoadMore();
             return;
         }
 
-        let unreadCount = 0;
+        const fragment = document.createDocumentFragment();
+        data.forEach(n => fragment.appendChild(this.buildNotifNode(n)));
+        this.notifListEl.appendChild(fragment);
+    },
 
-        data.forEach(n => {
-            const notif = document.createElement("div");
-            notif.classList.add("notif");
-            if (!n.is_read) {
-                notif.classList.add("unread");
-                unreadCount++;
-            }
+    appendNotifications(items) {
+        if (!items || items.length === 0) return;
 
-            const formattedTime = this.formatNotificationTime(n.created_at);
-            
-            notif.innerHTML = `
-                <div class="notif-message">${n.message}</div>
-                <div class="notif-time">${formattedTime}</div>
-                <div class="notif-divider-line"></div>
-            `;
-            
-            notif.addEventListener('click', () => {
-                if (!n.is_read) {
-                    this.markAsRead(n.id);
-                }
-            });
-            
-            this.notifListEl.appendChild(notif);
-        });
-
-        this.updateCounter(unreadCount);
+        const fragment = document.createDocumentFragment();
+        items.forEach(n => fragment.appendChild(this.buildNotifNode(n)));
+        this.notifListEl.appendChild(fragment);
     },
 
     formatNotificationTime(dateString) {
@@ -338,10 +392,13 @@ const Notifications = {
         }
     },
 
+    // Точечно обновляет только сам кликнутый элемент (снимает "unread"),
+    // а не перерисовывает весь список — иначе прокрутка попапа сбрасывалась
+    // в начало при каждом клике по уведомлению.
     async markAsRead(notificationId) {
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
-            
+
             const response = await fetch(`/api/notifications/mark-read/${notificationId}`, {
                 method: "POST",
                 headers: {
@@ -349,44 +406,52 @@ const Notifications = {
                     "X-CSRFToken": csrfToken
                 }
             });
-            
+
             if (response.ok) {
                 const notification = this.allNotifications.find(n => n.id === notificationId);
-                if (notification) {
-                    notification.is_read = true;
-                    this.render(this.allNotifications);
-                }
+                if (notification) notification.is_read = true;
+
+                const node = this.notifListEl.querySelector(`.notif[data-id="${notificationId}"]`);
+                if (node) node.classList.remove('unread');
+
+                this.updateCounter(Math.max(0, this.unreadTotal - 1));
             }
         } catch (err) {
             console.error("Ошибка при отметке уведомления:", err);
         }
     },
 
-    async loadMore() {
-        this.page++;
-        await this.load(false);
+    ensureLoadMoreButton() {
+        if (this.loadMoreBtn) return;
+        this.loadMoreBtn = document.createElement("button");
+        this.loadMoreBtn.type = "button";
+        this.loadMoreBtn.className = "load-more-notifications";
+        this.loadMoreBtn.textContent = "Загрузить предыдущие";
+        this.loadMoreBtn.addEventListener("click", () => this.loadMore());
+        this.notifListEl.parentNode.appendChild(this.loadMoreBtn);
     },
 
-    showLoadMore() {
-        if (!this.loadMoreBtn) {
-            this.loadMoreBtn = document.createElement("button");
-            this.loadMoreBtn.className = "load-more-notifications";
-            this.loadMoreBtn.textContent = "Загрузить предыдущие";
-            this.loadMoreBtn.addEventListener("click", () => this.loadMore());
-            this.notifListEl.parentNode.appendChild(this.loadMoreBtn);
-        }
-        this.loadMoreBtn.style.display = "block";
+    // Вызывается уже ПОСЛЕ завершения загрузки (успешной или нет) — всегда
+    // возвращает кнопку в обычное (не "загрузка") состояние и просто
+    // показывает/прячет её по факту наличия следующей страницы.
+    updateLoadMoreVisibility() {
+        this.ensureLoadMoreButton();
+        this.setLoadMoreState('idle');
+        this.loadMoreBtn.style.display = this.hasMore ? "flex" : "none";
     },
 
-    hideLoadMore() {
-        if (this.loadMoreBtn) {
-            this.loadMoreBtn.style.display = "none";
-        }
+    setLoadMoreState(state) {
+        this.ensureLoadMoreButton();
+        const isLoading = state === 'loading';
+        this.loadMoreBtn.disabled = isLoading;
+        this.loadMoreBtn.classList.toggle('is-loading', isLoading);
+        this.loadMoreBtn.textContent = isLoading ? "Загрузка…" : "Загрузить предыдущие";
     },
 
     updateCounter(count) {
+        this.unreadTotal = count;
         if (count > 0) {
-            this.notifCountEl.innerText = count;
+            this.notifCountEl.innerText = count > 99 ? '99+' : count;
             this.notifCountEl.style.display = "flex";
             this.notifCountEl.classList.add("active");
         } else {
@@ -396,12 +461,8 @@ const Notifications = {
         }
     },
 
-    hideCounter() {
-        this.notifCountEl.classList.remove("active");
-        this.notifCountEl.style.display = "none";
-        this.notifCountEl.innerText = "";
-    },
-
+    // Снимает "unread" только с уже отрисованных карточек — не трогает
+    // остальной список (см. комментарий у markAsRead).
     async markAllRead() {
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
@@ -410,23 +471,25 @@ const Notifications = {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRFToken": csrfToken 
+                    "X-CSRFToken": csrfToken
                 }
             });
 
             if (!response.ok) throw new Error("Ошибка запроса");
 
-            const result = await response.json();
-            
             this.allNotifications.forEach(n => n.is_read = true);
-            this.render(this.allNotifications);
-            
+            this.notifListEl.querySelectorAll('.notif.unread').forEach(el => el.classList.remove('unread'));
+            this.updateCounter(0);
+
         } catch (err) {
             console.error("Ошибка при отметке уведомлений:", err);
         }
     },
 
     init() {
+        if (this.initialized) return;
+        this.initialized = true;
+
         this.notifListEl = document.getElementById("notifList");
         this.notifCountEl = document.getElementById("notifCount");
         this.markAllBtn = document.getElementById("markAllRead");
@@ -674,7 +737,7 @@ const formSteps = {
     const step2 = document.querySelector('.auth-step-2');
     const nextBtn = document.getElementById('next-btn');
     const prevBtn = document.getElementById('prev-btn');
-    const requiredFields = ['#name', '#secondname', '#phone'];
+    const requiredFields = ['#name', '#secondname', '#telephone'];
 
     if (!step1 || !step2 || !nextBtn) return;
 
@@ -772,67 +835,68 @@ var NumericInputHandler = {
         });
     },
     
+    // Отфильтровывает недопустимые символы, не трогая то, что пользователь
+    // ещё не дописал (в отличие от прежней версии, которая на каждое
+    // нажатие клавиши прогоняла значение через parseFloat/toFixed — из-за
+    // этого набрать, например, "-3,3" посимвольно было невозможно: после
+    // ввода запятой поле тут же откатывалось обратно к "-3,0"). Полное
+    // округление/дополнение нулями по-прежнему происходит один раз, при
+    // потере фокуса — см. handleBlur.
+    sanitize: function(value, settings) {
+        var allowedRegex = settings.allowNegative ? /[^\d,.-]/g : /[^\d,.]/g;
+        var raw = value.replace(allowedRegex, '');
+
+        var negative = false;
+        if (settings.allowNegative) {
+            negative = /-/.test(raw);
+            raw = raw.replace(/-/g, '');
+        }
+
+        raw = raw.replace(/\./g, ',');
+        var commaIndex = raw.indexOf(',');
+        if (commaIndex !== -1) {
+            var intPart = raw.slice(0, commaIndex);
+            var fracPart = raw.slice(commaIndex + 1).replace(/,/g, '');
+            raw = settings.decimalPlaces > 0
+                ? intPart + ',' + fracPart.slice(0, settings.decimalPlaces)
+                : intPart;
+        }
+
+        return (negative ? '-' : '') + raw;
+    },
+
     handleInput: function(e, settings) {
         var input = e.target;
         var cursorPos = input.selectionStart;
         var oldValue = input.value;
-        var newValue = oldValue;
-        
-        if (settings.allowNegative) {
-            newValue = oldValue.replace(/[^\d,.-]/g, '');
-            var minusCount = (newValue.match(/-/g) || []).length;
-            if (minusCount > 1) {
-                newValue = '-' + newValue.replace(/-/g, '');
-            } else if (minusCount === 1 && !newValue.startsWith('-')) {
-                newValue = '-' + newValue.replace(/-/g, '');
-            }
-            if (newValue === '-') {
-                input.value = newValue;
-                return;
-            }
-        } else {
-            newValue = oldValue.replace(/[^\d,]/g, '');
-            if (newValue === '') {
-                input.value = '';
-                return;
-            }
-        }
-        
-        if (newValue !== '' && newValue !== '-') {
-            newValue = newValue.replace(',', '.');
-            var parts = newValue.split('.');
-            if (parts.length > 1) {
-                newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
-            }
+        var newValue = NumericInputHandler.sanitize(oldValue, settings);
 
-            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
-                newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
-            }
-            
-            var floatValue = parseFloat(newValue);
-            if (!isNaN(floatValue)) {
-                newValue = floatValue.toFixed(settings.decimalPlaces);
-                newValue = newValue.replace('.', ',');
-            }
-        }
-        
-        if (newValue !== oldValue) {
-            input.value = newValue;
-            var newCursorPos = Math.min(cursorPos, newValue.length);
-            input.setSelectionRange(newCursorPos, newCursorPos);
-        }
+        if (newValue === oldValue) return;
+
+        // курсор пересчитываем по тому, сколько допустимых символов
+        // осталось перед прежней позицией курсора — так он не «убегает»
+        // при удалении лишних символов
+        var newCursorPos = NumericInputHandler.sanitize(oldValue.slice(0, cursorPos), settings).length;
+
+        input.value = newValue;
+        input.setSelectionRange(newCursorPos, newCursorPos);
     },
-    
+
     handleFocus: function(e, settings) {
         var input = e.target;
         if (input.value === '' || input.value === '-') {
             input.value = settings.defaultValue;
         }
+        if (settings.allowNegative || settings.decimalPlaces === 0) {
+            // поле может начинаться со знака «минус» — проще и удобнее
+            // выделить всё значение целиком, чтобы первое же нажатие
+            // клавиши (в т.ч. «-») заменило его полностью
+            input.select();
+            return;
+        }
         var commaIndex = input.value.indexOf(',');
         if (commaIndex !== -1 && settings.decimalPlaces > 0) {
             input.setSelectionRange(commaIndex, commaIndex);
-        } else if (settings.decimalPlaces === 0) {
-            input.select();
         }
     },
     
@@ -844,6 +908,11 @@ var NumericInputHandler = {
             var valueWithDot = input.value.replace(',', '.');
             var num = parseFloat(valueWithDot);
             if (!isNaN(num)) {
+                // Только отрицательное число либо 0 — положительное вводить
+                // нельзя (см. "целевой показатель энергосбережения").
+                if (settings.negativeOnly && num > 0) {
+                    num = 0;
+                }
                 var formatted = num.toFixed(settings.decimalPlaces);
                 input.value = formatted.replace('.', ',');
             } else {
@@ -879,8 +948,12 @@ NumericInputHandler.init('.app-numeric-input-one-decimal', {
     defaultValue: '0,0'
 });
 
+// Используется только для "Целевой показатель энергосбережения" — по
+// смыслу это цель СНИЖЕНИЯ потребления, поэтому допускается только
+// отрицательное число или 0,0, положительное — нет.
 NumericInputHandler.init('.app-numeric-input-negative-one-decimal', {
     allowNegative: true,
+    negativeOnly: true,
     decimalPlaces: 1,
     defaultValue: '0,0'
 });
@@ -906,53 +979,39 @@ class DirectionsTable {
         this.tbody.appendChild(this.noInfoRow);
         this.noInfoRow.style.display = "none";
 
+        this.sortColumn = null;
+        this.sortDirection = "asc";
+
         this.initSearch();
         this.initSelection();
+        this.initSort();
 
         if (this.nextButton) {
             this.nextButton.disabled = true;
         }
     }
 
+    // Тот же .empty-state, что и везде в приложении (уведомления,
+    // список планов и т.д.) — вместо самодельной серой иконки с текстом,
+    // чтобы пустое состояние поиска выглядело частью общего стиля.
     createNoInfoRow() {
         const noResultsRow = document.createElement("tr");
         noResultsRow.className = "no-results-row";
+
         const cell = document.createElement("td");
-        cell.colSpan = 5;
-        cell.style.textAlign = "center";
-        cell.style.padding = "40px 20px";
-        
-        const container = document.createElement("div");
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
-        container.style.alignItems = "center";
-        container.style.gap = "12px";
-        
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", "38");
-        svg.setAttribute("height", "38");
-        svg.setAttribute("viewBox", "0 0 24 24");
-        svg.setAttribute("fill", "none");
-        svg.style.opacity = "0.5";
-        
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z");
-        path.setAttribute("stroke", "#999");
-        path.setAttribute("stroke-width", "1.5");
-        path.setAttribute("stroke-linecap", "round");
-        path.setAttribute("stroke-linejoin", "round");
-        path.setAttribute("fill", "none");
-        
-        svg.appendChild(path);
-        
-        const text = document.createElement("span");
-        text.textContent = "Нет похожей информации";
-        text.style.fontSize = "13px";
-        text.style.color = "#999";
-        
-        container.appendChild(svg);
-        container.appendChild(text);
-        cell.appendChild(container);
+        cell.colSpan = this.table.querySelectorAll("thead th").length || 5;
+
+        cell.innerHTML = `
+            <div class="empty-state table-empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10" cy="10" r="6.5"/>
+                    <path d="M19 19l-4.35-4.35"/>
+                </svg>
+                <h1>Ничего не найдено</h1>
+                <p>Попробуйте изменить запрос — код или наименование</p>
+            </div>
+        `;
+
         noResultsRow.appendChild(cell);
         return noResultsRow;
     }
@@ -998,6 +1057,84 @@ class DirectionsTable {
             }
         });
     }
+
+    // Клик по заголовку столбца сортирует строки по нему (повторный клик
+    // меняет направление). Строки уже все в DOM (без пагинации), поэтому
+    // просто переставляем существующие <tr> — так не теряются обработчики
+    // событий и текущая видимость строк (после поиска).
+    initSort() {
+        const headerRow = this.table.querySelector("thead tr");
+        if (!headerRow) return;
+
+        const sortIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6-6 6 6"/></svg>`;
+
+        Array.from(headerRow.children).forEach((th, index) => {
+            if (th.style.display === "none") return;
+
+            const indicator = document.createElement("span");
+            indicator.className = "sort-indicator";
+            indicator.innerHTML = sortIconSvg;
+            th.appendChild(indicator);
+
+            th.addEventListener("click", () => this.sortByColumn(index, th, headerRow));
+        });
+    }
+
+    sortByColumn(index, th, headerRow) {
+        const rows = Array.from(this.tbody.querySelectorAll("tr")).filter(
+            (row) => row !== this.noInfoRow
+        );
+        const isCheckboxColumn = rows.some((row) => row.cells[index]?.querySelector('input[type="checkbox"]'));
+
+        let direction;
+        if (this.sortColumn === index) {
+            direction = this.sortDirection === "asc" ? "desc" : "asc";
+        } else {
+            // для чекбокс-столбцов первый клик сразу показывает отмеченные
+            // сверху — иначе на столбцах, где отмечено почти всё (как
+            // "Эко."), сортировка "по возрастанию" визуально ничего не
+            // меняет и кажется нерабочей
+            direction = isCheckboxColumn ? "desc" : "asc";
+        }
+        this.sortColumn = index;
+        this.sortDirection = direction;
+
+        Array.from(headerRow.children).forEach((h) => h.classList.remove("sort-active", "sort-desc"));
+        th.classList.add("sort-active");
+        if (direction === "desc") th.classList.add("sort-desc");
+
+        rows.sort((rowA, rowB) => {
+            const valueA = this.getCellSortValue(rowA.cells[index]);
+            const valueB = this.getCellSortValue(rowB.cells[index]);
+
+            let result;
+            if (typeof valueA === "number" && typeof valueB === "number") {
+                result = valueA - valueB;
+            } else {
+                result = String(valueA).localeCompare(String(valueB), "ru", { numeric: true });
+            }
+            return direction === "asc" ? result : -result;
+        });
+
+        rows.forEach((row) => this.tbody.appendChild(row));
+        this.tbody.appendChild(this.noInfoRow);
+
+        const container = this.table.closest(".modal-table-conteiner");
+        if (container) container.scrollTop = 0;
+    }
+
+    getCellSortValue(cell) {
+        if (!cell) return "";
+
+        const checkbox = cell.querySelector('input[type="checkbox"]');
+        if (checkbox) return checkbox.checked ? 1 : 0;
+
+        const text = cell.textContent.trim();
+        if (/^-?\d+([.,]\d+)?$/.test(text)) {
+            return parseFloat(text.replace(",", "."));
+        }
+        return text.toLowerCase();
+    }
 }
 
 class MultiTypeSearchManager {
@@ -1017,9 +1154,6 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            // higherOrganizationsApiUrl: '/api/higher-organizations',
-            // oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
-            // regionsApiUrl: '/api/regions',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -1052,7 +1186,6 @@ class MultiTypeSearchManager {
         this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
-        // this.highlightActiveTypeButton();
         this.hideTypeButtons();
     }
 
@@ -1089,17 +1222,6 @@ class MultiTypeSearchManager {
                 this.selectItem(row);
             }
         });
-
-        // if (this.typeButtons.length > 0) {
-        //     this.typeButtons.forEach(button => {
-        //         button.addEventListener('click', (e) => {
-        //             const type = e.target.dataset.type || e.target.closest('button').dataset.type;
-        //             if (type && type !== this.selectedItemType) {
-        //                 this.selectItemType(type);
-        //             }
-        //         });
-        //     });
-        // }
 
         if (this.prevPageBtn) {
             this.prevPageBtn.addEventListener('click', () => {
@@ -1145,15 +1267,6 @@ class MultiTypeSearchManager {
                 case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
                     break;
-                // case 'higher_organization':
-                //     apiUrl = this.config.higherOrganizationsApiUrl;
-                //     break;
-                // case 'oblispolkom_gorispolkom':
-                //     apiUrl = this.config.oblispolkomGorispolkomApiUrl;
-                //     break;
-                // case 'region':
-                //     apiUrl = this.config.regionsApiUrl;
-                //     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
             }
@@ -1190,12 +1303,6 @@ class MultiTypeSearchManager {
         switch(type) {
             case 'organization':
                 return data.organizations || [];
-            // case 'higher_organization':
-            //     return data.higher_organizations || [];
-            // case 'oblispolkom_gorispolkom':
-            //     return data.oblispolkom_gorispolkoms || [];
-            // case 'region':
-            //     return data.regions || [];
             default:
                 return [];
         }
@@ -1236,27 +1343,6 @@ class MultiTypeSearchManager {
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                // case 'higher_organization':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
-                // case 'oblispolkom_gorispolkom':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
-                // case 'region':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
                 default:
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
@@ -1567,28 +1653,38 @@ function initConfirmModal(config) {
         });
     });
 
-    yesButton.addEventListener('click', function () {
-        modalElement.classList.remove('active');
-        if (modalElement._currentForm) {
-            modalElement._currentForm.submit();
-        }
-    });
-
-    noButton.addEventListener('click', function () {
-        modalElement.classList.remove('active');
-    });
-
-    modalElement.addEventListener('click', function (event) {
-        if (event.target === modalElement) {
+    if (!yesButton.dataset.confirmModalBound) {
+        yesButton.dataset.confirmModalBound = 'true';
+        yesButton.addEventListener('click', function () {
             modalElement.classList.remove('active');
-        }
-    });
+            if (modalElement._currentForm) {
+                modalElement._currentForm.submit();
+            }
+        });
+    }
 
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && modalElement.classList.contains('active')) {
+    if (!noButton.dataset.confirmModalBound) {
+        noButton.dataset.confirmModalBound = 'true';
+        noButton.addEventListener('click', function () {
             modalElement.classList.remove('active');
-        }
-    });
+        });
+    }
+
+    if (!modalElement.dataset.confirmModalBound) {
+        modalElement.dataset.confirmModalBound = 'true';
+
+        modalElement.addEventListener('click', function (event) {
+            if (event.target === modalElement) {
+                modalElement.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && modalElement.classList.contains('active')) {
+                modalElement.classList.remove('active');
+            }
+        });
+    }
 }
 
 class MultiStepForm {
@@ -1847,7 +1943,7 @@ class MultiStepForm {
     }
 
     setupStep1Validation() {
-        const requiredFields = ['#name', '#secondname', '#phone'];
+        const requiredFields = ['#name', '#secondname', '#telephone'];
         requiredFields.forEach(selector => {
             const input = document.querySelector(selector);
             if (input) {
@@ -1871,7 +1967,7 @@ class MultiStepForm {
     }
 
     validateStep1() {
-        const requiredFields = ['secondname', 'name', 'phone'];
+        const requiredFields = ['secondname', 'name', 'telephone'];
         return requiredFields.every(fieldId => {
             const input = document.getElementById(fieldId);
             return input && input.value.trim() !== '';
@@ -2122,7 +2218,7 @@ class MultiStepForm {
     }
 }
 
-class TicketInfo {
+class PlanTicketInfo {
     constructor(options = {}) {
         this.options = {
             animationDuration: 300,
@@ -2219,8 +2315,8 @@ class TicketInfo {
                     <div class="ticket-info-item">
                         <span class="ticket-info-label">Телефон</span>
                         <span class="ticket-info-value">
-                            <a href="tel:${data.user_phone}" class="ticket-info-link">
-                                ${data.user_phone || '---'}
+                            <a href="tel:${data.user_telephone}" class="ticket-info-link">
+                                ${data.user_telephone || '---'}
                             </a>
                         </span>
                     </div>
@@ -2378,7 +2474,7 @@ class TicketInfo {
     }
 }
 
-window.TicketInfo = TicketInfo;
+window.PlanTicketInfo = PlanTicketInfo;
 
 function initSections() {
     const sections = document.querySelectorAll('.user-info-section:not([data-initialized])');
@@ -2511,12 +2607,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         Notifications.init();
         setInterval(() => {
-            Notifications.init();
+            Notifications.refreshBadge();
         }, 60000);
     }
 
     if (document.querySelectorAll('.tickets-container')) {
-        window.TicketInfo = TicketInfo;
+        window.PlanTicketInfo = PlanTicketInfo;
     }
     
     initSections();
@@ -2626,17 +2722,6 @@ document.addEventListener('DOMContentLoaded', function() {
         statNumbers.forEach(stat => observer.observe(stat));
     }
     
-    const bgGrid = document.querySelector('.bg-grid');
-    
-    if (bgGrid) {
-        window.addEventListener('mousemove', (e) => {
-            const x = (e.clientX / window.innerWidth) * 20;
-            const y = (e.clientY / window.innerHeight) * 20;
-            
-            bgGrid.style.transform = `translate(${x}px, ${y}px)`;
-        });
-    }
-
     const ticket_container = document.querySelector('.tickets-messages-list');
     if (ticket_container) {
         setTimeout(() => {
@@ -2652,8 +2737,118 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const multiStepForm = new MultiStepForm();
-        window.multiStepForm = multiStepForm; 
+        window.multiStepForm = multiStepForm;
     } catch (error) {
         console.error('Failed to initialize MultiStepForm:', error);
     }
+});
+
+/* ============================================
+   FILTER DROPDOWNS
+   .filters-area can scroll horizontally on narrow
+   screens (fixed-width filter controls). Once a
+   container scrolls on one axis, the browser clips
+   the other axis too, which hides an absolutely
+   positioned .dropdown-menu-filter behind whatever
+   comes after it (e.g. .plans-area). Fix: while a
+   dropdown is open, position its menu with `fixed`
+   using the toggle button's real viewport coordinates,
+   so it escapes any scrolling/clipping ancestor.
+   ============================================ */
+document.addEventListener('DOMContentLoaded', () => {
+    function positionDropdownMenu(dropdown) {
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        const menu = dropdown.querySelector('.dropdown-menu-filter');
+        if (!toggle || !menu) return;
+
+        const rect = toggle.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.style.left = rect.left + 'px';
+        menu.style.right = 'auto';
+
+        requestAnimationFrame(() => {
+            const menuRect = menu.getBoundingClientRect();
+            const overflowRight = menuRect.right - window.innerWidth;
+            if (overflowRight > 0) {
+                menu.style.left = Math.max(8, rect.left - overflowRight - 8) + 'px';
+            }
+        });
+    }
+
+    function resetDropdownMenu(dropdown) {
+        const menu = dropdown.querySelector('.dropdown-menu-filter');
+        if (!menu) return;
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.left = '';
+        menu.style.right = '';
+    }
+
+    document.querySelectorAll('.custom-dropdown').forEach(dropdown => {
+        const observer = new MutationObserver(() => {
+            if (dropdown.classList.contains('active')) {
+                positionDropdownMenu(dropdown);
+            } else {
+                resetDropdownMenu(dropdown);
+            }
+        });
+        observer.observe(dropdown, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.custom-dropdown.active').forEach(positionDropdownMenu);
+    });
+});
+
+// Копирование ОКПО/УНП по клику на карточке организации
+// (см. macros/components.html :: organization_view_card).
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.org-code-copy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const value = btn.dataset.copyValue || '';
+            if (!value) return;
+
+            try {
+                await navigator.clipboard.writeText(value);
+            } catch (e) {
+                const input = document.createElement('textarea');
+                input.value = value;
+                input.style.position = 'fixed';
+                input.style.opacity = '0';
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+            }
+
+            btn.classList.add('copied');
+            clearTimeout(btn._copyResetTimeout);
+            btn._copyResetTimeout = setTimeout(() => {
+                btn.classList.remove('copied');
+            }, 1600);
+        });
+    });
+});
+
+// Подтверждение/отмена этапа согласования плана администратором
+// (см. macros/components.html :: plan_agree_slider) — предупреждаем о
+// каскадном эффекте (см. handle_admin_confirm_step/handle_admin_cancel_step
+// в status_plan.py) перед реальной отправкой формы.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.enplans-approval-admin-form').forEach((form) => {
+        form.addEventListener('submit', (e) => {
+            const button = e.submitter;
+            const action = button ? button.dataset.confirmAction : null;
+            const orgName = form.dataset.orgName || '';
+
+            const question = action === 'cancel'
+                ? `Отменить подтверждение этапа «${orgName}»? Все последующие подтверждённые этапы тоже будут отменены.`
+                : `Подтвердить этап «${orgName}» в обход обычного порядка? Все предыдущие непройденные этапы будут подтверждены автоматически.`;
+
+            if (!confirm(question)) {
+                e.preventDefault();
+            }
+        });
+    });
 });

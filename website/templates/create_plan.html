@@ -9,20 +9,13 @@
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('Год') }} <span class="required-star">*</span></label>
-          <div class="input-with-icon">
-            {{ icons.icon_calendar() }}
-            <input
-              type="number"
-              id="year"
-              name="year"
-              min="2024"
-              max="2050"
-              value="{{next_year}}"
-              class="app-input"
-              required
-              onchange="checkExistingPlan(this.value)"
-            />
-          </div>
+          {{ component.year_picker(
+               next_year,
+               taken_years=taken_years|default([]),
+               min_year=plan_year_min|default(2024),
+               max_year=plan_year_max|default(2050),
+               onchange='checkExistingPlan(this.value)'
+          ) }}
           <small id="year-error" class="error-message-small">
             {{ _('У вас уже есть план на этот год!') }}
           </small>
@@ -35,7 +28,7 @@
       <br />
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель энергосбережения') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель энергосбережения') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
@@ -48,7 +41,7 @@
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -63,7 +56,7 @@
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }} <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
@@ -76,7 +69,7 @@
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -89,7 +82,7 @@
           </div>
         </div>
       </div>
-      {{ component.required_legend() }}
+      {#{{ component.required_legend() }}#}
       <div class="button-area">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button type="submit" id="submit-btn" class="main-btn main-btn-primary">
@@ -100,8 +93,9 @@
     </form>
   </div>
 </div>
-{{ affects.bg_effect() }} 
+{{ affects.bg_effect() }}
 
+<script src="{{ url_for('static', filename='js/year-picker.js') }}"></script>
 <script>
   function checkExistingPlan(year) {
     if (!year) return;

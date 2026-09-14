@@ -11,11 +11,11 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        {% if current_user.post %}  
+        {#{% if current_user.post %}  
           <a class="employee-position">{{ current_user.post}}</a>
-        {% endif%}
-        <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.name}} {% endif%}">
-          {% if current_user.organization %} {{ current_user.organization.name}} {% endif%}
+        {% endif%}#}
+        <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
+          {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
       </div>
     </div>
@@ -105,7 +105,7 @@
         {{ icons.icon_contacts() }}
         <input
           type="text"
-          value="{{current_user.phone}}"
+          value="{{current_user.telephone}}"
           placeholder="Номер телефона пользователя"
           class="app-input"
         />
@@ -117,7 +117,7 @@
         {{ icons.icon_profile() }}
         <input
           type="text"
-          value="{{ current_user.post }}"
+          value="{{ current_user.post or '' }}"
           placeholder="{{ _('Должность пользователя') }}"
           class="app-input"
         />
@@ -156,57 +156,62 @@
           </div>
       </div>
     </div>
-    {% if current_user.organization %}
-    <div class="profile-org">
-      <div class="app-group">
-        <label>{{ _('Наименование') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_org() }}
-          <input
-            type="text"
-            value="{{ current_user.organization.name }}"
-            class="app-input"
-          />
+    {{ component.organization_view_card(current_user.organization) }}
+    <hr>
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Сессии') }}</a>
+      </div>
+      <div class="header-content-right"></div>
+    </div>
+
+    <div class="glass-surface session-glass-card"
+         id="sessionCard"
+         data-timeout-minutes="{{ session_info.timeout_minutes }}"
+         data-last-active="{{ session_info.last_active }}"
+         data-expires-at="{{ session_info.expires_at }}"
+         data-server-time="{{ session_info.server_time }}">
+      <div class="session-card-top">
+        <div class="session-card-status">
+          <span class="session-status-dot"></span>
+          <span>{{ _('Текущая сессия активна') }}</span>
+        </div>
+        <span class="session-role-badge">{{ session_info.role_label }}</span>
+      </div>
+
+      <div class="session-info-grid">
+        <div class="session-info-item">
+          <span class="session-info-label">{{ _('Устройство') }}</span>
+          <span class="session-info-value">{{ session_info.device }}</span>
+        </div>
+        <div class="session-info-item">
+          <span class="session-info-label">{{ _('Срок бездействия') }}</span>
+          <span class="session-info-value">
+            {% if session_info.timeout_minutes % 60 == 0 %}
+              {{ (session_info.timeout_minutes // 60) }} {{ _('ч.') }}
+            {% else %}
+              {{ session_info.timeout_minutes }} {{ _('мин.') }}
+            {% endif %}
+          </span>
+        </div>
+        <div class="session-info-item">
+          <span class="session-info-label">{{ _('IP-адрес') }}</span>
+          <span class="session-info-value">{{ session_info.ip or '—' }}</span>
         </div>
       </div>
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('ОКПО') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_okpo() }}
-            <input
-              type="text"
-              id="name"
-              placeholder="Номер окпо"
-              value="{{ current_user.organization.okpo }}"
-              class="app-input"
-            />
-          </div>
+
+      <div class="session-timer">
+        <div class="session-timer-header">
+          <span>{{ _('Автоматический выход через') }}</span>
+          <span class="session-timer-value" id="sessionTimerValue">--:--</span>
         </div>
-        <div class="app-group">
-          <label>{{ _('УНП') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_ynp() }}
-            <input
-              type="text"
-              value="{{ current_user.organization.ynp|default('Пусто', true) }}"
-              class="app-input"
-            />
-          </div>
+        <div class="session-timer-track">
+          <div class="session-timer-fill" id="sessionTimerFill"></div>
         </div>
+        <p class="session-timer-hint">{{ _('Таймер продлевается автоматически при любой активности в системе') }}</p>
       </div>
-      <div class="app-group">
-        <label>{{ _('Регион') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_region() }}
-          <input
-            type="text"
-            value="{{ current_user.organization.region.name|default('Пусто', true) }}"
-            class="app-input"
-          />
-        </div>
-      </div>
-    {%endif%}
+    </div>
+
     <hr>
     <div class="header-content">
       <div class="header-content-left">
@@ -215,7 +220,7 @@
       <div class="header-content-right">
       </div>
     </div>
-    <div class="danger-zone">
+    <div class="danger-zone glass-surface glass-surface--danger">
         <div class="danger-zone-header">
             <div class="danger-zone-title">
                 <a class="name" style="padding-bottom: 0; margin: 0;">{{ _('Удаление аккаунта') }}</a>
@@ -223,12 +228,12 @@
             </div>
         </div>
         <div class="danger-zone-actions">
-            <form id="deleteProfile_form" action="{{ url_for('auth.delete_profile') }}" method="POST">
+            <form id="deleteProfile_form" action="{{ url_for('auth.delete_account') }}" method="POST">
                 <div class="confirm-delete-area">
                     <div class="app-group">
                         <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
                         <div class="input-with-icon">
-                            <input type="text" id="confirm-email-field" name="confirm_email" class="app-input" placeholder="{{ current_user.email }}">
+                            <input type="text" id="confirm-email-field" name="confirm_email" class="app-input danger-input" placeholder="Ваш электронный адрес">
                         </div>
                     </div>
                 </div>
@@ -256,7 +261,7 @@
                 <span class="date-day">{{ current_user.begin_time.strftime('%d.%m.%Y') }}</span>
                 <span class="date-time">{{ current_user.begin_time.strftime('%H:%M') }}</span>
               {% else %}
-                <span class="date-empty">—</span>
+                <span class="date-empty">Нет данных</span>
               {% endif %}
             </div>
           </div>

@@ -74,12 +74,12 @@ endblock %} {% block content %}
           />
         </div>
         <div class="form-group">
-          <label for="phone">{{ _('Телефон') }} <span class="required-star">*</span></label>
+          <label for="telephone">{{ _('Телефон') }} <span class="required-star">*</span></label>
           <input
             type="tel"
-            name="phone"
-            value="{{ current_user.phone or '' }}"
-            id="phone"
+            name="telephone"
+            value="{{ current_user.telephone or '' }}"
+            id="telephone"
             maxlength="13"
             placeholder="{{ _('Введите номер телефона') }}"
             class="auth-input"
@@ -145,7 +145,7 @@ endblock %} {% block content %}
           />
           <div class="radio-org-card" data-type="auditor">
             {{ icons.icon_profile() }}
-            <div class="radio-org-title">Аудитор</div>
+            <div class="radio-org-title">Проверяющий</div>
             <div class="radio-org-subtitle">Согласование отправленных планов мероприятий по энергосбережению</div>
           </div>
         </label>
@@ -236,7 +236,7 @@ endblock %} {% block content %}
       <hr>
       <div class="button-auth-area">
         <button type="submit" class="main-btn main-btn-primary" id="submit-btn" disabled>
-          {{ icons.icon_login2() }}
+          {{ icons.icon_login() }}
           <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
         </button>
         <button type="button" class="svg-btn" id="prev-btn-3">

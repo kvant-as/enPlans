@@ -106,6 +106,42 @@ function initStatusProgress() {
             dot.style.display = 'none';
         }
     });
-    
+
     resetProgress();
+    syncProgressLineToTrack();
+}
+
+// На мобильном .stats-track листается по горизонтали и точки статусов
+// (внутри трека) уезжают вместе со скроллом, а .progress-line-container —
+// его сосед, абсолютно спозиционированный относительно НЕскроллящегося
+// .stats-container — оставался на месте. Из-за этого заливка (её ширина
+// считается в % от .progress-line-container) визуально не совпадала с
+// тем, под какой именно точкой/статом она должна заканчиваться.
+// Решение: растягиваем .progress-line-container до полной scrollWidth
+// трека и двигаем его тем же transform, что и скролл — тогда линия и
+// точки всегда остаются друг под другом, а .stats-container обрезает
+// лишнее через overflow: hidden (см. base.css).
+function syncProgressLineToTrack() {
+    const track = document.querySelector('.stats-track');
+    const lineContainer = document.querySelector('.progress-line-container');
+    if (!track || !lineContainer) return;
+
+    function sync() {
+        const isScrollable = track.scrollWidth - track.clientWidth > 1;
+        if (isScrollable) {
+            lineContainer.style.width = track.scrollWidth + 'px';
+            lineContainer.style.transform = `translateX(${-track.scrollLeft}px)`;
+        } else {
+            lineContainer.style.width = '';
+            lineContainer.style.transform = '';
+        }
+    }
+
+    if (!track.dataset.progressSyncBound) {
+        track.dataset.progressSyncBound = 'true';
+        track.addEventListener('scroll', sync, { passive: true });
+        window.addEventListener('resize', sync);
+    }
+
+    sync();
 }

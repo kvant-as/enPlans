@@ -3,7 +3,7 @@
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user, show_plan_info=False, back_url='/profile', plan_text = ('Редактирование профиля')) }}
-  <div class="personal-acc-conteiner" style="margin-top: 140px;">
+  <div class="personal-acc-conteiner edit-page">
     <a class="name">{{ _('Редактирование профиля') }}</a>
 
     <form id="editprofileForm" method="POST" action="{{ url_for('auth.edit_param') }}">
@@ -62,8 +62,8 @@
           <input
             type="text"
             maxlength="13"
-            name="phone"
-            value="{{current_user.phone}}"
+            name="telephone"
+            value="{{current_user.telephone}}"
             placeholder="Введите номер телефона"
             class="app-input"
             required
@@ -78,7 +78,7 @@
             type="text"
             maxlength="25"
             name="post"
-            value="{{ current_user.post }}"
+            value="{{ current_user.post or '' }}"
             placeholder="{{ _('Введите должность') }}"
             class="app-input"
           />

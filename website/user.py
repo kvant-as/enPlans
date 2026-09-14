@@ -37,6 +37,9 @@ def sign_def(email, password1, password2):
         elif not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email):
             flash('Некорректный адрес электронной почты', 'error')
             return redirect(url_for('auth.sign'))
+        elif len(password1) < 5:
+            flash('Пароль должен содержать не менее 5 символов', 'error')
+            return redirect(url_for('auth.sign'))
         elif password1 != password2:
             flash('Ошибка в подтверждении пароля', 'error')
             return redirect(url_for('auth.sign'))
@@ -74,11 +77,11 @@ def activate_account():
         flash('Некорректный код активации', 'error')
         return redirect(url_for('auth.code')) 
          
-def add_param(first_name, last_name, patronymic_name, phone, organization_id=None, user_type='respondent', post=None):
+def add_param(first_name, last_name, patronymic_name, telephone, organization_id=None, user_type='respondent', post=None):
     required_fields = {
         'first_name': first_name,
         'last_name': last_name,
-        'phone': phone
+        'telephone': telephone
     }
     
     for field_name, value in required_fields.items():
@@ -86,7 +89,7 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
             flash(f'Поле "{field_name}" обязательно для заполнения!', 'error')
             return redirect(url_for('auth.param'))
     
-    if not phone or len(phone.strip()) < 5:
+    if not telephone or len(telephone.strip()) < 5:
         flash('Номер телефона должен содержать не менее 5 символов!', 'error')
         return redirect(url_for('views.profile'))
     
@@ -110,15 +113,15 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
     
-    normalized_phone = phone.strip()
-    # if normalized_phone.startswith('+'):
+    normalized_telephone = telephone.strip()
+    # if normalized_telephone.startswith('+'):
     #     plus = '+'
-    #     digits = ''.join(filter(str.isdigit, normalized_phone[1:]))
-    #     normalized_phone = plus + digits
+    #     digits = ''.join(filter(str.isdigit, normalized_telephone[1:]))
+    #     normalized_telephone = plus + digits
     # else:
-    #     normalized_phone = ''.join(filter(str.isdigit, normalized_phone))
+    #     normalized_telephone = ''.join(filter(str.isdigit, normalized_telephone))
     
-    # existing_user = User.query.filter_by(phone=normalized_phone).first()
+    # existing_user = User.query.filter_by(telephone=normalized_telephone).first()
     # if existing_user and existing_user.id != current_user.id:
     #     flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
     #     return redirect(url_for('auth.param'))
@@ -144,7 +147,7 @@ def add_param(first_name, last_name, patronymic_name, phone, organization_id=Non
     current_user.first_name = first_name.strip()
     current_user.last_name = last_name.strip()
     current_user.patronymic_name = patronymic_name.strip() if patronymic_name else None
-    current_user.phone = normalized_phone
+    current_user.telephone = normalized_telephone
     current_user.post = post.strip() if post else ''
     
     current_user.organization_id = org_id

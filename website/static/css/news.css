@@ -90,6 +90,16 @@
 }
 
 .news_card {
+    /* Карточка всегда светлая (см. .news_card_image ниже и общий принцип
+       "раздел новостей — своя фиксированная тема, не зависящая от
+       переключателя сайта") — поэтому текст внутри неё тоже фиксируем на
+       светлых значениях этих переменных, а не наследуем тёмные из
+       :root[data-theme="dark"]: иначе в тёмной теме сайта заголовок и
+       описание становились почти белым текстом на белой карточке. */
+    --text-title: #2c3e50;
+    --text-subtitle: #7f8c8d;
+    --text-subtitle2: #5d6566;
+    --border-color: #D9D9D9;
     background: white;
     border-radius: 16px;
     overflow: hidden;
@@ -409,11 +419,7 @@
 }
 
 .article_crystal {
-    background: white;
-    border-radius: 24px;
     padding: 48px;
-    box-shadow: 0 8px 32px rgba(0, 39, 98, 0.12);
-    border: 1px solid var(--border-color);
 }
 
 .content_hologram {
@@ -424,11 +430,11 @@
 .media_illuminate {
     position: relative;
     width: fit-content;
-    border-radius: 20px;
+
     overflow: hidden;
     height: 100%;
     margin: 0 auto;
-    border: 1px solid var(--border-color);
+
     box-sizing: border-box;
 }
 
@@ -436,7 +442,7 @@
     width: 100%;
     max-height: 400px;
     object-fit: cover;
-    border-radius: 16px;
+
 }
 
 .text_spectrum {
@@ -497,7 +503,7 @@
 /* Адаптивность */
 @media (max-width: 768px) {
     .news_page {
-        margin-top: 30px;
+        margin-top: 100px;
         padding: 0 16px;
     }
     
@@ -526,7 +532,7 @@
     }
     
     .news_portal {
-        margin-top: 30px;
+        margin-top: 100px;
         padding: 20px 16px;
     }
     

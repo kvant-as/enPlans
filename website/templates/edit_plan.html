@@ -4,7 +4,7 @@
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
-  <div class="personal-acc-conteiner" style="margin-top: 140px;">
+  <div class="personal-acc-conteiner edit-page">
     <div class="header-content">
       <div class="header-content-left">
         <a class="name">{{ _('Редактирование плана') }}</a>
@@ -16,22 +16,14 @@
       <div class="row-app-group">
         <div class="app-group">
           <label>{{ _('Год') }} <span class="required-star">*</span></label>
-          <div class="input-with-icon">
-            {{ icons.icon_calendar() }}
-            <input
-              type="number"
-              id="year"
-              name="year"
-              min="2024"
-              max="2050"
-              value="{{ plan.year }}"
-              placeholder=""
-              class="app-input"
-              required
-              onchange="checkExistingPlan(this.value)"
-              data-current-year="{{ plan.year }}"
-            />
-          </div>
+          {{ component.year_picker(
+               plan.year,
+               taken_years=taken_years|default([]),
+               min_year=plan_year_min|default(2024),
+               max_year=plan_year_max|default(2050),
+               onchange='checkExistingPlan(this.value)',
+               current_year_attr=plan.year
+          ) }}
           <small id="year-error" class="error-message-small">
             {{ _('У вас уже есть план c таким годом!') }}
           </small>
@@ -44,7 +36,7 @@
       <br />
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель энергосбережения') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель энергосбережения') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_eco() }}
             <input
@@ -57,7 +49,7 @@
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по доле местных ТЭР в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -73,7 +65,7 @@
       </div>
       <div class="row-app-group">
         <div class="app-group">
-          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }} <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по экономии ТЭР (т у.т.)') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_saving() }}
             <input
@@ -86,7 +78,7 @@
           </div>
         </div>
         <div class="app-group">
-          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%) <span class="required-star">*</span></label>
+          <label>{{ _('Целевой показатель по доле ВИЭ в КПТ') }} (%)</label>
           <div class="input-with-icon">
             {{ icons.icon_half() }}
             <input
@@ -100,7 +92,7 @@
         </div>
       </div>
       
-      {{ component.required_legend() }}
+      {#{{ component.required_legend() }}#}
       <div class="button-area">
         <button id="editPlanButton" type="submit" class="main-btn main-btn-primary">
           {{ icons.icon_edit() }}
@@ -110,7 +102,8 @@
     </form>
   </div>
 </div>
-{{ affects.bg_effect() }} 
+{{ affects.bg_effect() }}
+<script src="{{ url_for('static', filename='js/year-picker.js') }}"></script>
 <script>
   function checkExistingPlan(year) {
     if (!year) return;

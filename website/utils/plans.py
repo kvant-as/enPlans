@@ -5,7 +5,9 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, PlanColumnConfig, Ticket, Indicator, Event, IndicatorUsage, Notification,PlanApprovalPath, TimeByMinsk
+from ..models import Direction, Organization, Plan, PlanColumnConfig, PlanTicket, Indicator, Event, IndicatorUsage, Notification, PlanApprovalPath
+
+from common_models import current_utc_time
 
 from sqlalchemy import func, or_
 
@@ -128,7 +130,7 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
 
 def get_column_configs_for_plan(plan):
     plan_year = plan.year
-    current_year = TimeByMinsk().year
+    current_year = current_utc_time().year
     
     if plan_year > current_year:
         labels = ['прогноз', 'прогноз', 'прогноз']
@@ -154,12 +156,12 @@ def get_column_configs_for_plan(plan):
 
 def update_ChangeTimePlan(id):
     def owner_ticket(plan):
-        new_ticket = Ticket(
+        new_ticket = PlanTicket(
             note='Внесение изменений пользователем.',
             luck = True,
             is_system = True,
             plan_id=plan.id,
-            begin_time=TimeByMinsk()
+            begin_time=current_utc_time()
         )
 
         db.session.add(new_ticket)
@@ -171,7 +173,7 @@ def update_ChangeTimePlan(id):
     if not plan:
         return 
     
-    plan.change_time = TimeByMinsk()
+    plan.change_time = current_utc_time()
     plan.is_draft = True   
     plan.is_control = False  
     plan.is_sent = False      
@@ -184,28 +186,33 @@ def update_ChangeTimePlan(id):
     db.session.commit()
 
 def get_plans_by_okpo():
-    okpo_digit = str(current_user.organization.okpo)[-4]
-    """Фильтрация по 4-ой цифре с конца OKPO: {okpo_digit}"""
-    
+    """Фильтрация по 4-ой цифре с конца ОКПО организации пользователя —
+    кроме admin/is_reader, которые видят всё вне зависимости от ОКПО (и
+    могут вообще не иметь привязанной организации, поэтому эта ветка
+    проверяется первой, до обращения к current_user.organization)."""
     status_filter = or_(
         Plan.is_sent == True,
-        Plan.is_error == True, 
+        Plan.is_error == True,
         Plan.is_approved == True
     )
-    
-    if current_user.is_admin or (current_user.is_auditor and str(current_user.organization.okpo)[-4] == "8"):
-        return Plan.query.filter(
-            status_filter
-        ).order_by(Plan.year.asc())
-    else:
-        return Plan.query.join(Organization).filter(
-            status_filter,
-            func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
-        ).order_by(Plan.year.asc())
+
+    if current_user.is_admin or current_user.is_reader:
+        return Plan.query.filter(status_filter).order_by(Plan.year.asc())
+
+    org_okpo = str(current_user.organization.okpo) if current_user.organization else ''
+    okpo_digit = org_okpo[-4] if len(org_okpo) >= 4 else None
+
+    if current_user.is_auditor and okpo_digit == "8":
+        return Plan.query.filter(status_filter).order_by(Plan.year.asc())
+
+    return Plan.query.join(Organization).filter(
+        status_filter,
+        func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
+    ).order_by(Plan.year.asc())
 
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_ynp="", region_id=None, page=1, per_page=5):
     try:
-        current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
+        # current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         
         if user.is_auditor:
             auditor_org_ids = []
@@ -228,7 +235,10 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                         )
                     )\
                     .distinct()
-        elif user.is_admin:
+        elif user.is_admin or user.is_reader:
+            # is_reader — читатель, видит все планы (как admin), но
+            # изменить/создать ничего не может (см. reader_forbidden в
+            # routes/views.py и одноимённый декоратор в plan_bp.py/audit_bp.py)
             base_query = Plan.query.order_by(
                 db.case(
                     (Plan.user_id == user.id, 0),
@@ -245,7 +255,7 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             base_query = base_query.join(Organization, Plan.org_id == Organization.id)
             
             if search_name:
-                base_query = base_query.filter(Organization.name.ilike(f'%{search_name}%'))
+                base_query = base_query.filter(Organization.full_name.ilike(f'%{search_name}%'))
             
             if search_ynp:
                 base_query = base_query.filter(Organization.ynp.ilike(f'%{search_ynp}%'))
@@ -283,10 +293,10 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             filtered_query = filtered_query.filter(Plan.year == int(year_filter))
         
         total_count = filtered_query.count()
-        current_app.logger.debug(f'total_count={total_count}')
+        # current_app.logger.debug(f'total_count={total_count}')
         
         plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
-        current_app.logger.debug(f'plans count={len(plans)}')
+        # current_app.logger.debug(f'plans count={len(plans)}')
         
         count_query = base_query
         if year_filter != 'all':
@@ -367,8 +377,8 @@ def other_data_indicatorUpdate(plan_id):
     
     indicator_usages = IndicatorUsage.query.filter_by(id_plan=plan.id).all()
     
-    def update_indicator_1000():
-        """Обновление индикатора 1000 (сумма всех необязательных показателей)"""
+    def update_indicator_1101():
+        """Обновление индикатора 1101 (сумма всех необязательных показателей)"""
         totals = db.session.query(
             func.sum(IndicatorUsage.QYearBeforePrev).label('total_before_prev'),
             func.sum(IndicatorUsage.QYearPrev).label('total_prev'),
@@ -377,12 +387,12 @@ def other_data_indicatorUpdate(plan_id):
             IndicatorUsage.id_plan == plan.id,
             Indicator.IsMandatory == False
         ).first()
-        
-        indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
-        if indicator_1000:
-            indicator_1000.QYearBeforePrev = to_decimal_2(totals.total_before_prev or 0)
-            indicator_1000.QYearPrev = to_decimal_2(totals.total_prev or 0)
-            indicator_1000.QYearCurrent = to_decimal_2(totals.total_current or 0)
+
+        indicator_1101 = get_indicator_by_code(indicator_usages, '1101')
+        if indicator_1101:
+            indicator_1101.QYearBeforePrev = to_decimal_2(totals.total_before_prev or 0)
+            indicator_1101.QYearPrev = to_decimal_2(totals.total_prev or 0)
+            indicator_1101.QYearCurrent = to_decimal_2(totals.total_current or 0)
             commit_changes()
     
     def update_indicator_1796():
@@ -522,20 +532,20 @@ def other_data_indicatorUpdate(plan_id):
             current_app.logger.warning('Indicator with code 260 not found')
             return
         
-        indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
+        indicator_1101 = get_indicator_by_code(indicator_usages, '1101')
         indicator_1105 = get_indicator_by_code(indicator_usages, '1105')
         indicator_1405 = get_indicator_by_code(indicator_usages, '1405')
         indicator_1104 = get_indicator_by_code(indicator_usages, '1104')
         indicator_1404 = get_indicator_by_code(indicator_usages, '1404')
-        
-        if not all([indicator_1000, indicator_1105, indicator_1405, indicator_1104, indicator_1404]):
+
+        if not all([indicator_1101, indicator_1105, indicator_1405, indicator_1104, indicator_1404]):
             current_app.logger.warning('Missing required indicators for 260 calculation')
             return
-        
+
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
-        
+
         for period in periods:
-            base = get_value(indicator_1000, period)
+            base = get_value(indicator_1101, period)
             diff1 = get_value(indicator_1105, period) - get_value(indicator_1405, period)
             diff2 = get_value(indicator_1104, period) - get_value(indicator_1404, period)
             result = to_decimal_2(base + diff1 + diff2)
@@ -581,31 +591,31 @@ def other_data_indicatorUpdate(plan_id):
         indicator_1796 = get_indicator_by_code(indicator_usages, '1796')
         indicator_1424 = get_indicator_by_code(indicator_usages, '1424')
         indicator_1425 = get_indicator_by_code(indicator_usages, '1425')
-        indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
-        
-        if not indicator_1000:
-            current_app.logger.warning('Indicator 1000 not found')
+        indicator_1101 = get_indicator_by_code(indicator_usages, '1101')
+
+        if not indicator_1101:
+            current_app.logger.warning('Indicator 1101 not found')
             return
-        
+
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
-        
+
         for period in periods:
             numerator = Decimal('0.0')
-            
+
             if indicator_1796:
                 numerator += get_value(indicator_1796, period)
             if indicator_1424:
                 numerator += get_value(indicator_1424, period)
             if indicator_1425:
                 numerator += get_value(indicator_1425, period)
-            
-            denominator = get_value(indicator_1000, period)
-            
+
+            denominator = get_value(indicator_1101, period)
+
             if denominator == 0:
                 result = Decimal('0.0')
             else:
                 result = (numerator / denominator) * 100
-            
+
             setattr(indicator_9916, period, to_decimal_1(result))
             current_app.logger.info(f'Set 9916.{period} = {result}')
         
@@ -623,25 +633,25 @@ def other_data_indicatorUpdate(plan_id):
         indicator_1797 = get_indicator_by_code(indicator_usages, '1797')
         indicator_1424 = get_indicator_by_code(indicator_usages, '1424')
         indicator_1425 = get_indicator_by_code(indicator_usages, '1425')
-        indicator_1000 = get_indicator_by_code(indicator_usages, '1000')
-        
-        if not indicator_1000:
-            current_app.logger.warning('Indicator 1000 not found')
+        indicator_1101 = get_indicator_by_code(indicator_usages, '1101')
+
+        if not indicator_1101:
+            current_app.logger.warning('Indicator 1101 not found')
             return
-        
+
         periods = ['QYearBeforePrev', 'QYearPrev', 'QYearCurrent']
-        
+
         for period in periods:
             numerator = Decimal('0.0')
-            
+
             if indicator_1797:
                 numerator += get_value(indicator_1797, period)
             if indicator_1424:
                 numerator += get_value(indicator_1424, period)
             if indicator_1425:
                 numerator += get_value(indicator_1425, period)
-            
-            denominator = get_value(indicator_1000, period)
+
+            denominator = get_value(indicator_1101, period)
             
             if denominator == 0:
                 result = Decimal('0.0')
@@ -655,7 +665,7 @@ def other_data_indicatorUpdate(plan_id):
     
     try:
         update_indicator_9900()
-        update_indicator_1000()
+        update_indicator_1101()
         update_indicator_1796()
         update_indicator_1797()
         update_indicator_9910()
@@ -670,6 +680,60 @@ def other_data_indicatorUpdate(plan_id):
     except Exception as e:
         current_app.logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
         db.session.rollback()
+
+def validate_period_values(plan_id, current_period_code, current_value, exclude_event_id=None):
+    period_codes = ['0001', '0002', '0003', '0004']
+    
+    if current_period_code not in period_codes:
+        return None
+    
+    period_names = {
+        '0001': 'Январь-Март',
+        '0002': 'Январь-Июнь',
+        '0003': 'Январь-Сентябрь',
+        '0004': 'Январь-Декабрь'
+    }
+    
+    period_events = Event.query.filter(
+        Event.id_plan == plan_id,
+        Event.direction.has(Direction.code.in_(period_codes)),
+        Event.is_corrected == False
+    )
+    
+    if exclude_event_id:
+        period_events = period_events.filter(Event.id != exclude_event_id)
+    
+    period_events = period_events.all()
+    
+    period_values = {}
+    for pe in period_events:
+        if pe.direction and pe.direction.code:
+            period_values[pe.direction.code] = float(pe.EffCurrYear) if pe.EffCurrYear else 0
+    
+    period_values[current_period_code] = float(current_value) if current_value else 0
+    
+    if current_period_code == '0001':
+        if period_values.get('0001', 0) > period_values.get('0002', 0):
+            return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
+                period_names['0001'], period_values.get('0001', 0),
+                period_names['0002'], period_values.get('0002', 0)
+            )
+    
+    elif current_period_code == '0002':
+        if period_values.get('0002', 0) > period_values.get('0003', 0):
+            return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
+                period_names['0002'], period_values.get('0002', 0),
+                period_names['0003'], period_values.get('0003', 0)
+            )
+    
+    elif current_period_code == '0003':
+        if period_values.get('0003', 0) > period_values.get('0004', 0):
+            return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
+                period_names['0003'], period_values.get('0003', 0),
+                period_names['0004'], period_values.get('0004', 0)
+            )
+    
+    return None
 
 def check_and_create_period_directions(plan_id, event_type):
     try:
