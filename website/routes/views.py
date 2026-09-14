@@ -6,6 +6,7 @@ import logging
 
 import uuid
 import threading
+from datetime import timedelta
 
 from sqlalchemy import select
 
@@ -13,12 +14,12 @@ from flask_login import (
     current_user, login_required
 )
 
-from common_models import current_utc_time, db
+from common_models import current_utc_time, db, UserAppActivity
 from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
 
-from ..models import News, PlanColumnConfig, User, Organization, Plan, PlanTicket, Indicator, IndicatorUsage
+from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage
 from website import db
 
 from functools import wraps
@@ -726,20 +727,47 @@ def test_page():
     return render_template('test.html')
 
 @views.route('/', methods=['GET'])
-def begin_page():    
-    user_data = User.query.count()
-    organization_data = Organization.query.count()
-    plan_data = Plan.query.count()
-    
+def begin_page():
+    month_ago = current_utc_time() - timedelta(days=30)
+
+    # "Предприятий в системе" — только организации с реальной ролью в
+    # системе (те же критерии, что и в api_bp.get_organizations_api),
+    # иначе в счётчик попадали и "пустые" записи без единой роли.
+    org_query = Organization.query.filter_by(is_active=True).filter(
+        db.or_(
+            Organization.is_regular == True,
+            Organization.is_coordinator == True,
+            Organization.is_approver == True,
+        )
+    )
+    organization_data = org_query.count()
+    organization_growth = org_query.filter(Organization.created_at >= month_ago).count()
+
+    plan_query = Plan.query
+    plan_data = plan_query.count()
+    plan_growth = plan_query.filter(Plan.begin_time >= month_ago).count()
+
+    # "Активных пользователей" — пользователи именно enPlans, а не общее
+    # число учётных записей в common_models.User (эта таблица общая с
+    # erespondentN). UserAppActivity — та же таблица, что уже используется
+    # для онлайн-счётчика (count_online), только здесь считаем не "сейчас
+    # онлайн", а "вообще бывал в enPlans".
+    enplans_users = UserAppActivity.query.filter_by(app='enplans')
+    user_data = enplans_users.count()
+    user_growth = enplans_users.filter(UserAppActivity.first_seen >= month_ago).count()
+
     latest_news = News.query.filter(
         News.published_at <= current_utc_time(),
         News.published_at.isnot(None)
     ).order_by(News.published_at.desc()).first()
-    
+
     return render_template('begin.html',
         user_data=user_data,
+        user_growth=user_growth,
         organization_data=organization_data,
+        organization_growth=organization_growth,
         plan_data=plan_data,
+        plan_growth=plan_growth,
         latest_news=latest_news,
         active_tab='begin'
     )

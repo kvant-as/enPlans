@@ -1154,9 +1154,6 @@ class MultiTypeSearchManager {
             clearSearchSelector: 'button[data-action="clear-search"]',
             
             organizationsApiUrl: '/api/organizations',
-            // higherOrganizationsApiUrl: '/api/higher-organizations',
-            // oblispolkomGorispolkomApiUrl: '/api/oblispolkom-gorispolkoms',
-            // regionsApiUrl: '/api/regions',
             
             itemsPerPage: 10,
             debounceTime: 300,
@@ -1189,7 +1186,6 @@ class MultiTypeSearchManager {
         this.bindEvents();
         this.updateSubmitButtonState();
         this.loadData();
-        // this.highlightActiveTypeButton();
         this.hideTypeButtons();
     }
 
@@ -1226,17 +1222,6 @@ class MultiTypeSearchManager {
                 this.selectItem(row);
             }
         });
-
-        // if (this.typeButtons.length > 0) {
-        //     this.typeButtons.forEach(button => {
-        //         button.addEventListener('click', (e) => {
-        //             const type = e.target.dataset.type || e.target.closest('button').dataset.type;
-        //             if (type && type !== this.selectedItemType) {
-        //                 this.selectItemType(type);
-        //             }
-        //         });
-        //     });
-        // }
 
         if (this.prevPageBtn) {
             this.prevPageBtn.addEventListener('click', () => {
@@ -1282,15 +1267,6 @@ class MultiTypeSearchManager {
                 case 'organization':
                     apiUrl = this.config.organizationsApiUrl;
                     break;
-                // case 'higher_organization':
-                //     apiUrl = this.config.higherOrganizationsApiUrl;
-                //     break;
-                // case 'oblispolkom_gorispolkom':
-                //     apiUrl = this.config.oblispolkomGorispolkomApiUrl;
-                //     break;
-                // case 'region':
-                //     apiUrl = this.config.regionsApiUrl;
-                //     break;
                 default:
                     apiUrl = this.config.organizationsApiUrl;
             }
@@ -1327,12 +1303,6 @@ class MultiTypeSearchManager {
         switch(type) {
             case 'organization':
                 return data.organizations || [];
-            // case 'higher_organization':
-            //     return data.higher_organizations || [];
-            // case 'oblispolkom_gorispolkom':
-            //     return data.oblispolkom_gorispolkoms || [];
-            // case 'region':
-            //     return data.regions || [];
             default:
                 return [];
         }
@@ -1373,27 +1343,6 @@ class MultiTypeSearchManager {
                         <td style="text-align: center;">${this.escapeHtml(item.okpo || '-')}</td>
                     `;
                     break;
-                // case 'higher_organization':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
-                // case 'oblispolkom_gorispolkom':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
-                // case 'region':
-                //     html += `
-                //         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>
-                //         <td style="text-align: center;"></td>
-                //         <td style="text-align: center;"></td>
-                //     `;
-                //     break;
                 default:
                     html += `
                         <td style="width: 100%;">${this.escapeHtml(item.name)}</td>

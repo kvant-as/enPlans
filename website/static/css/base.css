@@ -362,7 +362,7 @@ body {
   z-index: 1000;
   height: 60px;
   box-sizing: border-box;
-  transition: background 0.25s ease, box-shadow 0.25s ease;
+  transition: background 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease;
   width: var(--default-width);
   max-width: 1900px;
   padding: 0 var(--default-padding-x);
@@ -370,10 +370,16 @@ body {
   font-weight: 500;
   border-radius: 100px;
   background: transparent;
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0), 0 6px 24px rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
 }
 
-/* On scroll: just a solid background — no move, no resize. */
+/* On scroll: just a solid background — no move, no resize.
+   Base .fixed-header above sets explicit zero values for backdrop-filter
+   and box-shadow (not "none"/absent) so the transition has something to
+   interpolate from — otherwise the blur/shadow would just pop in instead
+   of fading in smoothly. */
 .fixed-header.scrolled {
   /* background: var(--blur2); */
   backdrop-filter: blur(10px);
@@ -1961,6 +1967,7 @@ input::placeholder {
   padding: 15px;
   border-radius: 8px;
   border: 2px solid var(--green-main);
+  background-color: var(--green-back-gradient);
 }
 .selected-role-card {
   display: flex;
@@ -8060,6 +8067,7 @@ button[disabled] {
   font-size: 14px;
   color: #333;
   line-height: 1.3;
+  margin-top: 4px;
 }
 .radio-org-subtitle {
   font-size: 11px;

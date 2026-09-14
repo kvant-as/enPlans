@@ -165,6 +165,17 @@ def get_organizations_api():
 
         query = Organization.query.filter_by(is_active=True)
 
+        # Показываем только организации с хотя бы одной ролью в цепочке
+        # согласования — без этого в списке попадались "пустые" организации
+        # (ни respondent, ни coordinator, ни approver).
+        query = query.filter(
+            db.or_(
+                Organization.is_regular == True,
+                Organization.is_coordinator == True,
+                Organization.is_approver == True,
+            )
+        )
+
         if hide_region_management:
             query = query.filter(Organization.is_region_management == False)
 
