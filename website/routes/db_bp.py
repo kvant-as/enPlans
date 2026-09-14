@@ -495,12 +495,12 @@ def fill_database_route():
         return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
 
     try:
-        # fill_organizations(db)
         # fill_users(db)
         fill_units(db)
         fill_directions(db)
         fill_indicators(db)
         fill_news(db)
+        fill_organizations(db)
 
         return jsonify({
             'success': True,
