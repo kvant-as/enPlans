@@ -29,14 +29,14 @@ class ParsedStatPlan:
     values: List[StatCellValue] = field(default_factory=list)
 
 
-FILENAME_RE = re.compile(r"^(?P<okpo>\d{6,10})_(?P<year>\d{4})_(?P<form>4|12)\.xlsx?$", re.IGNORECASE)
+# FILENAME_RE = re.compile(r"^(?P<okpo>\d{6,12})_(?P<year>\d{4})_(?P<form>4|12)\.xlsx?$", re.IGNORECASE)
+FILENAME_RE = re.compile(r"^(?P<okpo>\d+)_.*$", re.IGNORECASE)
+YEAR_RE = re.compile(r"_(?P<year>20\d{2})_", re.IGNORECASE)
 
 PERIOD_RE = re.compile(
     r"за\s+(?P<period>[A-Za-zА-Яа-яЁё\-]+(?:\s*-\s*[A-Za-zА-Яа-яЁё]+)?)\s+(?P<year>20\d{2})\s*год",
     re.IGNORECASE,
 )
-
-ORG_NAME_RE = re.compile(r'["«](?P<name>[^"»]+)["»"]')
 
 ROWS_12TEK = {110, 111, 112, 113, 120, 130, 140, 141, 142, 143, 150, 260}
 
@@ -62,7 +62,7 @@ def extract_okpo_from_filename(filename: str) -> Optional[str]:
 
 
 def extract_year_from_filename(filename: str) -> Optional[int]:
-    m = FILENAME_RE.match(filename)
+    m = YEAR_RE.search(filename)
     return int(m.group("year")) if m else None
 
 
@@ -76,17 +76,6 @@ def detect_report_type(ws) -> str:
         'Не удалось определить тип отчёта по содержимому файла '
         '(в первых строках не найдено "12-ТЭК" или "4-ТЭК")'
     )
-
-
-def parse_org_name(ws) -> str:
-    for r in range(1, 7):
-        v = ws.cell(row=r, column=1).value
-        if not v:
-            continue
-        m = ORG_NAME_RE.search(str(v))
-        if m:
-            return m.group("name").strip()
-    raise StatParseError("Не найдено название организации в файле (ожидалось в кавычках, напр. ОАО \"...\")")
 
 
 def _to_float(v) -> Optional[float]:
@@ -152,7 +141,8 @@ def parse_stat_file(file_path: str, filename: Optional[str] = None) -> ParsedSta
     ws = wb[wb.sheetnames[0]]
 
     report_type = detect_report_type(ws)
-    org_name = parse_org_name(ws)
+    org_name = ""
+
     okpo = extract_okpo_from_filename(filename)
     year = extract_year_from_filename(filename) or 0
 

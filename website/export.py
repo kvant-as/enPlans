@@ -340,7 +340,7 @@ def export_xlsx_single(plan: Plan):
         ws["A14"].alignment = center
                                      
         ws.merge_cells("B16:N17")
-        ws["B16"].value = f"{plan.organization.name}"
+        ws["B16"].value = f"{plan.organization.full_name}"
         ws["B16"].font = regular_font_13
         ws["B16"].alignment = center
         
@@ -550,7 +550,7 @@ def export_xlsx_single(plan: Plan):
         ws["A14"].alignment = center
                                      
         ws.merge_cells("B16:N17")
-        ws["B16"].value = f"{plan.organization.name}"
+        ws["B16"].value = f"{plan.organization.full_name}"
         ws["B16"].font = regular_font_13
         ws["B16"].alignment = center
         

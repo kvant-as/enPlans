@@ -1,109 +1,11 @@
-var NumericInputHandler = {
-    init: function(selector, options) {
-        var defaults = {
-            allowNegative: false,
-            decimalPlaces: 2,
-            defaultValue: '0,00'
-        };
-        var settings = Object.assign({}, defaults, options);
-        
-        var inputs = document.querySelectorAll(selector);
-        inputs.forEach(function(input) {
-            input.addEventListener('input', function(e) {
-                NumericInputHandler.handleInput(e, settings);
-            });
-            input.addEventListener('focus', function(e) {
-                NumericInputHandler.handleFocus(e, settings);
-            });
-            input.addEventListener('blur', function(e) {
-                NumericInputHandler.handleBlur(e, settings);
-            });
-            input.addEventListener('click', function(e) {
-                e.target.select();
-            });
-        });
-    },
-    
-    handleInput: function(e, settings) {
-        var input = e.target;
-        var cursorPos = input.selectionStart;
-        var oldValue = input.value;
-        var newValue = oldValue;
-        
-        if (settings.allowNegative) {
-            newValue = oldValue.replace(/[^\d,.-]/g, '');
-            var minusCount = (newValue.match(/-/g) || []).length;
-            if (minusCount > 1) {
-                newValue = '-' + newValue.replace(/-/g, '');
-            } else if (minusCount === 1 && !newValue.startsWith('-')) {
-                newValue = '-' + newValue.replace(/-/g, '');
-            }
-            if (newValue === '-') {
-                input.value = newValue;
-                return;
-            }
-        } else {
-            newValue = oldValue.replace(/[^\d,]/g, '');
-            if (newValue === '') {
-                input.value = '';
-                return;
-            }
-        }
-        
-        if (newValue !== '' && newValue !== '-') {
-            newValue = newValue.replace(',', '.');
-            var parts = newValue.split('.');
-            if (parts.length > 1) {
-                newValue = parts[0] + '.' + parts[1].slice(0, settings.decimalPlaces);
-            }
-
-            if (!newValue.includes('.') && settings.decimalPlaces > 0) {
-                newValue = newValue + '.' + '0'.repeat(settings.decimalPlaces);
-            }
-            
-            var floatValue = parseFloat(newValue);
-            if (!isNaN(floatValue)) {
-                newValue = floatValue.toFixed(settings.decimalPlaces);
-                newValue = newValue.replace('.', ',');
-            }
-        }
-        
-        if (newValue !== oldValue) {
-            input.value = newValue;
-            var newCursorPos = Math.min(cursorPos, newValue.length);
-            input.setSelectionRange(newCursorPos, newCursorPos);
-        }
-    },
-    
-    handleFocus: function(e, settings) {
-        var input = e.target;
-        if (input.value === '' || input.value === '-') {
-            input.value = settings.defaultValue;
-        }
-        var commaIndex = input.value.indexOf(',');
-        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
-            input.setSelectionRange(commaIndex, commaIndex);
-        } else if (settings.decimalPlaces === 0) {
-            input.select();
-        }
-    },
-    
-    handleBlur: function(e, settings) {
-        var input = e.target;
-        if (input.value === '' || input.value === '-' || input.value === null) {
-            input.value = settings.defaultValue;
-        } else {
-            var valueWithDot = input.value.replace(',', '.');
-            var num = parseFloat(valueWithDot);
-            if (!isNaN(num)) {
-                var formatted = num.toFixed(settings.decimalPlaces);
-                input.value = formatted.replace('.', ',');
-            } else {
-                input.value = settings.defaultValue;
-            }
-        }
-    }
-};
+// NumericInputHandler определён и инициализируется в base.js (который
+// подключается раньше) — здесь раньше была устаревшая копия этого же
+// объекта, которая просто молча перезаписывала var NumericInputHandler
+// из base.js (ничего своего не вызывала — ни одного NumericInputHandler.init
+// во всём plan.js), из-за чего на КАЖДОЙ странице сайта реально работала
+// эта, более старая и багованная версия: она прогоняла значение через
+// parseFloat/toFixed на каждое нажатие клавиши, из-за чего ввести, например,
+// "-0,5" посимвольно было невозможно (после "-0" toFixed схлопывал в "0,0").
 
 class PlanEvents {
     constructor(token, eventType) {
@@ -117,6 +19,7 @@ class PlanEvents {
         this.initTableContextMenu();
         this.initCollapseSections();
         this.initColumnResize();
+        this.initAjaxForms();
     }
 
     async loadEvents() {
@@ -155,8 +58,8 @@ class PlanEvents {
         
         if (!this.originalEvents || this.originalEvents.length === 0) {
             const emptyMessage = this.eventType === 'saving' 
-                ? 'Нет мероприятий по экономии ТЭР' 
-                : 'Нет мероприятий по увеличению использования местных ТЭР';
+                ? 'Нет мероприятий по экономии ТЭР (первоначальная редакция)' 
+                : 'Нет мероприятий по увеличению использования местных ТЭР (первоначальная редакция)';
             tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
             return;
         }
@@ -166,7 +69,7 @@ class PlanEvents {
             tbody.appendChild(tr);
         });
         
-        this.addTotalRow(tbody, this.originalEvents);
+        this.addTotalRow(tbody, this.originalEvents, false);
     }
 
     renderEventsWithChanges() {
@@ -188,7 +91,7 @@ class PlanEvents {
             tbody.appendChild(tr);
         });
         
-        this.addTotalRow(tbody, this.eventsWithChanges);
+        this.addTotalRow(tbody, this.eventsWithChanges, true);
     }
 
     createEventRow(row, index) {
@@ -221,13 +124,34 @@ class PlanEvents {
         return tr;
     }
 
-    addTotalRow(tbody, events) {
+    getSectionTitle(isCorrected) {
+        const partNumber = this.getPartNumber();
+        if (this.eventType === 'saving') {
+            if (isCorrected) {
+                return `Итого по разделу 2.2`;
+            } else {
+                return `Итого по разделу 2.1`;
+            }
+        } else {
+            if (isCorrected) {
+                return `Итого по разделу 3.2`;
+            } else {
+                return `Итого по разделу 3.1`;
+            }
+        }
+    }
+
+    addTotalRow(tbody, events, isCorrected = false) {
         if (events.length === 0) return;
-        
+
+        const sectionTitle = this.getSectionTitle(isCorrected);
         const totalRow = document.createElement('tr');
+
         totalRow.className = 'total-row';
+        totalRow.style.borderBottom = '1px solid var(--border-color) !important;';
         totalRow.innerHTML = `
-            <td style="text-align: left; padding-left: 60px" colspan="4">Итого по разделу:</td>
+            <td style="text-align: left; padding-left: 60px;" colspan="3">${sectionTitle}</td>
+            <td style="text-align: end;">-</td>
             <td style="text-align: end;">-</td>
             <td style="text-align: end;">${this.sumEvents(events, 'EffTut').toFixed(2).replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'EffRub') || 0).toString().replace('.', ',')}</td>
@@ -262,25 +186,38 @@ class PlanEvents {
         
         const totalRow = document.createElement('tr');
         totalRow.className = 'total-row';
-        totalRow.innerHTML = `
-            <td colspan="3">Всего по части ${partNumber}, в том числе:</td>
-            <td style="text-align: end;">-</td>
-            <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'EffTut').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'EffRub') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',')}</td>
-            <td style="text-align: end;">-</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'ObchVolumeFin') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
-            <td style="text-align: end;">${(this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
-        `;
+
+        const borderStyle = 'border-top: 1px solid #f1f5f9;';
+        const endAlign = 'text-align: end;';
+
+        const cells = [
+            { text: `Всего по части ${partNumber}, в том числе:`, colSpan: 3 },
+            { text: '-' },
+            { text: '-' },
+            { text: this.sumEvents(allEvents, 'EffTut').toFixed(2).replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'EffRub') || 0).toString().replace('.', ',') },
+            { text: '-' },
+            { text: this.sumEvents(allEvents, 'EffCurrYear').toFixed(2).replace('.', ',') },
+            { text: '-' },
+            { text: (this.sumEvents(allEvents, 'ObchVolumeFin') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'VolumeFinCurrentYear') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'BudgetState') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'BudgetRep') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'BudgetLoc') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',') },
+            { text: (this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',') }
+        ];
+
+        totalRow.innerHTML = cells.map((cell, index) => {
+            const styles = `${borderStyle} ${endAlign}`;
+            const colspan = cell.colSpan ? ` colspan="${cell.colSpan}"` : '';
+            const isFirst = index === 0;
+            const align = isFirst ? '' : endAlign;
+            return `<td${colspan} style="${borderStyle} ${align}">${cell.text}</td>`;
+        }).join('');
+
         otherContent.appendChild(totalRow);
         
         const periods = [
@@ -330,6 +267,7 @@ class PlanEvents {
                 contextDeleteButtonId: 'contextDeleteButton',
                 tableEditButtonId: 'tableEditButton',
                 tableDeleteButtonId: 'tableDeleteButton',
+                removeCallback: (rowId) => this.deleteEventAjax(rowId),
                 removeUrlTemplate: '/plans/plan/delete-eventes/{id}',
                 immutableCodes: [],
                 immutableEditCodes: ['0004'],
@@ -339,6 +277,152 @@ class PlanEvents {
                 additionalContainers: ['other-content']
             });
         }
+    }
+
+    // Добавление/редактирование/удаление мероприятия раньше были обычными
+    // POST-формами с редиректом на ту же страницу — из-за этого после
+    // сохранения строки в конце длинной таблицы страница перезагружалась
+    // целиком и прокрутка сбрасывалась в начало (см. тот же фикс для
+    // показателей в indicator-calc.js). Теперь эти действия шлются через
+    // fetch, а обновляется только сама таблица (см. refreshTable).
+    initAjaxForms() {
+        const addForm = document.getElementById('addEventForm');
+        if (addForm) {
+            addForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.submitEventForm(addForm, 'AddEventModal');
+            });
+        }
+
+        const editForm = document.getElementById('editEventeForm');
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                // При редактировании периодной (квартальной) строки значение
+                // берётся из отдельного поля-инпута и переносится в скрытое
+                // поле формы перед отправкой.
+                const editType = document.getElementById('edit-event-type')?.value;
+                if (editType === 'period') {
+                    const effCurrYearInput = document.getElementById('period-EffCurrYear-edit');
+                    const hiddenEffCurrYear = document.getElementById('change-EffCurrYear-edit-model');
+                    if (effCurrYearInput && hiddenEffCurrYear) {
+                        hiddenEffCurrYear.value = effCurrYearInput.value.replace(',', '.');
+                    }
+                }
+
+                this.submitEventForm(editForm, 'EditEventModal');
+            });
+        }
+    }
+
+    async submitEventForm(form, modalId) {
+        await this.withScrollPreserved(async () => {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const wasDisabled = submitBtn ? submitBtn.disabled : null;
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) modal.classList.remove('active');
+                    // Раньше страница целиком перезагружалась после отправки,
+                    // из-за чего модалка сама "сбрасывалась" на первый шаг.
+                    // Теперь модалка не пересоздаётся — сбрасываем шаги
+                    // мастера вручную, иначе при повторном открытии он
+                    // окажется там же, где был при закрытии (а у EditEventModal
+                    // счётчик шага внутри EventModal вообще не совпадёт с тем,
+                    // что показывает showEventStep(), и "Далее" перестанет
+                    // работать).
+                    if (modalId === 'AddEventModal') {
+                        form.reset();
+                        window.addEventModalWizard?.resetForm();
+                    } else if (modalId === 'EditEventModal') {
+                        window.editEventModalWizard?.resetForm();
+                    }
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanEvents] submit error', e);
+                this.notify('Не удалось сохранить мероприятие', false);
+            } finally {
+                if (submitBtn) submitBtn.disabled = wasDisabled;
+            }
+        });
+    }
+
+    async deleteEventAjax(id) {
+        await this.withScrollPreserved(async () => {
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const formData = new FormData();
+                if (csrfMeta) formData.append('csrf_token', csrfMeta.content);
+
+                const response = await fetch(`/plans/plan/delete-eventes/${id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanEvents] delete error', e);
+                this.notify('Не удалось удалить мероприятие', false);
+            }
+        });
+    }
+
+    async withScrollPreserved(fn) {
+        const scrollY = window.scrollY;
+        let active = true;
+
+        const onScroll = () => {
+            if (active && window.scrollY !== scrollY) {
+                window.scrollTo(0, scrollY);
+            }
+        };
+        window.addEventListener('scroll', onScroll);
+
+        try {
+            return await fn();
+        } finally {
+            if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
+            setTimeout(() => {
+                active = false;
+                window.removeEventListener('scroll', onScroll);
+            }, 1500);
+        }
+    }
+
+    notify(message, success) {
+        if (typeof messageFlash !== 'undefined' && message) {
+            messageFlash.addMessage(message, success ? 'success' : 'error');
+        } else if (message && !success) {
+            alert(message);
+        }
+    }
+
+    // Общее место обновления таблицы после add/edit/delete: перерисовывает
+    // только тело таблицы (loadEvents), затем заново навешивает контекстное
+    // меню — оно завязано на конкретные DOM-узлы строк, которые
+    // renderOriginalEvents/renderEventsWithChanges каждый раз создают заново.
+    async refreshTable() {
+        await this.loadEvents();
+        this.initTableContextMenu();
     }
 
     initCollapseSections() {
@@ -389,9 +473,24 @@ class PlanEvents {
     }
 
     formatNumber(value) {
-        if (value === null || value === undefined) return '';
-        const num = parseFloat(value);
-        if (isNaN(num)) return '0,00';
+        if (value === null || value === undefined || value === '') {
+            return '0,00';
+        }
+        
+        let strValue = String(value).trim().replace(/\s/g, '');
+        
+        if (strValue === '') {
+            return '0,00';
+        }
+        
+        strValue = strValue.replace(',', '.');
+        
+        const num = parseFloat(strValue);
+        
+        if (isNaN(num) || !isFinite(num)) {
+            return '0,00';
+        }
+        
         return num.toFixed(2).replace('.', ',');
     }
 
@@ -635,34 +734,24 @@ class TableContextMenu {
         const isActive = this.isRowActive();
         const isEditDisabled = this.isEditDisabled(this.selectedRow);
         const isDeleteDisabled = this.isDeleteDisabled(this.selectedRow);
-        
-        const allButtons = [
-            this.contextEditButton,
-            this.contextDeleteButton,
-            this.tableEditButton,
-            this.tableDeleteButton
-        ];
-        
-        allButtons.forEach(button => {
-            if (button) {
-                if (!isActive) {
-                    button.classList.add('btn-disabled');
-                } else {
-                    const isEditButton = button === this.contextEditButton || button === this.tableEditButton;
-                    const isDeleteButton = button === this.contextDeleteButton || button === this.tableDeleteButton;
-                    
-                    if (isEditButton && isEditDisabled) {
-                        button.classList.add('btn-disabled');
-                    } else if (isEditButton && !isEditDisabled) {
-                        button.classList.remove('btn-disabled');
-                    } else if (isDeleteButton && isDeleteDisabled) {
-                        button.classList.add('btn-disabled');
-                    } else if (isDeleteButton && !isDeleteDisabled) {
-                        button.classList.remove('btn-disabled');
-                    }
-                }
-            }
+
+        // Кнопки постоянной панели инструментов (Добавить/Редактировать/
+        // Удалить над таблицей) — не всплывающее окно, их по-прежнему
+        // просто гасим, а не убираем из разметки.
+        [this.tableEditButton, this.tableDeleteButton].forEach(button => {
+            if (!button) return;
+            const disabled = !isActive || (button === this.tableEditButton ? isEditDisabled : isDeleteDisabled);
+            button.classList.toggle('btn-disabled', disabled);
         });
+
+        // Пункты всплывающего контекстного меню — если действие для строки
+        // недоступно, пункт вообще не показываем (а не показываем серым).
+        if (this.contextEditButton) {
+            this.contextEditButton.style.display = (isActive && !isEditDisabled) ? '' : 'none';
+        }
+        if (this.contextDeleteButton) {
+            this.contextDeleteButton.style.display = (isActive && !isDeleteDisabled) ? '' : 'none';
+        }
     }
 
     onRowLeftClick(event, row) {
@@ -765,6 +854,14 @@ class TableContextMenu {
         }
         
         this.updateButtonsState();
+
+        // Ни редактировать, ни удалить эту строку нельзя — всплывающему
+        // меню в этом случае показывать нечего.
+        if (this.isEditDisabled(row) && this.isDeleteDisabled(row)) {
+            this.hideContextMenu();
+            return;
+        }
+
         this.showMenu(event.pageX, event.pageY);
     }
 
@@ -1043,6 +1140,9 @@ class SendModalPreview {
         this.coordinatorSearchTimeout = null;
         this.approverSearchTimeout = null;
 
+        this.coordinatorSort = { field: null, dir: 'asc' };
+        this.approverSort = { field: null, dir: 'asc' };
+
         this.regionNumber = window.regionNumber || '';
         this.regionNames = {
             1: 'Брестское областное управление по надзору за рациональным использованием ТЭР',
@@ -1065,18 +1165,85 @@ class SendModalPreview {
         this.initNavigation();
         this.initScrollLoading();
         this.initSliderDrag();
+        this.initSort();
         this.updateButtonsState();
+    }
+
+    // Заголовки "Наименование организации"/"УНП" сортируют через
+    // перезапрос с сервера (список подгружается постранично, поэтому
+    // сортировать можно только то, что реально лежит в БД, а не только
+    // уже подгруженные строки). Колонка "Выбор" — не серверное поле,
+    // сортирует только уже загруженные строки на клиенте: отмеченные
+    // организации поднимаются наверх.
+    initSort() {
+        this.initTableHeaderSort(this.coordinatorTbody, this.coordinatorSort, () => this.loadCoordinators(true));
+        this.initTableHeaderSort(this.approverTbody, this.approverSort, () => this.loadApprovers(true));
+    }
+
+    initTableHeaderSort(tbody, sortState, reload) {
+        if (!tbody) return;
+        const headerRow = tbody.closest('table')?.querySelector('thead tr');
+        if (!headerRow) return;
+
+        const fields = [null, 'name', 'ynp']; // индекс столбца -> серверное поле (null = "Выбор")
+        const sortIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6-6 6 6"/></svg>`;
+
+        Array.from(headerRow.children).forEach((th, index) => {
+            const field = fields[index];
+            th.classList.add('sortable');
+            const indicator = document.createElement('span');
+            indicator.className = 'sort-indicator';
+            indicator.innerHTML = sortIconSvg;
+            th.appendChild(indicator);
+
+            th.addEventListener('click', () => {
+                const direction = sortState.field === field && sortState.dir === 'asc' ? 'desc' : 'asc';
+                sortState.field = field;
+                sortState.dir = direction;
+
+                Array.from(headerRow.children).forEach((h) => h.classList.remove('sort-active', 'sort-desc'));
+                th.classList.add('sort-active');
+                if (direction === 'desc') th.classList.add('sort-desc');
+
+                if (field === null) {
+                    this.sortLoadedRowsByChecked(tbody, direction);
+                } else {
+                    reload();
+                }
+            });
+        });
+    }
+
+    // Сортировка колонки "Выбор" по уже загруженным строкам (подгрузка
+    // остальных страниц идёт как обычно и добавляется в конец).
+    sortLoadedRowsByChecked(tbody, direction) {
+        const rows = Array.from(tbody.querySelectorAll('tr.org-row'));
+        rows.sort((a, b) => {
+            const checkedA = a.querySelector('input[type="checkbox"]')?.checked ? 1 : 0;
+            const checkedB = b.querySelector('input[type="checkbox"]')?.checked ? 1 : 0;
+            const result = checkedA - checkedB;
+            return direction === 'asc' ? result : -result;
+        });
+        rows.forEach((row) => tbody.appendChild(row));
+        tbody.closest('.modal-table-conteiner').scrollTop = 0;
+    }
+
+    buildSortParams(sortState) {
+        if (!sortState || !sortState.field) return '';
+        return `&sort=${encodeURIComponent(sortState.field)}&order=${sortState.dir}`;
     }
 
     async loadCoordinators(reset = true) {
         if (this.coordinatorLoading) return;
-        
+
         if (reset) {
             this.coordinatorPage = 1;
             this.coordinatorHasMore = true;
             this.coordinatorTbody.innerHTML = '';
+            const container = this.coordinatorTbody.closest('.modal-table-conteiner');
+            if (container) container.scrollTop = 0;
         }
-        
+
         if (!this.coordinatorHasMore) {
             this.removeLoading(this.coordinatorTbody);
             return;
@@ -1086,7 +1253,7 @@ class SendModalPreview {
         this.showLoading(this.coordinatorTbody, 3);
 
         try {
-            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}&hide_rm=true`;
+            const url = `/api/organizations?type=auditor&page=${this.coordinatorPage}&per_page=10&q=${encodeURIComponent(this.coordinatorSearchQuery)}&hide_rm=true${this.buildSortParams(this.coordinatorSort)}`;
             console.log('[SendModalPreview] Loading coordinators, page:', this.coordinatorPage);
             
             const response = await fetch(url);
@@ -1124,13 +1291,15 @@ class SendModalPreview {
 
     async loadApprovers(reset = true) {
         if (this.approverLoading) return;
-        
+
         if (reset) {
             this.approverPage = 1;
             this.approverHasMore = true;
             this.approverTbody.innerHTML = '';
+            const container = this.approverTbody.closest('.modal-table-conteiner');
+            if (container) container.scrollTop = 0;
         }
-        
+
         if (!this.approverHasMore) {
             this.removeLoading(this.approverTbody);
             return;
@@ -1140,7 +1309,7 @@ class SendModalPreview {
         this.showLoading(this.approverTbody, 3);
 
         try {
-            const url = `/api/organizations?type=approver&page=${this.approverPage}&per_page=10&q=${encodeURIComponent(this.approverSearchQuery)}`;
+            const url = `/api/organizations?type=approver&page=${this.approverPage}&per_page=10&q=${encodeURIComponent(this.approverSearchQuery)}${this.buildSortParams(this.approverSort)}`;
             console.log('[SendModalPreview] Loading approvers, page:', this.approverPage);
             
             const response = await fetch(url);
@@ -2013,6 +2182,21 @@ class CertificateUploadHandler {
     }
 }
 
+function initDeletePlanConfirmModal() {
+    if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
+        initConfirmModal({
+            triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
+            modalId: 'confirmModal2',
+            yesId: 'confirmYes',
+            noId: 'confirmNo',
+            textId: 'modal-text',
+            modalText: 'Вы действительно хотите удалить план?',
+            textSecondId: 'modal-text-second',
+            modalTextSecond: 'Это действие нельзя будет отменить.'
+        });
+    }
+}
+
 class PlansLoader {
     constructor(options = {}) {
         this.currentStatus = options.initialStatus || 'all';
@@ -2021,16 +2205,20 @@ class PlansLoader {
         this.currentSearchName = '';
         this.currentSearchYnp = '';
         this.currentPage = 1;
+        this.totalPages = 1;
         this.isLoading = false;
-        this.hasMore = true;
         this.searchTimeout = null;
-        this.perPage = options.perPage || 5;
+        this.perPage = options.perPage || 50;
         this.isAuditor = options.isAuditor || false;
         
         this.containerId = options.containerId || 'plans-container';
-        this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchYnp = options.searchYnp || 'search-ynp';
+        this.paginationAreaId = 'pagination-area';
+        this.prevPageBtnId = 'prev-page-btn';
+        this.nextPageBtnId = 'next-page-btn';
+        this.currentPageSpanId = 'current-page';
+        this.totalPagesSpanId = 'total-pages';
         
         this.init();
     }
@@ -2053,26 +2241,28 @@ class PlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentPage > 1) {
+            params.set('page', this.currentPage);
+        }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
         window.history.pushState({}, '', newUrl);
     }
     
-    async loadPlans(reset = true) {
+    async loadPlans() {
         if (this.isLoading) return;
         
         this.isLoading = true;
-        const page = reset ? 1 : this.currentPage + 1;
         const container = document.getElementById(this.containerId);
         
-        if (reset && container) {
+        if (container) {
             container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
         }
         
         this.updateUrl();
         
         try {
-            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
+            let url = `/api/plans?page=${this.currentPage}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
@@ -2084,23 +2274,17 @@ class PlansLoader {
             const data = await response.json();
             
             if (data.success) {
-                if (reset) {
-                    if (container) {
-                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
-                    }
-                    this.currentPage = 1;
-                } else {
-                    const plansArea = document.querySelector('.plans-area');
-                    if (plansArea) {
-                        plansArea.insertAdjacentHTML('beforeend', data.html);
-                    }
-                    this.currentPage = page;
+                if (container) {
+                    container.innerHTML = `<div class="plans-area">${data.html}</div>`;
                 }
                 
-                this.hasMore = data.pagination.has_next;
-                this.updateLoadMoreButton();
+                this.totalPages = data.pagination.total_pages || 1;
+                this.currentPage = data.pagination.current_page || 1;
+                
+                this.updatePagination();
                 this.updateCountsDisplay(data.counts);
                 this.attachCheckboxListeners();
+                initDeletePlanConfirmModal();
 
                 if (typeof initStatusProgress === 'function') {
                     setTimeout(initStatusProgress, 100);
@@ -2108,15 +2292,56 @@ class PlansLoader {
             }
         } catch (error) {
             console.error('Error loading plans:', error);
+            if (container) {
+                container.innerHTML = '<div class="plans-error" style="text-align: center; padding: 40px; color: red;">Ошибка загрузки планов</div>';
+            }
         } finally {
             this.isLoading = false;
         }
     }
-    
-    updateLoadMoreButton() {
-        const loadMoreContainer = document.getElementById('load-more-container');
-        if (loadMoreContainer) {
-            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+
+    updatePagination() {
+        const paginationArea = document.getElementById(this.paginationAreaId);
+        const currentPageSpan = document.getElementById(this.currentPageSpanId);
+        const totalPagesSpan = document.getElementById(this.totalPagesSpanId);
+        const prevBtn = document.getElementById(this.prevPageBtnId);
+        const nextBtn = document.getElementById(this.nextPageBtnId);
+        
+        if (paginationArea) {
+            if (this.totalPages > 1) {
+                paginationArea.style.display = 'flex';
+                paginationArea.style.justifyContent = 'center';
+            } else {
+                paginationArea.style.display = 'none';
+            }
+        }
+        
+        if (currentPageSpan) {
+            currentPageSpan.textContent = this.currentPage;
+        }
+        
+        if (totalPagesSpan) {
+            totalPagesSpan.textContent = this.totalPages;
+        }
+        
+        if (prevBtn) {
+            if (this.currentPage <= 1) {
+                prevBtn.disabled = true;
+                prevBtn.classList.add('disabled');
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.classList.remove('disabled');
+            }
+        }
+        
+        if (nextBtn) {
+            if (this.currentPage >= this.totalPages) {
+                nextBtn.disabled = true;
+                nextBtn.classList.add('disabled');
+            } else {
+                nextBtn.disabled = false;
+                nextBtn.classList.remove('disabled');
+            }
         }
     }
     
@@ -2184,6 +2409,24 @@ class PlansLoader {
         }
     }
     
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        this.currentPage = page;
+        this.loadPlans();
+    }
+    
+    goToPrevPage() {
+        if (this.currentPage > 1) {
+            this.goToPage(this.currentPage - 1);
+        }
+    }
+    
+    goToNextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.goToPage(this.currentPage + 1);
+        }
+    }
+    
     handleSearch() {
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
@@ -2191,8 +2434,9 @@ class PlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentPage = 1;
             this.updateUrl();
-            this.loadPlans(true);
+            this.loadPlans();
         }, 500);
     }
     
@@ -2231,10 +2475,11 @@ class PlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentStatus = value;
+                    this.currentPage = 1;
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
                     this.updateUrl();
-                    this.loadPlans(true);
+                    this.loadPlans();
                 });
             });
         }
@@ -2259,6 +2504,7 @@ class PlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentYear = value;
+                    this.currentPage = 1;
                     if (selectedSpan) {
                         if (value === 'all') {
                             selectedSpan.textContent = 'Год';
@@ -2268,7 +2514,7 @@ class PlansLoader {
                     }
                     yearDropdown.classList.remove('active');
                     this.updateUrl();
-                    this.loadPlans(true);
+                    this.loadPlans();
                 });
             });
         }
@@ -2293,10 +2539,11 @@ class PlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentRegion = value;
+                    this.currentPage = 1;
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     regionDropdown.classList.remove('active');
                     this.updateUrl();
-                    this.loadPlans(true);
+                    this.loadPlans();
                 });
             });
         }
@@ -2313,6 +2560,17 @@ class PlansLoader {
             }
         });
         
+        const prevBtn = document.getElementById(this.prevPageBtnId);
+        const nextBtn = document.getElementById(this.nextPageBtnId);
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this.goToPrevPage());
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this.goToNextPage());
+        }
+        
         window.addEventListener('popstate', (event) => {
             const params = new URLSearchParams(window.location.search);
             const newStatus = params.get('status') || 'all';
@@ -2320,28 +2578,26 @@ class PlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newPage = parseInt(params.get('page')) || 1;
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newPage !== this.currentPage) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentPage = newPage;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
                 
                 this.updateFilterDisplay();
-                this.loadPlans(true);
+                this.loadPlans();
             }
         });
-        
-        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
-        }
     }
     
     updateFilterDisplay() {
@@ -2401,7 +2657,7 @@ class PlansLoader {
         this.selectedPlans = new Set();
         this.selectedFormat = null;
         this.initFilters();
-        this.loadPlans(true);
+        this.loadPlans();
     }
 }
 
@@ -2413,10 +2669,10 @@ class ExportPlansLoader {
         this.currentSearchName = '';
         this.currentSearchYnp = '';
         this.currentPage = 1;
+        this.totalPages = 1;
         this.isLoading = false;
-        this.hasMore = true;
         this.searchTimeout = null;
-        this.perPage = options.perPage || 5;
+        this.perPage = options.perPage || 50;
         this.selectedPlans = new Set();
         this.selectedFormat = null;
         this.exportInProgress = false;
@@ -2431,6 +2687,11 @@ class ExportPlansLoader {
         this.selectAllId = options.selectAllId || 'selectAllBtn';
         this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
+        this.paginationAreaId = 'pagination-area';
+        this.prevPageBtnId = 'prev-page-btn';
+        this.nextPageBtnId = 'next-page-btn';
+        this.currentPageSpanId = 'current-page';
+        this.totalPagesSpanId = 'total-pages';
         
         this.init();
     }
@@ -2453,6 +2714,9 @@ class ExportPlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentPage > 1) {
+            params.set('page', this.currentPage);
+        }
         
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
         
@@ -2468,21 +2732,16 @@ class ExportPlansLoader {
         if (this.isLoading) return;
         
         this.isLoading = true;
-        const page = reset ? 1 : this.currentPage + 1;
         const container = document.getElementById(this.containerId);
         
-        // if (reset && container) {
-        //     container.innerHTML = '<div class="loading-spinner" style="text-align: center; padding: 40px;"></div>';
-        // }
-        
-        const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
-        if (!reset && loadMoreBtn) {
-            loadMoreBtn.disabled = true;
-            loadMoreBtn.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span> Загрузка...';
+        if (reset && container) {
+            container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
         }
         
+        this.updateUrl();
+        
         try {
-            let url = `/api/plans?page=${page}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || true}`;
+            let url = `/api/plans?page=${this.currentPage}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || true}`;
             if (this.currentSearchName) {
                 url += `&search_name=${encodeURIComponent(this.currentSearchName)}`;
             }
@@ -2494,25 +2753,21 @@ class ExportPlansLoader {
             const data = await response.json();
             
             if (data.success) {
-                if (reset) {
-                    if (container) {
-                        container.innerHTML = `<div class="plans-area">${data.html}</div>`;
-                    }
-                    this.currentPage = 1;
-                    this.selectedPlans.clear();
-                } else {
-                    const plansArea = document.querySelector('.plans-area');
-                    if (plansArea) {
-                        plansArea.insertAdjacentHTML('beforeend', data.html);
-                    }
-                    this.currentPage = page;
+                if (container) {
+                    container.innerHTML = `<div class="plans-area">${data.html}</div>`;
                 }
                 
-                this.hasMore = data.pagination.has_next;
-                this.updateLoadMoreButton();
+                this.totalPages = data.pagination.total_pages || 1;
+                this.currentPage = data.pagination.current_page || 1;
+                
+                this.updatePagination();
                 this.attachCheckboxListeners();
                 this.updateButtons();
                 this.updateExportButton();
+                
+                if (typeof initStatusProgress === 'function') {
+                    setTimeout(initStatusProgress, 100);
+                }
             }
         } catch (error) {
             console.error('Error loading plans:', error);
@@ -2521,17 +2776,51 @@ class ExportPlansLoader {
             }
         } finally {
             this.isLoading = false;
-            if (!reset && loadMoreBtn) {
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.innerHTML = '<span class="btn-text">Загрузить еще</span>';
-            }
         }
     }
     
-    updateLoadMoreButton() {
-        const loadMoreContainer = document.getElementById('load-more-container');
-        if (loadMoreContainer) {
-            loadMoreContainer.style.display = this.hasMore ? 'block' : 'none';
+    updatePagination() {
+        const paginationArea = document.getElementById(this.paginationAreaId);
+        const currentPageSpan = document.getElementById(this.currentPageSpanId);
+        const totalPagesSpan = document.getElementById(this.totalPagesSpanId);
+        const prevBtn = document.getElementById(this.prevPageBtnId);
+        const nextBtn = document.getElementById(this.nextPageBtnId);
+        
+        if (paginationArea) {
+            if (this.totalPages > 1) {
+                paginationArea.style.display = 'flex';
+                paginationArea.style.justifyContent = 'center';
+            } else {
+                paginationArea.style.display = 'none';
+            }
+        }
+        
+        if (currentPageSpan) {
+            currentPageSpan.textContent = this.currentPage;
+        }
+        
+        if (totalPagesSpan) {
+            totalPagesSpan.textContent = this.totalPages;
+        }
+        
+        if (prevBtn) {
+            if (this.currentPage <= 1) {
+                prevBtn.disabled = true;
+                prevBtn.classList.add('disabled');
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.classList.remove('disabled');
+            }
+        }
+        
+        if (nextBtn) {
+            if (this.currentPage >= this.totalPages) {
+                nextBtn.disabled = true;
+                nextBtn.classList.add('disabled');
+            } else {
+                nextBtn.disabled = false;
+                nextBtn.classList.remove('disabled');
+            }
         }
     }
     
@@ -2609,6 +2898,24 @@ class ExportPlansLoader {
         this.updateExportButton();
     }
     
+    goToPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        this.currentPage = page;
+        this.loadPlans(true);
+    }
+    
+    goToPrevPage() {
+        if (this.currentPage > 1) {
+            this.goToPage(this.currentPage - 1);
+        }
+    }
+    
+    goToNextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.goToPage(this.currentPage + 1);
+        }
+    }
+    
     handleSearch() {
         if (this.searchTimeout) {
             clearTimeout(this.searchTimeout);
@@ -2616,6 +2923,7 @@ class ExportPlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentPage = 1;
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
@@ -2678,6 +2986,7 @@ class ExportPlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentStatus = value;
+                    this.currentPage = 1;
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
                     this.updateUrl();
@@ -2705,6 +3014,7 @@ class ExportPlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentYear = value;
+                    this.currentPage = 1;
                     if (selectedSpan) {
                         if (value === 'all') {
                             selectedSpan.textContent = 'Год';
@@ -2738,6 +3048,7 @@ class ExportPlansLoader {
                     e.stopPropagation();
                     const value = item.dataset.value;
                     this.currentRegion = value;
+                    this.currentPage = 1;
                     if (selectedSpan) selectedSpan.textContent = item.textContent;
                     regionDropdown.classList.remove('active');
                     this.updateUrl();
@@ -2758,6 +3069,25 @@ class ExportPlansLoader {
             }
         });
         
+        const prevBtn = document.getElementById(this.prevPageBtnId);
+        const nextBtn = document.getElementById(this.nextPageBtnId);
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.goToPrevPage();
+            }.bind(this));
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.goToNextPage();
+            }.bind(this));
+        }
+        
         window.addEventListener('popstate', (event) => {
             const params = new URLSearchParams(window.location.search);
             const newStatus = params.get('status') || 'all';
@@ -2765,15 +3095,18 @@ class ExportPlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newPage = parseInt(params.get('page')) || 1;
             
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
-                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp) {
+                newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newPage !== this.currentPage) {
                 
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentPage = newPage;
                 
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
@@ -2785,7 +3118,10 @@ class ExportPlansLoader {
         
         const loadMoreBtn = document.getElementById(this.loadMoreBtnId);
         if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => this.loadPlans(false));
+            loadMoreBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                this.loadPlans(false);
+            }.bind(this));
         }
     }
     
@@ -3093,7 +3429,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.exportPlansLoader = new ExportPlansLoader({
                 initialStatus: window.initialStatus || 'all',
                 initialYear: window.initialYear || 'all',
-                perPage: 5,
+                perPage: 50,
                 containerId: 'plans-container',
                 loadMoreBtnId: 'load-more-btn',
                 searchNameId: 'search-name',
@@ -3105,7 +3441,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.plansLoader = new PlansLoader({
                 initialStatus: window.initialStatus || 'all',
                 initialYear: window.initialYear || 'all',
-                perPage: 5,
+                perPage: 50,
                 containerId: 'plans-container',
                 loadMoreBtnId: 'load-more-btn',
                 searchNameId: 'search-name',
@@ -3114,21 +3450,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    const formEventeForm = document.getElementById('editEventeForm');
-    if (formEventeForm) {
-        formEventeForm.addEventListener('submit', function(e) {
-            const editType = document.getElementById('edit-event-type')?.value;
-            if (editType === 'period') {
-                const effCurrYearInput = document.getElementById('period-EffCurrYear-edit');
-                const hiddenEffCurrYear = document.getElementById('change-EffCurrYear-edit-model');
-                
-                if (effCurrYearInput && hiddenEffCurrYear) {
-                    let value = effCurrYearInput.value.replace(',', '.');
-                    hiddenEffCurrYear.value = value;
-                }
-            }
-        });
-    }
+    // Обработка отправки editEventeForm (включая перенос значения периодного
+    // поля EffCurrYear перед отправкой) теперь выполняется через AJAX внутри
+    // PlanEvents.initAjaxForms() — см. ниже, где создаётся window.planEvents.
 
     if (document.getElementById('indicatorsTable') && document.getElementById('indicators-tbody')) {
         const token = document.getElementById('indicatorsTable')?.dataset?.token;
@@ -3219,18 +3543,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
-        initConfirmModal({
-            triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
-        });
-    }
+    initDeletePlanConfirmModal();
 
     if (document.getElementById('sent_mesPlanButton')) {
         initConfirmModal({
@@ -3350,12 +3663,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const addEventModal = document.getElementById('AddEventModal');
     const addEventModal1 = new EventModal('AddEventModal');
+    window.addEventModalWizard = addEventModal1;
     if (addEventModal && addEventModal1) {
         handleModal(addEventModal, document.getElementById('AddEventsModalBtn'), addEventModal.querySelector('.close'));
     }
 
     const editEventModal = document.getElementById('EditEventModal');
     const eventModal = new EventModal('EditEventModal');
+    window.editEventModalWizard = eventModal;
 
     if (editEventModal && eventModal) {
         const tableEditButton = document.getElementById('tableEditButton');

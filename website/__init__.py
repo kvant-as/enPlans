@@ -1,20 +1,20 @@
 import os
+from datetime import timedelta
+from importlib.resources import files
 from dotenv import load_dotenv
 
 from flask import Flask, flash, render_template, session, request, g, redirect, url_for
 from flask_babel import Babel
-from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
-from flask_babel import format_date, format_datetime
+from flask_babel import format_date
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 
-from website.logs import setup_logging
-
-from .database import create_database
+from common_models import db
+from common_models.logs import setup_logging
 
 load_dotenv()
 
@@ -44,7 +44,6 @@ babel = Babel(
     timezone_selector=get_timezone
 )
 
-db = SQLAlchemy()
 socketio = SocketIO()
 bcrypt = Bcrypt()
 login_manager = LoginManager()
@@ -53,7 +52,7 @@ csrf = CSRFProtect()
 
 def create_app():
     app = Flask(__name__, static_url_path='/static')
-    from itsdangerous import URLSafeSerializer, BadSignature
+    from itsdangerous import URLSafeSerializer
     s = URLSafeSerializer(os.getenv('SECRET_KEY'))
     app.config.update(
         SECRET_KEY=os.getenv('SECRET_KEY'),
@@ -68,20 +67,32 @@ def create_app():
         BABEL_DEFAULT_LOCALE='ru',
         SEND_FILE_MAX_AGE_DEFAULT=0,
         SESSION_COOKIE_NAME=os.getenv('SESSION_COOKIE_NAME'),
-
-        EXCLUDE_INFO_LOGS=os.getenv('EXCLUDE_INFO_LOGS'),
-
+        APP_NAME=os.getenv('APP_NAME', 'enplans'),
         AI_API_URL=os.getenv('AI_API_URL'),
         AI_X_API_KEY=os.getenv('AI_X_API_KEY'),
-        
-        LOG_LEVEL='DEBUG'
+        LOG_LEVEL=os.getenv('LOG_LEVEL', 'DEBUG'),
+        LOG_JSON=os.getenv('LOG_JSON'),
+        LOG_STATIC_REQUESTS=os.getenv('LOG_STATIC_REQUESTS'),
+        LOG_TO_FILE=os.getenv('LOG_TO_FILE'),
+        LOG_DIR=os.getenv('LOG_DIR', 'logs'),
+        LOG_FILE=os.getenv('LOG_FILE', 'enplans.json'),
+        # common_models.sessions
+        SESSION_TOKEN_COOKIE='session_token',
+        SESSION_TOKEN_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes'),
+        SESSION_LOGIN_ENDPOINT='auth.login',
+        SESSION_LOGOUT_ENDPOINT='auth.logout',
+        SESSION_TIMEOUT_PRIVILEGED=timedelta(hours=9),
+        SESSION_TIMEOUT_DEFAULT=timedelta(minutes=60),
+        # роли, дающие длинное окно; is_admin/is_auditor/is_approver/is_reader
     )
 
     db.init_app(app)
     socketio.init_app(app)
     babel.init_app(app)
     bcrypt.init_app(app)
-    migrate.init_app(app, db, render_as_batch=True)
+    migrate.init_app(app, db,
+                     directory=str(files('common_models') / 'migrations'),
+                     render_as_batch=True)
     csrf.init_app(app)
     
     setup_logging(app)
@@ -94,6 +105,9 @@ def create_app():
     login_manager.login_message = "Пожалуйста, авторизуйтесь для доступа к этой странице"
     login_manager.login_view = "auth.login"
 
+    from common_models.sessions import enforce_idle_timeout
+    enforce_idle_timeout(app)
+
     from .routes.views import views
     from .routes.auth import auth
     from .routes.chat_bp import chat_bp
@@ -101,6 +115,8 @@ def create_app():
     from .routes.api_bp import api_bp
     from .routes.audit_bp import audit_bp
     from .routes.stat_bp import bp as stat_bp
+    from .routes.db_bp import db_bp
+    from .routes.admin_support import admin_support_bp
     
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(auth, url_prefix='/')
@@ -109,16 +125,24 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(audit_bp, url_prefix='/')
     app.register_blueprint(stat_bp, url_prefix='/stat-reports')
+    app.register_blueprint(db_bp, url_prefix='/database')
+    app.register_blueprint(admin_support_bp, url_prefix='/admin/support-chats')
+
+    common_templates = str(files('common_models') / 'templates')
+
+    app.jinja_loader.searchpath = [
+        os.path.join(app.root_path, 'templates'),
+        common_templates
+    ]
     
-    with app.app_context():
-        from .routes.admin import AdminSetup
-        admin_setup = AdminSetup(app, db)
-        admin_setup.setup()
-        
-    with app.app_context():
-        db.create_all()
-        create_database(app, db)
-    
+    from .admin import init_admin
+    init_admin(app)
+
+    from common_models.forms_ui import init_forms_ui
+    init_forms_ui(app)
+
+    # schema is managed by Alembic (common_models/migrations); run `flask db upgrade`
+
     app.jinja_env.globals['format_date'] = format_date
     
     @app.context_processor

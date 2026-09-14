@@ -1,9 +1,12 @@
 from flask import (
-    Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g
+    Blueprint, abort, current_app, logging, render_template, redirect, send_file, url_for, flash, request, jsonify, session, g, make_response
 )
+
+import logging
 
 import uuid
 import threading
+from datetime import timedelta
 
 from sqlalchemy import select
 
@@ -11,19 +14,23 @@ from flask_login import (
     current_user, login_required
 )
 
-from ..time import TimeByMinsk
+from common_models import current_utc_time, db, UserAppActivity
 from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
-from website.sessions import session_required
+from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
 
-from ..models import News, PlanColumnConfig, User, Organization, Plan, Ticket, Indicator, IndicatorUsage
-from .. import db
+from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage
+from website import db
 
 from functools import wraps
 
 from .auth import user_with_all_params
 
 views = Blueprint('views', __name__)
+
+
+PLAN_YEAR_MIN = 2026
+PLAN_YEAR_MAX = 2040
 
 def owner_only(f):
     @wraps(f)
@@ -41,8 +48,9 @@ def owner_only(f):
             return redirect(url_for('views.plans', user=current_user.id))
         
         has_access = (
-            current_user.is_admin or 
-            current_user.is_auditor or 
+            current_user.is_admin or
+            current_user.is_auditor or
+            current_user.is_reader or
             plan.user_id == current_user.id
         )
         
@@ -51,6 +59,25 @@ def owner_only(f):
             return redirect(url_for('views.plans', user=current_user.id))
     
         g.current_plan = plan
+        return f(*args, **kwargs)
+    return decorated_function
+
+def reader_forbidden(f):
+    """Блокирует действие для роли "Читатель" (User.is_reader) — читатель
+    видит все планы (см. get_filtered_plans/get_plans_by_okpo в utils/plans.py
+    и is_reader в has_access выше), но не может ничего создавать или менять.
+    По аналогии с ErespondentN (routes/views.py: change_category_report /
+    rollbackreport / send_comment). AJAX-запросы (X-Requested-With) получают
+    JSON — как и остальные единые ответы в plan_bp.py — вместо редиректа,
+    который fetch() не сможет разобрать как JSON."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_reader and not current_user.is_admin:
+            message = 'У вас нет доступа к этому действию'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            return redirect(request.referrer or url_for('views.plans'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -69,12 +96,17 @@ def profile():
     if Plan.query.filter(Plan.user_id == current_user.id).count() > 0:
         can_change_modal = False
 
-    return render_template('profile.html', 
+    token, payload = get_or_refresh_session(current_user)
+    session_info = build_session_info(current_user, payload)
+
+    response = make_response(render_template('profile.html',
                         can_change_modal=can_change_modal,
                         hide_header=False,
                         current_user=current_user,
-                        change_orgUser_modal = True
-                           )
+                        change_orgUser_modal = True,
+                        session_info = session_info
+                           ))
+    return set_session_cookie(response, token)
 
 @views.route('/profile/edit', methods = ['POST', 'GET'])
 @user_with_all_params()
@@ -118,7 +150,7 @@ def edit_user_org():
             # current_user.oblispolkom_gorispolkom_id = None
             # current_user.region_id = None
             
-            flash(f'Организация изменена на: {selected_item.name}', 'success')
+            flash(f'Организация изменена на: {selected_item.full_name}', 'success')
             
         # elif item_type == 'higher_organization':
         #     selected_item = HigherOrganization.query.filter_by(id=item_id).first()
@@ -183,6 +215,7 @@ def edit_user_org():
 @login_required
 @session_required
 @owner_only
+@reader_forbidden
 def edit_plan_type(token):
     try:
         entity_type = request.form.get('entity_type')
@@ -373,20 +406,30 @@ def news_post(id):
 @user_with_all_params()
 @login_required
 @session_required
+@reader_forbidden
 def create_plan():
     if request.method == 'POST':
         year = int(request.form.get('year'))
+
+        if year < PLAN_YEAR_MIN or year > PLAN_YEAR_MAX:
+            flash(f'Год плана должен быть в диапазоне от {PLAN_YEAR_MIN} до {PLAN_YEAR_MAX}', 'error')
+            return redirect(url_for('views.create_plan'))
 
         existing_plan = Plan.query.filter_by(
             user_id=current_user.id,
             year=year
         ).first()
-        
+
         if existing_plan:
             flash(f'У вас уже есть план на {year} год!', 'error')
-            return render_template('create_plan.html', hide_header=False)
+            return redirect(url_for('views.create_plan'))
 
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
+        # Целевой показатель энергосбережения — цель по СНИЖЕНИЮ, только
+        # отрицательное число или 0 (и на клиенте запрещено вводить
+        # положительное, но дублируем на сервере на случай прямого запроса).
+        if energy_saving > 0:
+            energy_saving = to_decimal_1(0)
         share_fuel = to_decimal_1(request.form.get('share_fuel'))
         saving_fuel = to_decimal_1(request.form.get('saving_fuel'))
         share_energy = to_decimal_1(request.form.get('share_energy'))
@@ -419,7 +462,7 @@ def create_plan():
         cost_per_toe_value = get_cost_per_toe_for_new_plan(year)
         
         if cost_per_toe_value is None:
-            return render_template('create_plan.html', hide_header=False)
+            return redirect(url_for('views.create_plan'))
 
         new_plan = Plan(
             org_id=org_id,
@@ -462,16 +505,32 @@ def create_plan():
         flash('Новый план создан', 'success')
         return redirect(url_for('views.plans'))
     
-    current_time = TimeByMinsk()
+    current_time = current_utc_time()
     next_year = current_time.year + 1
 
-    return render_template('create_plan.html', hide_header=False, next_year=next_year)
+    taken_years = [p.year for p in Plan.query.filter_by(user_id=current_user.id).all()]
+
+    # если план на next_year уже есть — предложим первый свободный год после него,
+    # чтобы в выпадающем списке по умолчанию не оказался отключённый вариант
+    default_year = next_year
+    while default_year in taken_years and default_year < PLAN_YEAR_MAX:
+        default_year += 1
+
+    return render_template(
+        'create_plan.html',
+        hide_header=False,
+        next_year=default_year,
+        plan_year_min=PLAN_YEAR_MIN,
+        plan_year_max=PLAN_YEAR_MAX,
+        taken_years=taken_years,
+    )
     
 @views.route('/plans/plan-edit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @owner_only
 @login_required
 @session_required
+@reader_forbidden
 def edit_plan(token):
     if request.method == 'POST':
         current_plan = g.current_plan
@@ -482,18 +541,24 @@ def edit_plan(token):
         
         new_year = int(request.form.get('year'))
         old_year = current_plan.year
-        
+
+        if new_year < PLAN_YEAR_MIN or new_year > PLAN_YEAR_MAX:
+            flash(f'Год плана должен быть в диапазоне от {PLAN_YEAR_MIN} до {PLAN_YEAR_MAX}', 'error')
+            return redirect(url_for('views.edit_plan', token=token))
+
         existing_plan = Plan.query.filter(
             Plan.user_id == current_user.id,
             Plan.year == new_year,
-            Plan.token != token 
+            Plan.token != token
         ).first()
-        
+
         if existing_plan:
             flash(f'У вас уже есть другой план на {new_year} год!', 'error')
             return redirect(url_for('views.plans'))
         
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
+        if energy_saving > 0:
+            energy_saving = to_decimal_1(0)
         share_fuel = to_decimal_1(request.form.get('share_fuel'))
         saving_fuel = to_decimal_1(request.form.get('saving_fuel'))
         share_energy = to_decimal_1(request.form.get('share_energy'))
@@ -518,11 +583,21 @@ def edit_plan(token):
         return redirect(url_for('plan_bp.plan_review', token=current_plan.token))  
     else:
         plan = g.current_plan
-        
+
+        taken_years = [
+            p.year for p in Plan.query.filter(
+                Plan.user_id == current_user.id,
+                Plan.token != token
+            ).all()
+        ]
+
         return render_template(
             'edit_plan.html',
             current_user=current_user,
-            plan=plan
+            plan=plan,
+            plan_year_min=PLAN_YEAR_MIN,
+            plan_year_max=PLAN_YEAR_MAX,
+            taken_years=taken_years,
         )
     
 @views.route('/delete-plan/<token>', methods=['POST'])
@@ -530,6 +605,7 @@ def edit_plan(token):
 @owner_only
 @login_required
 @session_required
+@reader_forbidden
 def delete_plan(token):
     try:
         current_plan = g.current_plan
@@ -609,7 +685,7 @@ def stats():
 @views.route('/api/ticket/<int:ticket_id>/details')
 @login_required
 def get_ticket_details(ticket_id):
-    ticket = Ticket.query.get_or_404(ticket_id)
+    ticket = PlanTicket.query.get_or_404(ticket_id)
     
     plan = ticket.plan
     if not plan:
@@ -629,12 +705,12 @@ def get_ticket_details(ticket_id):
         user_data = {
             'user_fio': user_fio,
             'user_email': user.email.strip() if user.email and user.email.strip() else 'Не указано',
-            'user_phone': user.phone.strip() if user.phone and user.phone.strip() else 'Не указано'
+            'user_telephone': user.telephone.strip() if user.telephone and user.telephone.strip() else 'Не указано'
         }
     
     return jsonify({
         'id': ticket.id,
-        'organization': ticket.user.organization.name if ticket.user and ticket.user.organization else 'Система',
+        'organization': ticket.user.organization.full_name if ticket.user and ticket.user.organization else 'Система',
         'luck': ticket.luck,
         'note': ticket.note or '',
         'time': ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--',
@@ -651,20 +727,47 @@ def test_page():
     return render_template('test.html')
 
 @views.route('/', methods=['GET'])
-def begin_page():    
-    user_data = User.query.count()
-    organization_data = Organization.query.count()
-    plan_data = Plan.query.count()
-    
+def begin_page():
+    month_ago = current_utc_time() - timedelta(days=30)
+
+    # "Предприятий в системе" — только организации с реальной ролью в
+    # системе (те же критерии, что и в api_bp.get_organizations_api),
+    # иначе в счётчик попадали и "пустые" записи без единой роли.
+    org_query = Organization.query.filter_by(is_active=True).filter(
+        db.or_(
+            Organization.is_regular == True,
+            Organization.is_coordinator == True,
+            Organization.is_approver == True,
+        )
+    )
+    organization_data = org_query.count()
+    organization_growth = org_query.filter(Organization.created_at >= month_ago).count()
+
+    plan_query = Plan.query
+    plan_data = plan_query.count()
+    plan_growth = plan_query.filter(Plan.begin_time >= month_ago).count()
+
+    # "Активных пользователей" — пользователи именно enPlans, а не общее
+    # число учётных записей в common_models.User (эта таблица общая с
+    # erespondentN). UserAppActivity — та же таблица, что уже используется
+    # для онлайн-счётчика (count_online), только здесь считаем не "сейчас
+    # онлайн", а "вообще бывал в enPlans".
+    enplans_users = UserAppActivity.query.filter_by(app='enplans')
+    user_data = enplans_users.count()
+    user_growth = enplans_users.filter(UserAppActivity.first_seen >= month_ago).count()
+
     latest_news = News.query.filter(
-        News.published_at <= TimeByMinsk(),
+        News.published_at <= current_utc_time(),
         News.published_at.isnot(None)
     ).order_by(News.published_at.desc()).first()
-    
+
     return render_template('begin.html',
         user_data=user_data,
+        user_growth=user_growth,
         organization_data=organization_data,
+        organization_growth=organization_growth,
         plan_data=plan_data,
+        plan_growth=plan_growth,
         latest_news=latest_news,
         active_tab='begin'
     )

@@ -2,13 +2,12 @@ import logging
 from flask import current_app
 from .currency_rates import get_usd_rate_with_fallback, update_plan_rates
 from .plans import to_decimal_2, to_decimal_1, generate_unique_display_code
-from website.models import Direction, Organization, Plan, Ticket, Indicator, Event, IndicatorUsage, Notification, TimeByMinsk
-from .. import db
+from website.models import Event
+from common_models import db
 
 logger = logging.getLogger(__name__)
 
 def parse_number_with_comma(value):
-    """Преобразует строку с запятой в число"""
     if not value:
         return 0
     if isinstance(value, (int, float)):
@@ -42,9 +41,24 @@ def process_event_data(current_plan, direction, event_type, form_data):
     Volume = int(form_data.get('Volume')) if form_data.get('Volume') else None
     EffTut_raw = form_data.get('EffTut')
     EffTut = float(to_decimal_2(EffTut_raw))
-    ExpectedQuarter = int(form_data.get('ExpectedQuarter')) if form_data.get('ExpectedQuarter') else None
+    ExpectedQuarter = form_data.get('ExpectedQuarter') or None
     EffCurrYear = to_decimal_2(form_data.get('EffCurrYear'))
     name = form_data.get('name') or None
+    
+    event_category = form_data.get('event_category')
+    current_app.logger.info(f'event_category from form: {event_category}')
+    
+    if event_category == 'local':
+        is_local = True
+        is_corrected = False
+    elif event_category == 'corrected':
+        is_local = False
+        is_corrected = True
+    else:
+        is_local = True
+        is_corrected = False
+    
+    current_app.logger.info(f'is_local={is_local}, is_corrected={is_corrected}')
     
     is_double_effect = direction.is_econom and direction.is_increase
     
@@ -71,7 +85,9 @@ def process_event_data(current_plan, direction, event_type, form_data):
                 'MoneyOther': 0,
                 'is_econom': True,
                 'is_increase': False,
-                'is_double_effect': True
+                'is_double_effect': True,
+                'is_local': is_local,
+                'is_corrected': is_corrected
             }
         
         ObchVolumeFin = parse_number_with_comma(form_data.get('ObchVolumeFin'))
@@ -87,7 +103,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
         
         Payback = None
         if EffRub > 0:
-            payback_value = VolumeFinCurrentYear / EffRub
+            payback_value = ObchVolumeFin / EffRub
             if payback_value < 0.1 and payback_value > 0:
                 payback_value = 0.1
             Payback = to_decimal_1(payback_value)
@@ -111,7 +127,9 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'MoneyOther': MoneyOther,
             'is_econom': True,
             'is_increase': False,
-            'is_double_effect': False
+            'is_double_effect': False,
+            'is_local': is_local,
+            'is_corrected': is_corrected
         }
     
     if event_type == 'increase':
@@ -153,15 +171,16 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'MoneyOther': MoneyOther,
             'is_econom': False,
             'is_increase': True,
-            'is_double_effect': False
+            'is_double_effect': False,
+            'is_local': is_local,
+            'is_corrected': is_corrected
         }
 
 def create_event_record(current_plan, direction, event_data):
     current_app.logger.info(f'Creating event record: plan_id={current_plan.id}, direction_id={direction.id}')
+    current_app.logger.info(f'event_data: is_local={event_data.get("is_local")}, is_corrected={event_data.get("is_corrected")}')
     
     display_code = generate_unique_display_code(direction.code, current_plan.id, direction.id)
-    is_corrected = current_plan.audit_time is not None
-    is_local = current_plan.audit_time is None
     
     event = Event(
         id_direction=direction.id,
@@ -183,13 +202,13 @@ def create_event_record(current_plan, direction, event_data):
         MoneyOwn=event_data['MoneyOwn'],
         MoneyLoan=event_data['MoneyLoan'],
         MoneyOther=event_data['MoneyOther'],
-        is_local=is_local,
-        is_corrected=is_corrected,
+        is_local=event_data['is_local'],
+        is_corrected=event_data['is_corrected'],
         is_econom=event_data['is_econom'],
         is_increase=event_data['is_increase']
     )
     
-    current_app.logger.info(f'Event object created: direction_id={direction.id}, is_econom={event_data["is_econom"]}, is_increase={event_data["is_increase"]}')
+    current_app.logger.info(f'Event object created: is_local={event.is_local}, is_corrected={event.is_corrected}')
     return event
 
 def update_double_effect_payback(plan_id, direction_id):

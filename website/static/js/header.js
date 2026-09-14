@@ -1,61 +1,25 @@
-window.addEventListener('scroll', () => {
-    const header = document.querySelector('.fixed-header');
-    header.classList.toggle('bubble', window.scrollY > 50);
+let scrollTimeout;
+
+function syncHeaderScrolled() {
+    var header = document.querySelector('.fixed-header');
+    if (!header) return;
+    header.classList.toggle('scrolled', window.scrollY > 8);
+}
+
+window.addEventListener('scroll', function() {
+    if (scrollTimeout) return;
+    scrollTimeout = setTimeout(function() {
+        syncHeaderScrolled();
+        scrollTimeout = null;
+    }, 10);
+}, { passive: true });
+
+window.addEventListener('resize', function() {
+    clearTimeout(window.resizeTimeout);
+    window.resizeTimeout = setTimeout(syncHeaderScrolled, 100);
 });
 
-window.addEventListener('resize', () => {
-    const header = document.querySelector('.fixed-header');
-    if (window.innerWidth <= 768) {
-        header.classList.toggle('bubble', window.scrollY > 50);
-    }
-});
-
-// document.addEventListener('DOMContentLoaded', () => {
-//     const lenis = new Lenis({
-//         duration: 0.8,
-//         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-//         smoothWheel: true,
-//         wheelMultiplier: 1,
-//         touchMultiplier: 2,
-//     });
-
-//     function raf(time) {
-//         lenis.raf(time);
-//         requestAnimationFrame(raf);
-//     }
-
-//     requestAnimationFrame(raf);
-
-//     // document.querySelectorAll('.table-container, .main-table, .modal-table-conteiner').forEach(el => {
-//     //     el.addEventListener('wheel', (e) => {
-//     //         e.stopPropagation();
-//     //     }, { passive: true });
-//     // });
-
-//     document.querySelectorAll('.modal-table-conteiner', '.stat-log-textarea').forEach(el => {
-//         el.addEventListener('wheel', (e) => {
-//             e.stopPropagation();
-//         }, { passive: true });
-//     });
-
-//     window.addEventListener('scroll', () => {
-//         const header = document.querySelector('.fixed-header');
-//         const scrollY = window.scrollY;
-//         const threshold = 50;
-        
-//         if (!window._scrollTicking) {
-//             window.requestAnimationFrame(() => {
-//                 if (scrollY > threshold) {
-//                     header.classList.add('bubble');
-//                 } else {
-//                     header.classList.remove('bubble');
-//                 }
-//                 window._scrollTicking = false;
-//             });
-//             window._scrollTicking = true;
-//         }
-//     });
-// });
+document.addEventListener('DOMContentLoaded', syncHeaderScrolled);
 
 function navigateToSection(sectionId) {
     const currentPath = window.location.pathname;

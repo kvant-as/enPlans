@@ -55,7 +55,7 @@ def upload():
         return redirect(url_for("stat_plans.upload"))
 
     matched_org = find_organization_by_okpo(parsed.okpo_from_filename)
-    organizations = Organization.query.order_by(Organization.name).all()
+    organizations = Organization.query.order_by(organization.full_name).all()
 
     return render_template(
         "stat_plans/preview.html",

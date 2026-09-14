@@ -22,6 +22,24 @@
   --background-erorsed: #ffb2b3;
   --background-submited: #D8FFDC;
   --background-warning: #f9ffd8;
+
+  /* Unified tone palette for icons, callouts, chips, formulas */
+  --faq-info: #2f6fed;
+  --faq-info-bg: rgba(47, 111, 237, 0.08);
+  --faq-info-border: rgba(47, 111, 237, 0.2);
+  --faq-success-bg: rgba(40, 167, 69, 0.08);
+  --faq-success-border: rgba(40, 167, 69, 0.2);
+  --faq-warning: #b8730a;
+  --faq-warning-bg: rgba(217, 119, 6, 0.1);
+  --faq-warning-border: rgba(217, 119, 6, 0.24);
+  --faq-danger-bg: rgba(220, 53, 69, 0.08);
+  --faq-danger-border: rgba(220, 53, 69, 0.2);
+  --faq-purple: #6f42c1;
+  --faq-purple-bg: rgba(111, 66, 193, 0.08);
+  --faq-purple-border: rgba(111, 66, 193, 0.2);
+  --faq-orange: #c1590a;
+  --faq-orange-bg: rgba(253, 126, 20, 0.1);
+  --faq-orange-border: rgba(253, 126, 20, 0.24);
 }
 
 .faq-modern {
@@ -148,11 +166,6 @@
   font-weight: 500;
 }
 
-.question-icon {
-  font-size: 16px;
-  width: 24px;
-}
-
 .faq-content-modern {
   background: var(--faq-card-bg);
   border-radius: 20px;
@@ -268,6 +281,12 @@
   border-radius: 16px;
   transition: all 0.3s ease;
   border: 1px solid var(--faq-border);
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  display: flex; 
+  flex-direction: column;
 }
 
 .feature-card.warn{
@@ -278,11 +297,6 @@
   transform: translateY(-4px);
   box-shadow: var(--faq-shadow-hover);
   border-color: transparent;
-}
-
-.feature-icon {
-  font-size: 32px;
-  margin-bottom: 16px;
 }
 
 .feature-card h4 {
@@ -354,7 +368,6 @@
 
 .step-content ul {
   margin: 12px 0 0;
-  padding-left: 20px;
 }
 
 .step-content ul li {
@@ -1365,10 +1378,8 @@ h3 {
 }
 
 .example-table th {
-  background: #f8f9fa;
   padding: 10px;
   text-align: left;
-
 }
 
 .example-table td {
@@ -1398,6 +1409,317 @@ h3 {
 .badge-local-true {
   background: #d4edda;
   color: #155724;
+}
+
+/* ============================================
+   ICON BADGE — replaces emoji glyphs everywhere
+   ============================================ */
+
+.icon-badge {
+  --icon-badge-size: 40px;
+  width: var(--icon-badge-size);
+  height: var(--icon-badge-size);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--faq-info-bg);
+  color: var(--faq-info);
+}
+
+.icon-badge svg {
+  width: 55%;
+  height: 55%;
+}
+
+.icon-badge--sm { --icon-badge-size: 30px; border-radius: 9px; }
+.icon-badge--lg { --icon-badge-size: 52px; border-radius: 15px; }
+.icon-badge--circle { border-radius: 50%; }
+
+.icon-badge--neutral { background: #eef0f2; color: #495057; }
+.icon-badge--info { background: var(--faq-info-bg); color: var(--faq-info); }
+.icon-badge--success { background: var(--faq-success-bg); color: var(--faq-success); }
+.icon-badge--warning { background: var(--faq-warning-bg); color: var(--faq-warning); }
+.icon-badge--danger { background: var(--faq-danger-bg); color: var(--faq-error); }
+.icon-badge--purple { background: var(--faq-purple-bg); color: var(--faq-purple); }
+.icon-badge--orange { background: var(--faq-orange-bg); color: var(--faq-orange); }
+
+/* Re-target existing icon containers to hold real SVGs instead of emoji */
+.status-icon svg,
+.outcome-icon svg,
+.tracking-icon svg,
+.control-card-header .icon svg,
+.plan-type-icon svg,
+.feature-icon svg {
+  width: 55%;
+  height: 55%;
+  stroke-width: 2;
+}
+
+.control-card-header .icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f3f5;
+  color: #495057;
+  flex-shrink: 0;
+}
+
+.control-card.blue .control-card-header .icon { background: var(--faq-info-bg); color: var(--faq-info); }
+.control-card.green .control-card-header .icon { background: var(--faq-success-bg); color: var(--faq-success); }
+.control-card.orange .control-card-header .icon { background: var(--faq-orange-bg); color: var(--faq-orange); }
+.control-card.purple .control-card-header .icon { background: var(--faq-purple-bg); color: var(--faq-purple); }
+
+.plan-type-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--faq-info-bg);
+  color: var(--faq-info);
+}
+
+.feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--faq-info-bg);
+  color: var(--faq-info);
+  margin-bottom: 14px;
+}
+
+.feature-icon.icon-badge--success { background: var(--faq-success-bg); color: var(--faq-success); }
+.feature-icon.icon-badge--danger { background: var(--faq-danger-bg); color: var(--faq-error); }
+
+/* Content cards that need normal (non-centered) text flow,
+   built on top of .feature-card's rounded-panel look */
+.note-card,
+.table-card {
+  display: block;
+  text-align: left;
+  align-items: stretch;
+  background: var(--faq-info-bg);
+}
+
+.note-card h4 {
+  margin-bottom: 8px;
+}
+
+.table-card {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.text-accent {
+  color: var(--faq-info);
+  font-weight: 500;
+}
+
+.text-accent-success {
+  color: var(--faq-success);
+}
+
+.plan-feature-check svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================
+   CALLOUT — unified note / warning / info box
+   (replaces one-off inline-styled boxes)
+   ============================================ */
+
+.callout {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--faq-info-bg);
+  border: 1px solid var(--faq-info-border);
+  margin: 18px 0;
+}
+
+.callout-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.callout-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--faq-text-primary);
+}
+
+.callout-body p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--faq-text-secondary);
+  margin: 0;
+}
+
+.callout-body p + p {
+  margin-top: 6px;
+}
+
+.callout--success { background: var(--faq-success-bg); border-color: var(--faq-success-border); }
+.callout--warning { background: var(--faq-warning-bg); border-color: var(--faq-warning-border); }
+.callout--danger { background: var(--faq-danger-bg); border-color: var(--faq-danger-border); }
+.callout--neutral { background: #f8f9fa; border-color: var(--faq-border); }
+
+/* ============================================
+   FORMULA — monospace calculation display
+   ============================================ */
+
+.formula {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 14px;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid var(--faq-border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  color: var(--faq-text-primary);
+  overflow-x: auto;
+}
+
+.formula--constraint {
+  background: var(--faq-warning-bg);
+  border-color: var(--faq-warning-border);
+  color: #7a4b04;
+}
+
+/* ============================================
+   DETAIL LIST — clean bulleted list
+   (replaces inline-styled <ul style="...">)
+   ============================================ */
+
+.detail-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.detail-list li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--faq-text-secondary);
+}
+
+.detail-list li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faq-green-back);
+}
+
+.detail-list--muted li {
+  font-size: 13px;
+  color: var(--faq-text-muted);
+}
+
+/* ============================================
+   CONVERT FLOW — "input unit -> t.u.t." visual
+   ============================================ */
+
+.convert-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.convert-stat {
+  flex: 1;
+  background: #fafafa;
+  border: 1px solid var(--faq-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: center;
+}
+
+.convert-stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--faq-text-muted);
+  margin-bottom: 4px;
+}
+
+.convert-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--faq-text-primary);
+}
+
+.convert-stat-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--faq-text-muted);
+  margin-top: 3px;
+}
+
+.convert-arrow {
+  flex-shrink: 0;
+  width: 22px;
+  align-self: center;
+  color: var(--faq-text-muted);
+}
+
+/* ============================================
+   CHIP GRID — small category pills
+   ============================================ */
+
+.chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.chip {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  background: var(--faq-info-bg);
+  color: var(--faq-info);
+  border: 1px solid var(--faq-info-border);
+}
+
+.chip--success { background: var(--faq-success-bg); color: var(--faq-success); border-color: var(--faq-success-border); }
+.chip--warning { background: var(--faq-warning-bg); color: var(--faq-warning); border-color: var(--faq-warning-border); }
+
+@media (max-width: 640px) {
+  .convert-flow {
+    flex-direction: column;
+  }
+
+  .convert-arrow {
+    align-self: center;
+    width: 22px;
+    height: 22px;
+    transform: rotate(90deg);
+  }
 }
 
 @media (max-width: 1024px) {

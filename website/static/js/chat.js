@@ -1,4 +1,43 @@
 const ChatModule = (function () {
+  const CHAT_TYPE_TEXTS = {
+    "no-org": "Нет организации",
+    "compl-plan": "Заполнение плана",
+    "org-edit": "Изменить данные организации",
+    dif: "Другое",
+  };
+
+  // Бот-сценарии (например, "Изменить данные организации") подмешивают в
+  // конец своего сообщения служебный маркер с вариантами быстрого ответа —
+  // вырезаем его перед показом текста и рисуем вместо него кнопки-чипы.
+  function _extractQuickReplies(content) {
+    const match = /\n?\[\[QUICK_REPLIES:([^\]]*)\]\]$/.exec(content);
+    if (!match) return { text: content, options: [] };
+    return {
+      text: content.slice(0, match.index),
+      options: match[1].split("|").map((s) => s.trim()).filter(Boolean),
+    };
+  }
+
+  function _renderQuickReplies(container, options) {
+    if (!options || !options.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "chat-quick-replies";
+    options.forEach((label) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chat-quick-reply";
+      btn.textContent = label;
+      btn.onclick = function () {
+        const input = document.getElementById("messageInput");
+        if (!input) return;
+        input.value = label;
+        _sendMessage();
+      };
+      wrap.appendChild(btn);
+    });
+    container.appendChild(wrap);
+  }
+
   let _state = {
     currentChatId: null,
     currentChatType: null,
@@ -132,6 +171,7 @@ const ChatModule = (function () {
       if (data.has_active_chat) {
         _state.currentChatId = data.chat_id;
         _state.currentChatType = data.chat_type;
+        _state.selectedTypeText = CHAT_TYPE_TEXTS[data.chat_type] || "тему";
 
         await _loadExistingMessages();
 
@@ -204,14 +244,7 @@ const ChatModule = (function () {
 
   async function _handleChatTypeSelection(type) {
     _state.currentChatType = type;
-
-    const typeTexts = {
-      "no-org": "Нет организации",
-      "compl-plan": "Заполнение плана",
-      dif: "Другое",
-    };
-
-    _state.selectedTypeText = typeTexts[type];
+    _state.selectedTypeText = CHAT_TYPE_TEXTS[type] || "тему";
 
     await _welcomeInChat(true, _state.selectedTypeText);
     _showPage("pageActiveChat");
@@ -386,9 +419,11 @@ const ChatModule = (function () {
     const contentDiv = document.createElement("div");
     contentDiv.className = "chat-message-content";
 
+    const parsed = isSent ? { text: message.content, options: [] } : _extractQuickReplies(message.content);
+
     const textDiv = document.createElement("div");
     textDiv.className = "message-text";
-    textDiv.textContent = message.content;
+    textDiv.textContent = parsed.text;
     contentDiv.appendChild(textDiv);
 
     if (message.created_at) {
@@ -401,6 +436,8 @@ const ChatModule = (function () {
       });
       contentDiv.appendChild(timeDiv);
     }
+
+    if (!isSent) _renderQuickReplies(contentDiv, parsed.options);
 
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(contentDiv);
@@ -531,27 +568,31 @@ const ChatModule = (function () {
         );
         const messages = await response.json();
 
-        const botMessages = messages.filter(
-            (msg) =>
-            !_state.processedMessageIds.has(msg.id) &&
-            msg.sender_id !== _state.currentUserId,
-        );
-
+        // ChatMessage не хранит sender_id (только is_user) — раньше здесь
+        // сравнивали с _state.currentUserId, а его в ответе API никогда не
+        // было, так что сравнение было всегда true и собственное сообщение
+        // пользователя, ещё не помеченное как processed (ответ на отправку
+        // мог не успеть прийти за 3 секунды поллинга — особенно с ИИ),
+        // рисовалось повторно как "чужое". Свои сообщения помечаем
+        // обработанными сразу по is_user, не дожидаясь ответа на отправку.
         messages.forEach((msg) => {
-            if (msg.sender_id === _state.currentUserId) {
+            if (msg.is_user) {
             _state.processedMessageIds.add(msg.id);
             }
         });
 
+        const botMessages = messages.filter(
+            (msg) => !msg.is_user && !_state.processedMessageIds.has(msg.id),
+        );
+
         if (botMessages.length > 0) {
             _removeTypingIndicator();
 
-            const lastBotMessage = botMessages[botMessages.length - 1];
-            await _addBotMessageWithTyping(lastBotMessage);
-
-            botMessages.forEach((msg) => {
-            _state.processedMessageIds.add(msg.id);
-            });
+            // Показываем все новые сообщения по очереди (не только
+            // последнее) — каждое с тем же эффектом печати, что и у ИИ.
+            for (const msg of botMessages) {
+            await _addBotMessageWithTyping(msg);
+            }
 
             _state.lastMessageCount = messages.length;
         }
@@ -565,6 +606,8 @@ const ChatModule = (function () {
 
     const container = document.getElementById("messagesList");
     if (!container) return;
+
+    const parsed = _extractQuickReplies(message.content);
 
     const messageDiv = document.createElement("div");
     messageDiv.className = "message bot";
@@ -597,7 +640,9 @@ const ChatModule = (function () {
     messageDiv.appendChild(contentDiv);
     container.appendChild(messageDiv);
 
-    await _typeWriterEffect(textDiv, message.content, 40);
+    await _typeWriterEffect(textDiv, parsed.text, 40);
+    _renderQuickReplies(contentDiv, parsed.options);
+    _scrollToBottom();
     _state.processedMessageIds.add(message.id);
   }
 

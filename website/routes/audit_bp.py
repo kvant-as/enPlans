@@ -11,9 +11,10 @@ from io import BytesIO
 from flask import send_file
 import os
 
-from website.routes.views import owner_only
+from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
-from website.models import Plan, Ticket, PlanApprovalPath, TimeByMinsk
+from common_models import current_utc_time
+from website.models import Plan, PlanTicket, PlanApprovalPath
 from website import db
 from .auth import user_with_all_params
         
@@ -37,7 +38,7 @@ def print_tickets(token):
             flash('План не найден', 'error')
             return redirect(request.referrer)
         
-        tickets = Ticket.query.filter_by(plan_id=current_plan.id).order_by(Ticket.begin_time.asc()).all()
+        tickets = PlanTicket.query.filter_by(plan_id=current_plan.id).order_by(PlanTicket.begin_time.asc()).all()
         
         if not tickets:
             flash('Нет квитанций для печати', 'error')
@@ -106,7 +107,7 @@ def print_tickets(token):
                 if ticket.is_system:
                     sender = 'Система'
                 elif ticket.user:
-                    sender = ticket.user.organization.name if ticket.user.organization.name else 'Неизвестно'
+                    sender = ticket.user.organization.full_name if ticket.user.organization.full_name else 'Неизвестно'
                 else:
                     sender = 'Неизвестно'
                 
@@ -162,6 +163,7 @@ def print_tickets(token):
 @login_required
 @owner_only
 @session_required
+@reader_forbidden
 def create_ticket(token):
     current_plan = g.current_plan
     if not current_plan:
@@ -207,13 +209,13 @@ def create_ticket(token):
     
     current_plan.afch = True
     
-    new_ticket = Ticket(
+    new_ticket = PlanTicket(
         note=note.strip(),
         luck=False,
         plan_id=current_plan.id,
         user_id=current_user.id,
         is_system=(current_user.id == current_plan.user_id),
-        begin_time=TimeByMinsk()
+        begin_time=current_utc_time()
     )
 
     db.session.add(new_ticket)

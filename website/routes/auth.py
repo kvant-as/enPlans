@@ -11,6 +11,7 @@ from flask_login import (
 
 from sqlalchemy import func
 from werkzeug.security import check_password_hash
+from common_models.models import Report, Version_report
 from website.user import send_email
 
 from itsdangerous import URLSafeTimedSerializer
@@ -18,6 +19,7 @@ from datetime import datetime, timedelta
 
 from .. import db
 from ..models import Plan, User
+from website.sessions import create_session_token, set_session_cookie, clear_session_cookie
 
 
 auth = Blueprint('auth', __name__)
@@ -34,7 +36,7 @@ def user_without_param():
             has_required_fields = (
                 current_user.last_name and
                 current_user.first_name and
-                current_user.phone
+                current_user.telephone
             )
             
             has_entity = (
@@ -59,7 +61,7 @@ def user_with_all_params():
             all_required_filled = (
                 current_user.last_name and
                 current_user.first_name and
-                current_user.phone
+                current_user.telephone
             )
             
             if not all_required_filled:
@@ -92,17 +94,18 @@ def login():
 
         if email and password:
             user = User.query.filter(func.lower(User.email) == func.lower(email)).first()
-            if user and check_password_hash(user.password, password):
+            if user and user.password and check_password_hash(user.password, password):
                 login_user(user)
+                token = create_session_token(user)
                 if (
                     not user.last_name or
                     not user.first_name or
-                    not user.phone
-                ):  
-                    flash("Необходимо заполнить обязательные парамметры", "error")
-                    return redirect(url_for('auth.param'))
+                    not user.telephone
+                ):
+                    flash("Необходимо заполнить обязательные параметры", "error")
+                    return set_session_cookie(redirect(url_for('auth.param')), token)
                 flash('Авторизация прошла успешно', 'success')
-                return redirect(url_for('views.profile'))
+                return set_session_cookie(redirect(url_for('views.profile')), token)
             else:
                 flash('Неправильный email или пароль', 'error')
         else:
@@ -165,25 +168,25 @@ def param():
         first_name = request.form.get('first_name')
         last_name = request.form.get('last_name')
         patronymic_name = request.form.get('patronymic_name')
-        phone = request.form.get('phone')
+        telephone = request.form.get('telephone')
         post = request.form.get('post')
         organization_id = request.form.get('organization_id')
         user_type = request.form.get('entity_type')
         from ..user import add_param
-        return add_param(first_name, last_name, patronymic_name, phone, organization_id, user_type, post)
+        return add_param(first_name, last_name, patronymic_name, telephone, organization_id, user_type, post)
     
 @auth.route('/edit-param', methods=['POST'])
 def edit_param():
     first_name = request.form.get('first_name')
     last_name = request.form.get('last_name')
     patronymic_name = request.form.get('patronymic_name')
-    phone = request.form.get('phone')
+    telephone = request.form.get('telephone')
     post = request.form.get('post')
 
     current_user.first_name = first_name
     current_user.last_name = last_name
     current_user.patronymic_name = patronymic_name
-    current_user.phone = phone
+    current_user.telephone = telephone
     current_user.post = post
     db.session.commit()
 
@@ -195,12 +198,11 @@ def edit_param():
 def logout():
     logout_user()
     flash('Выполнен выход из аккаунта', 'success')
-    return redirect(url_for('auth.login'))
-
+    return clear_session_cookie(redirect(url_for('auth.login')))
 
 @auth.route('/delete-profile', methods=['POST'])
 @login_required
-def delete_profile():
+def delete_account():
     user = current_user
     confirm_email = request.form.get('confirm_email')
     
@@ -209,7 +211,7 @@ def delete_profile():
         return redirect(url_for('views.profile'))
     
     if user.is_admin or user.is_auditor:
-        flash('Администраторы и аудиторы не могут удалить аккаунт', 'error')
+        flash('Пользователь с вашим статусом не может удалить аккаунт', 'error')
         return redirect(url_for('views.profile'))
     
     has_active_plans = Plan.query.filter(
@@ -220,6 +222,20 @@ def delete_profile():
     if has_active_plans:
         flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками', 'error')
         return redirect(url_for('views.profile'))
+    
+    has_approved = db.session.query(
+        db.session.query(Version_report)
+        .join(Report)
+        .filter(
+            Report.user_id == current_user.id,
+            Version_report.status == 'Одобрен'
+        )
+        .exists()
+    ).scalar()
+    
+    if has_approved:
+        flash('Невозможно удалить аккаунт, так как есть отчеты в ErespodnentN со статусом "Одобрен"', 'error')
+        return redirect(url_for('views.profile'))     
     
     try:
         user_email = user.email

@@ -23,16 +23,16 @@
     
     <article class="article_crystal">
         <div class="content_hologram">
-            {% if post.image_url %}
+            {% if post.img_name %}
             <div class="media_illuminate">
-                <img src="{{ url_for('static', filename='img/news/' + post.image_url) }}" 
+                <img src="{{ url_for('static', filename='img/news/' + post.img_name) }}" 
                      alt="{{ post.title }}"
                      loading="lazy">
             </div>
             {% endif %}
             
             <div class="text_spectrum">
-                {{ post.content|safe }}
+                {{ post.text|safe }}
             </div>
         </div>
         

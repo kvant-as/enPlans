@@ -10,6 +10,143 @@ class PlanIndicators {
         this.initColumnResize();
         this.initAddIndicatorModal();
         this.initEditIndicatorModal();
+        this.initAjaxForms();
+    }
+
+    // Добавление/редактирование/удаление показателя раньше были обычными
+    // POST-формами с редиректом на ту же страницу — из-за этого после
+    // сохранения строки в конце длинной таблицы страница перезагружалась
+    // целиком и прокрутка сбрасывалась в начало. Теперь эти действия шлются
+    // через fetch, а обновляется только сама таблица (см. refreshTable).
+    initAjaxForms() {
+        const addForm = document.getElementById('addIndicatorForm');
+        if (addForm) {
+            addForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.submitIndicatorForm(addForm, 'AddIndicatorModal');
+            });
+        }
+
+        const editForm = document.getElementById('editIndicatorForm');
+        if (editForm) {
+            editForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.submitIndicatorForm(editForm, 'EditIndicatorModal');
+            });
+        }
+    }
+
+    async submitIndicatorForm(form, modalId) {
+        await this.withScrollPreserved(async () => {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const wasDisabled = submitBtn ? submitBtn.disabled : null;
+            // disabled на сфокусированной кнопке уводит фокус на <body>, а
+            // это само по себе заставляет браузер прокрутить страницу к
+            // нулю — отсюда и withScrollPreserved вокруг всего действия.
+            if (submitBtn) submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) modal.classList.remove('active');
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanIndicators] submit error', e);
+                this.notify('Не удалось сохранить показатель', false);
+            } finally {
+                if (submitBtn) submitBtn.disabled = wasDisabled;
+            }
+        });
+    }
+
+    async deleteIndicatorAjax(id) {
+        await this.withScrollPreserved(async () => {
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const formData = new FormData();
+                if (csrfMeta) formData.append('csrf_token', csrfMeta.content);
+
+                const response = await fetch(`../delete-indicator/${id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanIndicators] delete error', e);
+                this.notify('Не удалось удалить показатель', false);
+            }
+        });
+    }
+
+    // Закрытие модалки и/или снятие фокуса с disabled-кнопки сбрасывают
+    // document.activeElement на <body>, а это в некоторых браузерах само
+    // по себе прокручивает страницу к началу — что и было исходной жалобой
+    // ("ПО возвращает нас в начало таблицы"). Момент сброса не привязан
+    // жёстко к одному тику (гонка между разными частями обновления
+    // таблицы), поэтому вместо разовой попытки восстановить прокрутку
+    // держим её "прибитой" слушателем на весь короткий период обновления
+    // плюс небольшой запас после.
+    async withScrollPreserved(fn) {
+        const scrollY = window.scrollY;
+        let active = true;
+
+        const onScroll = () => {
+            if (active && window.scrollY !== scrollY) {
+                window.scrollTo(0, scrollY);
+            }
+        };
+        window.addEventListener('scroll', onScroll);
+
+        try {
+            return await fn();
+        } finally {
+            if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
+            // ещё немного держим слушателя — сброс может произойти уже
+            // после того, как fn() отработала (см. отложенные reflow),
+            // с запасом на медленных машинах/браузерах.
+            setTimeout(() => {
+                active = false;
+                window.removeEventListener('scroll', onScroll);
+            }, 1500);
+        }
+    }
+
+    notify(message, success) {
+        if (typeof messageFlash !== 'undefined' && message) {
+            messageFlash.addMessage(message, success ? 'success' : 'error');
+        } else if (message && !success) {
+            alert(message);
+        }
+    }
+
+    // Общее место обновления таблицы после add/edit/delete: перерисовывает
+    // только tbody (loadIndicators), затем заново навешивает контекстное
+    // меню и перерисовывает сравнение со статотчётностью — оба завязаны на
+    // конкретные DOM-узлы строк, которые renderIndicatorsTable каждый раз
+    // создаёт заново.
+    async refreshTable() {
+        await this.loadIndicators();
+        this.initTableContextMenu();
+        if (window.planStatControl) {
+            window.planStatControl.refresh();
+        }
     }
 
     initAddIndicatorModal() {
@@ -88,16 +225,22 @@ class PlanIndicators {
         const formattedCoeff = coeffValue.toFixed(3).replace('.', ',');
         
         const coeffInputs = document.querySelectorAll('#AddIndicatorModal .coeff-input-display');
-        const isTut = unitName === 'т у.т.';
+        // "т у.т." и "%" сами по себе не пересчитываются в натуральную
+        // величину — коэффициент всегда 1, менять его нельзя (см. "x" в
+        // колонках "в нат. велич." таблицы показателей).
+        const isTut = unitName === 'т у.т.' || unitName === '%';
         
         coeffInputs.forEach(input => {
             input.value = formattedCoeff;
+            const coeffWrapper = input.closest('.value-coeff');
             if (isTut) {
+                // Коэффициент для таких показателей всегда 1 и не
+                // редактируется — блок с ним не показываем вовсе, а не
+                // просто гасим (см. п.2 списка замечаний).
+                if (coeffWrapper) coeffWrapper.style.display = 'none';
                 input.readOnly = true;
-                input.style.backgroundColor = '#f5f5f5';
-                input.style.cursor = 'not-allowed';
-                input.style.color = '#999';
             } else {
+                if (coeffWrapper) coeffWrapper.style.display = '';
                 input.readOnly = false;
                 input.style.backgroundColor = 'white';
                 input.style.cursor = 'text';
@@ -112,19 +255,21 @@ class PlanIndicators {
         
         const groupNumber = parseFloat(group);
         this.initAddNumericInputsByGroup(groupNumber);
-        
-        if (typeof checkCategoryRequired === 'function') {
-            checkCategoryRequired();
-        }
-        
-        const table = document.querySelector('[data-action="modal-table-main"]');
+
+        const table = row.closest('[data-action="modal-table-main"]');
         if (table) {
             table.querySelectorAll('tbody tr').forEach(tr => {
                 tr.classList.remove('active-row');
             });
         }
         row.classList.add('active-row');
-        
+
+        // должно выполняться после простановки active-row — иначе читает
+        // флаг is_custom предыдущей строки (или ничего при первом клике)
+        if (typeof checkCategoryRequired === 'function') {
+            checkCategoryRequired();
+        }
+
         const nextButton = document.getElementById('step1-next-btn');
         if (nextButton) {
             nextButton.disabled = false;
@@ -255,6 +400,7 @@ class PlanIndicators {
             const data = await response.json();
             
             if (data.success) {
+                this.indicators = data.indicators;
                 this.renderIndicatorsTable(data.indicators);
             } else {
                 this.showError('Ошибка загрузки данных');
@@ -268,14 +414,18 @@ class PlanIndicators {
     renderIndicatorsTable(indicators) {
         const tbody = document.getElementById('indicators-tbody');
         if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
+
+        // Строки собираются во фрагмент и добавляются в tbody одним разом
+        // в конце — если чистить tbody и добавлять строки по одной, между
+        // ними таблица на мгновение пустеет, документ становится короче
+        // прежней прокрутки, и браузер тут же сбрасывает scrollY к 0
+        // (именно то неудобство при редактировании нижних строк, которое
+        // должно было исчезнуть с переходом на обновление таблицы без
+        // перезагрузки страницы).
+        const fragment = document.createDocumentFragment();
+
         let lastGroup = null;
-        
-        const specialCodes = ['1796', '1797', '9916', '9917', '1425', '1424'];
-        const reverseCodes = ['1000', '1105', '1405', '1104', '1404', '260'];
-        
+
         indicators.forEach((row, index) => {
             const isNewGroup = row.group !== lastGroup;
             lastGroup = row.group;
@@ -297,22 +447,22 @@ class PlanIndicators {
                 }
             };
             
+            // Для строк, чья единица измерения сама по себе "т у.т." или "%",
+            // колонка "в нат. велич." не несёт смысла (натуральная величина
+            // и т у.т. — одно и то же число) — показываем "x" вместо
+            // дублирующего значения. Колонки "в т у.т." заполняются как обычно.
+            const isUnitBlocked = row.unit_name === 'т у.т.' || row.unit_name === '%';
+
             let backgroundColor = '';
             let iconHtml = '';
             let textColor = '';
-            
+
             if (row.group === 5 || row.group === 6) {
             } else if (row.difference !== null && row.difference !== undefined && !isNaN(row.difference) && row.difference !== 0) {
-                const code = String(row.code || '');
-                
-                const isCase11 = 
-                    specialCodes.includes(code) ||
-                    (row.group === 1 && row.is_local === true);
-                
-                const isCase12 = 
-                    reverseCodes.includes(code) ||
-                    (row.group === 1 && row.is_local === false);
-                
+                // higher_is_better приходит с сервера (Indicator.higher_is_better) —
+                // для группы 1 (виды топлива) уже забэкфилено из is_local.
+                const isCase11 = row.higher_is_better === true;
+
                 const isNegative = row.difference < 0;
                 const formattedValue = formatValue(row.difference, row.group);
                 
@@ -342,7 +492,7 @@ class PlanIndicators {
                 
                 backgroundColor = bgColor;
                 textColor = color;
-                iconHtml = `<span style="color: ${color}; font-weight: 600; margin-right: 4px;">${icon}</span>`;
+                iconHtml = `<span style="color: ${color}; font-weight: 600; margin-left: 4px;">${icon}</span>`;
             }
             
             let cellContent = '';
@@ -350,7 +500,7 @@ class PlanIndicators {
                 cellContent = 'x';
             } else if (row.difference !== null && row.difference !== undefined && !isNaN(row.difference) && row.difference !== 0) {
                 const formattedValue = formatValue(row.difference, row.group);
-                cellContent = `${iconHtml}<span style="color: ${textColor}; font-weight: 600;">${formattedValue}</span>`;
+                cellContent = `<span style="color: ${textColor}; font-weight: 600;">${formattedValue}</span>${iconHtml}`;
             } else {
                 cellContent = formatValue(row.difference, row.group);
             }
@@ -362,11 +512,11 @@ class PlanIndicators {
                     ${this.escapeHtml(row.name)}${row.note ? ' (' + this.escapeHtml(row.note) + ')' : ''}
                 </td>
                 <td style="text-align: start">${this.escapeHtml(row.unit_name)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_unit, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearBeforePrev_tut, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_unit, row.group)}</td>
-                <td>${(row.group === 5 || row.group === 6) ? 'x' : formatValue(row.QYearPrev_tut, row.group)}</td>
-                <td>${formatValue(row.QYearCurrent_unit, row.group)}</td>
+                <td>${isUnitBlocked ? 'x' : formatValue(row.QYearBeforePrev_unit, row.group)}</td>
+                <td>${formatValue(row.QYearBeforePrev_tut, row.group)}</td>
+                <td>${isUnitBlocked ? 'x' : formatValue(row.QYearPrev_unit, row.group)}</td>
+                <td>${formatValue(row.QYearPrev_tut, row.group)}</td>
+                <td>${isUnitBlocked ? 'x' : formatValue(row.QYearCurrent_unit, row.group)}</td>
                 <td>${formatValue(row.QYearCurrent_tut, row.group)}</td>
                 <td class="difference-cell" style="border-right: none; text-align: center; background-color: ${backgroundColor};">
                     ${cellContent}
@@ -375,28 +525,46 @@ class PlanIndicators {
                 <td style="display: none" data-group="${row.group}">${row.group}</td>
             `;
             
-            tbody.appendChild(tr);
+            fragment.appendChild(tr);
         });
+
+        tbody.innerHTML = '';
+        tbody.appendChild(fragment);
     }
 
     initTableContextMenu() {
         const indicatorsTable = document.getElementById('indicatorsTable');
         const indicatorsMenu = document.getElementById('MenuMainTable');
-        
+
         if (indicatorsTable && indicatorsMenu && typeof TableContextMenu !== 'undefined') {
             if (window.indicatorsTableMenu) {
                 window.indicatorsTableMenu = null;
             }
-            
+
+            // Раньше это были захардкоженные списки кодов — теперь берём
+            // из is_computed/is_mandatory, которые приходят с сервера
+            // (Indicator.is_computed, Indicator.IsMandatory):
+            //  - is_computed: значение считается автоматически, ни
+            //    редактировать, ни удалять нельзя;
+            //  - is_mandatory && !is_computed: строка обязательна и не
+            //    удаляется, но значение вводится вручную — можно
+            //    редактировать.
+            const indicators = this.indicators || [];
+            const immutableCodes = indicators.filter(i => i.is_computed).map(i => i.code);
+            const immutableDeleteCodes = indicators
+                .filter(i => i.is_mandatory && !i.is_computed)
+                .map(i => i.code);
+
             window.indicatorsTableMenu = new TableContextMenu('indicatorsTable', 'MenuMainTable', {
                 contextEditButtonId: 'contextEditButton',
                 contextDeleteButtonId: 'contextDeleteButton',
                 tableEditButtonId: 'tableEditButton',
                 tableDeleteButtonId: 'tableDeleteButton',
                 removeUrlTemplate: '../delete-indicator/{id}',
-                immutableCodes: ['260', '9900', '9999', '1000', '1797', '1796', '9915', '9916', '9917', '9910'],
+                removeCallback: (rowId) => this.deleteIndicatorAjax(rowId),
+                immutableCodes,
                 immutableEditCodes: [],
-                immutableDeleteCodes: ['9911', '9912', '9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'],
+                immutableDeleteCodes,
                 codeColumnIndex: 11,
                 hideCodeColumn: true
             });
@@ -461,19 +629,17 @@ class PlanIndicators {
 
 function checkCategoryRequired() {
     const selectedIndicatorName = document.getElementById('selected-indicator-name');
-    const selectedIndicatorCode = document.getElementById('selected-indicator-code');
     const categorySection = document.getElementById('category-section');
     const nameSection = document.getElementById('name-section');
     const submitBtn = document.getElementById('submit-indicator-btn');
     const categoryRadios = document.querySelectorAll('input[name="fuel_category"]');
     const nameInput = document.getElementById('name-section-input');
-    
+
     if (!selectedIndicatorName || !categorySection || !nameSection) return;
-    
-    const indicatorText = 'selectedIndicatorName.textContent';
-    const indicatorTextCode = selectedIndicatorCode ? selectedIndicatorCode.textContent : '';
-    
-    const isCategoryRequired = indicatorTextCode.includes('2023') || indicatorTextCode.includes('2024');
+
+    const activeRow = document.querySelector('#AddIndicatorModal [data-action="modal-table-main"] tbody tr.active-row');
+    const isCustomCell = activeRow ? activeRow.querySelector('td[data-is-custom]') : null;
+    const isCategoryRequired = isCustomCell ? isCustomCell.getAttribute('data-is-custom') === 'true' : false;
     
     function validateForm() {
         const isCategoryChecked = Array.from(categoryRadios).some(radio => radio.checked);
@@ -640,11 +806,11 @@ function Edit_indicator_modal() {
             });
             
             const indicatorCode = data.code;
-            const indicatorCodeNum = parseInt(indicatorCode);
-            const isCoeffEditable = indicatorCodeNum >= 2000 && indicatorCodeNum <= 2024;
+            const isCoeffEditable = data.group === 1;
             const isCodes9911to9914 = ['9911', '9912', '9913', '9914'].includes(indicatorCode);
-            const isCoeffLocked = ['9913', '9914', '1404', '1104', '1424', '1105', '1405', '1425', '1445'].includes(indicatorCode);
-            const isTut = unitName === 'т у.т.';
+            // "т у.т." и "%" сами по себе не пересчитываются в натуральную
+            // величину — коэффициент всегда 1, менять его нельзя.
+            const isTut = unitName === 'т у.т.' || unitName === '%';
             
             if (isCodes9911to9914) {
                 if (QYearBeforePrevNoDisplay) QYearBeforePrevNoDisplay.style.display = 'none';
@@ -679,7 +845,7 @@ function Edit_indicator_modal() {
             }
             
             // Устанавливаем категорию топлива
-            if (indicatorCode === '2023' || indicatorCode === '2024') {
+            if (data.is_custom) {
                 if (editCategorySection) editCategorySection.style.display = 'block';
                 if (editNameSection) editNameSection.style.display = 'block';
                 
@@ -756,13 +922,15 @@ function Edit_indicator_modal() {
                 }
                 
                 input.value = valueToSet;
-                
-                if (isTut || isCoeffLocked || !isCoeffEditable) {
+
+                const coeffWrapper = input.closest('.value-coeff');
+                if (isTut || !isCoeffEditable) {
+                    // Коэффициент нередактируем — блок с ним не показываем
+                    // вовсе (пустой серый инпут только сбивал бы с толку).
+                    if (coeffWrapper) coeffWrapper.style.display = 'none';
                     input.readOnly = true;
-                    input.style.backgroundColor = '#f5f5f5';
-                    input.style.cursor = 'not-allowed';
-                    input.style.color = '#999';
                 } else {
+                    if (coeffWrapper) coeffWrapper.style.display = '';
                     input.readOnly = false;
                     input.style.backgroundColor = 'white';
                     input.style.cursor = 'text';

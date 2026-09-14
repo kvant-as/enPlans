@@ -5,8 +5,8 @@ from flask_login import current_user, login_required
 
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
-from website.sessions import session_required
-from website.time import TimeByMinsk
+from website.sessions import session_required, set_session_cookie, build_session_info
+from common_models import current_utc_time
 from website.utils.plans import get_filtered_plans
 
 from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue
@@ -26,7 +26,7 @@ def api_get_plans():
         search_ynp = request.args.get('search_ynp', '')
         region = request.args.get('region', '')
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 5, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
         show_checkboxes = request.args.get('show_checkboxes', 'false').lower() == 'true'
         
         region_id = None
@@ -40,8 +40,11 @@ def api_get_plans():
             current_user, status_filter, year_filter, search_name, search_ynp, region_id, page, per_page
         )
         
-        is_compact = current_user.is_auditor
-        
+        # Единое отображение карточки плана для всех типов пользователей
+        # (раньше аудиторы видели урезанный compact_view — теперь везде
+        # полная карточка с показателями и организацией плана).
+        is_compact = False
+
         html = render_template_string(
             '''
             {% import 'macros/components.html' as components %}
@@ -55,6 +58,8 @@ def api_get_plans():
             compact_view=is_compact
         )
         
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+        
         return jsonify({
             'success': True,
             'html': html,
@@ -63,7 +68,8 @@ def api_get_plans():
                 'current_page': page,
                 'per_page': per_page,
                 'total_count': total_count,
-                'has_next': page * per_page < total_count
+                'total_pages': total_pages,
+                'has_next': page < total_pages
             }
         })
     except Exception as e:
@@ -72,6 +78,20 @@ def api_get_plans():
             'error': str(e)
         }), 500
 
+@api_bp.route('/session-info', methods=['GET'])
+@login_required
+def api_session_info():
+    """Powers the 'Сессии' block on the profile page and the idle guard:
+    current session duration (role-based), last activity and time left before
+    auto-logout. Being under /api, polling it does not itself slide the idle
+    window."""
+    from website.sessions import get_or_refresh_session
+
+    token, payload = get_or_refresh_session(current_user)
+    info = build_session_info(current_user, payload)
+    response = jsonify({'success': True, **info})
+    return set_session_cookie(response, token)
+
 @api_bp.route('/news', methods=['GET'])
 def api_news():
     page = request.args.get('page', 1, type=int)
@@ -79,14 +99,14 @@ def api_news():
     filter_type = request.args.get('filter', 'published')
     sort_by = request.args.get('sort', 'date')
     
-    current_time = TimeByMinsk()
-    query = News.query
+    current_time = current_utc_time()
+    query = News.query.filter(News.is_enplans == True)
     
     if filter_type == 'published':
         query = query.filter(News.published_at <= current_time, News.published_at.isnot(None))
 
     if sort_by == 'date':
-        query = query.order_by(News.published_at.desc().nullslast(), News.created_at.desc())
+        query = query.order_by(News.published_at.desc().nullslast(), News.created_time.desc())
     elif sort_by == 'views':
         query = query.order_by(News.views_count.desc().nullslast(), News.published_at.desc().nullslast())
     
@@ -97,22 +117,22 @@ def api_news():
         'news': [{
             'id': n.id,
             'title': n.title,
-            'content': n.content,
-            'image_url': n.image_url,
-            'published_at': n.published_at.isoformat() if n.published_at else n.created_at.isoformat(),
-            'created_at': n.created_at.isoformat(),
+            'content': n.text,
+            'image_url': n.img_name,
+            'published_at': n.published_at.isoformat() if n.published_at else n.created_time.isoformat(),
+            'created_at': n.created_time.isoformat(),
             'views_count': n.views_count or 0,
             'is_published': n.published_at is not None and n.published_at <= current_time
         } for n in pagination.items],
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page,
-        'total_views': db.session.query(db.func.sum(News.views_count)).scalar() or 0
+        'total_views': db.session.query(db.func.sum(News.views_count)).filter(News.is_enplans == True).scalar() or 0
     })
 
 @api_bp.route('/news/<int:id>', methods=['GET'])
 def api_news_post(id):
-    current_time = TimeByMinsk()
+    current_time = current_utc_time()
     post = News.query.get(id)
     if not post:
         return jsonify({'success': False, 'error': 'Новость не найдена'}), 404
@@ -125,7 +145,7 @@ def api_news_post(id):
         'news': {
             'id': post.id,
             'title': post.title,
-            'content': post.content,
+            'content': post.text,
             'image_url': post.image_url,
             'published_at': post.published_at.isoformat() if post.published_at else post.created_at.isoformat(),
             'created_at': post.created_at.isoformat(),
@@ -145,6 +165,17 @@ def get_organizations_api():
 
         query = Organization.query.filter_by(is_active=True)
 
+        # Показываем только организации с хотя бы одной ролью в цепочке
+        # согласования — без этого в списке попадались "пустые" организации
+        # (ни respondent, ни coordinator, ни approver).
+        query = query.filter(
+            db.or_(
+                Organization.is_regular == True,
+                Organization.is_coordinator == True,
+                Organization.is_approver == True,
+            )
+        )
+
         if hide_region_management:
             query = query.filter(Organization.is_region_management == False)
 
@@ -158,11 +189,18 @@ def get_organizations_api():
         if search_query:
             query = query.filter(
                 db.or_(
-                    Organization.name.ilike(f"%{search_query}%"),
+                    Organization.full_name.ilike(f"%{search_query}%"),
                     Organization.okpo.ilike(f"%{search_query}%"),
                     Organization.ynp.ilike(f"%{search_query}%")
                 )
             )
+
+        sort_field = request.args.get("sort", "").strip()
+        sort_order = request.args.get("order", "asc").strip().lower()
+        sort_columns = {"name": Organization.full_name, "ynp": Organization.ynp}
+        sort_column = sort_columns.get(sort_field)
+        if sort_column is not None:
+            query = query.order_by(sort_column.desc() if sort_order == "desc" else sort_column.asc())
 
         per_page = 10
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -171,7 +209,7 @@ def get_organizations_api():
             "organizations": [
                 {
                     "id": org.id,
-                    "name": org.name,
+                    "name": org.full_name,
                     "okpo": org.okpo or "",
                     "ynp": org.ynp or "",
                 }
@@ -254,6 +292,8 @@ def get_indicator_api(id):
             'code': indicator_usage.indicator.code,
             'name': indicator_usage.indicator.name,
             'note': indicator_usage.note,
+            'group': float(indicator_usage.indicator.Group) if indicator_usage.indicator.Group else None,
+            'is_custom': indicator_usage.indicator.is_custom,
             'unit_name': indicator_usage.indicator.unit.name if indicator_usage.indicator.unit else '',
             'CoeffToTut': float(indicator_usage.indicator.CoeffToTut) if indicator_usage.indicator.CoeffToTut else 0,
             'coeff_before_prev': float(indicator_usage.coeff_before_prev) if indicator_usage.coeff_before_prev else None,
@@ -314,9 +354,24 @@ def get_indicators_data(token):
             'coeff_prev': float(row.coeff_prev) if row.coeff_prev else None,
             'coeff_current': float(row.coeff_current) if row.coeff_current else None,
             
-            'is_local': row.indicator.is_local,
-            'is_renewable': row.indicator.is_renewable,
-            
+            # is_local/is_renewable читаем с самого использования (row), а не
+            # со статического Indicator: для "прочих" показателей (is_custom)
+            # это выбор категории при добавлении, а не свойство показателя.
+            'is_local': row.is_local,
+            'is_renewable': row.is_renewable,
+            'is_mandatory': row.indicator.IsMandatory,
+            'is_computed': row.indicator.is_computed,
+            # Для группы 1 (виды топлива) "рост — это хорошо" зависит от
+            # того, местный/возобновляемый ли это конкретный вид топлива в
+            # ЭТОМ плане (row.is_local/is_renewable) — включая "прочие"
+            # показатели, где это выбирается при добавлении, а не от
+            # статического Indicator.higher_is_better, который такое не
+            # различает. Для остальных групп статический флаг верен как есть.
+            'higher_is_better': (bool(row.is_local or row.is_renewable)
+                                  if row.indicator.Group == 1
+                                  else row.indicator.higher_is_better),
+
+
             'QYearBeforePrev_unit': QYearBeforePrev_unit,
             'QYearBeforePrev_tut': float(row.QYearBeforePrev) if row.QYearBeforePrev else 0,
 
@@ -325,8 +380,12 @@ def get_indicators_data(token):
 
             'QYearCurrent_unit': QYearCurrent_unit,
             'QYearCurrent_tut': float(row.QYearCurrent) if row.QYearCurrent else 0,
-            
-            'difference': float(row.QYearCurrent - row.QYearPrev) if row.QYearCurrent and row.QYearPrev else 0
+
+            # is not None, а не просто truthy — иначе разница всегда "0",
+            # если один из годов равен нулю (Decimal('0') ложен в Python).
+            'difference': (float(row.QYearCurrent - row.QYearPrev)
+                           if row.QYearCurrent is not None and row.QYearPrev is not None
+                           else 0)
         })
     
     return jsonify({
@@ -420,7 +479,7 @@ def get_events_data(token):
             'Volume': float(event.Volume) if event.Volume else None,
             'EffTut': float(event.EffTut) if event.EffTut else None,
             'EffRub': float(event.EffRub) if event.EffRub else None,
-            'ExpectedQuarter': event.ExpectedQuarter,
+            'ExpectedQuarter': str(event.ExpectedQuarter),
             'EffCurrYear': float(event.EffCurrYear) if event.EffCurrYear else None,
             'Payback': float(event.Payback) if event.Payback else None,
             'ObchVolumeFin': float(event.ObchVolumeFin) if event.ObchVolumeFin else None,
@@ -504,7 +563,12 @@ def api_notifications():
     notifications = Notification.query.filter_by(user_id=current_user.id)\
         .order_by(Notification.created_at.desc())\
         .paginate(page=page, per_page=per_page, error_out=False)
-    
+
+    # Счётчик на колокольчике должен отражать ВСЕ непрочитанные уведомления,
+    # а не только те, что попали на текущую (маленькую) страницу — раньше
+    # бейдж считался на клиенте из уже загруженного списка и занижал число.
+    unread_total = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+
     return jsonify({
         'notifications': [
             {
@@ -518,6 +582,7 @@ def api_notifications():
         'page': notifications.page,
         'per_page': notifications.per_page,
         'total': notifications.total,
+        'unread_total': unread_total,
         'has_next': notifications.has_next
     })
 
@@ -555,45 +620,59 @@ def get_stat_data(organization_id):
                 'message': 'Статистические данные не найдены'
             }), 404
 
-        # Маппинг кодов плана к строкам и колонкам в статистике
+        organization = Organization.query.get(organization_id)
+        # "Перечни" (ведомства/исполкомы) сверяются с суммой строки 110
+        # (головная организация) и строки 130 (филиалы) отчёта 12-тэк;
+        # обычные "Планы" — только со строкой 110 самой организации.
+        is_coordinator = bool(organization and organization.is_coordinator)
+        row_110 = '110+130' if is_coordinator else '110'
+
         mapping = {
-            # 12-тэк
-            '1000': {'report': '12-tek', 'row': '110', 'col': '1'},
-            '1104': {'report': '12-tek', 'row': '110', 'col': '2'},
-            '1105': {'report': '12-tek', 'row': '110', 'col': '3'},
-            # '9900': {'report': '12-tek', 'row': '110', 'col': '5'},
-            '1404': {'report': '12-tek', 'row': '140', 'col': '5'},
-            '1424': {'report': '12-tek', 'row': '142', 'col': '5'},
-            # '9915': {'report': '12-tek', 'row': '110', 'col': '4'},
-            '1405': {'report': '12-tek', 'row': '140', 'col': '4'},
-            '1425': {'report': '12-tek', 'row': '142', 'col': '4'},
-            '260': {'report': '12-tek', 'row': '260', 'col': '1'},
-            
-            # 4-тэк
-            '2000': {'report': '4-tek', 'row': '1090', 'col': '3', 'subtract': ['1090_5', '1090_6', '1092_7']},
-            '2001': {'report': '4-tek', 'row': '1050', 'col': '3', 'subtract': ['1050_5', '1050_6']},
-            '2002': {'report': '4-tek', 'row': '1040', 'col': '3', 'subtract': ['1040_5', '1040_6']},
-            '2003': {'report': '4-tek', 'row': '1660', 'col': '3', 'subtract': ['1660_5', '1660_6']},
-            '2004': {'report': '4-tek', 'row': '1075', 'col': '3', 'subtract': ['1075_5', '1075_6']},
-            '2005': {'report': '4-tek', 'row': '1160', 'col': '3', 'subtract': ['1160_5', '1160_6']},
-            '2006': {'report': '4-tek', 'row': '1150', 'col': '3', 'subtract': ['1150_5', '1150_6', '1152_7']},
-            '2007': {'report': '4-tek', 'row': '1060', 'col': '3', 'subtract': ['1060_5', '1060_6']},
-            '2008': {'report': '4-tek', 'row': '1750', 'col': '3', 'subtract': ['1750_5', '1750_6']},
-            '2009': {'report': '4-tek', 'row': '1790', 'col': '3', 'subtract': ['1790_5', '1790_6']},
-            '2010': {'report': '4-tek', 'row': '1110', 'col': '3', 'subtract': ['1110_5', '1110_6']},
-            '2011': {'report': '4-tek', 'row': '1620+1630', 'col': '3', 'subtract': ['1620_5', '1620_6', '1630_5', '1630_6']},
-            '2012': {'report': '4-tek', 'row': '1640', 'col': '3', 'subtract': ['1640_5', '1640_6']},
-            '2013': {'report': '4-tek', 'row': '1794', 'col': '3', 'subtract': ['1794_5', '1794_6']},
-            '2014': {'report': '4-tek', 'row': '1745', 'col': '3', 'subtract': ['1745_5', '1745_6']},
-            '2015': {'report': '4-tek', 'row': '1690', 'col': '3', 'subtract': ['1690_5', '1690_6']},
-            '2016': {'report': '4-tek', 'row': '1680', 'col': '3', 'subtract': ['1680_5', '1680_6']},
-            '2017': {'report': '4-tek', 'row': '1742', 'col': '3', 'subtract': ['1742_5', '1742_6']},
-            '2018': {'report': '4-tek', 'row': '1744', 'col': '3', 'subtract': ['1744_5', '1744_6']},
-            '2019': {'report': '4-tek', 'row': '1785', 'col': '3', 'subtract': ['1785_5', '1785_6']},
-            '2020': {'report': '4-tek', 'row': '1730', 'col': '3', 'subtract': ['1730_5', '1730_6']},
-            '2021': {'report': '4-tek', 'row': '1740', 'col': '3', 'subtract': ['1740_5', '1740_6']},
-            '2022': {'report': '4-tek', 'row': '1780', 'col': '3', 'subtract': ['1780_5', '1780_6']},
+            # 12-тэк — часть 1 "Показатели ТЭР"
+            '1101': {'report': '12-tek', 'row': row_110, 'col': '1'},  # стр.1 — КПТ израсходовано всего
+            '1796': {'report': '12-tek', 'row': row_110, 'col': '2'},  # из него местные виды топлива и отходы (сумма стр. 11-22)
+            '1797': {'report': '12-tek', 'row': row_110, 'col': '3'},  # из них возобновляемые (сумма стр. 11, 16-20, 22)
+            '1105': {'report': '12-tek', 'row': row_110, 'col': '5'},  # стр.23 — Электроэнергия израсходовано всего
+            '1405': {'report': '12-tek', 'row': '140', 'col': '5'},    # стр.25 — Электроэнергия, выработанная собственными энергоисточниками
+            '1425': {'report': '12-tek', 'row': '142', 'col': '5'},    # стр.27 — в т.ч. энергия воды, ветра, солнца, геотермальных источников
+            '1104': {'report': '12-tek', 'row': row_110, 'col': '4'},  # стр.29 — Теплоэнергия израсходовано всего
+            '1404': {'report': '12-tek', 'row': '140', 'col': '4'},    # стр.31 — Теплоэнергия, произведенная собственными энергоисточниками
+            '1424': {'report': '12-tek', 'row': '142', 'col': '4'},    # стр.33 — в т.ч. энергия воды, ветра, солнца, геотермальных источников
+            '260': {'report': '12-tek', 'row': '260', 'col': '1'},     # стр.35 — Суммарное потребление ТЭР
+
+            # 4-тэк — построчно по видам топлива, одинаково для Планов и Перечней
+
+            '1090': {'report': '4-tek', 'row': '1090', 'col': '3', 'subtract': ['1090_5', '1090_6', '1092_7']},
+            '1050': {'report': '4-tek', 'row': '1050', 'col': '3', 'subtract': ['1050_5', '1050_6']},
+            '1040': {'report': '4-tek', 'row': '1040', 'col': '3', 'subtract': ['1040_5', '1040_6']},
+            '1660': {'report': '4-tek', 'row': '1660', 'col': '3', 'subtract': ['1660_5', '1660_6']},
+            '1075': {'report': '4-tek', 'row': '1075', 'col': '3', 'subtract': ['1075_5', '1075_6']},
+            '1160': {'report': '4-tek', 'row': '1160', 'col': '3', 'subtract': ['1160_5', '1160_6']},
+            '1150': {'report': '4-tek', 'row': '1150', 'col': '3', 'subtract': ['1150_5', '1150_6', '1152_7']},
+            '1060': {'report': '4-tek', 'row': '1060', 'col': '3', 'subtract': ['1060_5', '1060_6']},
+            '1750': {'report': '4-tek', 'row': '1750', 'col': '3', 'subtract': ['1750_5', '1750_6']},
+            '1790': {'report': '4-tek', 'row': '1790', 'col': '3', 'subtract': ['1790_5', '1790_6']},
+            '1110': {'report': '4-tek', 'row': '1110', 'col': '3', 'subtract': ['1110_5', '1110_6']},
+            '1620': {'report': '4-tek', 'row': '1620+1630', 'col': '3', 'subtract': ['1620_5', '1620_6', '1630_5', '1630_6']},
+            '1640': {'report': '4-tek', 'row': '1640', 'col': '3', 'subtract': ['1640_5', '1640_6']},
+            '1794': {'report': '4-tek', 'row': '1794', 'col': '3', 'subtract': ['1794_5', '1794_6']},
+            '1745': {'report': '4-tek', 'row': '1745', 'col': '3', 'subtract': ['1745_5', '1745_6']},
+            '1690': {'report': '4-tek', 'row': '1690', 'col': '3', 'subtract': ['1690_5', '1690_6']},
+            '1680': {'report': '4-tek', 'row': '1680', 'col': '3', 'subtract': ['1680_5', '1680_6']},
+            '1742': {'report': '4-tek', 'row': '1742', 'col': '3', 'subtract': ['1742_5', '1742_6']},
+            '1744': {'report': '4-tek', 'row': '1744', 'col': '3', 'subtract': ['1744_5', '1744_6']},
+            '1785': {'report': '4-tek', 'row': '1785', 'col': '3', 'subtract': ['1785_5', '1785_6']},
+            '1730': {'report': '4-tek', 'row': '1730', 'col': '3', 'subtract': ['1730_5', '1730_6']},
+            '1740': {'report': '4-tek', 'row': '1740', 'col': '3', 'subtract': ['1740_5', '1740_6']},
+            '1780': {'report': '4-tek', 'row': '1780', 'col': '3', 'subtract': ['1780_5', '1780_6']},
         }
+
+        indicator_names = {
+            ind.code: ind.name
+            for ind in Indicator.query.filter(Indicator.code.in_(mapping.keys())).all()
+        }
+        for code, mapping_item in mapping.items():
+            mapping_item['name'] = indicator_names.get(code, f'Показатель {code}')
 
         result = {
             'success': True,

@@ -1,0 +1,147 @@
+{% extends "cm_admin/base.html" %}
+{% block title %}{{ site.brand }} · Обращение №{{ chat.id }}{% endblock %}
+
+{% block content %}
+  {% set author = chat.created_by %}
+  <div class="cm-section-head">
+    <h1 class="cm-h1">{{ author_name }}</h1>
+    <a class="cm-link" href="{{ url_for('cm_admin.dashboard') }}">← к панели</a>
+  </div>
+  <p class="cm-muted" style="margin: -12px 0 24px;">
+    {{ author.email if author else '' }}{% if author and author.organization %} · {{ author.organization.full_name }}{% endif %}
+  </p>
+
+  <div class="cm-thread" id="cmThread">
+    {% for m in messages %}
+      <div class="cm-msg {{ 'cm-msg--user' if m.is_user else 'cm-msg--admin' }}" data-message-id="{{ m.id }}">
+        <div class="cm-msg-bubble">{{ m.content }}</div>
+        <div class="cm-msg-time">{{ m.created_at.strftime('%d.%m.%Y %H:%M') if m.created_at else '' }}</div>
+      </div>
+    {% else %}
+      <div class="cm-empty">Сообщений пока нет</div>
+    {% endfor %}
+  </div>
+
+  <form class="cm-form" id="cmReplyForm" method="post" style="margin-top: 24px; max-width: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <div class="cm-field">
+      <label for="content">Ответ пользователю</label>
+      <textarea id="content" name="content" rows="4" required placeholder="Введите ответ… (Enter — отправить, Shift+Enter — новая строка)" autofocus></textarea>
+    </div>
+    <div class="cm-form-actions">
+      <button type="submit" class="cm-btn">Отправить</button>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      var thread = document.getElementById('cmThread');
+      var form = document.getElementById('cmReplyForm');
+      var textarea = document.getElementById('content');
+      var csrfInput = form.querySelector('input[name="csrf_token"]');
+      var csrfToken = csrfInput ? csrfInput.value : '';
+      var chatId = {{ chat.id }};
+
+      var processedIds = {};
+      Array.prototype.forEach.call(thread.querySelectorAll('[data-message-id]'), function (el) {
+        processedIds[el.dataset.messageId] = true;
+      });
+
+      function scrollDown() {
+        thread.scrollTop = thread.scrollHeight;
+      }
+      scrollDown();
+
+      function renderMessage(m, animate) {
+        if (processedIds[m.id]) return;
+        processedIds[m.id] = true;
+
+        var empty = thread.querySelector('.cm-empty');
+        if (empty) empty.remove();
+
+        var wrap = document.createElement('div');
+        wrap.className = 'cm-msg ' + (m.is_user ? 'cm-msg--user' : 'cm-msg--admin') + (animate ? ' cm-msg--new' : '');
+        wrap.dataset.messageId = m.id;
+
+        var bubble = document.createElement('div');
+        bubble.className = 'cm-msg-bubble';
+        bubble.textContent = m.content;
+        wrap.appendChild(bubble);
+
+        if (m.created_at) {
+          var timeDiv = document.createElement('div');
+          timeDiv.className = 'cm-msg-time';
+          var d = new Date(m.created_at);
+          timeDiv.textContent = d.toLocaleString('ru-RU', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+          });
+          wrap.appendChild(timeDiv);
+        }
+
+        thread.appendChild(wrap);
+        scrollDown();
+      }
+
+      // Реал-тайм обновление: переиспользуем тот же API, что и виджет
+      // виртуального помощника (/api/chat/<id>/messages) — админу он
+      // доступен, доступ проверяется на бэкенде (см. chat_bp.get_messages).
+      async function poll() {
+        try {
+          var r = await fetch('/api/chat/' + chatId + '/messages', { credentials: 'same-origin' });
+          if (!r.ok) return;
+          var messages = await r.json();
+          messages.forEach(function (m) { renderMessage(m, true); });
+        } catch (e) {
+          // тихо игнорируем — попробуем на следующем тике
+        }
+      }
+      var pollTimer = setInterval(poll, 3000);
+      window.addEventListener('beforeunload', function () { clearInterval(pollTimer); });
+
+      async function sendReply() {
+        var content = textarea.value.trim();
+        if (!content) return;
+
+        textarea.value = '';
+        textarea.disabled = true;
+
+        try {
+          var r = await fetch(form.action || window.location.href, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrfToken,
+            },
+            body: new URLSearchParams({ content: content, csrf_token: csrfToken }),
+          });
+          var data = await r.json();
+          if (data.success && data.message) {
+            renderMessage(data.message, true);
+          } else {
+            textarea.value = content;
+            window.alert(data.error || 'Не удалось отправить ответ');
+          }
+        } catch (e) {
+          textarea.value = content;
+          window.alert('Не удалось отправить ответ. Проверьте соединение.');
+        } finally {
+          textarea.disabled = false;
+          textarea.focus();
+        }
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sendReply();
+      });
+
+      textarea.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendReply();
+        }
+      });
+    })();
+  </script>
+{% endblock %}

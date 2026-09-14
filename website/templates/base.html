@@ -4,9 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-   
+
+    <script>
+      // Применяем тему до отрисовки страницы, чтобы не было "мигания".
+      // По умолчанию — светлая тема, независимо от системных настроек;
+      // тёмная включается только явным выбором пользователя (переключатель).
+      (function () {
+        try {
+          var saved = localStorage.getItem('enplans-theme');
+          document.documentElement.setAttribute('data-theme', saved || 'light');
+        } catch (e) {}
+      })();
+    </script>
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/logo-white.svg')}}">
 
     {% block extra_css %}
@@ -14,6 +26,9 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
     {% endblock %}
+
+    <!-- Тёмная тема — подключается последней, чтобы её переопределения всегда побеждали -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 
     <title>{% block title %}{{ _('EnPlans - Формирование планов мероприятий по энергосбережению') }}{% endblock %}</title>
     <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
@@ -36,31 +51,17 @@
                 </div>
                 <div class="header-aside-text">
                     <a class="title">EnPlans</a>
-                    <span class="subtitle">{{ _('Формирование планов мероприятий по энергосбережению') }}</span>
+                    {#<span class="subtitle">{{ _('Формирование планов мероприятий по энергосбережению') }}</span>#}
                 </div>
             </div>
             
             <div class="header-bside">
                 {% if not current_user.is_authenticated %}        
-                    <button type="button" class="svg-btn tooltip-btn" onclick="navigateToSection('contacts-cont')">
+                    <button type="button" class="svg-btn tooltip-btn contacts" onclick="navigateToSection('contacts-cont')">
                         {{ icons.icon_contacts() }}
                         <span class="tooltip-text">{{ _('Контакты') }}</span>
                     </button>
-                    <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='/FAQ'">
-                        {{ icons.icon_help() }}
-                        <span class="tooltip-text">{{ _('Помощь') }}</span>
-                    </button>
-                    <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='/news'">
-                        {{ icons.icon_news() }}
-                        <span class="tooltip-text">{{ _('Новости') }}</span>
-                    </button>
-                    <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('auth.login') }}'">
-                        {{ icons.icon_login() }}
-                        <span class="tooltip-text">{{ _('Войти') }}</span>
-                        <span class="btn-text">{{ _('Войти') }}</span>
-                    </button>
-                {% endif %}
-                {% if current_user and current_user.is_authenticated %}
+                {% else %}
                     <div class="notif-wrapper">
                         <button type="button" class="svg-btn tooltip-btn" id="notifBtn" style="margin: 0; position: relative;">
                             {{ icons.icon_notif() }} 
@@ -78,68 +79,105 @@
                             <div class="notif-body" id="notifList"></div>
                         </div>
                     </div>
-
-                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0;" onclick="ChatModule.toggleChat()">
+                    <button type="button" class="svg-btn tooltip-btn helper" style="margin: 0;" onclick="ChatModule.toggleChat()">
                         {{ icons.icon_helper() }} 
                         <span class="tooltip-text">{{ _('Консультант') }}</span>
                     </button>
+                {% endif %}
+                <button type="button" class="svg-btn tooltip-btn help" style="margin: 0;" onclick="window.location.href='/FAQ'">
+                    {{ icons.icon_help() }} 
+                    <span class="tooltip-text">{{ _('Помощь') }}</span>
+                </button>
+                <button type="button" class="svg-btn tooltip-btn news" style="margin: 0;" onclick="window.location.href='/news'">
+                    {{ icons.icon_news() }}
+                    <span class="tooltip-text">{{ _('Новости') }}</span>
+                </button>
+                <button type="button" class="svg-btn tooltip-btn theme-toggle" id="themeToggle" style="margin: 0;">
+                    {{ icons.icon_theme_sun() }}
+                    {{ icons.icon_theme_moon() }}
+                    <span class="tooltip-text">{{ _('Тема оформления') }}</span>
+                </button>
+                
 
-                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0;" onclick="window.location.href='/FAQ'">
-                        {{ icons.icon_help() }} 
-                        <span class="tooltip-text">{{ _('Помощь') }}</span>
-                    </button>
+                {#
+                <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('auth.login') }}'">
+                    {{ icons.icon_proflie() }}
+                    <span class="tooltip-text">{{ _('Войти') }}</span>
+                    <span class="btn-text">{{ _('Войти') }}</span>
+                </button>#}
 
-                    <button type="button" class="svg-btn tooltip-btn" style="margin: 0;" onclick="window.location.href='/news'">
-                        {{ icons.icon_news() }} 
-                        <span class="tooltip-text">{{ _('Новости') }}</span>
-                    </button>
+                <div class="divider"></div>
 
-                    <div class="divider"></div>
-
-                    <div class="user-container" id="user-profile-panel-trigger">
-                        <div class="avatar-wrapper">
-                            <div class="avatar-circle">
+                <div class="user-container" id="user-profile-panel-trigger">
+                    <div class="avatar-wrapper">
+                        <div class="avatar-circle">
+                            {% if current_user.is_authenticated %}
                                 {{ current_user.first_name[:1] | upper if current_user.first_name else 'U' }}{{ current_user.last_name[:1] | upper if current_user.last_name else 'S' }}
-                            </div>
+                            {% else %}
+                                <span class="no-user">
+                                    {{ icons.icon_login() }}
+                                </span>
+                            {% endif %}
                         </div>
-                        <span class="chevron-icon">›</span>
                     </div>
+                    <span class="chevron-icon">›</span>
+                </div>
 
-                    <div class="user-profile-panel" id="user-profile-panel">
-                        <div class="nav-menu-list">
+                <div class="user-profile-panel" id="user-profile-panel">
+                    <div class="nav-menu-list">
+                        {% if current_user.is_authenticated %}
                             <button type="button" class="nav-menu-item" onclick="window.location.href='/profile'">
                                 {{ icons.icon_profile() }}
                                 <span>{{ _('Мой профиль') }}</span>
                             </button>
                             <hr>
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/'">
-                                {{ icons.icon_main() }}
-                                <span>{{ _('Главная') }}</span>
-                            </button>
+                        {% endif %}
+                        <button type="button" class="nav-menu-item" onclick="window.location.href='/'">
+                            {{ icons.icon_main() }}
+                            <span>{{ _('Главная') }}</span>
+                        </button>
+                        {% if current_user.is_authenticated %}
                             <button type="button" class="nav-menu-item" onclick="window.location.href='/plans'">
                                 {{ icons.icon_plans() }}
                                 <span>{{ _('Планы') }}</span>
                             </button>
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/news'">
-                                {{ icons.icon_news() }}
-                                <span>{{ _('Новости') }}</span>
+                            <button type="button" class="nav-menu-item" onclick="ChatModule.toggleChat()">
+                                {{ icons.icon_helper() }}
+                                <span>{{ _('Консультант') }}</span>
                             </button>
-                            <button type="button" class="nav-menu-item" onclick="navigateToSection('contacts-cont')">
-                                {{ icons.icon_contacts() }}
-                                <span>{{ _('Контакты') }}</span>
-                            </button>
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/FAQ'">
-                                {{ icons.icon_help() }}
-                                <span>{{ _('Помощь') }}</span>
-                            </button>
+                        {% endif %}
+                        
+                        <button type="button" class="nav-menu-item" onclick="window.location.href='/FAQ'">
+                            {{ icons.icon_help() }}
+                            <span>{{ _('Помощь') }}</span>
+                        </button>
+                        <button type="button" class="nav-menu-item" onclick="window.location.href='/news'">
+                            {{ icons.icon_news() }}
+                            <span>{{ _('Новости') }}</span>
+                        </button>
+                        <button type="button" class="nav-menu-item" onclick="navigateToSection('contacts-cont')">
+                            {{ icons.icon_contacts() }}
+                            <span>{{ _('Контакты') }}</span>
+                        </button>
+                  
+                        {% if current_user.is_authenticated %}
+
                             <hr>
-                            <button class="nav-menu-item" onclick="window.location.href='/logout'">
-                                {{ icons.icon_logout() }}
-                                <span>{{ _('Выйти из аккаунта') }}</span>
+                            <form id="logout_form" method="GET" action="{{ url_for('auth.logout') }}">
+                                <button type="button" id="logoutButton" class="nav-menu-item red">
+                                    {{ icons.icon_logout() }}
+                                    <span>{{ _('Выйти из аккаунта') }}</span>
+                                </button>
+                            </form>
+                        {% else %}
+                            <hr>
+                            <button class="nav-menu-item green" onclick="window.location.href='/login'">
+                                {{ icons.icon_login() }}
+                                <span>{{ _('Войти в аккаунт') }}</span>
                             </button>
-                        </div>
+                        {% endif %}
                     </div>
-                {% endif %}
+                </div>
             </div>
         </nav>
     </header>
@@ -272,7 +310,6 @@
                             <input type="hidden" name="item_type" data-action="selected-item-type">
                             
                             <div class="button-auth-area">
-                                <div></div>
                                 <button type="submit" class="main-btn main-btn-primary" data-action="submit">
                                     {{ icons.icon_confirm() }}
                                     <span class="btn-text">{{ _('Сохранить организацию') }}</span>
@@ -308,8 +345,9 @@
                                 <div class="message-text">
                                     Добрый день! <br>
                                     Выберите, пожалуйста, отделение, соответствующее вашему вопросу:<br>
-                                    • <strong>Нет организации</strong> — если у вас нет организации или вопросы по регистрации<br>
+                                    • <strong>Нет организации</strong> — в программе нет вашей организации<br>
                                     • <strong>Заполнение плана</strong> — у вас возникли вопросы по заполнению плана<br>
+                                    • <strong>Изменить данные организации</strong> — наименование, ОКПО, УНП или регион<br>
                                     • <strong>Другое</strong> — все остальные вопросы
                                 </div>
                             </div>
@@ -324,6 +362,11 @@
                         <div class="chat-option" onclick="ChatModule.selectChatType('compl-plan')">
                             <div class="chat-option-info">
                                 <div class="chat-option-title">Заполнение плана</div>
+                            </div>
+                        </div>
+                        <div class="chat-option" onclick="ChatModule.selectChatType('org-edit')">
+                            <div class="chat-option-info">
+                                <div class="chat-option-title">Изменить данные организации</div>
                             </div>
                         </div>
                         <div class="chat-option" onclick="ChatModule.selectChatType('dif')">
@@ -404,7 +447,7 @@
                         <div class="slide-layout">
                             <div class="slide-info">
                                 <h3>Интрукция по работе</h3>
-                                <p>Ознакомьтесь с подробной <a href="/FAQ#create-plan" class="instruction-link">инструкцией</a> по работе в системе. Также вы можете скачать <a href="{{ url_for('static', filename='files/Enplans_Instruction.pdf') }}" class="instruction-link" target="_blank">PDF-версию инструкции</a> для офлайн-просмотра. Для быстрых ответов на вопросы перейдите в раздел <a href="/FAQ" class="instruction-link">Часто задаваемые вопросы</a>.</p>
+                                <p>Ознакомьтесь с подробной <a href="/FAQ#create-plan" class="instruction-link">инструкцией</a> по работе в системе. Для быстрых ответов на вопросы перейдите в раздел <a href="/FAQ" class="instruction-link">Часто задаваемые вопросы</a>.</p>
                             </div>
                             <div class="slide-image">
                                 <div class="image-placeholder">
@@ -452,6 +495,10 @@
         <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
         <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>
         <script src="{{ url_for('static', filename='js/header.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+        {% if current_user and current_user.is_authenticated %}
+        <script src="{{ url_for('static', filename='js/session-guard.js') }}"></script>
+        {% endif %}
         <script>
         document.addEventListener('DOMContentLoaded', () => {
             messageFlash.init();
@@ -500,7 +547,7 @@
                     <li onclick="window.location.href='/FAQ'">
                         <a>Помощь</a>
                     </li>
-                    <li onclick="window.location.href='/about'">
+                    <li onclick="window.location.href='/FAQ#what-is'">
                         <a>О проекте</a>
                     </li>
                     </ul>

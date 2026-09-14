@@ -14,17 +14,17 @@ def build_html(message_body, email_type):
     elif email_type == "plan":
         status = message_body
         if status == "В редакции":
-            color = "#64748b"  # status-sent
+            color = "#64748b"
         elif status == "Есть ошибки":
-            color = "#801616"  # status-error
+            color = "#801616"
         elif status == "Контроль пройден":
-            color = "#8b5cf6"  # status-control
+            color = "#8b5cf6"
         elif status == "На согласовании" or status == "Не просмотрен":
-            color = "#3b82f6"  # status-sent
+            color = "#3b82f6"
         elif status == "Одобрен":
-            color = "#10b981"  # status-approved
+            color = "#10b981"
         else:
-            color = "#00798f"  # цвет по умолчанию (EnPlans green)
+            color = "#00798f"
         
         content = f"""
         <div style="padding: 24px 32px;">
