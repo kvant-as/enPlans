@@ -38,12 +38,21 @@
   --theme-transition: background-color .25s ease, border-color .25s ease, color .25s ease;
 }
 html[data-theme] body,
-html[data-theme] .fixed-header,
 html[data-theme] .svg-btn,
 html[data-theme] input,
 html[data-theme] textarea,
 html[data-theme] select {
   transition: var(--theme-transition);
+}
+
+/* .fixed-header отдельно, не через var(--theme-transition) (та даёт .25s
+   и не включает box-shadow/backdrop-filter/border-radius) — иначе более
+   специфичный селектор (html[data-theme] ...) полностью перебивал бы
+   scroll-переход из base.css, и свойства шапки анимировались бы вразнобой.
+   0.5s ease — как --animation-speed в erespondentN, одно время на все
+   свойства "bubble"-эффекта. */
+html[data-theme] .fixed-header {
+  transition: background-color .5s ease, border-color .5s ease, color .5s ease, box-shadow .5s ease, backdrop-filter .5s ease, border-radius .5s ease;
 }
 
 :root[data-theme="dark"] { color-scheme: dark; }

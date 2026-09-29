@@ -109,11 +109,12 @@ def send_message():
         is_org_edit = chat.chat_type == ORG_EDIT_CHAT_TYPE
         is_no_org = chat.chat_type == NO_ORG_CHAT_TYPE
 
-        # ИИ-помощник пока доступен только администраторам; обращения
-        # "Другое" (живому оператору), "Изменить данные организации" и
-        # "Нет организации" (автоматические сценарии) доступны всем
-        # авторизованным
-        if not is_support and not is_org_edit and not is_no_org and not current_user.is_admin:
+        # Все типы обращений в виртуальном помощнике, кроме "Другое" (живой
+        # администратор), доступны только администраторам — и ИИ-чат
+        # (compl-plan), и автоматические сценарии "Изменить данные
+        # организации"/"Нет организации". Обычный пользователь может
+        # пользоваться только "Другое".
+        if not is_support and not current_user.is_admin:
             return jsonify({'success': False, 'error': 'error: enabled only for admin'}), 400
 
         if chat.messages.count() >= MAX_MESSAGES_PER_CHAT:

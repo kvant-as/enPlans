@@ -362,26 +362,40 @@ body {
   z-index: 1000;
   height: 60px;
   box-sizing: border-box;
-  transition: background 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease;
+  transition: background 0.5s ease, box-shadow 0.5s ease, backdrop-filter 0.5s ease, border-color 0.5s ease, border-radius 0.5s ease;
   width: var(--default-width);
   max-width: 1900px;
   padding: 0 var(--default-padding-x);
   font-size: 16px;
   font-weight: 500;
-  border-radius: 100px;
+  border-radius: 0;
+  border: 1px solid transparent;
   background: transparent;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0), 0 6px 24px rgba(0, 0, 0, 0);
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
 }
 
-/* On scroll: just a solid background — no move, no resize.
-   Base .fixed-header above sets explicit zero values for backdrop-filter
-   and box-shadow (not "none"/absent) so the transition has something to
-   interpolate from — otherwise the blur/shadow would just pop in instead
-   of fading in smoothly. */
+/* On scroll: заднее стекло, бордер и тень плавно проявляются — как
+   "bubble"-эффект в erespondentN, только через CSS-transition, а не
+   keyframe-анимацию (transition сам симметрично отыгрывает исчезание
+   назад, без JS-таймеров на реверс). Токены --glass-surface-bg/-border —
+   те же, что у остальных "стеклянных" карточек в приложении, поэтому тема
+   (светлая/тёмная) подхватывается автоматически.
+   Base .fixed-header above sets explicit zero/transparent values for
+   backdrop-filter, box-shadow and border-color (not "none"/absent) so the
+   transition has something to interpolate from — otherwise the blur/
+   shadow/border would just pop in instead of fading in smoothly. */
 .fixed-header.scrolled {
-  /* background: var(--blur2); */
+  background: var(--glass-surface-bg);
+  border-color: var(--glass-surface-border);
+  /* Высота шапки — 60px, значит видимое скругление упирается в потолок уже
+     на 30px (половина высоты); дальше и до 100px форма визуально не
+     меняется. С учётом плавного (ease) перехода это "съедало" почти всё
+     время анимации впустую и превращало скругление в мгновенный скачок.
+     30px — тот же итоговый вид (полная "таблетка"), но вся 0.5s-анимация
+     теперь реально видна. */
+  border-radius: 30px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 24px rgba(0, 0, 0, 0.06);
