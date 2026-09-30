@@ -15,6 +15,8 @@ from website.user import send_email
 
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
 
+from ..ecp import verify_certificate
+
 from .. import db
 from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanApprovalPath, PlanColumnConfig, PlanTicket, Event, Organization
 
@@ -44,11 +46,56 @@ def plan_review(token):
         current_user.organization is not None
     )
 
-    return render_template('plan_review.html', 
+    return render_template('plan_review.html',
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
-                        SendModal=current_plan.is_control
                         )
+
+
+@plan_bp.route('/send/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+@reader_forbidden
+def plan_send_page(token):
+    """Отдельная страница отправки плана на согласование — раньше было
+    модальное окно поверх plan_review.html (SendModal/SendModalPreview в
+    plan.js), теперь свой URL со всеми этапами. Доступна только когда план
+    прошёл контроль и ещё не отправлен/утверждён — те же условия, что раньше
+    просто отключали кнопку "Отправить на согласование"."""
+    current_plan = g.current_plan
+
+    if not current_plan.is_control or current_plan.is_draft or current_plan.is_sent or current_plan.is_approved or current_plan.is_error:
+        flash('План должен сначала пройти контроль, прежде чем его можно будет отправить на согласование', 'error')
+        return redirect(url_for('plan_bp.plan_review', token=current_plan.token))
+
+    return render_template('plan_send.html', plan=current_plan)
+
+
+@plan_bp.route('/verify-certificate/<token>', methods=['POST'])
+@login_required
+@owner_only
+@reader_forbidden
+def api_verify_certificate(token):
+    """AJAX-проверка сертификата ЭЦП на лету, пока пользователь ещё на шаге
+    загрузки — тот же common_models.validators-стиль, что и у ОКПО/УНП:
+    сервер один раз решает валидность, клиент просто отражает вердикт.
+    Финальная отправка (change-status) перепроверяет сертификат заново —
+    этому эндпоинту доверять на слово нельзя, он только для быстрой
+    обратной связи в интерфейсе."""
+    plan = g.current_plan
+    cert_file = request.files.get('certificate')
+    if not cert_file or not cert_file.filename:
+        return jsonify({'valid': False, 'error': 'Файл сертификата не передан'}), 400
+
+    # TODO: пока проверяем только срок действия — сверку УНП организации
+    # плана с УНП в сертификате временно отключили (expected_unp=None),
+    # включить обратно после того как разберёмся с форматом реальных
+    # сертификатов ЭЦП. verify_certificate уже умеет это делать — см.
+    # website/ecp.py.
+    ok, error = verify_certificate(cert_file, expected_unp=None)
+    return jsonify({'valid': ok, 'error': error})
 
 @plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -853,8 +900,29 @@ def api_change_plan_status(token):
             return redirect(request.referrer or url_for('views.plans'))
     
     handler = status_handlers[status]
-    
+
     if status == 'sent':
+        # Сертификат уже проверялся на лету на странице отправки
+        # (/verify-certificate), но той проверке доверять нельзя — сюда
+        # могут обратиться и напрямую, минуя интерфейс, поэтому сверяем
+        # срок действия заново. TODO: сверку УНП временно отключили
+        # (expected_unp=None) — см. тот же комментарий в api_verify_certificate.
+        cert_file = request.files.get('certificate')
+        if not cert_file or not cert_file.filename:
+            error_msg = 'Файл сертификата обязателен'
+            if request.is_json:
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
+
+        expected_unp = None
+        cert_ok, cert_error = verify_certificate(cert_file, expected_unp)
+        if not cert_ok:
+            if request.is_json:
+                return jsonify({'error': cert_error}), 400
+            flash(cert_error, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
+
         result = handler(plan, coordinator_ids, approver_id)
     elif status == 'approved':
         result = handler(plan, current_user)

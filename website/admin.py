@@ -164,7 +164,7 @@ site.register(
         F("usd_rate", "Курс USD", type="float"),
         F("cost_per_toe_usd", "Стоимость т.у.т., USD", type="float"),
         F("afch", "АФЧ", type="bool"),
-        F("is_draft", "Черновик", type="bool"),
+        F("is_draft", "В редакции", type="bool"),
         F("is_control", "Контроль", type="bool"),
         F("is_sent", "Отправлен", type="bool"),
         F("is_error", "Есть ошибки", type="bool"),

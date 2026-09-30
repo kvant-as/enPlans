@@ -2,6 +2,7 @@ import logging
 from venv import logger
 from flask import current_app, g, request, jsonify, Blueprint, render_template_string
 from flask_login import current_user, login_required
+from sqlalchemy.orm import contains_eager, joinedload
 
 from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only
@@ -197,14 +198,21 @@ def get_organizations_api():
 
         sort_field = request.args.get("sort", "").strip()
         sort_order = request.args.get("order", "asc").strip().lower()
-        sort_columns = {"name": Organization.full_name, "ynp": Organization.ynp}
+        sort_columns = {
+            "name": Organization.full_name,
+            "ynp": Organization.ynp,
+            "okpo": Organization.okpo,
+            "region": Region.name,
+        }
         sort_column = sort_columns.get(sort_field)
         if sort_column is not None:
+            if sort_field == "region":
+                query = query.outerjoin(Region, Organization.region_id == Region.id)
             query = query.order_by(sort_column.desc() if sort_order == "desc" else sort_column.asc())
 
         per_page = 10
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        
+
         return jsonify({
             "organizations": [
                 {
@@ -212,6 +220,7 @@ def get_organizations_api():
                     "name": org.full_name,
                     "okpo": org.okpo or "",
                     "ynp": org.ynp or "",
+                    "region": org.region.name if org.region else "",
                 }
                 for org in pagination.items
             ],
@@ -325,8 +334,14 @@ def get_indicator_api(id):
 def get_indicators_data(token):
     current_plan = g.current_plan
     
+    # contains_eager переиспользует уже существующий join для заполнения
+    # row.indicator (без него SQLAlchemy делает по отдельному SELECT на
+    # каждую строку — на удалённой БД это ощутимая задержка при открытии
+    # плана), joinedload(Indicator.unit) добавляет ещё один join и убирает
+    # такой же N+1 на row.indicator.unit.name.
     current_plan_indicators = (IndicatorUsage.query
                 .join(Indicator, IndicatorUsage.id_indicator == Indicator.id)
+                .options(contains_eager(IndicatorUsage.indicator).joinedload(Indicator.unit))
                 .filter(IndicatorUsage.id_plan == current_plan.id)
                 .order_by(Indicator.Group.asc(), Indicator.RowN.asc())
                 .all())
@@ -414,26 +429,35 @@ def get_events_data(token):
     
     period_codes = ['0001', '0002', '0003', '0004']
     
+    # contains_eager переиспользует join по Direction, а joinedload на
+    # Direction.unit добавляет ещё один join — без этого serialize_event()
+    # ниже делал бы по 2 отдельных SELECT на каждое отличающееся
+    # направление (event.direction, event.direction.unit).
+    direction_eager = contains_eager(Event.direction).joinedload(Direction.unit)
+
     original_events = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
+        .options(direction_eager)
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == False)
         .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
-    
+
     events_with_changes = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
+        .options(direction_eager)
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Event.is_corrected == True)
         .filter(Direction.code.notin_(period_codes))
         .order_by(Event.id.asc())
         .all())
-    
+
     period_events = (Event.query
         .join(Direction, Event.id_direction == Direction.id)
+        .options(direction_eager)
         .filter(Event.id_plan == current_plan.id)
         .filter(type_filter)
         .filter(Direction.code.in_(period_codes))
