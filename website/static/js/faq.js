@@ -12,6 +12,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    const faqContent = document.querySelector('.faq-content-modern');
+    function scrollToContentTop() {
+        const target = faqContent || document.body;
+        const headerOffset = 100;
+        const top = target.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+        window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+    }
+
     questionLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -25,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const category = this.closest('.category-modern');
             if (category) category.classList.add('active');
             history.pushState(null, null, `#${targetId}`);
+            scrollToContentTop();
         });
     });
 
@@ -72,6 +81,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (targetLink) setTimeout(() => targetLink.click(), 100);
     }
 
+    document.querySelectorAll('.faq-toc-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href').substring(1);
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            e.preventDefault();
+            const headerOffset = 90;
+            const top = targetEl.getBoundingClientRect().top + window.pageYOffset - headerOffset;
+            window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+            history.pushState(null, null, `#${targetId}`);
+        });
+    });
+
     document.querySelectorAll('.answer-text input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const label = this.parentElement;
@@ -83,5 +105,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 label.style.textDecoration = 'none';
             }
         });
+    });
+
+    const lightbox = document.createElement('div');
+    lightbox.className = 'faq-lightbox';
+    lightbox.innerHTML = `
+        <button type="button" class="faq-lightbox-close" aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <img class="faq-lightbox-img" src="" alt="">
+    `;
+    document.body.appendChild(lightbox);
+    const lightboxImg = lightbox.querySelector('.faq-lightbox-img');
+    const lightboxClose = lightbox.querySelector('.faq-lightbox-close');
+
+    function openLightbox(img) {
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt || '';
+        lightbox.classList.add('show');
+        document.body.classList.add('faq-lightbox-open');
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('show');
+        document.body.classList.remove('faq-lightbox-open');
+        lightboxImg.src = '';
+    }
+
+    document.querySelectorAll('.faq-image').forEach(img => {
+        img.addEventListener('click', () => openLightbox(img));
+    });
+
+    lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox) closeLightbox();
+    });
+    lightboxClose.addEventListener('click', closeLightbox);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox.classList.contains('show')) closeLightbox();
     });
 });

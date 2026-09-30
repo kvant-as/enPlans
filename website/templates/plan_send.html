@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Отправка плана на рассмотрение') }} - EnPlans{% endblock %}
+{% block content %}
+
+<div class="pers-page">
+  {{ component.back_header(plan, current_user, back_url='/plans/plan/review/' + plan.token, back_text=_('К плану')) }}
+
+  <div class="personal-acc-conteiner edit-page">
+    <a class="name">{{ _('Отправка плана на рассмотрение') }}</a>
+
+    <div class="plan-send-stepper" id="planSendStepper">
+      <div class="plan-send-step-dot" data-step="1">
+        <span class="plan-send-step-circle">1</span>
+        <span class="plan-send-step-label">{{ _('Согласующие') }}</span>
+      </div>
+      <div class="plan-send-step-line"></div>
+      <div class="plan-send-step-dot" data-step="2">
+        <span class="plan-send-step-circle">2</span>
+        <span class="plan-send-step-label">{{ _('Утверждающий') }}</span>
+      </div>
+      <div class="plan-send-step-line"></div>
+      <div class="plan-send-step-dot" data-step="3">
+        <span class="plan-send-step-circle">3</span>
+        <span class="plan-send-step-label">{{ _('Проверка') }}</span>
+      </div>
+      <div class="plan-send-step-line"></div>
+      <div class="plan-send-step-dot" data-step="4">
+        <span class="plan-send-step-circle">4</span>
+        <span class="plan-send-step-label">{{ _('Подпись') }}</span>
+      </div>
+    </div>
+
+    <div id="planSendRoot">
+      <div class="progress-modal-bar-container">
+        <div class="progress-modal-bar" id="modal-progress-bar" style="width: 25%"></div>
+      </div>
+
+      <div id="step1" class="modal-step">
+        <div class="step-description">
+          <p>{{ _('Выберите организации, через которые план пройдёт согласование — последовательно и автоматически, этап за этапом.') }}</p>
+          <p class="step-note">{{ _('Первой в списке всегда будет региональное управление по надзору за рациональным использованием ТЭР — оно добавляется автоматически. Если организация даст положительную оценку, план сам перейдёт к следующему этапу; если оценка отрицательная — вы получите результаты проверки, а план перейдёт в статус «Есть ошибки».') }}</p>
+        </div>
+
+        <div class="input-with-icon">
+          {{ icons.icon_search() }}
+          <input type="text" id="coordinator-search" placeholder="{{ _('Поиск организации...') }}" class="app-input" />
+        </div>
+
+        <div class="org-picker">
+          <div class="org-picker-toolbar">
+            <span class="org-picker-toolbar-label">{{ _('Сортировать:') }}</span>
+            <button type="button" class="org-picker-sort-btn" data-field="name">{{ _('По названию') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="ynp">{{ _('По УНП') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="okpo">{{ _('По ОКПО') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="region">{{ _('По региону') }}</button>
+          </div>
+          <div class="org-picker-list" id="coordinator-tbody">
+            <div class="org-picker-loading-row">
+              <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="selected-organizations">
+          <h4>
+            {{ _('организации для согласования:') }}
+            <span id="coordinator-count" class="selected-count">0</span>
+          </h4>
+          <div id="selected-coordinators" class="selected-org-list">
+            <div class="empty-message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="3" width="16" height="18" rx="1"></rect>
+                <line x1="8" y1="7.5" x2="8" y2="7.5"></line>
+                <line x1="12" y1="7.5" x2="12" y2="7.5"></line>
+                <line x1="16" y1="7.5" x2="16" y2="7.5"></line>
+                <line x1="8" y1="11.5" x2="8" y2="11.5"></line>
+                <line x1="12" y1="11.5" x2="12" y2="11.5"></line>
+                <line x1="16" y1="11.5" x2="16" y2="11.5"></line>
+                <path d="M9 21v-6h6v6"></path>
+              </svg>
+              <span>{{ _('Ничего не выбрано') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-auth-area">
+          <button type="button" class="svg-btn blue" id="step1-next-btn" disabled>
+            <span class="btn-text">{{ _('Далее') }}</span>
+            {{ icons.next_icon() }}
+          </button>
+        </div>
+      </div>
+
+      <div id="step2" class="modal-step" style="display: none">
+        <div class="step-description">
+          <p>{{ _('Выберите организацию для утверждения плана.') }}</p>
+          <p class="step-note">{{ _('Может быть выбрана только одна организация.') }}</p>
+        </div>
+
+        <div class="input-with-icon">
+          {{ icons.icon_search() }}
+          <input type="text" id="approver-search" placeholder="{{ _('Поиск организации...') }}" class="app-input" />
+        </div>
+
+        <div class="org-picker">
+          <div class="org-picker-toolbar">
+            <span class="org-picker-toolbar-label">{{ _('Сортировать:') }}</span>
+            <button type="button" class="org-picker-sort-btn" data-field="name">{{ _('По названию') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="ynp">{{ _('По УНП') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="okpo">{{ _('По ОКПО') }}</button>
+            <button type="button" class="org-picker-sort-btn" data-field="region">{{ _('По региону') }}</button>
+          </div>
+          <div class="org-picker-list org-picker-list--radio" id="approver-tbody">
+            <div class="org-picker-loading-row">
+              <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="selected-organizations approver">
+          <h4>
+            {{ _('Организация для утверждения:') }}
+            <span id="approver-count" class="selected-count approver-count">0</span>
+          </h4>
+          <div id="selected-approver" class="selected-org-list">
+            <div class="empty-message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="3" width="16" height="18" rx="1"></rect>
+                <line x1="8" y1="7.5" x2="8" y2="7.5"></line>
+                <line x1="12" y1="7.5" x2="12" y2="7.5"></line>
+                <line x1="16" y1="7.5" x2="16" y2="7.5"></line>
+                <line x1="8" y1="11.5" x2="8" y2="11.5"></line>
+                <line x1="12" y1="11.5" x2="12" y2="11.5"></line>
+                <line x1="16" y1="11.5" x2="16" y2="11.5"></line>
+                <path d="M9 21v-6h6v6"></path>
+              </svg>
+              <span>{{ _('Ничего не выбрано') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-auth-area">
+          <button type="button" class="svg-btn blue" id="step2-next-btn" disabled>
+            <span class="btn-text">{{ _('Далее') }}</span>
+            {{ icons.next_icon() }}
+          </button>
+          <button type="button" class="svg-btn" id="step2-back-btn">
+            {{ icons.back_icon() }}
+            <span class="btn-text">{{ _('Назад') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="step3" class="modal-step" style="display: none">
+        <div class="step-description">
+          <p>{{ _('Проверьте путь согласования перед отправкой — на следующем шаге потребуется сертификат ЭЦП.') }}</p>
+          <p>{{ _('Если всё верно, нажмите кнопку «Далее».') }}</p>
+        </div>
+
+        <div class="plan-approval-path">
+          <div id="approval-slider-container">
+            <div class="approval-path-placeholder">
+              {{ _('Выберите организации для отображения пути согласования') }}
+            </div>
+          </div>
+        </div>
+
+        <div class="button-auth-area">
+          <button type="button" class="svg-btn blue" id="step3-next-btn">
+            <span class="btn-text">{{ _('Далее') }}</span>
+            {{ icons.next_icon() }}
+          </button>
+          <button type="button" class="svg-btn" id="step3-back-btn">
+            {{ icons.back_icon() }}
+            <span class="btn-text">{{ _('Назад') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="step4" class="modal-step" style="display: none">
+        <div class="step-description">
+          <p>{{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }}
+            <a href="/FAQ#ecp-certificate" target="_blank" class="instruction-link" id="certificate-help-link">
+              {{ _('инструкции') }}
+            </a>.
+          </p>
+        </div>
+
+        <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <input type="hidden" name="status" value="sent" />
+          <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
+          <input type="hidden" name="approver_id" id="approver-id-input" value="" />
+
+          <div class="drop-certificate-container">
+            <div id="drop-certificate-area" class="drop-certificate-area">
+              <div class="drop-certificate-content">
+                <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
+                <p class="drop-certificate-text">
+                  {{ _('Перетащите файл сертификата сюда или') }}
+                  <label for="certificate-to-check" class="drop-certificate-label">
+                    {{ _('нажмите для выбора') }}
+                  </label>
+                </p>
+                <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+              </div>
+              <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input" />
+            </div>
+            <div id="certificate-status" class="certificate-status" style="display: none"></div>
+          </div>
+
+          <div class="button-auth-area">
+            <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button" disabled>
+              <span class="btn-spinner" aria-hidden="true"></span>
+              {{ icons.icon_send() }}
+              <span class="btn-text">{{ _('Отправить план') }}</span>
+            </button>
+            <button type="button" class="svg-btn" id="step4-back-btn">
+              {{ icons.back_icon() }}
+              <span class="btn-text">{{ _('Назад') }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ affects.bg_effect() }}
+
+<script>
+  window.planToken = '{{ plan.token }}';
+  window.regionNumber = '{{ plan.organization.region.number if plan.organization and plan.organization.region else "" }}';
+  window.icons = {
+    icon_region: `{{ icons.icon_region() }}`,
+    icon_municipal: `{{ icons.icon_municipal() }}`,
+    icon_higher: `{{ icons.icon_higher() }}`,
+    icon_check: `{{ icons.icon_check() }}`,
+    icon_department: `{{ icons.icon_department() }}`,
+  };
+</script>
+<script src="{{ url_for('static', filename='js/plan_send.js') }}"></script>
+
+{% endblock %}

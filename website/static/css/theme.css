@@ -38,12 +38,21 @@
   --theme-transition: background-color .25s ease, border-color .25s ease, color .25s ease;
 }
 html[data-theme] body,
-html[data-theme] .fixed-header,
 html[data-theme] .svg-btn,
 html[data-theme] input,
 html[data-theme] textarea,
 html[data-theme] select {
   transition: var(--theme-transition);
+}
+
+/* .fixed-header отдельно, не через var(--theme-transition) (та даёт .25s
+   и не включает box-shadow/backdrop-filter/border-radius) — иначе более
+   специфичный селектор (html[data-theme] ...) полностью перебивал бы
+   scroll-переход из base.css, и свойства шапки анимировались бы вразнобой.
+   0.5s ease — как --animation-speed в erespondentN, одно время на все
+   свойства "bubble"-эффекта. */
+html[data-theme] .fixed-header {
+  transition: background-color .5s ease, border-color .5s ease, color .5s ease, box-shadow .5s ease, backdrop-filter .5s ease, border-radius .5s ease;
 }
 
 :root[data-theme="dark"] { color-scheme: dark; }
@@ -1315,18 +1324,41 @@ html[data-theme] select {
   color: #ea7171;
 }
 
+/* website/static/css/base.css :: .selected-organizations */
+:root[data-theme="dark"] .selected-organizations {
+  background: linear-gradient(135deg, #1c242b 0%, #17252a 100%);
+  border-color: rgba(0, 121, 143, 0.25);
+}
+:root[data-theme="dark"] .selected-organizations.approver {
+  background: linear-gradient(135deg, #1c2620 0%, #17241d 100%);
+  border-color: rgba(0, 103, 72, 0.3);
+}
+
 /* website/static/css/base.css :: .selected-organizations h4 */
 :root[data-theme="dark"] .selected-organizations h4 {
   color: #eef1f5;
 }
 
-/* website/static/css/base.css :: .selected-tag .remove-tag svg */
-:root[data-theme="dark"] .selected-tag .remove-tag svg {
+/* website/static/css/base.css :: .selected-org-row */
+:root[data-theme="dark"] .selected-org-row {
+  background: rgba(255, 255, 255, 0.06);
+}
+:root[data-theme="dark"] .selected-org-row:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* website/static/css/base.css :: .selected-org-name */
+:root[data-theme="dark"] .selected-org-name {
+  color: #eef1f5;
+}
+
+/* website/static/css/base.css :: .selected-org-remove svg */
+:root[data-theme="dark"] .selected-org-remove svg {
   color: #9aa3af;
 }
 
-/* website/static/css/base.css :: .selected-tag .remove-tag:hover svg */
-:root[data-theme="dark"] .selected-tag .remove-tag:hover svg {
+/* website/static/css/base.css :: .selected-org-remove:hover svg */
+:root[data-theme="dark"] .selected-org-remove:hover svg {
   color: #e87272;
 }
 
@@ -1758,6 +1790,22 @@ html[data-theme] select {
   background: #1b2027;
 }
 
+/* website/static/css/faq.css :: .faq-toc-title */
+:root[data-theme="dark"] .faq-toc-title {
+  color: var(--faq-green-back);
+}
+
+/* website/static/css/faq.css :: .faq-toc-link */
+:root[data-theme="dark"] .faq-toc-link {
+  background-color: #1b2027;
+  border-color: #2b313b;
+}
+
+/* website/static/css/faq.css :: .faq-toc-link:hover::before */
+:root[data-theme="dark"] .faq-toc-link:hover::before {
+  color: #0d1117;
+}
+
 /* website/static/css/faq.css :: .step-item:hover */
 :root[data-theme="dark"] .step-item:hover {
   background: #1b2027;
@@ -1924,14 +1972,14 @@ html[data-theme] select {
   color: #7ee7b6;
 }
 
-/* website/static/css/faq.css :: .plan-types */
-:root[data-theme="dark"] .plan-types {
+/* website/static/css/faq.css :: .consumption-type */
+:root[data-theme="dark"] .consumption-type {
   background: #1b2027;
 }
 
-/* website/static/css/faq.css :: .plan-type-item */
-:root[data-theme="dark"] .plan-type-item {
-  background-color: #1b2027;
+/* website/static/css/faq.css :: .consumption-type-icon */
+:root[data-theme="dark"] .consumption-type-icon {
+  background: rgba(68, 204, 228, 0.12);
 }
 
 /* website/static/css/faq.css :: .tracking-icon */

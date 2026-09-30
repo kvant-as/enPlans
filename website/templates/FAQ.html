@@ -62,6 +62,20 @@
 
           <div class="category-modern">
             <div class="category-header-modern">
+              <h3>Аккаунт</h3>
+            </div>
+            <div class="questions-list-modern">
+              <a href="#change-email" class="question-link-modern">
+                Смена электронного адреса
+              </a>
+              <a href="#change-password" class="question-link-modern">
+                Смена пароля
+              </a>
+            </div>
+          </div>
+
+          <div class="category-modern">
+            <div class="category-header-modern">
               <h3>Работа с планами</h3>
             </div>
             <div class="questions-list-modern">
@@ -299,6 +313,149 @@
               {{ icons.back_icon() }}
               <span>Предыдущий вопрос</span>
             </a>
+            <a href="#change-email" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <article class="answer-active-modern" id="change-email">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как сменить электронный адрес?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Электронный адрес используется для входа в систему, поэтому его смена подтверждается кодом, который приходит на новый адрес.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте настройки профиля</h4>
+                <p>
+                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить эл. адрес»</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Укажите новый адрес и текущий пароль</h4>
+                <p>
+                  Введите новый email и текущий пароль для подтверждения личности, затем нажмите <strong>«Отправить код»</strong>.
+                </p>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p>Код подтверждения будет отправлен на <strong>новый</strong> адрес и действителен <strong>10 минут</strong>.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Введите код подтверждения</h4>
+                <p>
+                  Откройте письмо на новом адресе, скопируйте код из него и введите на странице подтверждения, затем нажмите <strong>«Подтвердить»</strong>.
+                </p>
+                <p>
+                  Если письмо не пришло, воспользуйтесь ссылкой <strong>«Отправить код повторно»</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>После подтверждения кода вход в систему нужно будет выполнять по новому email — старый адрес перестанет действовать.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#getting-started" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#change-password" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <article class="answer-active-modern" id="change-password">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как изменить пароль?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Смена пароля происходит через ссылку, отправленную на вашу почту — так же, как и восстановление забытого пароля.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте настройки профиля</h4>
+                <p>
+                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить пароль»</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Запросите ссылку для смены пароля</h4>
+                <p>
+                  Укажите email, привязанный к аккаунту, и нажмите <strong>«Запросить изменение пароля»</strong>. На почту придёт письмо со ссылкой для сброса пароля.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Задайте новый пароль</h4>
+                <p>
+                  Перейдите по ссылке из письма, введите новый пароль и повторите его для подтверждения, затем нажмите кнопку сохранения.
+                </p>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p>После успешной смены пароля вы будете перенаправлены на страницу входа — войдите с новым паролем.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>Ссылка для сброса пароля действительна <strong>1 час</strong>. Если она устарела, запросите новую на странице <strong>«Забыли пароль?»</strong>.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#change-email" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
             <a href="#create-plan" class="nav-btn next">
               <span>Следующий вопрос</span>
               {{ icons.next_icon() }}
@@ -399,11 +556,11 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#what-is" class="nav-btn prev">
+              <a href="#change-password" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#difference-calculation" class="nav-btn next">
+              <a href="#fill-plan" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -537,7 +694,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#create-plan" class="nav-btn prev">
+              <a href="#plan-control-send" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
@@ -709,24 +866,22 @@
             </div>
             <h3>Типы планов по объему потребления</h3>
 
-            <div class="plan-types-grid">
-              <div class="plan-type-item">
-                <div class="plan-type-header">
-                  <h4 class="plan-type-title">Для малых организаций</h4>
+            <div class="consumption-types">
+              <div class="consumption-type">
+                <div class="consumption-type-icon">{{ icons.icon_plans() }}</div>
+                <div class="consumption-type-body">
+                  <span class="consumption-type-value">До 25 тыс. т у.т.</span>
+                  <span class="consumption-type-label">Малые организации</span>
+                  <p class="consumption-type-desc">Упрощённая форма отчётности</p>
                 </div>
-                <p class="plan-type-description">
-                  <strong>До 25 тыс. тонн условного топлива</strong
-                  ><br />Упрощенная форма отчетности.
-                </p>
               </div>
-              <div class="plan-type-item">
-                <div class="plan-type-header">
-                  <h4 class="plan-type-title">Для крупных организаций</h4>
+              <div class="consumption-type">
+                <div class="consumption-type-icon">{{ icons.icon_stats() }}</div>
+                <div class="consumption-type-body">
+                  <span class="consumption-type-value">Более 25 тыс. т у.т.</span>
+                  <span class="consumption-type-label">Крупные организации</span>
+                  <p class="consumption-type-desc">Расширенная форма с детальными расчётами</p>
                 </div>
-                <p class="plan-type-description">
-                  <strong>Более 25 тыс. тонн условного топлива</strong
-                  ><br />Расширенная форма с детальными расчетами.
-                </p>
               </div>
             </div>
 
@@ -761,7 +916,10 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <div></div>
+              <a href="#ecp-certificate" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
@@ -810,13 +968,19 @@
                 <div class="step-content">
                   <h4>Откройте ПО «Менеджер сертификатов»</h4>
                   <p>Запустите программу «Менеджер сертификатов» от Авест.</p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/ecp-step1.jpg" alt="ПО «Менеджер сертификатов»" class="faq-image faq-image-sm">
+                  </div>
                 </div>
               </div>
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
                   <h4>Выберите действительный сертификат</h4>
-                  <p>Выберите «Действительный» сертификат из списка.</p>
+                  <p>Выберите «Действительный» сертификат из списка и нажмите «ОК».</p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/ecp-step2.jpg" alt="Выбор сертификата" class="faq-image">
+                  </div>
                 </div>
               </div>
               <div class="step-item">
@@ -827,6 +991,9 @@
                     Кликните правой кнопкой по сертификату и выберите «Экспорт
                     сертификата в файл».
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/ecp-step3.jpg" alt="Экспорт сертификата в файл" class="faq-image">
+                  </div>
                 </div>
               </div>
               <div class="step-item">
@@ -834,8 +1001,11 @@
                 <div class="step-content">
                   <h4>Импортируйте сертификат в систему</h4>
                   <p>
-                    При отправке плана используйте полученный файл сертификата.
+                    Выберите место для сохранения файла на своём компьютере. При отправке плана перетащите полученный файл сертификата в область загрузки или нажмите «нажмите для выбора» и укажите его вручную.
                   </p>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/ecp-step4.png" alt="Сохранённый файл сертификата" class="faq-image">
+                  </div>
                 </div>
               </div>
             </div>
@@ -1042,11 +1212,11 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#create-plan" class="nav-btn prev">
+              <a href="#fill-plan" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#audit-data" class="nav-btn next">
+              <a href="#plan-control-send" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -1059,7 +1229,22 @@
             <h1 class="answer-title-modern">Заполнение плана мероприятий по энергосбережению</h1>
           </div>
           <div class="answer-body-modern">
-            <h3 style="margin-top: 0;">Часть 1. Показатели использования ТЭР</h3>
+            <nav class="faq-toc" aria-label="Содержание">
+              <h4 class="faq-toc-title">Содержание раздела:</h4>
+              <div class="faq-toc-links">
+                <a href="#fill-plan-part1" class="faq-toc-link">
+                  <span class="faq-toc-link-text">Часть 1. Показатели использования ТЭР</span>
+                </a>
+                <a href="#fill-plan-part2" class="faq-toc-link">
+                  <span class="faq-toc-link-text">Часть 2. Мероприятия по экономии ТЭР</span>
+                </a>
+                <a href="#fill-plan-part3" class="faq-toc-link">
+                  <span class="faq-toc-link-text">Часть 3. Мероприятия по увеличению использования местных ТЭР</span>
+                </a>
+              </div>
+            </nav>
+
+            <h3 id="fill-plan-part1" style="margin-top: 0;">Часть 1. Показатели использования ТЭР</h3>
             <div class="answer-text">
               <p>
                 В этом разделе отражаются объемы потребления топливно-энергетических ресурсов.
@@ -1183,7 +1368,7 @@
               </div>
             </div>
 
-            <h3>Часть 2. Мероприятия по экономии ТЭР</h3>
+            <h3 id="fill-plan-part2">Часть 2. Мероприятия по экономии ТЭР</h3>
             <div class="answer-text">
               <p>
                 В этом разделе отражаются энергосберегающие мероприятия, в результате реализации которых достигается экономия ТЭР на единицу продукции (работ, услуг) или снижение предельных уровней их потребления, в том числе внедрение на новых и (или) действующих объектах современных технологий, оборудования.
@@ -1361,7 +1546,7 @@
               </div>
             </div>
 
-            <h3>Часть 3. Мероприятия по увеличению использования местных ТЭР</h3>
+            <h3 id="fill-plan-part3">Часть 3. Мероприятия по увеличению использования местных ТЭР</h3>
             <div class="answer-text">
               <p>
                 В этом разделе отражаются мероприятия, направленные на увеличение использования местных ТЭР.
@@ -1540,13 +1725,25 @@
             <h1 class="answer-title-modern">Контроль и отправка плана</h1>
           </div>
           <div class="answer-body-modern">
+            <nav class="faq-toc" aria-label="Содержание">
+              <h4 class="faq-toc-title">Содержание раздела:</h4>
+              <div class="faq-toc-links">
+                <a href="#plan-control-check" class="faq-toc-link">
+                  <span class="faq-toc-link-text">Контроль заполнения плана</span>
+                </a>
+                <a href="#plan-control-submit" class="faq-toc-link">
+                  <span class="faq-toc-link-text">Отправка плана на согласование</span>
+                </a>
+              </div>
+            </nav>
+
             <div class="answer-text">
               <p>
                 Перед отправкой плана на согласование система проводит автоматическую проверку заполнения всех разделов. После успешного прохождения контроля план можно отправить на согласование и утверждение.
               </p>
             </div>
 
-            <h3>Контроль заполнения плана</h3>
+            <h3 id="plan-control-check">Контроль заполнения плана</h3>
             <div class="answer-text">
               <p>
                 Система автоматически проверяет корректность заполнения всех разделов плана. Контроль осуществляется по следующим направлениям:
@@ -1638,10 +1835,10 @@
               </div>
             </div>
 
-            <h3>Отправка плана на согласование</h3>
+            <h3 id="plan-control-submit">Отправка плана на согласование</h3>
             <div class="answer-text">
               <p>
-                После успешного прохождения контроля план можно отправить на согласование и утверждение. Процесс отправки включает несколько шагов.
+                После успешного прохождения контроля план можно отправить на согласование и утверждение. Нажатие кнопки <strong>«Отправить план»</strong> открывает отдельную страницу с пошаговым мастером отправки из 4 этапов: <strong>Согласующие → Утверждающий → Проверка → Подпись</strong>.
               </p>
             </div>
 
@@ -1651,7 +1848,7 @@
                 <div class="step-content">
                   <h4>Отправить план</h4>
                   <p>
-                    На странице с заданиями плана необходимо выбрать <strong>«Отправить план»</strong>.
+                    На странице с заданиями плана необходимо выбрать <strong>«Отправить план»</strong> — откроется страница отправки плана.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/send-plan-btn.png" alt="Кнопка отправки плана" class="faq-image">
@@ -1662,9 +1859,9 @@
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <h4>Выбор организаций для согласования</h4>
+                  <h4>Шаг «Согласующие» — выбор организаций для согласования</h4>
                   <p>
-                    В первом шаге выберите организации, которые будут согласовывать план. Можно выбрать несколько организаций.
+                    Выберите одну или несколько организаций, которые будут согласовывать план. Список организаций можно искать по названию, УНП, ОКПО или региону и сортировать по этим же параметрам.
                   </p>
                   <div class="callout callout--neutral">
                     <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
@@ -1672,6 +1869,9 @@
                       <p><strong>Автоматический выбор:</strong> первая организация для согласования автоматически определяется как региональное управление по надзору за рациональным использованием ТЭР.</p>
                     </div>
                   </div>
+                  <p>
+                    Выбранные организации отображаются отдельным списком с порядковым номером — план будет передаваться между ними именно в этом порядке.
+                  </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/send-step1.png" alt="Выбор согласующих организаций" class="faq-image">
                   </div>
@@ -1681,9 +1881,9 @@
               <div class="step-item">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <h4>Выбор утверждающей организации</h4>
+                  <h4>Шаг «Утверждающий» — выбор утверждающей организации</h4>
                   <p>
-                    На втором шаге выберите организацию, которая будет утверждать план. Можно выбрать только одну организацию.
+                    Выберите организацию, которая будет утверждать план. Можно выбрать только одну организацию.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/send-step2.png" alt="Выбор утверждающей организации" class="faq-image">
@@ -1694,19 +1894,28 @@
               <div class="step-item">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <h4>Загрузка сертификата ЭЦП</h4>
+                  <h4>Шаг «Проверка» — путь согласования</h4>
                   <p>
-                    Для отправки плана необходимо прикрепить файл сертификата электронной цифровой подписи (.cer).
+                    Перед подписанием система показывает итоговый путь согласования — по каким организациям и в каком порядке пройдёт план. Проверьте выбранные организации и подтвердите отправку, нажав <strong>«Далее»</strong>.
                   </p>
-                  <div class="callout callout--warning">
-                    <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                  <h4>Шаг «Подпись» — загрузка сертификата ЭЦП</h4>
+                  <p>
+                    Перетащите файл сертификата электронной цифровой подписи (.cer) в область загрузки или нажмите «нажмите для выбора» и укажите файл вручную.
+                  </p>
+                  <div class="callout callout--neutral">
+                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
                     <div class="callout-body">
-                      <p class="callout-title">Важно</p>
-                      <p>Загрузка сертификата ЭЦП на этом шаге временно недоступна и будет включена в одном из следующих обновлений.</p>
+                      <p><strong>Автоматическая проверка:</strong> после загрузки файла система автоматически проверяет сертификат. Если сертификат действителен, кнопка <strong>«Отправить план»</strong> становится активной; если нет — выводится сообщение с причиной, и файл нужно загрузить заново.</p>
                     </div>
                   </div>
                   <div class="faq-image-wrapper ogr">
-                    <img src="/static/img/faq/send-step3.png" alt="Загрузка сертификата" class="faq-image">
+                    <img src="/static/img/faq/send-step4.png" alt="Загрузка сертификата" class="faq-image">
                   </div>
                 </div>
               </div>
@@ -1718,7 +1927,7 @@
                 После отправки план проходит следующий путь в зависимости от того, какие организации были выбраны при отправке плана на проверку.
               </p>
               <div class="faq-image-wrapper">
-                <img src="/static/img/faq/approval-path.png" alt="Путь согласования" class="faq-image">
+                <img src="/static/img/faq/send-step3.png" alt="Путь согласования" class="faq-image">
               </div>
             </div>
 
@@ -1731,7 +1940,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#fill-plan" class="nav-btn prev">
+              <a href="#difference-calculation" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>

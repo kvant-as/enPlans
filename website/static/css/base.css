@@ -362,26 +362,40 @@ body {
   z-index: 1000;
   height: 60px;
   box-sizing: border-box;
-  transition: background 0.25s ease, box-shadow 0.25s ease, backdrop-filter 0.25s ease;
+  transition: background 0.5s ease, box-shadow 0.5s ease, backdrop-filter 0.5s ease, border-color 0.5s ease, border-radius 0.5s ease;
   width: var(--default-width);
   max-width: 1900px;
   padding: 0 var(--default-padding-x);
   font-size: 16px;
   font-weight: 500;
-  border-radius: 100px;
+  border-radius: 0;
+  border: 1px solid transparent;
   background: transparent;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0), 0 6px 24px rgba(0, 0, 0, 0);
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
 }
 
-/* On scroll: just a solid background — no move, no resize.
-   Base .fixed-header above sets explicit zero values for backdrop-filter
-   and box-shadow (not "none"/absent) so the transition has something to
-   interpolate from — otherwise the blur/shadow would just pop in instead
-   of fading in smoothly. */
+/* On scroll: заднее стекло, бордер и тень плавно проявляются — как
+   "bubble"-эффект в erespondentN, только через CSS-transition, а не
+   keyframe-анимацию (transition сам симметрично отыгрывает исчезание
+   назад, без JS-таймеров на реверс). Токены --glass-surface-bg/-border —
+   те же, что у остальных "стеклянных" карточек в приложении, поэтому тема
+   (светлая/тёмная) подхватывается автоматически.
+   Base .fixed-header above sets explicit zero/transparent values for
+   backdrop-filter, box-shadow and border-color (not "none"/absent) so the
+   transition has something to interpolate from — otherwise the blur/
+   shadow/border would just pop in instead of fading in smoothly. */
 .fixed-header.scrolled {
-  /* background: var(--blur2); */
+  background: var(--glass-surface-bg);
+  border-color: var(--glass-surface-border);
+  /* Высота шапки — 60px, значит видимое скругление упирается в потолок уже
+     на 30px (половина высоты); дальше и до 100px форма визуально не
+     меняется. С учётом плавного (ease) перехода это "съедало" почти всё
+     время анимации впустую и превращало скругление в мгновенный скачок.
+     30px — тот же итоговый вид (полная "таблетка"), но вся 0.5s-анимация
+     теперь реально видна. */
+  border-radius: 30px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 24px rgba(0, 0, 0, 0.06);
@@ -2117,6 +2131,7 @@ input::placeholder {
 .auto-hint svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
 }
 .currency-label {
   font-size: 11px;
@@ -2623,7 +2638,7 @@ input::placeholder {
 }
 
 .personal-acc-conteiner.edit-page{
-  margin-top: 120px;
+  margin-top: 125px;
 }
 
 .personal-plan-conteiner {
@@ -5262,8 +5277,8 @@ input[type="checkbox"]:focus {
 
 .empty-state p {
   max-width: 350px;
-  font-size: 13px !important;
-  font-weight: 400;
+  font-size: 12px !important;
+  font-weight: 500;
   color: #6b7280;
 }
 .empty-subtitle {
@@ -6117,6 +6132,9 @@ input[type="checkbox"]:focus {
 .active-row {
   background-color: var(--active-row-color) !important;
 }
+.org-picker-list--radio .active-row {
+  background-color: var(--active-row-color-apr) !important;
+}
 
 .vertical-text {
   writing-mode: sideways-lr;
@@ -6581,6 +6599,27 @@ input[type="checkbox"]:focus {
   font-size: 13px;
   margin-bottom: 10px;
 }
+.selected-org-list .empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 18px 10px;
+  margin-bottom: 0;
+  color: var(--text-subtitle, #6b7480);
+}
+.selected-org-list .empty-message svg {
+  width: 26px;
+  height: 26px;
+  opacity: 0.45;
+}
+.step-description p.step-note {
+  font-size: 12px;
+  color: var(--text-subtitle, #6b7480);
+  margin-top: -4px;
+}
 
 #period-step {
   display: none;
@@ -6612,6 +6651,305 @@ input[type="checkbox"]:focus {
 }
 .close-btn svg:active {
   background: rgba(128, 128, 128, 0.5);
+}
+
+/* ---------- Отправка плана на рассмотрение (страница) ---------- */
+.plan-send-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  margin: 20px 0 4px;
+  padding: 0 10px;
+}
+.plan-send-step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+.plan-send-step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--background-grey);
+  color: var(--muted, #6b7480);
+  border: 2px solid var(--border-color);
+  transition: all 0.25s ease;
+}
+.plan-send-step-label {
+  font-size: 12px;
+  color: var(--text-subtitle, #6b7480);
+  text-align: center;
+  white-space: nowrap;
+}
+.plan-send-step-dot.active .plan-send-step-circle {
+  background: var(--green-main);
+  border-color: var(--green-main);
+  color: var(--white);
+  box-shadow: 0 0 0 4px var(--background-controled, rgba(0, 121, 143, 0.15));
+}
+.plan-send-step-dot.active .plan-send-step-label {
+  color: var(--green-main);
+  font-weight: 600;
+}
+.plan-send-step-dot.completed .plan-send-step-circle {
+  background: var(--green-main);
+  border-color: var(--green-main);
+  color: var(--white);
+}
+.plan-send-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin-top: 15px;
+  max-width: 60px;
+}
+
+.certificate-status {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.certificate-status--pending {
+  background: var(--background-grey);
+  color: var(--text-subtitle, #6b7480);
+}
+.certificate-status--ok {
+  background: var(--background-submited, #d8ffdc);
+  color: #1c7a3e;
+}
+.certificate-status--error {
+  background: var(--background-erorsed, #ffb2b3);
+  color: #a1231c;
+}
+
+/* ---------- Выбор организаций (карточки вместо таблицы) ---------- */
+.org-picker {
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 121, 143, 0.14);
+  background: var(--white);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.org-picker:has(.org-picker-list--radio) {
+  border-color: rgba(0, 103, 72, 0.14);
+}
+.org-picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #f5fcfd 0%, #eaf8fb 100%);
+  border-bottom: 1px solid rgba(0, 121, 143, 0.14);
+}
+.org-picker:has(.org-picker-list--radio) .org-picker-toolbar {
+  background: linear-gradient(135deg, #f5fdf9 0%, #eafbf1 100%);
+  border-bottom-color: rgba(0, 103, 72, 0.14);
+}
+.org-picker-toolbar-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-subtitle, #6b7480);
+  margin-right: 2px;
+}
+.org-picker-sort-btn {
+  border: 1px solid var(--border-color);
+  background: var(--white);
+  color: var(--text-subtitle2);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 100px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+.org-picker-sort-btn:hover {
+  border-color: var(--green-main);
+  color: var(--green-main-dark);
+}
+.org-picker-sort-btn.org-picker-sort-btn--active {
+  background: var(--green-main);
+  border-color: var(--green-main);
+  color: var(--white);
+}
+.org-picker-sort-btn.org-picker-sort-btn--active::after {
+  content: '↑';
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.org-picker-sort-btn.org-picker-sort-btn--active.org-picker-sort-btn--desc::after {
+  transform: rotate(180deg);
+}
+
+.org-picker-list {
+  max-height: 300px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.org-picker-list::-webkit-scrollbar {
+  width: 6px;
+}
+.org-picker-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.org-picker-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.org-picker-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.org-picker-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color-th, var(--border-color));
+  transition: background-color 0.15s ease-out;
+}
+.org-picker-row:last-child {
+  border-bottom: none;
+}
+.org-picker-row:hover {
+  background-color: var(--background-grey-opa, var(--background-grey));
+}
+.org-picker-row.active-row {
+  background: var(--active-row-color);
+}
+.org-picker-row input[type='checkbox'] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.org-picker-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border-color);
+  background: var(--white);
+  position: relative;
+  transition: all 0.15s ease;
+}
+.org-picker-check::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid var(--white);
+  border-bottom: 2px solid var(--white);
+  transform: translate(-50%, -60%) rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+.org-picker-row input[type='checkbox']:checked + .org-picker-check {
+  background: var(--green-main);
+  border-color: var(--green-main);
+}
+.org-picker-row input[type='checkbox']:checked + .org-picker-check::after {
+  transform: translate(-50%, -60%) rotate(45deg) scale(1);
+}
+.org-picker-list--radio .org-picker-check {
+  border-radius: 50%;
+}
+.org-picker-list--radio .org-picker-check::after {
+  width: 8px;
+  height: 8px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 50%;
+  background: var(--white);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.15s ease;
+}
+.org-picker-list--radio .org-picker-row input[type='checkbox']:checked + .org-picker-check::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+.org-picker-list--radio .org-picker-row input[type='checkbox']:checked + .org-picker-check {
+  background: var(--color-control, var(--green-main));
+  border-color: var(--color-control, var(--green-main));
+}
+
+.org-picker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.org-picker-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  white-space: normal;
+  word-break: break-word;
+}
+.org-picker-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 1px;
+}
+.org-picker-meta-item {
+  font-size: 11px;
+  color: var(--text-subtitle, #6b7480);
+  white-space: nowrap;
+}
+.org-picker-meta-item:not(:last-child)::after {
+  content: '·';
+  margin-left: 8px;
+  color: var(--border-color);
+}
+
+.org-picker-loading-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 16px;
+  font-size: 12.5px;
+  color: var(--text-subtitle2);
+}
+
+.org-picker-empty-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  font-size: 12.5px;
+  color: var(--text-subtitle, #6b7480);
+  text-align: center;
+}
+.org-picker-empty-row svg {
+  width: 28px;
+  height: 28px;
+  opacity: 0.5;
 }
 
 .progress-modal-bar-container {
@@ -7281,15 +7619,21 @@ button[disabled] {
    SELECTED ORGANIZATIONS
    ============================================ */
 .selected-organizations {
+  position: relative;
   margin: 15px 0;
-  padding: 14px 16px;
-  background: var(--green-back-gradient);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
+  padding: 14px 16px 14px 20px;
+  background: linear-gradient(135deg, #f5fcfd 0%, #eaf8fb 100%);
+  border: 1px solid rgba(0, 121, 143, 0.12);
+  border-radius: 14px;
   transition: all 0.3s ease;
 }
+
 .selected-organizations.approver {
-  background: var(--green-back-gradient-apr);
+  background: linear-gradient(135deg, #f5fdf9 0%, #eafbf1 100%);
+  border-color: rgba(0, 103, 72, 0.12);
+}
+.selected-organizations.approver::before {
+  background: var(--color-control, var(--green-main));
 }
 .selected-organizations h4 {
   margin: 0 0 10px 0;
@@ -7306,82 +7650,92 @@ button[disabled] {
   width: 16px;
   height: 16px;
 }
-.selected-organizations h4::after {
+/* .selected-organizations h4::after {
   content: '';
   flex: 1;
   height: 1px;
   background: linear-gradient(to right, #e2e8f0, var(--transparent));
+} */
+
+.selected-organizations-hint {
+  font-size: 11.5px;
+  color: var(--text-subtitle, #6b7480);
+  margin: -4px 0 8px;
 }
 
-.selected-tags {
+.selected-org-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   min-height: 36px;
-  align-items: center;
 }
-.selected-tag {
-  display: inline-flex;
+.selected-org-row {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px 6px 14px;
-  background: var(--green-element-gradient);
-  color: var(--color-green-text-main);
-  border-radius: 20px;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 10px;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  animation: tagAppear 0.25s ease-out;
+}
+.selected-org-row:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+.selected-org-order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--green-main);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+}
+.selected-org-order--check svg {
+  width: 12px;
+  height: 12px;
+}
+.selected-org-row--approver .selected-org-order {
+  background: var(--color-control, var(--green-main));
+}
+.selected-org-name {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.15);
-  transition: all 0.2s ease;
-  animation: tagAppear 0.3s ease-out;
+  color: var(--black);
+  line-height: 1.35;
+  word-break: break-word;
 }
-.selected-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
-}
-.selected-tag.approver-tag {
-  background: var(--green-element-gradient-apr);
-  color: var(--color-control);
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.15);
-}
-.selected-tag .tag-icon {
+.selected-org-remove {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
-}
-.selected-tag .tag-text {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.selected-tag .remove-tag {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
   padding: 0;
   border: none;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
-.selected-tag .remove-tag svg {
+.selected-org-remove svg {
   width: 12px;
   height: 12px;
   color: #64748b;
   transition: color 0.2s ease;
 }
-.selected-tag .remove-tag:hover {
+.selected-org-remove:hover {
   background: rgba(220, 38, 38, 0.15);
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
-.selected-tag .remove-tag:hover svg {
+.selected-org-remove:hover svg {
   color: #dc2626;
 }
 
@@ -8877,6 +9231,27 @@ main {
 .main-btn-primary span {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.btn-spinner {
+  display: none;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top: 2px solid var(--white);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.main-btn.is-checking {
+  cursor: wait;
+}
+.main-btn.is-checking .btn-spinner {
+  display: block;
+}
+.main-btn.is-checking svg,
+.main-btn.is-checking .btn-text {
+  display: none;
+}
+
 .main-btn-delete {
   background: var(--delete-color);
   color: var(--white) !important;
