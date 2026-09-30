@@ -84,6 +84,12 @@ def create_app():
         SESSION_TIMEOUT_PRIVILEGED=timedelta(hours=9),
         SESSION_TIMEOUT_DEFAULT=timedelta(minutes=60),
         # роли, дающие длинное окно; is_admin/is_auditor/is_approver/is_reader
+        SESSION_PRIVILEGED_ATTRS=('is_admin', 'is_auditor', 'is_approver', 'is_reader'),
+        # main.py запускает приложение с debug=True (как и erespondentN) — без
+        # этого флага enforce_idle_timeout() молча пропускает проверку простоя
+        # в debug-режиме (см. common_models.sessions._enforcing), и пользователь
+        # никогда не разлогинивается по истечении сессии.
+        SESSION_ENFORCE_IN_DEBUG=True,
     )
 
     db.init_app(app)
