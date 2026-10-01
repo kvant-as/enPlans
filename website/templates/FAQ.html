@@ -109,7 +109,7 @@
             </div>
             <div class="questions-list-modern">
               <a href="#ecp-certificate" class="question-link-modern">
-                Цифровая подпись
+                Верификация аккаунта
               </a>
             </div>
           </div>
@@ -927,23 +927,25 @@
         <article class="answer-active-modern" id="ecp-certificate">
           <div class="answer-header-modern">
             <h1 class="answer-title-modern">
-              Как пройти проверку ЭЦП
+              Как пройти верификацию
             </h1>
           </div>
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Для отправки планов в системе EnPlans требуется использование
-                электронной цифровой подписи (ЭЦП).
+                Верификация — это подтверждение личности владельца аккаунта сертификатом электронной цифровой подписи (ЭЦП). В отличие от подписи конкретного плана, верификация привязана к аккаунту целиком и действует <strong>30 дней</strong>, после чего её нужно пройти заново.
               </p>
             </div>
 
             <div class="callout callout--warning">
               <span class="icon-badge icon-badge--warning">{{ lock_icon() }}</span>
               <div class="callout-body">
-                <p class="callout-title">Важное требование</p>
-                <p>Для отправки плана на согласование должно быть установлено ПО «Менеджер
-                  сертификатов» от Авест с настроенным сертификатом ЭЦП.</p>
+                <p class="callout-title">Кому и зачем это нужно</p>
+                <ul class="detail-list">
+                  <li><strong>Аудиторам</strong> — обязательна, без неё недоступен просмотр и экспорт планов</li>
+                  <li><strong>Согласующим и утверждающим</strong> — обязательна, без неё недоступно согласование и утверждение планов</li>
+                  <li><strong>Остальным пользователям</strong> — по желанию; сертификат можно вместо этого приложить прямо при отправке плана на согласование</li>
+                </ul>
               </div>
             </div>
 
@@ -958,6 +960,45 @@
                 <div class="feature-icon icon-badge--danger">{{ cross_icon() }}</div>
                 <h4>Недействительный сертификат</h4>
                 <p>Срок действия сертификата истек, требуется обновление</p>
+              </div>
+            </div>
+
+            <h3>Как пройти верификацию аккаунта</h3>
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Откройте раздел «Верификация»</h4>
+                  <p>
+                    В личном кабинете перейдите на вкладку <strong>«Верификация»</strong>.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Загрузите файл сертификата</h4>
+                  <p>
+                    Перетащите файл сертификата (.cer) в область загрузки или нажмите «нажмите для выбора» и укажите его вручную. Система проверит сертификат — это займёт около 5 секунд.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Подтвердите верификацию</h4>
+                  <p>
+                    Если сертификат действителен, появится кнопка <strong>«Пройти верификацию»</strong> — нажмите её. Статус в заголовке раздела сменится на «Верифицировано до …» с датой окончания действия.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <span class="icon-badge">{{ info_icon() }}</span>
+              <div class="callout-body">
+                <p class="callout-title">Верификация «заодно»</p>
+                <p>Если аккаунт ещё не верифицирован, а вы загружаете сертификат при <strong>отправке плана на согласование</strong> — аккаунт автоматически верифицируется на те же 30 дней, отдельно проходить верификацию в профиле не нужно.</p>
               </div>
             </div>
 
@@ -999,9 +1040,9 @@
               <div class="step-item">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <h4>Импортируйте сертификат в систему</h4>
+                  <h4>Используйте сертификат в системе</h4>
                   <p>
-                    Выберите место для сохранения файла на своём компьютере. При отправке плана перетащите полученный файл сертификата в область загрузки или нажмите «нажмите для выбора» и укажите его вручную.
+                    Выберите место для сохранения файла на своём компьютере. Полученный файл можно загрузить в разделе «Верификация» профиля или прямо при отправке плана на согласование — перетащите его в область загрузки или нажмите «нажмите для выбора» и укажите вручную.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/ecp-step4.png" alt="Сохранённый файл сертификата" class="faq-image">
@@ -1011,7 +1052,7 @@
             </div>
             <div class="answer-text">
               <div class="checklist-container">
-                <h4 class="checklist-header">Чеклист для работы с ЭЦП</h4>
+                <h4 class="checklist-header">Чеклист для верификации</h4>
                 <p class="checklist-subtitle">Выполните все пункты</p>
                 <label class="checklist-item">
                   <input type="checkbox" />
@@ -1024,6 +1065,10 @@
                 <label class="checklist-item">
                   <input type="checkbox" />
                   <span>Сохраните файл сертификата в надежном месте</span>
+                </label>
+                <label class="checklist-item">
+                  <input type="checkbox" />
+                  <span>Помните, что верификация действует 30 дней и её нужно будет пройти заново</span>
                 </label>
               </div>
             </div>

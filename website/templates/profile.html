@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - EnPlans{%endblock %} 
+{% extends "base.html" %} {% block title %}{{ _('Личный кабинет') }} - EnPlans{%endblock %}
 {% block content %}
 
 <div class="pers-page">
@@ -11,7 +11,7 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        {#{% if current_user.post %}  
+        {#{% if current_user.post %}
           <a class="employee-position">{{ current_user.post}}</a>
         {% endif%}#}
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
@@ -20,269 +20,534 @@
       </div>
     </div>
     <hr>
-    <div class="header-content">
-      <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('Данные пользователя') }}</a>
-      </div>
-      <div class="header-content-right">
-        <div class="dropdown-menu-container">
-          <button type="button" class="svg-btn dots-btn" id="dots-profile-user" data-tooltip="Действия с профилем">
-              {{ icons.icon_dots() }}
-          </button>
-          
-          <div class="dropdown-menu" id="menu-profile-user">
-              <div class="nav-menu-list">
-                <button class="nav-menu-item" onclick="window.location.href='/profile/edit'">
-                    {{ icons.icon_edit() }}
-                    <span>{{ _('Редактировать профиль') }}</span>
-                </button>
-                <button class="nav-menu-item" onclick="window.location.href='/forgot-password'">
-                    {{ icons.icon_password() }}
-                    <span>{{ _('Изменить пароль') }}</span>
-                </button>
-                <button class="nav-menu-item" onclick="window.location.href='/change-email'">
-                    {{ icons.icon_email() }}
-                    <span>{{ _('Изменить эл. адрес') }}</span>
-                </button>
-              </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row-app-group">
-      <div class="app-group">
-        <label>{{ _('Фамилия') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_profile() }}
-          <input
-            type="text"
-            value="{{current_user.last_name}}"
-            placeholder="{{ _('Фамилия пользователя') }}"
-            class="app-input"
-          />
-        </div>
-      </div>
-      <div class="app-group">
-        <label>{{ _('Имя') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_profile() }}
-          <input
-            type="text"
-            value="{{current_user.first_name}}"
-            class="app-input"
-            placeholder="{{ _('Имя пользователя') }}"
-          />
-        </div>
-      </div>
-    </div>
-    <div class="app-group">
-      <label>{{ _('Отчество') }}</label>
-      <div class="input-with-icon">
+
+    <div class="profile-tabs" id="profileTabs" role="tablist">
+      <button type="button" class="profile-tab active" data-tab="user" role="tab" aria-selected="true">
         {{ icons.icon_profile() }}
-        <input
-          type="text"
-          value="{{current_user.patronymic_name}}"
-          placeholder="{{ _('Отчество пользователя') }}"
-          class="app-input"
-        />
-      </div>
+        <span>{{ _('Данные пользователя') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="org" role="tab" aria-selected="false">
+        {{ icons.icon_org() }}
+        <span>{{ _('Предприятие') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="sessions" role="tab" aria-selected="false">
+        {{ icons.icon_clock() }}
+        <span>{{ _('Сессия') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="security" role="tab" aria-selected="false">
+        {{ icons.icon_password() }}
+        <span>{{ _('Безопасность') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="verification" role="tab" aria-selected="false">
+        {{ icons.icon_confirm() }}
+        <span>{{ _('Верификация') }}</span>
+      </button>
     </div>
-    <div class="app-group">
-      <label>{{ _('Email') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_email() }}
-        <input
-          type="text"
-          value="{{current_user.email}}"
-          placeholder="{{ _('Email пользователя') }}"
-          class="app-input"
-        />
-      </div>
-    </div>
-    <div class="app-group">
-      <label>{{ _('Телефон') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_contacts() }}
-        <input
-          type="text"
-          value="{{current_user.telephone}}"
-          placeholder="Номер телефона пользователя"
-          class="app-input"
-        />
-      </div>
-    </div>
-    <div class="app-group">
-      <label>{{ _('Должность') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_profile() }}
-        <input
-          type="text"
-          value="{{ current_user.post or '' }}"
-          placeholder="{{ _('Должность пользователя') }}"
-          class="app-input"
-        />
-      </div>
-    </div>
-    <hr/>
-    <div class="header-content">
-      <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">
-          {{ _('Предприятие') }}
-        </a>
-      </div>
-      <div class="header-content-right">
+
+    <div class="profile-tab-panel active" data-tab-panel="user">
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">{{ _('Данные пользователя') }}</a>
+        </div>
+        <div class="header-content-right">
           <div class="dropdown-menu-container">
-              <button type="button" class="svg-btn dots-btn" id="dots-profile-org" data-tooltip="Действия с организацией">
-                  {{ icons.icon_dots() }}
-              </button>
-              
-              <div class="dropdown-menu" id="menu-profile-org">
-                  <div class="nav-menu-list">
-                    <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal %}disabled{% endif %}>
-                        {{ icons.icon_org() }}
-                        <span>{{ _('Сменить организацию') }}</span>
-                    </button>
-                    <button class="nav-menu-item" disabled>
-                        {{ icons.icon_edit() }}
-                        <span>{{ _('Запросить изменение данных') }}</span>
-                    </button>{#
-                    <button class="nav-menu-item" disabled>
-                        {{ icons.icon_add() }}
-                        <span>{{ _('Выбрать ещё одну') }}</span>
-                    </button>#}
-                    
-                  </div>
-              </div>
-          </div>
-      </div>
-    </div>
-    {{ component.organization_view_card(current_user.organization) }}
-    <hr>
-    <div class="header-content">
-      <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('Сессии') }}</a>
-      </div>
-      <div class="header-content-right"></div>
-    </div>
+            <button type="button" class="svg-btn dots-btn" id="dots-profile-user" data-tooltip="Действия с профилем">
+                {{ icons.icon_dots() }}
+            </button>
 
-    <div class="glass-surface session-glass-card"
-         id="sessionCard"
-         data-timeout-minutes="{{ session_info.timeout_minutes }}"
-         data-last-active="{{ session_info.last_active }}"
-         data-expires-at="{{ session_info.expires_at }}"
-         data-server-time="{{ session_info.server_time }}">
-      <div class="session-card-top">
-        <div class="session-card-status">
-          <span class="session-status-dot"></span>
-          <span>{{ _('Текущая сессия активна') }}</span>
-        </div>
-        <span class="session-role-badge">{{ session_info.role_label }}</span>
-      </div>
-
-      <div class="session-info-grid">
-        <div class="session-info-item">
-          <span class="session-info-label">{{ _('Устройство') }}</span>
-          <span class="session-info-value">{{ session_info.device }}</span>
-        </div>
-        <div class="session-info-item">
-          <span class="session-info-label">{{ _('Срок бездействия') }}</span>
-          <span class="session-info-value">
-            {% if session_info.timeout_minutes % 60 == 0 %}
-              {{ (session_info.timeout_minutes // 60) }} {{ _('ч.') }}
-            {% else %}
-              {{ session_info.timeout_minutes }} {{ _('мин.') }}
-            {% endif %}
-          </span>
-        </div>
-        <div class="session-info-item">
-          <span class="session-info-label">{{ _('IP-адрес') }}</span>
-          <span class="session-info-value">{{ session_info.ip or '—' }}</span>
-        </div>
-      </div>
-
-      <div class="session-timer">
-        <div class="session-timer-header">
-          <span>{{ _('Автоматический выход через') }}</span>
-          <span class="session-timer-value" id="sessionTimerValue">--:--</span>
-        </div>
-        <div class="session-timer-track">
-          <div class="session-timer-fill" id="sessionTimerFill"></div>
-        </div>
-        <p class="session-timer-hint">{{ _('Таймер продлевается автоматически при любой активности в системе') }}</p>
-      </div>
-    </div>
-
-    <hr>
-    <div class="header-content">
-      <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('Опасная зона') }}</a>
-      </div>
-      <div class="header-content-right">
-      </div>
-    </div>
-    <div class="danger-zone glass-surface glass-surface--danger">
-        <div class="danger-zone-header">
-            <div class="danger-zone-title">
-                <a class="name" style="padding-bottom: 0; margin: 0;">{{ _('Удаление аккаунта') }}</a>
-                <p class="danger-zone-description">{{ _('После удаления аккаунта все ваши планы и данные будут безвозвратно удалены. Это действие невозможно отменить.') }}</p>
+            <div class="dropdown-menu" id="menu-profile-user">
+                <div class="nav-menu-list">
+                  <button class="nav-menu-item" onclick="window.location.href='/profile/edit'">
+                      {{ icons.icon_edit() }}
+                      <span>{{ _('Редактировать профиль') }}</span>
+                  </button>
+                  <button class="nav-menu-item" onclick="window.location.href='/change-email'">
+                      {{ icons.icon_email() }}
+                      <span>{{ _('Изменить эл. адрес') }}</span>
+                  </button>
+                </div>
             </div>
+          </div>
         </div>
-        <div class="danger-zone-actions">
-            <form id="deleteProfile_form" action="{{ url_for('auth.delete_account') }}" method="POST">
-                <div class="confirm-delete-area">
-                    <div class="app-group">
-                        <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
-                        <div class="input-with-icon">
-                            <input type="text" id="confirm-email-field" name="confirm_email" class="app-input danger-input" placeholder="Ваш электронный адрес">
-                        </div>
+      </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Фамилия') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              value="{{current_user.last_name}}"
+              placeholder="{{ _('Фамилия пользователя') }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Имя') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              value="{{current_user.first_name}}"
+              class="app-input"
+              placeholder="{{ _('Имя пользователя') }}"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Отчество') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            value="{{current_user.patronymic_name}}"
+            placeholder="{{ _('Отчество пользователя') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Email') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_email() }}
+          <input
+            type="text"
+            value="{{current_user.email}}"
+            placeholder="{{ _('Email пользователя') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Телефон') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_contacts() }}
+          <input
+            type="text"
+            value="{{current_user.telephone}}"
+            placeholder="Номер телефона пользователя"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Должность') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input
+            type="text"
+            value="{{ current_user.post or '' }}"
+            placeholder="{{ _('Должность пользователя') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+
+      <hr/>
+      <h1 class="name">{{ _('Прочая информация') }}</h1>
+      <div class="dates-card">
+        <div class="dates-list">
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_calendar() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Дата регистрации') }}</span>
+                {% if current_user.begin_time %}
+                  <span class="date-day">{{ current_user.begin_time.strftime('%d.%m.%Y') }}</span>
+                  <span class="date-time">{{ current_user.begin_time.strftime('%H:%M') }}</span>
+                {% else %}
+                  <span class="date-empty">Нет данных</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_profile() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                {% if current_user.is_admin %}
+                  <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
+                {% elif current_user.is_auditor %}
+                  <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
+                {% elif current_user.is_approver %}
+                  <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
+                {% elif current_user.is_reader %}
+                  <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
+                {% else %}
+                  <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="org">
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">
+            {{ _('Предприятие') }}
+          </a>
+        </div>
+        <div class="header-content-right">
+            <div class="dropdown-menu-container">
+                <button type="button" class="svg-btn dots-btn" id="dots-profile-org" data-tooltip="Действия с организацией">
+                    {{ icons.icon_dots() }}
+                </button>
+
+                <div class="dropdown-menu" id="menu-profile-org">
+                    <div class="nav-menu-list">
+                      <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal %}disabled{% endif %}>
+                          {{ icons.icon_org() }}
+                          <span>{{ _('Сменить организацию') }}</span>
+                      </button>
+                      <button class="nav-menu-item" disabled>
+                          {{ icons.icon_edit() }}
+                          <span>{{ _('Запросить изменение данных') }}</span>
+                      </button>{#
+                      <button class="nav-menu-item" disabled>
+                          {{ icons.icon_add() }}
+                          <span>{{ _('Выбрать ещё одну') }}</span>
+                      </button>#}
+
                     </div>
                 </div>
-                <input type="hidden" id="current_user_email" value="{{ current_user.email }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="button" id="deleteProfileBtn" class="danger-zone-btn">
-                    {{ icons.icon_delete() }}
-                    <span>{{ _('Удалить аккаунт') }}</span>
-                </button>
-            </form>
+            </div>
         </div>
-    </div>
-    <hr>
-    <h1 class="name">{{ _('Прочая информация') }}</h1>
-    <div class="dates-card">
-      <div class="dates-list">
-        <div class="date-item">
-          <div class="date-icon">
-            {{ icons.icon_calendar() }}
+      </div>
+      {{ component.organization_view_card(current_user.organization) }}
+            <hr/>
+      <h1 class="name">{{ _('Прочая информация') }}</h1>
+      <div class="dates-card">
+        <div class="dates-list">
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_calendar() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Дата добавления') }}</span>
+                {% if current_user.organization.created_at %}
+                  <span class="date-day">{{ current_user.organization.created_at.strftime('%d.%m.%Y') }}</span>
+                  <span class="date-time">{{ current_user.organization.created_at.strftime('%H:%M') }}</span>
+                {% else %}
+                  <span class="date-empty">Нет данных</span>
+                {% endif %}
+              </div>
+            </div>
           </div>
-          <div class="date-content">
-            <div class="date-info">
-              <span class="date-label">{{ _('Дата регистрации') }}</span>
-              {% if current_user.begin_time %}
-                <span class="date-day">{{ current_user.begin_time.strftime('%d.%m.%Y') }}</span>
-                <span class="date-time">{{ current_user.begin_time.strftime('%H:%M') }}</span>
-              {% else %}
-                <span class="date-empty">Нет данных</span>
-              {% endif %}
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_org() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('ID') }}: {{ current_user.organization.id }}</span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="date-item">
-          <div class="date-icon">
-            {{ icons.icon_profile() }}
+      </div>
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="sessions">
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">{{ _('Сессия') }}</a>
+        </div>
+        <div class="header-content-right">
+          <div class="dropdown-menu-container">
+            <button type="button" class="svg-btn dots-btn" id="dots-profile-session" data-tooltip="Действия с сессией">
+                {{ icons.icon_dots() }}
+            </button>
+
+            <div class="dropdown-menu" id="menu-profile-session">
+                <div class="nav-menu-list">
+                  <button class="nav-menu-item" disabled>
+                      {{ icons.icon_cancel() }}
+                      <span>{{ _('Завершить все другие сессии') }}</span>
+                  </button>
+                </div>
+            </div>
           </div>
-          <div class="date-content">
-            <div class="date-info">
-              {% if current_user.is_admin %}
-                <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
-              {% elif current_user.is_auditor %}
-                <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
-              {% elif current_user.is_approver %}
-                <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
-              {% elif current_user.is_reader %}
-                <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
+        </div>
+      </div>
+
+      <div class="glass-surface session-glass-card"
+           id="sessionCard"
+           data-timeout-minutes="{{ session_info.timeout_minutes }}"
+           data-last-active="{{ session_info.last_active }}"
+           data-expires-at="{{ session_info.expires_at }}"
+           data-server-time="{{ session_info.server_time }}">
+        <div class="session-card-top">
+          <span class="session-role-badge">{{ session_info.role_label }}</span>
+          <div class="session-card-status">
+            <span class="session-status-dot"></span>
+            <span>{{ _('Текущая сессия активна') }}</span>
+          </div>
+        </div>
+
+        <div class="session-info-grid">
+          <div class="session-info-item">
+            <span class="session-info-label">{{ _('Устройство') }}</span>
+            <span class="session-info-value">{{ session_info.device }}</span>
+          </div>
+          <div class="session-info-item">
+            <span class="session-info-label">{{ _('Срок бездействия') }}</span>
+            <span class="session-info-value">
+              {% if session_info.timeout_minutes % 60 == 0 %}
+                {{ (session_info.timeout_minutes // 60) }} {{ _('ч.') }}
               {% else %}
-                <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+                {{ session_info.timeout_minutes }} {{ _('мин.') }}
               {% endif %}
+            </span>
+          </div>
+          <div class="session-info-item">
+            <span class="session-info-label">{{ _('IP-адрес') }}</span>
+            <span class="session-info-value">*********</span>
+          </div>
+        </div>
+
+        <div class="session-timer">
+          <div class="session-timer-header">
+            <span>{{ _('Автоматический выход через') }}</span>
+            <span class="session-timer-value" id="sessionTimerValue">--:--</span>
+          </div>
+          <div class="session-timer-track">
+            <div class="session-timer-fill" id="sessionTimerFill"></div>
+          </div>
+          <p class="session-timer-hint">{{ _('Таймер продлевается автоматически при любой активности в системе') }}</p>
+        </div>
+      </div>
+
+      <hr/>
+      <h1 class="name">{{ _('Прочая информация') }}</h1>
+      <div class="dates-card">
+        <div class="dates-list">
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_calendar() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Начало сессии') }}</span>
+                <span class="date-day">{{ session_info.created_at_dt.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ session_info.created_at_dt.strftime('%H:%M') }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_clock() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Истекает при бездействии') }}</span>
+                <span class="date-day">{{ session_info.expires_at_dt.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ session_info.expires_at_dt.strftime('%H:%M') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="security">
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">{{ _('Пароль') }}</a>
+        </div>
+        <div class="header-content-right">
+          <div class="dropdown-menu-container">
+            <button type="button" class="svg-btn dots-btn" id="dots-profile-password" data-tooltip="Действия с паролем">
+                {{ icons.icon_dots() }}
+            </button>
+
+            <div class="dropdown-menu" id="menu-profile-password">
+                <div class="nav-menu-list">
+                  <button class="nav-menu-item" onclick="window.location.href='/forgot-password'">
+                      {{ icons.icon_password() }}
+                      <span>{{ _('Изменить пароль') }}</span>
+                  </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="session-timer-hint" style="margin: -8px 0 20px;">{{ _('Смена пароля происходит по ссылке, отправленной на вашу почту.') }}</p>
+
+      <hr/>
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">{{ _('Удаление аккаунта') }}</a>
+        </div>
+
+      </div>
+      <div class="danger-zone">
+          <div class="danger-zone-header">
+              <div class="danger-zone-title">
+                  <p class="danger-zone-description">{{ _('После удаления аккаунта все ваши планы и данные будут безвозвратно удалены. Это действие невозможно отменить.') }}</p>
+              </div>
+          </div>
+          <div class="danger-zone-actions">
+              <form id="deleteProfile_form" action="{{ url_for('auth.delete_account') }}" method="POST">
+                  <div class="confirm-delete-area">
+                      <div class="app-group">
+                          <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
+                          <div class="input-with-icon">
+                              <input type="text" id="confirm-email-field" name="confirm_email" class="app-input danger-input" placeholder="Ваш электронный адрес">
+                          </div>
+                      </div>
+                  </div>
+                  <input type="hidden" id="current_user_email" value="{{ current_user.email }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="button" id="deleteProfileBtn" class="danger-zone-btn">
+                      {{ icons.icon_delete() }}
+                      <span>{{ _('Удалить аккаунт') }}</span>
+                  </button>
+              </form>
+          </div>
+      </div>
+
+      <hr/>
+      <h1 class="name">{{ _('Прочая информация') }}</h1>
+      <div class="dates-card">
+        <div class="dates-list">
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_email() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Email для входа') }}: {{ current_user.email }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_profile() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('ID аккаунта') }}: {{ current_user.id }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="verification">
+      <div class="header-content">
+        <div class="header-content-left">
+          <a class="name" style="padding-bottom: 0">{{ _('Верификация аккаунта') }}</a>
+          {% if current_user.is_ecp_verified() %}
+            <span class="session-role-badge verified" id="verificationStatusBadge">
+              {{ _('Верифицировано до') }} {{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}
+            </span>
+          {% else %}
+            <span class="session-role-badge unverified" id="verificationStatusBadge">
+              {{ _('Требуется верификация') }}
+            </span>
+          {% endif %}
+        </div>
+        <div class="header-content-right">
+          <div class="dropdown-menu-container">
+            <button type="button" class="svg-btn dots-btn" id="dots-profile-verification" data-tooltip="Действия с верификацией">
+                {{ icons.icon_dots() }}
+            </button>
+
+            <div class="dropdown-menu" id="menu-profile-verification">
+                <div class="nav-menu-list">
+                  <button class="nav-menu-item" disabled>
+                      {{ icons.icon_file() }}
+                      <span>{{ _('История верификаций') }}</span>
+                  </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="session-timer-hint" style="margin: -8px 0 16px;">
+        {{ _('Подтверждение личности сертификатом ЭЦП, раз в 30 дней. Аудиторам необходима, чтобы просматривать и экспортировать планы; согласующим и утверждающим — чтобы согласовывать и утверждать планы. Остальным пользователям доступна по желанию — альтернативно сертификат можно приложить прямо при отправке плана на согласование.') }}
+      </p>
+
+      {% if current_user.is_ecp_verified() %}
+        <div class="verified-account-notice">
+          {{ icons.icon_confirm() }}
+          <div class="verified-account-notice-body">
+            <p class="verified-account-notice-title">{{ _('Аккаунт верифицирован') }}</p>
+            <p class="verified-account-notice-text">{{ _('Верификация действует до') }} {{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}. {{ _('Новый сертификат можно будет загрузить после истечения срока.') }}</p>
+          </div>
+        </div>
+      {% else %}
+        <div class="drop-certificate-container">
+          <div id="verifyCertDropArea" class="drop-certificate-area">
+            <div class="drop-certificate-content">
+              <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
+              <p class="drop-certificate-text">
+                {{ _('Перетащите файл сертификата сюда или') }}
+                <label for="verifyCertInput" class="drop-certificate-label">
+                  {{ _('нажмите для выбора') }}
+                </label>
+              </p>
+              <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+              <div id="verifyCertStatus" class="certificate-status" style="display: none"></div>
+              <div class="verify-submit-area" id="verifySubmitArea">
+                <button type="button" class="main-btn main-btn-primary" id="submitVerifyButton">
+                  <span class="btn-spinner" aria-hidden="true"></span>
+                  {{ icons.icon_confirm() }}
+                  <span class="btn-text">{{ _('Пройти верификацию') }}</span>
+                </button>
+              </div>
+            </div>
+            <input type="file" id="verifyCertInput" accept=".cer" class="drop-certificate-input" />
+          </div>
+        </div>
+      {% endif %}
+
+      <hr/>
+      <h1 class="name">{{ _('Прочая информация') }}</h1>
+      <div class="dates-card">
+        <div class="dates-list">
+          {% set last_verification = (current_user.verifications | sort(attribute='verified_at', reverse=true) | first) if current_user.verifications else None %}
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_calendar() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Пройдена') }}</span>
+                {% if last_verification %}
+                  <span class="date-day">{{ last_verification.verified_at.strftime('%d.%m.%Y') }}</span>
+                  <span class="date-time">{{ last_verification.verified_at.strftime('%H:%M') }}</span>
+                {% else %}
+                  <span class="date-empty">{{ _('Нет данных') }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_clock() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Действует до') }}</span>
+                {% if current_user.ecp_verified_until %}
+                  <span class="date-day">{{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}</span>
+                  <span class="date-time">{{ current_user.ecp_verified_until.strftime('%H:%M') }}</span>
+                {% else %}
+                  <span class="date-empty">{{ _('Нет данных') }}</span>
+                {% endif %}
+              </div>
             </div>
           </div>
         </div>
@@ -290,7 +555,7 @@
     </div>
   </div>
 </div>
-{{ affects.bg_effect() }} 
+{{ affects.bg_effect() }}
 
 
 <script src="{{ url_for('static', filename='js/profile.js') }}"></script>

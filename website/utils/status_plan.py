@@ -450,11 +450,11 @@ def handle_admin_confirm_step(plan, path_id, admin_user):
             plan.is_sent = False
             plan.is_error = False
 
-            note = f"Администратор {admin_user.email} подтвердил этап «{org_name}» и весь путь согласования. План согласован и утвержден."
+            note = f"Администратор подтвердил этап «{org_name}» и весь путь согласования. План согласован и утвержден."
             notif_message = f"План на {plan.year} год был утвержден администратором"
             result_message = 'План полностью согласован и утвержден администратором'
         else:
-            note = f"Администратор {admin_user.email} подтвердил этап «{org_name}» (шаг {target_path.step_order}) в обход обычного порядка согласования."
+            note = f"Администратор подтвердил этап «{org_name}» (шаг {target_path.step_order}) в обход обычного порядка согласования."
             notif_message = f"Этап согласования плана на {plan.year} год подтвержден администратором"
             result_message = 'Этап подтвержден администратором'
 
