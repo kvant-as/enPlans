@@ -1324,7 +1324,7 @@ body {
 
 .employee-company {
   font-weight: 500;
-  padding: 5px 16px;
+  padding: 5px 7px;
   background-color: var(--background-grey);
   border-radius: 8px;
   overflow: hidden;
@@ -2678,6 +2678,84 @@ input::placeholder {
   text-shadow: 2px 2px 14px rgba(0, 32, 37, 0.3);
 }
 
+/* ============================================
+   PROFILE TABS — секции личного кабинета
+   Намеренно НЕ капсульный стиль .navigation-container:
+   строгая линия подчёркивания вместо "таблетки" с тенью,
+   минимум скругления (только верхние углы плашки при
+   наведении/активности). position: static — обычная
+   внутристраничная навигация, а не плавающий бар.
+   ============================================ */
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.profile-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-subtitle, #6b7480);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.profile-tab svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.profile-tab:hover {
+  color: var(--black);
+  background: var(--background-grey);
+}
+
+.profile-tab.active {
+  color: var(--green-main-dark, var(--green-main));
+  border-bottom-color: var(--green-main);
+  font-weight: 600;
+}
+
+.profile-tab-panel {
+  display: none;
+  animation: fadeIn 0.25s ease;
+}
+
+.profile-tab-panel.active {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .profile-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .profile-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .profile-tab {
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+}
+
 .header-content {
   font-weight: 500;
   font-size: 16px;
@@ -3485,20 +3563,22 @@ input::placeholder {
 }
 
 /* ============================================
-   DANGER ZONE
+   DANGER ZONE — такой же лёгкий, обрамлённый в
+   рамку карточки, как остальные блоки профиля
+   (.dates-card/.session-glass-card), просто с
+   красным акцентом вместо тёмно-красного "ящика".
    ============================================ */
 .danger-zone {
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  background-color: #fef2f2;
+  position: relative;
   overflow: hidden;
+  background: var(--white);
 }
+
 .danger-zone-header {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 20px 24px;
-  border-bottom: 1px solid #fecaca;
+  margin-bottom: 16px;
 }
 .danger-zone-icon svg {
   width: 28px;
@@ -3511,13 +3591,11 @@ input::placeholder {
   font-size: 14px;
 }
 .danger-zone-description {
-  margin: 8px 0 0 0;
   font-size: 13px;
-  color: #7f1d1d;
-  line-height: 1.5;
+  color: var(--text-subtitle, #6b7480);
 }
 .danger-zone-actions {
-  padding: 16px 24px;
+  padding-top: 16px;
 }
 
 .confirm-delete-area {
@@ -3528,11 +3606,14 @@ input::placeholder {
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #1e293b;
+  color: var(--text-subtitle2, #1e293b);
 }
 .confirm-delete-area label strong {
   color: #00798f;
   font-weight: 600;
+}
+.confirm-delete-area input {
+  padding-left: 15px;
 }
 .confirm-delete-area input:focus {
   outline: none;
@@ -3598,30 +3679,6 @@ input::placeholder {
   color: #dc2626;
   font-size: 13px;
   line-height: 1.6;
-}
-
-.confirm-delete-area {
-  margin: 16px 0;
-}
-.confirm-delete-area label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #334155;
-}
-.confirm-delete-area input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: 'Montserrat', sans-serif;
-  box-sizing: border-box;
-}
-.confirm-delete-area input:focus {
-  outline: none;
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
 }
 
 /* ============================================
@@ -3691,14 +3748,31 @@ input::placeholder {
   50% { opacity: 0.5; }
 }
 
+/* Тот же "таблеточный" стиль, что у .status-plan (статус плана) —
+   цветная заливка + рамка + текст, без заливки на всю ширину. */
 .session-role-badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid var(--glass-border);
-  color: var(--green-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 13px !important;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  background: rgba(59, 202, 246, 0.1);
+  color: #1e4349;
+  border: 1px solid rgba(46, 179, 189, 0.2);
+}
+.session-role-badge.verified {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+.session-role-badge.unverified {
+  background: rgba(255, 30, 30, 0.1);
+  color: #641313;
+  border-color: rgba(134, 39, 39, 0.4);
 }
 
 .session-info-grid {
@@ -5065,6 +5139,7 @@ input[type="checkbox"]:focus {
   gap: 12px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  background-color: #F8F9FA;
 }
 
 .tickets-message {
@@ -6712,6 +6787,38 @@ input[type="checkbox"]:focus {
   max-width: 60px;
 }
 
+/* Шаг 4 отправки плана, если аккаунт уже прошёл периодическую
+   верификацию ЭЦП (profile.html, раздел "Верификация") — вместо
+   drag-and-drop зоны просто уведомление + кнопка отправки. */
+.verified-account-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin: 12px 0 20px;
+  background: var(--background-submited, #d8ffdc);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 14px;
+}
+.verified-account-notice svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: #16a34a;
+}
+.verified-account-notice-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1c7a3e;
+}
+.verified-account-notice-text {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #1c7a3e;
+  opacity: 0.85;
+}
+
 .certificate-status {
   display: none;
   align-items: center;
@@ -6733,6 +6840,38 @@ input[type="checkbox"]:focus {
 .certificate-status--error {
   background: var(--background-erorsed, #ffb2b3);
   color: #a1231c;
+}
+.certificate-status .loading-spinner {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border-width: 2px;
+}
+
+/* Статус и кнопка верификации живут внутри .drop-certificate-content —
+   всё действие с сертификатом (анимация проверки, сообщение, кнопка)
+   остаётся по центру самой drop-зоны, а не отдельными блоками под ней. */
+.drop-certificate-content .certificate-status {
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto 0;
+  justify-content: center;
+}
+
+/* Кнопка "Пройти верификацию" на вкладке "Верификация" в профиле —
+   скрыта, пока сертификат не прошёл предварительную проверку
+   (/account/verify-check), затем плавно появляется (см. profile.js). */
+.verify-submit-area {
+  display: none;
+  justify-content: center;
+  margin-top: 16px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.verify-submit-area.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ---------- Выбор организаций (карточки вместо таблицы) ---------- */

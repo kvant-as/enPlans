@@ -17,8 +17,10 @@ from website.user import send_email
 from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 
+from common_models import current_utc_time
+
 from .. import db
-from ..models import Plan, User
+from ..models import Plan, User, UserVerification
 from website.sessions import create_session_token, set_session_cookie, clear_session_cookie
 
 
@@ -477,3 +479,78 @@ def clear_email_session():
     except Exception as e:
         current_app.logger.error(f"Error clearing email session: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@auth.route('/account/verify-check', methods=['POST'])
+@login_required
+def verify_account_check():
+    """Проверка сертификата без записи в БД — отдельный шаг перед
+    «Пройти верификацию» (/account/verify), по той же схеме, что и
+    проверка на лету при отправке плана (plan_bp.api_verify_certificate):
+    пользователь сначала видит результат проверки, и только потом
+    подтверждает действие явным кликом."""
+    from website.ecp import verify_certificate
+
+    cert_file = request.files.get('certificate')
+    if not cert_file or not cert_file.filename:
+        return jsonify({'valid': False, 'error': 'Файл сертификата не передан'}), 400
+
+    ok, error = verify_certificate(cert_file, expected_unp=None)
+    return jsonify({'valid': ok, 'error': error})
+
+
+def record_account_verification(user, cert_file):
+    """Записывает успешную верификацию аккаунта сертификатом ЭЦП — общая
+    логика между /account/verify (профиль) и отправкой плана с
+    сертификатом (status == 'sent' в plan_bp.py): раз пользователь только
+    что подтвердил личность действительным сертификатом в одном месте,
+    нет смысла заставлять его отдельно подтверждать её в другом — аккаунт
+    считается верифицированным на тот же период. Не коммитит сама — вызов
+    либо сам коммитит, либо это делает следующий commit (напр. внутри
+    handle_sent_status)."""
+    from website.ecp import extract_certificate_info, ECP_VERIFICATION_PERIOD_DAYS
+
+    subject, unp_candidates = extract_certificate_info(cert_file)
+
+    now = current_utc_time()
+    expires_at = now + timedelta(days=ECP_VERIFICATION_PERIOD_DAYS)
+
+    verification = UserVerification(
+        user_id=user.id,
+        verified_at=now,
+        expires_at=expires_at,
+        cert_subject=subject,
+        cert_unp=next(iter(unp_candidates), None),
+        ip_address=request.remote_addr,
+    )
+    db.session.add(verification)
+    user.ecp_verified_until = expires_at
+    return expires_at
+
+
+@auth.route('/account/verify', methods=['POST'])
+@login_required
+def verify_account():
+    """Периодическая верификация аккаунта сертификатом ЭЦП — подтверждает
+    личность владельца аккаунта (не привязана к конкретному плану, в
+    отличие от подписи при отправке плана в plan_bp.py). Доступна любому
+    типу пользователя: согласующим/утверждающим она открывает действия
+    по плану (см. гейт в api_change_plan_status), остальным пока служит
+    просто добровольным подтверждением личности в профиле."""
+    from website.ecp import verify_certificate
+
+    cert_file = request.files.get('certificate')
+    if not cert_file or not cert_file.filename:
+        return jsonify({'success': False, 'error': 'Файл сертификата не передан'}), 400
+
+    ok, error = verify_certificate(cert_file, expected_unp=None)
+    if not ok:
+        return jsonify({'success': False, 'error': error}), 400
+
+    expires_at = record_account_verification(current_user, cert_file)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'verified_until': expires_at.strftime('%d.%m.%Y')
+    })

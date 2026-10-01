@@ -2640,6 +2640,18 @@ if (document.getElementById('dots-profile-user')) {
     initDropdownMenu('dots-profile-user', 'menu-profile-user');
 }
 
+if (document.getElementById('dots-profile-password')) {
+    initDropdownMenu('dots-profile-password', 'menu-profile-password');
+}
+
+if (document.getElementById('dots-profile-session')) {
+    initDropdownMenu('dots-profile-session', 'menu-profile-session');
+}
+
+if (document.getElementById('dots-profile-verification')) {
+    initDropdownMenu('dots-profile-verification', 'menu-profile-verification');
+}
+
 if (document.getElementById('menuDotsBtn')) {
     initDropdownMenu('menuDotsBtn', 'planActionsMenu');
 }

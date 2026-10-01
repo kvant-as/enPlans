@@ -488,6 +488,25 @@ class PlanSendWizard {
             if (this.approverIdInput) {
                 this.approverIdInput.value = this.selectedApprover;
             }
+
+            // Аккаунт уже верифицирован — сертификата на этом шаге нет
+            // (plan_send.html рендерит кнопку без drag-and-drop зоны), но
+            // перед реальной отправкой всё равно показываем ту же анимацию
+            // проверки на кнопке, что и при загрузке сертификата, — чтобы
+            // переход между обоими вариантами шага 4 выглядел одинаково.
+            const form = e.target;
+            const hasCertUpload = !!this.root.querySelector('#drop-certificate-area');
+            if (!hasCertUpload && !form.dataset.verifiedSubmitConfirmed) {
+                e.preventDefault();
+                if (this.submitButton) {
+                    this.submitButton.disabled = true;
+                    this.submitButton.classList.add('is-checking');
+                }
+                setTimeout(() => {
+                    form.dataset.verifiedSubmitConfirmed = 'true';
+                    form.submit();
+                }, 5000);
+            }
         });
     }
 
@@ -789,6 +808,11 @@ class CertificateUploadHandler {
     }
 
     init() {
+        // Аккаунт уже верифицирован (см. profile.html/account/verify) —
+        // шаг 4 на plan_send.html рендерит сообщение и кнопку "Отправить"
+        // вместо drag-and-drop зоны, сертификат на этот раз не нужен.
+        if (!this.dropArea && !this.fileInput) return;
+
         if (!this.dropArea || !this.fileInput || !this.submitButton) {
             console.error('[CertificateUploadHandler] Required elements not found');
             return;

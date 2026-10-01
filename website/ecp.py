@@ -13,6 +13,10 @@ from datetime import datetime, timezone
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
+# Срок действия периодической верификации аккаунта (User.ecp_verified_until /
+# UserVerification) — отдельно от срока действия самого сертификата.
+ECP_VERIFICATION_PERIOD_DAYS = 30
+
 
 def _load_certificate(cert_bytes):
     try:
@@ -82,3 +86,29 @@ def verify_certificate(file_storage, expected_unp=None):
             return False, f'Сертификат не принадлежит организации плана (УНП {expected_unp} не найден в сертификате).'
 
     return True, None
+
+
+def extract_certificate_info(file_storage):
+    """Достаёт subject и УНП-кандидатов из файла сертификата без повторной
+    проверки срока действия — используется там, где verify_certificate уже
+    отработал и просто нужно, что записать в журнал (см. UserVerification)."""
+    try:
+        cert_bytes = file_storage.read()
+    except Exception:
+        return None, set()
+    finally:
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+
+    if not cert_bytes:
+        return None, set()
+
+    try:
+        cert = _load_certificate(cert_bytes)
+    except Exception:
+        return None, set()
+
+    subject_text = cert.subject.rfc4514_string()
+    return subject_text, _extract_unp_candidates(cert)
