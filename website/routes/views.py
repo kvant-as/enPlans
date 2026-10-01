@@ -6,7 +6,7 @@ import logging
 
 import uuid
 import threading
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from sqlalchemy import select
 
@@ -32,32 +32,46 @@ views = Blueprint('views', __name__)
 PLAN_YEAR_MIN = 2026
 PLAN_YEAR_MAX = 2040
 
+def block_unverified_auditor():
+    """Аудитору (в отличие от обычных пользователей) верификация ЭЦП
+    обязательна для просмотра и экспорта планов, а не только для
+    согласования/утверждения — без неё он не видит ни одного плана.
+    Возвращает redirect, если доступ нужно заблокировать, иначе None."""
+    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
+        flash('Для просмотра и экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.', 'error')
+        return redirect(url_for('views.profile'))
+    return None
+
 def owner_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        blocked = block_unverified_auditor()
+        if blocked:
+            return blocked
+
         token = kwargs.get('token')
-        
+
         if not token:
             flash('Токен плана не указан', 'error')
             return redirect(url_for('views.plans', user=current_user.id))
-        
+
         plan = Plan.query.filter_by(token=token).first()
-        
+
         if plan is None:
             flash('План не найден', 'error')
             return redirect(url_for('views.plans', user=current_user.id))
-        
+
         has_access = (
             current_user.is_admin or
             current_user.is_auditor or
             current_user.is_reader or
             plan.user_id == current_user.id
         )
-        
+
         if not has_access:
             flash('У вас нет доступа к этому плану', 'error')
             return redirect(url_for('views.plans', user=current_user.id))
-    
+
         g.current_plan = plan
         return f(*args, **kwargs)
     return decorated_function
@@ -98,6 +112,11 @@ def profile():
 
     token, payload = get_or_refresh_session(current_user)
     session_info = build_session_info(current_user, payload)
+    # created_at/expires_at приходят ISO-строками (session_info переиспользуется
+    # и в JSON для /session-info) — для шаблона добавляем готовые datetime,
+    # чтобы можно было звать .strftime(), как с остальными датами в профиле.
+    session_info['created_at_dt'] = datetime.fromisoformat(session_info['created_at'])
+    session_info['expires_at_dt'] = datetime.fromisoformat(session_info['expires_at'])
 
     response = make_response(render_template('profile.html',
                         can_change_modal=can_change_modal,
@@ -299,9 +318,13 @@ def plans():
 @login_required
 @session_required
 def export():
+    blocked = block_unverified_auditor()
+    if blocked:
+        return blocked
+
     status = request.args.get('status', 'all')
     year = request.args.get('year', 'all')
-    
+
     return render_template(
         'export.html',
         years=range(2026, 2050),
@@ -316,6 +339,9 @@ def export():
 @login_required
 @session_required
 def start_export():
+    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
+        return jsonify({'success': False, 'error': 'Для экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.'})
+
     try:
         export_format = request.form.get('format', '').lower()
         plan_ids = request.form.getlist('ids')

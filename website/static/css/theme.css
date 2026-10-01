@@ -636,12 +636,12 @@ html[data-theme] .fixed-header {
 /* website/static/css/base.css :: .danger-zone */
 :root[data-theme="dark"] .danger-zone {
   border: 1px solid #2b313b;
-  background-color: #3b1111;
+  background-color: #1b2027;
 }
 
-/* website/static/css/base.css :: .danger-zone-header */
-:root[data-theme="dark"] .danger-zone-header {
-  border-bottom: 1px solid #2b313b;
+/* website/static/css/base.css :: .danger-zone-actions */
+:root[data-theme="dark"] .danger-zone-actions {
+  border-top: 1px solid #2b313b;
 }
 
 /* website/static/css/base.css :: .danger-zone-icon svg */
@@ -656,7 +656,7 @@ html[data-theme] .fixed-header {
 
 /* website/static/css/base.css :: .danger-zone-description */
 :root[data-theme="dark"] .danger-zone-description {
-  color: #e38282;
+  color: #9aa3af;
 }
 
 /* website/static/css/base.css :: .confirm-delete-area label */
@@ -711,7 +711,22 @@ html[data-theme] .fixed-header {
 
 /* website/static/css/base.css :: .session-role-badge */
 :root[data-theme="dark"] .session-role-badge {
-  background: rgba(27, 32, 39, 0.6);
+  color: #eef1f5;
+}
+:root[data-theme="dark"] .session-role-badge.verified {
+  color: #6fec9d;
+}
+:root[data-theme="dark"] .session-role-badge.unverified {
+  color: #e77e7e;
+}
+
+/* website/static/css/base.css :: .verified-account-notice */
+:root[data-theme="dark"] .verified-account-notice svg {
+  color: #6fec9d;
+}
+:root[data-theme="dark"] .verified-account-notice-title,
+:root[data-theme="dark"] .verified-account-notice-text {
+  color: #6fec9d;
 }
 
 /* website/static/css/base.css :: .session-info-label */

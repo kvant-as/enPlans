@@ -8,7 +8,7 @@ from flask_login import (
 
 from common_models import current_utc_time
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan, validate_period_values
-from website.routes.auth import user_with_all_params
+from website.routes.auth import user_with_all_params, record_account_verification
 from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
 from website.user import send_email
@@ -902,29 +902,51 @@ def api_change_plan_status(token):
     handler = status_handlers[status]
 
     if status == 'sent':
-        # Сертификат уже проверялся на лету на странице отправки
+        # Если аккаунт уже прошёл периодическую верификацию ЭЦП (см.
+        # User.ecp_verified_until / auth.verify_account) — личность уже
+        # подтверждена, повторный сертификат на каждый план не нужен.
+        # Иначе — сертификат уже проверялся на лету на странице отправки
         # (/verify-certificate), но той проверке доверять нельзя — сюда
         # могут обратиться и напрямую, минуя интерфейс, поэтому сверяем
         # срок действия заново. TODO: сверку УНП временно отключили
         # (expected_unp=None) — см. тот же комментарий в api_verify_certificate.
-        cert_file = request.files.get('certificate')
-        if not cert_file or not cert_file.filename:
-            error_msg = 'Файл сертификата обязателен'
-            if request.is_json:
-                return jsonify({'error': error_msg}), 400
-            flash(error_msg, 'error')
-            return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
+        if not current_user.is_ecp_verified():
+            cert_file = request.files.get('certificate')
+            if not cert_file or not cert_file.filename:
+                error_msg = 'Файл сертификата обязателен'
+                if request.is_json:
+                    return jsonify({'error': error_msg}), 400
+                flash(error_msg, 'error')
+                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
 
-        expected_unp = None
-        cert_ok, cert_error = verify_certificate(cert_file, expected_unp)
-        if not cert_ok:
-            if request.is_json:
-                return jsonify({'error': cert_error}), 400
-            flash(cert_error, 'error')
-            return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
+            expected_unp = None
+            cert_ok, cert_error = verify_certificate(cert_file, expected_unp)
+            if not cert_ok:
+                if request.is_json:
+                    return jsonify({'error': cert_error}), 400
+                flash(cert_error, 'error')
+                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
+
+            # Раз сертификат только что подтвердил личность пользователя
+            # здесь, нет смысла заставлять его ещё раз отдельно проходить
+            # верификацию в профиле — засчитываем её автоматически на тот
+            # же период (см. record_account_verification).
+            record_account_verification(current_user, cert_file)
 
         result = handler(plan, coordinator_ids, approver_id)
     elif status == 'approved':
+        # Согласование/утверждение конкретного этапа плана — та самая
+        # "проверка, что за аккаунтом реальный человек", по аналогии с ЭЦП
+        # при отправке плана респондентом, только не на каждое действие, а
+        # периодически (см. User.ecp_verified_until / auth.verify_account).
+        if not current_user.is_ecp_verified():
+            error_msg = ('Для согласования и утверждения планов необходимо пройти верификацию '
+                         'аккаунта — раздел «Безопасность» в профиле.')
+            if request.is_json:
+                return jsonify({'error': error_msg, 'needs_verification': True}), 403
+            flash(error_msg, 'error')
+            return redirect(url_for('views.profile'))
+
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
         result = handler(plan, current_user)

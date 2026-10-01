@@ -178,49 +178,82 @@
       </div>
 
       <div id="step4" class="modal-step" style="display: none">
-        <div class="step-description">
-          <p>{{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }}
-            <a href="/FAQ#ecp-certificate" target="_blank" class="instruction-link" id="certificate-help-link">
-              {{ _('инструкции') }}
-            </a>.
-          </p>
-        </div>
+        {% if current_user.is_ecp_verified() %}
+          <div class="step-description">
+            <p>{{ _('Ваш аккаунт уже верифицирован сертификатом ЭЦП, поэтому повторная подпись для отправки плана не требуется.') }}</p>
+          </div>
 
-        <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <input type="hidden" name="status" value="sent" />
-          <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
-          <input type="hidden" name="approver_id" id="approver-id-input" value="" />
-
-          <div class="drop-certificate-container">
-            <div id="drop-certificate-area" class="drop-certificate-area">
-              <div class="drop-certificate-content">
-                <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
-                <p class="drop-certificate-text">
-                  {{ _('Перетащите файл сертификата сюда или') }}
-                  <label for="certificate-to-check" class="drop-certificate-label">
-                    {{ _('нажмите для выбора') }}
-                  </label>
-                </p>
-                <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
-              </div>
-              <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input" />
+          <div class="verified-account-notice">
+            {{ icons.icon_confirm() }}
+            <div class="verified-account-notice-body">
+              <p class="verified-account-notice-title">{{ _('Аккаунт верифицирован') }}</p>
+              <p class="verified-account-notice-text">{{ _('Верификация действует до') }} {{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}</p>
             </div>
-            <div id="certificate-status" class="certificate-status" style="display: none"></div>
           </div>
 
-          <div class="button-auth-area">
-            <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button" disabled>
-              <span class="btn-spinner" aria-hidden="true"></span>
-              {{ icons.icon_send() }}
-              <span class="btn-text">{{ _('Отправить план') }}</span>
-            </button>
-            <button type="button" class="svg-btn" id="step4-back-btn">
-              {{ icons.back_icon() }}
-              <span class="btn-text">{{ _('Назад') }}</span>
-            </button>
+          <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="status" value="sent" />
+            <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
+            <input type="hidden" name="approver_id" id="approver-id-input" value="" />
+
+            <div class="button-auth-area">
+              <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button">
+                <span class="btn-spinner" aria-hidden="true"></span>
+                {{ icons.icon_send() }}
+                <span class="btn-text">{{ _('Отправить план на проверку') }}</span>
+              </button>
+              <button type="button" class="svg-btn" id="step4-back-btn">
+                {{ icons.back_icon() }}
+                <span class="btn-text">{{ _('Назад') }}</span>
+              </button>
+            </div>
+          </form>
+        {% else %}
+          <div class="step-description">
+            <p>{{ _('Для отправки плана необходим сертификат цифровой подписи. Подробней об этом в ') }}
+              <a href="/FAQ#ecp-certificate" target="_blank" class="instruction-link" id="certificate-help-link">
+                {{ _('инструкции') }}
+              </a>.
+            </p>
           </div>
-        </form>
+
+          <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="status" value="sent" />
+            <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
+            <input type="hidden" name="approver_id" id="approver-id-input" value="" />
+
+            <div class="drop-certificate-container">
+              <div id="drop-certificate-area" class="drop-certificate-area">
+                <div class="drop-certificate-content">
+                  <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
+                  <p class="drop-certificate-text">
+                    {{ _('Перетащите файл сертификата сюда или') }}
+                    <label for="certificate-to-check" class="drop-certificate-label">
+                      {{ _('нажмите для выбора') }}
+                    </label>
+                  </p>
+                  <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+                </div>
+                <input type="file" id="certificate-to-check" name="certificate" accept=".cer" class="drop-certificate-input" />
+              </div>
+              <div id="certificate-status" class="certificate-status" style="display: none"></div>
+            </div>
+
+            <div class="button-auth-area">
+              <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button" disabled>
+                <span class="btn-spinner" aria-hidden="true"></span>
+                {{ icons.icon_send() }}
+                <span class="btn-text">{{ _('Отправить план') }}</span>
+              </button>
+              <button type="button" class="svg-btn" id="step4-back-btn">
+                {{ icons.back_icon() }}
+                <span class="btn-text">{{ _('Назад') }}</span>
+              </button>
+            </div>
+          </form>
+        {% endif %}
       </div>
     </div>
   </div>
