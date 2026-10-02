@@ -759,8 +759,12 @@ class PlanSendWizard {
     }
 
     updateButtonsState() {
+        // Шаг 1 (согласующие) необязателен: региональное управление и так
+        // добавляется в путь согласования автоматически (см.
+        // handle_sent_status на бэкенде), поэтому пользователь может сразу
+        // перейти к выбору утверждающей организации, ничего не отмечая здесь.
         if (this.buttons.step1Next) {
-            this.buttons.step1Next.disabled = this.selectedCoordinators.size === 0;
+            this.buttons.step1Next.disabled = false;
         }
         if (this.buttons.step2Next) {
             this.buttons.step2Next.disabled = !this.selectedApprover;
@@ -770,10 +774,9 @@ class PlanSendWizard {
     }
 
     validateStep1() {
-        if (this.selectedCoordinators.size === 0) {
-            alert('Пожалуйста, выберите хотя бы одну организацию для согласования');
-            return false;
-        }
+        // Согласующие организации необязательны — см. комментарий в
+        // updateButtonsState(). Шаг нужен только тем, кому действительно
+        // есть кого добавить помимо автоматического регионального управления.
         return true;
     }
 

@@ -513,7 +513,8 @@ def plan_event(event_type, token):
         type_filter = Direction.is_econom == True
         directions = Direction.query.filter(
             Direction.is_econom == True,
-            Direction.code.notin_(period_codes)
+            Direction.code.notin_(period_codes),
+            Direction.DateEnd.is_(None)
         ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по экономии ТЭР"
         
@@ -527,7 +528,8 @@ def plan_event(event_type, token):
         type_filter = Direction.is_increase == True
         directions = Direction.query.filter(
             Direction.is_increase == True,
-            Direction.code.notin_(period_codes)
+            Direction.code.notin_(period_codes),
+            Direction.DateEnd.is_(None)
         ).order_by(Direction.id.asc()).all()
         title = "Мероприятия по увеличению использования МТЭР и ВИЭ"
         
