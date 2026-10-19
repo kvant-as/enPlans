@@ -13,7 +13,7 @@ from flask_babel import format_date
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 
-from common_models import db
+from common_models import db, current_utc_time
 from common_models.logs import setup_logging
 
 load_dotenv()
@@ -150,6 +150,7 @@ def create_app():
     # schema is managed by Alembic (common_models/migrations); run `flask db upgrade`
 
     app.jinja_env.globals['format_date'] = format_date
+    app.jinja_env.globals['current_utc_time'] = current_utc_time
     
     @app.context_processor
     def inject_get_locale():

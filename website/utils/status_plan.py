@@ -300,8 +300,9 @@ def handle_error_status(plan):
         ticket = PlanTicket(
             note="В плане нашли ошибки, статус изменен на Есть ошибки.",
             luck=True,
+            is_system=True,
             plan_id=plan.id,
-            user_id=current_user.id,
+            # user_id=current_user.id,
             begin_time=current_utc_time(),
         )
         db.session.add(ticket)
@@ -384,7 +385,8 @@ def handle_approved_status(plan, current_user):
             ticket = PlanTicket(
                 note="План был согласован и передан в следующую стадию проверки.",
                 luck=True,
-                user_id=current_user.id,
+                is_system=True,
+                # user_id=current_user.id,
                 plan_id=plan.id,
                 begin_time=current_utc_time()
             )

@@ -40,26 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const profileTabs = document.getElementById('profileTabs');
-    if (profileTabs) {
-        const tabButtons = profileTabs.querySelectorAll('.profile-tab');
-        const tabPanels = document.querySelectorAll('.profile-tab-panel');
-
-        function activateTab(tabName) {
-            tabButtons.forEach((btn) => {
-                const isActive = btn.dataset.tab === tabName;
-                btn.classList.toggle('active', isActive);
-                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            });
-            tabPanels.forEach((panel) => {
-                panel.classList.toggle('active', panel.dataset.tabPanel === tabName);
-            });
-        }
-
-        tabButtons.forEach((btn) => {
-            btn.addEventListener('click', () => activateTab(btn.dataset.tab));
-        });
-    }
+    // Переключение вкладок (.profile-tabs/.profile-tab-panel) теперь общее
+    // для всех страниц — см. initProfileTabs() в base.js.
 
     initAccountVerification();
 });

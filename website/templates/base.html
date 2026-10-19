@@ -21,6 +21,10 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/logo-white.svg')}}">
 
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Regular.woff2') }}" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Medium.woff2') }}" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-SemiBold.woff2') }}" crossorigin>
+
     {% block extra_css %}
         <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">

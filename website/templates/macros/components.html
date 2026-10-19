@@ -394,6 +394,92 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     </span>
   </div>
 </div>
+{% endmacro %} {% macro plan_status_card(plan, current_user) %}
+{% set current_path =
+plan.approval_paths|selectattr('is_viewed', 'equalto', False)|sort(attribute='step_order')|first %}
+{% set is_current_user_step =
+current_path and current_path.organization_id == current_user.organization_id %}
+{% set can_audit =
+is_current_user_step and (not plan.is_approved) and (not plan.is_error) %}
+{% set can_change_status = can_audit and plan.afch %}
+{% set can_change_status_appr = can_audit %}
+{% if not can_audit %}
+  {% if plan.is_approved %}
+    {% set approve_hint = _('План уже утверждён — изменение статуса недоступно') %}
+  {% elif plan.is_error %}
+    {% set approve_hint = _('В плане уже отмечены ошибки — изменение статуса недоступно') %}
+  {% else %}
+    {% set approve_hint = _('Сейчас не ваш этап проверки плана') %}
+  {% endif %}
+{% else %}
+  {% set approve_hint = '' %}
+{% endif %}
+{% set error_hint = approve_hint if not can_audit else _('Сначала отправьте сообщение с описанием ошибок') %}
+
+<div class="plan-menu" id="planStatusCard" style="margin-bottom: 15px">
+  <div class="menu-conteiner">
+    <div class="menu-conteiner-btns">
+      <form
+        id="to_deletePlanForm"
+        action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
+        method="POST"
+        {% if not can_change_status %}title="{{ error_hint }}"{% endif %}
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="status" value="error" />
+        <button
+          id="to_deletePlanButton"
+          type="submit"
+          class="element {% if not can_change_status %}non{% endif %}"
+          {% if not can_change_status %}disabled{% endif %}
+        >
+          <img src="/static/img/Error.svg" class="btn-icon" />
+          <span class="btn-text">{{ _('Есть ошибки') }}</span>
+        </button>
+      </form>
+      <form
+        id="confirmPlanForm"
+        action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
+        method="POST"
+        {% if not can_change_status_appr %}title="{{ approve_hint }}"{% endif %}
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="status" value="approved" />
+        <button
+          id="confirmPlanButton"
+          type="submit"
+          class="element {% if not can_change_status_appr %}non{% endif %}"
+          {% if not can_change_status_appr %}disabled{% endif %}
+        >
+          <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
+          <span class="btn-text">
+            {% set approval_paths =
+            plan.approval_paths|sort(attribute='step_order') %} {% set
+            total_steps = approval_paths|length %} {% set current_user_path
+            = approval_paths|selectattr('organization_id', 'equalto',
+            current_user.organization_id)|first %} {% set is_last =
+            current_user_path and current_user_path.step_order ==
+            total_steps %} {% if is_last %} {{ _('Одобрить') }} {% else %}
+            {{ _('Согласовать') }} {% endif %}
+          </span>
+        </button>
+      </form>
+    </div>
+    <div class="menu-conteiner-title">
+      <span>Сменить статус</span>
+    </div>
+  </div>
+
+  <div class="menu-info-callout">
+    <span class="menu-info-callout-icon">{{ icons.icon_info() }}</span>
+    <div class="menu-info-callout-body">
+      <p class="menu-info-callout-title">{{ _('Как сменить статус') }}</p>
+      <p class="menu-info-callout-text">
+        {{ _('Чтобы отметить план как содержащий ошибки, сначала отправьте сообщение с их описанием — кнопка «Есть ошибки» станет доступна после этого. В противном случае просто кликните на кнопку "Согласовать"') }}
+      </p>
+    </div>
+  </div>
+</div>
 {% endmacro %} {% macro tickets_container(plan, current_user) %}
 <div class="tickets-container">
   {% if plan.tickets %}
@@ -426,6 +512,19 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
           >
             {{ icons.icon_info() }}
           </button>
+          {% set is_own_recent_ticket = current_user and ticket.user_id == current_user.id
+             and ticket.begin_time
+             and (current_utc_time() - ticket.begin_time).total_seconds() < 300 %}
+          {% if is_own_recent_ticket %}
+          <button
+            type="button"
+            class="btn-sender-delete"
+            data-ticket-id="{{ ticket.id }}"
+            title="{{ _('Удалить сообщение') }}"
+          >
+            {{ icons.icon_delete() }}
+          </button>
+          {% endif %}
         </div>
 
         <div class="message-bubble">

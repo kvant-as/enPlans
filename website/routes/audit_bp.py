@@ -1,5 +1,6 @@
 import logging
-from flask import Blueprint, current_app, flash, redirect, request, g
+from datetime import timedelta
+from flask import Blueprint, current_app, flash, redirect, request, g, jsonify, render_template_string
 from flask_login import login_required, current_user
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -158,6 +159,61 @@ def print_tickets(token):
         flash('Произошла ошибка при генерации PDF', 'error')
         return redirect(request.referrer)
 
+# Окно, в течение которого автор сообщения может удалить его сам (как
+# "удалить для всех" в мессенджерах) — после истечения кнопка в разметке
+# остаётся видимой (время по умолчанию при рендере не проверяем, см.
+# macros/components.html), но сервер всё равно откажет.
+TICKET_DELETE_WINDOW_MINUTES = 5
+
+
+@audit_bp.route('/delete-ticket/<token>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+@reader_forbidden
+def delete_ticket(token):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _error(message, status_code=400):
+        if is_ajax:
+            return jsonify({'success': False, 'error': message}), status_code
+        flash(message, 'error')
+        return redirect(request.referrer)
+
+    current_plan = g.current_plan
+    ticket_id = request.form.get('ticket_id', type=int)
+    if not ticket_id:
+        return _error('Сообщение не найдено', 404)
+
+    ticket = PlanTicket.query.filter_by(id=ticket_id, plan_id=current_plan.id).first()
+    if not ticket:
+        return _error('Сообщение не найдено', 404)
+
+    if ticket.user_id != current_user.id:
+        return _error('Можно удалять только свои сообщения', 403)
+
+    if not ticket.begin_time or (current_utc_time() - ticket.begin_time) > timedelta(minutes=TICKET_DELETE_WINDOW_MINUTES):
+        return _error(f'Удаление доступно только в течение {TICKET_DELETE_WINDOW_MINUTES} минут после отправки')
+
+    db.session.delete(ticket)
+    db.session.commit()
+
+    if is_ajax:
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.tickets_container(plan, current_user) }}
+            ''',
+            plan=current_plan,
+            current_user=current_user
+        )
+        return jsonify({'success': True, 'html': html})
+
+    flash('Сообщение удалено', 'success')
+    return redirect(request.referrer)
+
+
 @audit_bp.route('/create-ticket/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -165,50 +221,51 @@ def print_tickets(token):
 @session_required
 @reader_forbidden
 def create_ticket(token):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _error(message):
+        if is_ajax:
+            return jsonify({'success': False, 'error': message}), 400
+        flash(message, 'error')
+        return redirect(request.referrer)
+
     current_plan = g.current_plan
     if not current_plan:
-        flash('План не найден', 'error')
-        return redirect(request.referrer)
-    
+        return _error('План не найден')
+
     note = request.form.get('note')
-    
+
     if not note or not note.strip():
         current_app.logger.error("Empty message")
-        flash('Сообщение не может быть пустым', 'error')
-        return redirect(request.referrer)
-    
+        return _error('Сообщение не может быть пустым')
+
     if not current_plan.is_sent:
-        flash('План не находится на этапе согласования', 'error')
-        return redirect(request.referrer)
-    
+        return _error('План не находится на этапе согласования')
+
     if current_plan.is_approved or current_plan.is_error:
-        flash('План уже обработан', 'error')
-        return redirect(request.referrer)
-    
+        return _error('План уже обработан')
+
     current_path = PlanApprovalPath.query.filter_by(
         plan_id=current_plan.id,
         is_viewed=False
     ).order_by(PlanApprovalPath.step_order).first()
-    
+
     if not current_path:
-        flash('Нет активных шагов для проверки', 'error')
-        return redirect(request.referrer)
-    
+        return _error('Нет активных шагов для проверки')
+
     if current_path.organization_id != current_user.organization_id:
-        flash('У вас нет прав на отправку сообщения для этого этапа', 'error')
-        return redirect(request.referrer)
-    
+        return _error('У вас нет прав на отправку сообщения для этого этапа')
+
     prev_path = PlanApprovalPath.query.filter(
         PlanApprovalPath.plan_id == current_plan.id,
         PlanApprovalPath.step_order == current_path.step_order - 1
     ).first()
-    
+
     if prev_path and not prev_path.is_viewed:
-        flash('Предыдущий этап еще не пройден', 'error')
-        return redirect(request.referrer)
-    
+        return _error('Предыдущий этап еще не пройден')
+
     current_plan.afch = True
-    
+
     new_ticket = PlanTicket(
         note=note.strip(),
         luck=False,
@@ -220,6 +277,28 @@ def create_ticket(token):
 
     db.session.add(new_ticket)
     db.session.commit()
-    
+
+    if is_ajax:
+        html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.tickets_container(plan, current_user) }}
+            ''',
+            plan=current_plan,
+            current_user=current_user
+        )
+        # plan.afch стал True выше — "Есть ошибки" могла разблокироваться,
+        # поэтому карточку "Сменить статус" тоже нужно переотрисовать и
+        # отдать отдельно (см. обработчик в plan_audit.html).
+        status_html = render_template_string(
+            '''
+            {% import 'macros/components.html' as components %}
+            {{ components.plan_status_card(plan, current_user) }}
+            ''',
+            plan=current_plan,
+            current_user=current_user
+        )
+        return jsonify({'success': True, 'html': html, 'status_html': status_html})
+
     flash('Сообщение отправлено', 'success')
     return redirect(request.referrer)

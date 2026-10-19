@@ -139,6 +139,30 @@ html[data-theme] .fixed-header {
   --background-warning: #383f12;     /* было #f9ffd8 */
 }
 
+/* website/static/css/base.css :: .plan-cont-* статусные градиенты —
+   заданы напрямую (не через переменную, см. комментарий там же), поэтому
+   переопределение --background-*/-submited выше их не затрагивает.
+   Приглушённые тёмные версии вместо светлой пастели — яркие градиенты
+   на тёмном фоне резали бы глаз. */
+:root[data-theme="dark"] .plan-cont-redac {
+  background: linear-gradient(135deg, #241f3d 0%, #352c5c 100%);
+}
+:root[data-theme="dark"] .plan-cont-control {
+  background: linear-gradient(135deg, #0f2a26 0%, #184940 100%);
+}
+:root[data-theme="dark"] .plan-cont-sent {
+  background: linear-gradient(135deg, #15233a 0%, #203e63 100%);
+}
+:root[data-theme="dark"] .plan-cont-sogl {
+  background: linear-gradient(135deg, #0f2a2d 0%, #1b474d 100%);
+}
+:root[data-theme="dark"] .plan-cont-eror {
+  background: linear-gradient(135deg, #341717 0%, #522323 100%);
+}
+:root[data-theme="dark"] .plan-cont-sub {
+  background: linear-gradient(135deg, #0f2613 0%, #1a4420 100%);
+}
+
 /* ------------------------------------------------------------ *
  * 4) На мобильных было принудительное body{background:var(--white)},
  *    перебивавшее тему — эта селекторная специфичность выше, побеждает.
@@ -631,6 +655,35 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] .quarter-btn {
   background: #1b2027;
   color: #eef1f5;
+}
+
+/* website/static/css/base.css :: .menu-info-callout */
+:root[data-theme="dark"] .menu-info-callout {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+:root[data-theme="dark"] .menu-info-callout-icon {
+  background: rgba(96, 165, 250, 0.2);
+  color: #93c5fd;
+}
+:root[data-theme="dark"] .menu-info-callout-title {
+  color: #eef1f5;
+}
+:root[data-theme="dark"] .menu-info-callout-text {
+  color: #b7c0c9;
+}
+
+/* website/static/css/base.css :: .status-change-hint */
+:root[data-theme="dark"] .status-change-hint {
+  background: linear-gradient(135deg, #2b2410 0%, #352b0d 100%);
+  border-color: rgba(217, 158, 32, 0.3);
+}
+:root[data-theme="dark"] .status-change-hint-icon {
+  background: rgba(245, 180, 60, 0.18);
+  color: #f5b43c;
+}
+:root[data-theme="dark"] .status-change-hint-text {
+  color: #e8c477;
 }
 
 /* website/static/css/base.css :: .danger-zone */
@@ -2187,6 +2240,34 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] .plan-org-name,
 :root[data-theme="dark"] .plan-org-param {
   border-color: rgba(255, 255, 255, 0.25);
+}
+/* Бейджи наследуют color: var(--black) из base.css — на новых тёмных
+   градиентах .plan-cont-* (см. правило 3 выше) это было бы чёрным по
+   тёмному. Меняем на светлый оттенок того же цвета, что уже используют
+   .status-* бейджи в шапке плана, для единообразия. */
+:root[data-theme="dark"] .plan-cont-redac .plan-org-name,
+:root[data-theme="dark"] .plan-cont-redac .plan-org-param {
+  color: #c3b8ff;
+}
+:root[data-theme="dark"] .plan-cont-control .plan-org-name,
+:root[data-theme="dark"] .plan-cont-control .plan-org-param {
+  color: #88ddce;
+}
+:root[data-theme="dark"] .plan-cont-sent .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sent .plan-org-param {
+  color: #a8c7f5;
+}
+:root[data-theme="dark"] .plan-cont-sogl .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sogl .plan-org-param {
+  color: #9fe8ec;
+}
+:root[data-theme="dark"] .plan-cont-eror .plan-org-name,
+:root[data-theme="dark"] .plan-cont-eror .plan-org-param {
+  color: #e77e7e;
+}
+:root[data-theme="dark"] .plan-cont-sub .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sub .plan-org-param {
+  color: #6fec9d;
 }
 :root[data-theme="dark"] svg {
   color: var(--text-title);

@@ -1658,7 +1658,16 @@ function initConfirmModal(config) {
         yesButton.addEventListener('click', function () {
             modalElement.classList.remove('active');
             if (modalElement._currentForm) {
-                modalElement._currentForm.submit();
+                // requestSubmit() (в отличие от submit()) реально диспатчит
+                // событие 'submit' — без этого любой addEventListener('submit', ...)
+                // на форме (например AJAX-перехват в plan_audit.html) никогда
+                // не сработает, и форма просто отправляется нативно с
+                // перезагрузкой страницы.
+                if (typeof modalElement._currentForm.requestSubmit === 'function') {
+                    modalElement._currentForm.requestSubmit();
+                } else {
+                    modalElement._currentForm.submit();
+                }
             }
         });
     }
@@ -1745,7 +1754,9 @@ class MultiStepForm {
         this.elements.dropdown = document.getElementById('organization-dropdown');
         this.elements.list = document.getElementById('organization-list');
         this.elements.loading = document.getElementById('organization-loading');
-        this.elements.moreButton = document.getElementById('organization-more');
+        this.elements.empty = document.getElementById('organization-empty');
+        this.elements.tableWrap = document.querySelector('.org-results-table-wrap');
+        this.elements.step3Container = document.querySelector('.auth-step-3');
     }
 
     bindEvents() {
@@ -1778,13 +1789,10 @@ class MultiStepForm {
             this.elements.searchInput.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
         }
         
-        if (this.elements.moreButton) {
-            const loadMoreBtn = this.elements.moreButton.querySelector('.load-more-btn');
-            if (loadMoreBtn) {
-                loadMoreBtn.addEventListener('click', () => this.handleLoadMore());
-            }
+        if (this.elements.tableWrap) {
+            this.elements.tableWrap.addEventListener('scroll', () => this.handleTableScroll());
         }
-        
+
         if (this.elements.form) {
             this.elements.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
         }
@@ -1852,11 +1860,11 @@ class MultiStepForm {
     }
 
     selectItem(item) {
-        document.querySelectorAll('.search-item').forEach(el => {
+        document.querySelectorAll('.org-result-row').forEach(el => {
             el.classList.remove('selected');
         });
-        
-        const clickedElement = document.querySelector(`.search-item[data-id="${item.id}"]`);
+
+        const clickedElement = document.querySelector(`.org-result-row[data-id="${item.id}"]`);
         if (clickedElement) {
             clickedElement.classList.add('selected');
         }
@@ -2044,9 +2052,18 @@ class MultiStepForm {
 
     handleSearchFocus() {
         const query = this.searchData.query;
-        if (query && query.length >= this.config.minSearchLength && 
+        if (query && query.length >= this.config.minSearchLength &&
             this.elements.dropdown && this.elements.list && this.elements.list.children.length > 0) {
-            this.elements.dropdown.style.display = 'block';
+            this.showDropdown();
+        }
+    }
+
+    showDropdown() {
+        if (this.elements.dropdown) {
+            this.elements.dropdown.classList.add('active');
+        }
+        if (this.elements.step3Container) {
+            this.elements.step3Container.classList.add('has-results');
         }
     }
 
@@ -2060,6 +2077,15 @@ class MultiStepForm {
         if (this.searchData.hasMore && this.searchData.query && !this.searchData.loading) {
             this.searchData.page += 1;
             this.searchEntities(this.searchData.query, this.searchData.page, true);
+        }
+    }
+
+    handleTableScroll() {
+        const el = this.elements.tableWrap;
+        if (!el) return;
+        const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+        if (nearBottom) {
+            this.handleLoadMore();
         }
     }
 
@@ -2103,52 +2129,51 @@ class MultiStepForm {
 
     handleSearchResponse(data, append = false) {
         if (!this.elements.list || !this.elements.dropdown) return;
-        
+
         const items = data.organizations || [];
-        
+
         if (!append) {
             this.elements.list.innerHTML = '';
         }
-        
+
         if (items.length > 0) {
             items.forEach(item => {
                 const itemElement = this.createListItem(item);
                 this.elements.list.appendChild(itemElement);
             });
-            
+
             this.searchData.hasMore = data.has_next || false;
-            if (this.elements.moreButton) {
-                this.elements.moreButton.style.display = data.has_next ? 'block' : 'none';
+            if (this.elements.empty) {
+                this.elements.empty.style.display = 'none';
             }
-            
-            this.elements.dropdown.style.display = 'block';
+
+            this.showDropdown();
         } else if (!append) {
-            this.elements.list.innerHTML = '<div class="no-results">Ничего не найдено</div>';
-            this.elements.dropdown.style.display = 'block';
-            if (this.elements.moreButton) {
-                this.elements.moreButton.style.display = 'none';
+            this.searchData.hasMore = false;
+            if (this.elements.empty) {
+                this.elements.empty.textContent = 'Ничего не найдено';
+                this.elements.empty.style.display = 'block';
             }
+            this.showDropdown();
         }
     }
 
     createListItem(item) {
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.dataset.id = item.id;
-        
-        div.innerHTML = `
-            <div class="item-name">${this.escapeHtml(item.name)}</div>
-            <div class="item-details">
-                <span class="item-okpo">ОКПО: ${this.escapeHtml(item.okpo || '—')}</span>
-                <span class="item-ynp">УНП: ${this.escapeHtml(item.ynp || '—')}</span>
-            </div>
+        const tr = document.createElement('tr');
+        tr.className = 'org-result-row';
+        tr.dataset.id = item.id;
+
+        tr.innerHTML = `
+            <td class="item-name">${this.escapeHtml(item.name)}</td>
+            <td class="item-okpo">${this.escapeHtml(item.okpo || '—')}</td>
+            <td class="item-ynp">${this.escapeHtml(item.ynp || '—')}</td>
         `;
-        
-        div.addEventListener('click', () => {
+
+        tr.addEventListener('click', () => {
             this.selectItem(item);
         });
-        
-        return div;
+
+        return tr;
     }
 
     showLoading(show) {
@@ -2161,21 +2186,29 @@ class MultiStepForm {
         if (this.elements.list) {
             this.elements.list.innerHTML = '';
         }
-        if (this.elements.moreButton) {
-            this.elements.moreButton.style.display = 'none';
+        if (this.elements.empty) {
+            this.elements.empty.style.display = 'none';
         }
+        this.searchData.hasMore = false;
     }
 
     hideDropdown() {
         if (this.elements.dropdown) {
-            this.elements.dropdown.style.display = 'none';
+            this.elements.dropdown.classList.remove('active');
+        }
+        if (this.elements.step3Container) {
+            this.elements.step3Container.classList.remove('has-results');
         }
     }
 
     showError(message = 'Ошибка загрузки данных') {
         if (this.elements.list && this.elements.dropdown) {
-            this.elements.list.innerHTML = `<div class="error">${message}</div>`;
-            this.elements.dropdown.style.display = 'block';
+            this.elements.list.innerHTML = '';
+            if (this.elements.empty) {
+                this.elements.empty.textContent = message;
+                this.elements.empty.style.display = 'block';
+            }
+            this.showDropdown();
         }
         this.showLoading(false);
     }
@@ -2631,6 +2664,35 @@ document.addEventListener('DOMContentLoaded', function() {
 //         window.initCookieBanner();
 //     }
 // });
+
+// Вкладки в стиле личного кабинета (.profile-tabs/.profile-tab-panel) —
+// общий инициализатор для любой страницы, где они встречаются (профиль,
+// проверка плана и т.д.), поддерживает несколько независимых групп вкладок
+// на одной странице (панели ищутся среди соседей самого блока вкладок).
+function initProfileTabs() {
+    document.querySelectorAll('.profile-tabs').forEach((tabsEl) => {
+        const tabButtons = tabsEl.querySelectorAll('.profile-tab');
+        const container = tabsEl.parentElement;
+        if (!container) return;
+        const tabPanels = container.querySelectorAll(':scope > .profile-tab-panel');
+
+        function activateTab(tabName) {
+            tabButtons.forEach((btn) => {
+                const isActive = btn.dataset.tab === tabName;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            tabPanels.forEach((panel) => {
+                panel.classList.toggle('active', panel.dataset.tabPanel === tabName);
+            });
+        }
+
+        tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', initProfileTabs);
 
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');

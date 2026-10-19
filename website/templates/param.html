@@ -178,74 +178,92 @@ endblock %} {% block content %}
     </div>
 
     <div class="step auth-step-3 auth-container" style="display: none">
-      <div class="auth-container-title">
-        {{ _('Выбор организации') }}
-      </div>
-      <div class="auth-choose" style="justify-content: center" role="tablist">
-        <a
-          class="auth-tab active wave-effect"
-          role="tab"
-          style="width: 100%"
-          aria-selected="true"
-        >
-          {{ _('Шаг 3') }}
-        </a>
-      </div>
-
-      <div class="selected-role-display">
-        <div class="selected-role-card" id="selected-role-card">
-          <div class="selected-role-icon" id="selected-role-icon">
-            {{ icons.icon_profile() }}
+      <div class="auth-step3-layout">
+        <div class="auth-step3-main">
+          <div class="auth-container-title">
+            {{ _('Выбор организации') }}
           </div>
-          <div class="selected-role-info">
-            <div  class="selected-role-title">
-              <span>Ваша роль </span>
-              <span id="selected-role-title">Респондент</span>
+          <div class="auth-choose" style="justify-content: center" role="tablist">
+            <a
+              class="auth-tab active wave-effect"
+              role="tab"
+              style="width: 100%"
+              aria-selected="true"
+            >
+              {{ _('Шаг 3') }}
+            </a>
+          </div>
+
+          <div class="selected-role-display">
+            <div class="selected-role-card" id="selected-role-card">
+              <div class="selected-role-icon" id="selected-role-icon">
+                {{ icons.icon_profile() }}
+              </div>
+              <div class="selected-role-info">
+                <div  class="selected-role-title">
+                  <span>Ваша роль </span>
+                  <span id="selected-role-title">Респондент</span>
+                </div>
+                <div class="selected-role-subtitle" id="selected-role-subtitle">Формирование и подача плана мероприятий по энергосбережению</div>
+              </div>
             </div>
-            <div class="selected-role-subtitle" id="selected-role-subtitle">Формирование и подача плана мероприятий по энергосбережению</div>
+          </div>
+
+          <div class="form-group">
+            <label>{{ _('Поиск организации') }} <span class="required-star">*</span></label>
+            <div class="input-with-icon search-container">
+              {{ icons.icon_search() }}
+              <input
+                type="text"
+                name="organization_search"
+                id="organization-search"
+                placeholder="{{ _('Наименование или ОКПО или УНП') }}"
+                class="search-input auth-input"
+                autocomplete="off"
+              />
+            </div>
+            <input type="hidden" name="organization_id" id="organization_id" />
+          </div>
+          <hr>
+          <div class="button-auth-area">
+            <button type="submit" class="main-btn main-btn-primary" id="submit-btn" disabled>
+              {{ icons.icon_login() }}
+              <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
+            </button>
+            <button type="button" class="svg-btn" id="prev-btn-3">
+              {{ icons.back_icon() }}
+              <span class="btn-text">{{ _('Назад') }}</span>
+            </button>
+          </div>
+          <div class="auth-footer">
+            <a href="/no-org" class="forgot-password">Нет организации?</a>
           </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label>{{ _('Поиск организации') }} <span class="required-star">*</span></label>
-        <div class="input-with-icon search-container">
-          {{ icons.icon_search() }}
-          <input
-            type="text"
-            name="organization_search"
-            id="organization-search"
-            placeholder="{{ _('Наименование или ОКПО или УНП') }}"
-            class="search-input auth-input"
-            autocomplete="off"
-          />
-          <div class="search-dropdown" id="organization-dropdown" style="display: none">
-            <div class="search-list" id="organization-list"></div>
+        <div class="org-results-panel" id="organization-dropdown">
+          <div class="org-results-header">
+            {{ icons.icon_search() }}
+            <span>{{ _('Результаты поиска') }}</span>
+          </div>
+          <div class="org-results-table-wrap">
+            <table class="org-results-table">
+              <thead>
+                <tr>
+                  <th>{{ _('Наименование') }}</th>
+                  <th>{{ _('ОКПО') }}</th>
+                  <th>{{ _('УНП') }}</th>
+                </tr>
+              </thead>
+              <tbody id="organization-list"></tbody>
+            </table>
+            <div class="org-results-empty" id="organization-empty" style="display: none">
+              {{ _('Ничего не найдено') }}
+            </div>
             <div class="search-loading" id="organization-loading" style="display: none">
               {{ _('Загрузка...') }}
             </div>
-            <div class="search-more" id="organization-more" style="display: none">
-              <button type="button" class="load-more-btn">
-                {{ _('Загрузить еще') }}
-              </button>
-            </div>
           </div>
         </div>
-        <input type="hidden" name="organization_id" id="organization_id" />
-      </div>
-      <hr>
-      <div class="button-auth-area">
-        <button type="submit" class="main-btn main-btn-primary" id="submit-btn" disabled>
-          {{ icons.icon_login() }}
-          <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
-        </button>
-        <button type="button" class="svg-btn" id="prev-btn-3">
-          {{ icons.back_icon() }}
-          <span class="btn-text">{{ _('Назад') }}</span>
-        </button>
-      </div>
-      <div class="auth-footer">
-        <a href="/no-org" class="forgot-password">Нет организации?</a>
       </div>
     </div>
 

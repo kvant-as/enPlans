@@ -11,9 +11,8 @@ next_path = plan.approval_paths|selectattr('step_order', 'equalto',
 current_path.step_order + 1)|first %} {% endif %} {% set can_audit =
 is_current_user_step and (not plan.is_approved) and (not plan.is_error) %} {%
 set can_cancel = (user_has_viewed_current and (not next_path or not
-next_path.is_viewed)) or plan.is_error or plan.is_approved %} {% set
-can_change_status = can_audit and plan.afch %} {% set can_change_status_appr =
-can_audit %}
+next_path.is_viewed)) or plan.is_error or plan.is_approved %}
+{% set cancel_hint = _('Доступно только после подтверждения текущего этапа и пока план не ушёл дальше по цепочке согласования') %}
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }} {{
@@ -43,6 +42,7 @@ can_audit %}
                 id="cancel_auditPlanForm"
                 action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
                 method="POST"
+                {% if not can_cancel %}title="{{ cancel_hint }}"{% endif %}
               >
                 <input
                   type="hidden"
@@ -96,72 +96,16 @@ can_audit %}
       </div>
     </div>
 
-    <div class="plan-menu" style="margin-bottom: 15px">
-      <div class="menu-conteiner">
-        <div class="menu-conteiner-btns">
-          <form
-            id="to_deletePlanForm"
-            action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="error" />
-            <button
-              id="to_deletePlanButton"
-              type="submit"
-              class="element {% if not can_change_status %}non{% endif %}"
-              {%
-              if
-              not
-              can_change_status
-              %}disabled{%
-              endif
-              %}
-            >
-              <img src="/static/img/Error.svg" class="btn-icon" />
-              <span class="btn-text">{{ _('Есть ошибки') }}</span>
-            </button>
-          </form>
-          <form
-            id="confirmPlanForm"
-            action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
-            method="POST"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="status" value="approved" />
-            <button
-              id="confirmPlanButton"
-              type="submit"
-              class="element {% if not can_change_status_appr %}non{% endif %}"
-              {%
-              if
-              not
-              can_change_status_appr
-              %}disabled{%
-              endif
-              %}
-            >
-              <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
-              <span class="btn-text">
-                {% set approval_paths =
-                plan.approval_paths|sort(attribute='step_order') %} {% set
-                total_steps = approval_paths|length %} {% set current_user_path
-                = approval_paths|selectattr('organization_id', 'equalto',
-                current_user.organization_id)|first %} {% set is_last =
-                current_user_path and current_user_path.step_order ==
-                total_steps %} {% if is_last %} {{ _('Одобрить') }} {% else %}
-                {{ _('Согласовать') }} {% endif %}
-              </span>
-            </button>
-          </form>
-        </div>
-        <div class="menu-conteiner-title">
-          <span>Сменить статус</span>
-        </div>
-      </div>
-    </div>
+    {{ component.plan_status_card(plan, current_user) }}
 
-    {{ component.tickets_container(plan, current_user) }} {% if can_audit %}
+    {{ component.tickets_container(plan, current_user) }}
+
+    <form id="deleteTicketForm" action="{{ url_for('audit_bp.delete_ticket', token=plan.token) }}" method="POST" style="display: none;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="ticket_id" id="delete-ticket-id-input" value="" />
+    </form>
+
+    {% if can_audit %}
     <form
       id="sent_mesPlanForm"
       class="main-form"
@@ -173,7 +117,7 @@ can_audit %}
         <div class="textarea-wrapper">
           <textarea
             class="sent-textarea"
-            placeholder="Введите сообщение..."
+            placeholder="Введите сообщение... Enter — отправить, Shift+Enter — новая строка"
             rows="1"
             maxlength="500"
             name="note"
@@ -182,106 +126,118 @@ can_audit %}
           <span class="char-counter">0/500</span>
         </div>
         <button id="sent_mesPlanButton" type="submit" class="chat-btn">
+          <span class="btn-spinner" aria-hidden="true"></span>
           {{ icons.icon_chatbtn() }}
           <span class="btn-text">Отправить</span>
         </button>
       </div>
     </form>
-    {% endif %} {% if plan.is_sent or plan.is_approved%} {{
-    component.plan_agree_slider(plan, current_user) }} {%endif%}
-    <hr />
-    <h1 class="name">{{ _('Предприятие') }}</h1>
-    {{ component.organization_view_card(plan.organization) }}
+    {% endif %} 
+    
+    {% if plan.is_sent or plan.is_approved%} {{component.plan_agree_slider(plan, current_user) }} {%endif%}
+    <hr>
 
-    <hr />
-    <h1 class="name">{{ _('Респондент') }}</h1>
+    <div class="profile-tabs" id="auditTabs" role="tablist">
+      <button type="button" class="profile-tab active" data-tab="org" role="tab" aria-selected="true">
+        {{ icons.icon_org() }}
+        <span>{{ _('Предприятие') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="respondent" role="tab" aria-selected="false">
+        {{ icons.icon_profile() }}
+        <span>{{ _('Респондент') }}</span>
+      </button>
+    </div>
 
-    <div class="row-app-group">
+    <div class="profile-tab-panel active" data-tab-panel="org">
+      {{ component.organization_view_card(plan.organization) }}
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="respondent">
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Фамилия') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              maxlength="15"
+              value="{{ plan.user.last_name if plan.user else '' }}"
+              placeholder="{{ _('Фамилия') }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Имя') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input
+              type="text"
+              maxlength="15"
+              value="{{ plan.user.first_name if plan.user else '' }}"
+              placeholder="{{ _('Имя') }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+      </div>
       <div class="app-group">
-        <label>{{ _('Фамилия') }}</label>
+        <label>{{ _('Отчество') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
             type="text"
             maxlength="15"
-            value="{{ plan.user.last_name if plan.user else '' }}"
-            placeholder="{{ _('Фамилия') }}"
+            value="{{ plan.user.patronymic_name if plan.user else '' }}"
+            placeholder="{{ _('Отчество') }}"
+            class="app-input"
+          />
+        </div>
+      </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Email') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_email() }}
+            <input
+              type="text"
+              maxlength="15"
+              value="{{ plan.user.email if plan.user else '' }}"
+              placeholder="{{ _('demo@example.com') }}"
+              class="app-input"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Телефон') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_contacts() }}
+          <input
+            type="text"
+            maxlength="15"
+            value="{{ plan.user.telephone if plan.user else '' }}"
+            placeholder="+375.."
             class="app-input"
           />
         </div>
       </div>
       <div class="app-group">
-        <label>{{ _('Имя') }}</label>
+        <label>{{ _('Должность') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
             type="text"
+            id="secondname"
             maxlength="15"
-            value="{{ plan.user.first_name if plan.user else '' }}"
-            placeholder="{{ _('Имя') }}"
+            value="{{ plan.user.post or '' }}"
+            placeholder="{{ _('Должность') }}"
             class="app-input"
           />
         </div>
       </div>
     </div>
-    <div class="app-group">
-      <label>{{ _('Отчество') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_profile() }}
-        <input
-          type="text"
-          maxlength="15"
-          value="{{ plan.user.patronymic_name if plan.user else '' }}"
-          placeholder="{{ _('Отчество') }}"
-          class="app-input"
-        />
-      </div>
-    </div>
-    <div class="row-app-group">
-      <div class="app-group">
-        <label>{{ _('Email') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_email() }}
-          <input
-            type="text"
-            maxlength="15"
-            value="{{ plan.user.email if plan.user else '' }}"
-            placeholder="{{ _('demo@example.com') }}"
-            class="app-input"
-          />
-        </div>
-      </div>
-    </div>
-    <div class="app-group">
-      <label>{{ _('Телефон') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_contacts() }}
-        <input
-          type="text"
-          maxlength="15"
-          value="{{ plan.user.telephone if plan.user else '' }}"
-          placeholder="+375.."
-          class="app-input"
-        />
-      </div>
-    </div>
-    <div class="app-group">
-      <label>{{ _('Должность') }}</label>
-      <div class="input-with-icon">
-        {{ icons.icon_profile() }}
-        <input
-          type="text"
-          id="secondname"
-          maxlength="15"
-          value="{{ plan.user.post or '' }}"
-          placeholder="{{ _('Должность') }}"
-          class="app-input"
-        />
-      </div>
-    </div>
-
     <hr />
-
     <h1 class="name">{{ _('Прочая информация') }}</h1>
     <div class="dates-card">
       <div class="dates-list">
@@ -324,7 +280,8 @@ can_audit %}
         </div>
       </div>
     </div>
-  </div>
+</div>
+
 </div>
 {{ affects.bg_effect() }}
 <script>
@@ -335,6 +292,91 @@ can_audit %}
   function togglePlanTicketInfo(ticketId) {
     window.ticketInfoInstance.show(ticketId, event.currentTarget);
   }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const deleteForm = document.getElementById("deleteTicketForm");
+    const ticketIdInput = document.getElementById("delete-ticket-id-input");
+    if (!deleteForm || !ticketIdInput) return;
+
+    const csrfInput = deleteForm.querySelector('input[name="csrf_token"]');
+    const csrfToken = csrfInput ? csrfInput.value : "";
+
+    // Кнопки удаления создаются заново при каждой переотрисовке
+    // .tickets-container — делегируем клик на document, а не навешиваем
+    // обработчик на сами кнопки, иначе после отправки/удаления сообщения
+    // новые кнопки останутся без обработчика.
+    document.addEventListener("click", function (e) {
+      const delBtn = e.target.closest(".btn-sender-delete");
+      if (!delBtn) return;
+      e.preventDefault();
+
+      ticketIdInput.value = delBtn.dataset.ticketId;
+
+      const modal = document.getElementById("confirmModal2");
+      const textEl = document.getElementById("modal-text");
+      const textSecondEl = document.getElementById("modal-text-second");
+      if (textEl) textEl.textContent = "Удалить это сообщение?";
+      if (textSecondEl) textSecondEl.textContent = "Действие нельзя отменить.";
+      if (modal) {
+        modal.classList.add("active");
+        // confirmYes/confirmNo уже привязаны один раз глобально (см.
+        // initConfirmModal в base.js, вызывается для confirmPlanButton
+        // чуть ниже) — просто подставляем свою форму как "текущую",
+        // чтобы клик по "Да" отправил именно её.
+        modal._currentForm = deleteForm;
+      }
+    });
+
+    deleteForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const ticketId = ticketIdInput.value;
+      if (!ticketId) return;
+
+      const formData = new FormData(deleteForm);
+
+      try {
+        const response = await fetch(deleteForm.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken,
+          },
+          body: formData,
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const container = document.querySelector(".tickets-container");
+          if (container) {
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = data.html.trim();
+            const newContainer = wrapper.firstElementChild;
+            container.replaceWith(newContainer);
+
+            const messagesList = newContainer.querySelector(".tickets-messages-list");
+            if (messagesList) {
+              messagesList.scrollTop = messagesList.scrollHeight;
+            }
+          }
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage("Сообщение удалено", "success");
+          }
+        } else {
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage(data.error || "Не удалось удалить сообщение", "error");
+          }
+        }
+      } catch (error) {
+        console.error("[delete_ticket] error", error);
+        if (typeof messageFlash !== "undefined") {
+          messageFlash.addMessage("Не удалось удалить сообщение. Проверьте соединение.", "error");
+        }
+      } finally {
+        ticketIdInput.value = "";
+      }
+    });
+  });
 
   document.addEventListener("DOMContentLoaded", function () {
     const textarea = document.querySelector(".sent-textarea");
@@ -390,9 +432,110 @@ can_audit %}
       autoResize();
     });
 
+    // Enter отправляет сообщение (как в мессенджерах), Shift+Enter —
+    // перенос строки. requestSubmit() (не submit()) нужен, чтобы сработал
+    // наш собственный обработчик 'submit' ниже — form.submit() его бы
+    // пропустил и отправил форму нативно, с перезагрузкой страницы.
+    textarea.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (textarea.value.trim() && !sendButton.disabled) {
+          form.requestSubmit();
+        }
+      }
+    });
+
     updateCounter();
     autoResize();
     updateButtonState();
+
+    // Отправка сообщения через AJAX — без перезагрузки страницы. Контейнер
+    // сообщений (.tickets-container) целиком переотрисовывается на сервере
+    // (components.tickets_container) и просто подменяется в DOM, так что
+    // верстка карточек/системных сообщений остаётся в одном месте.
+    const form = document.getElementById("sent_mesPlanForm");
+    if (!form) return;
+
+    const csrfInput = form.querySelector('input[name="csrf_token"]');
+    const csrfToken = csrfInput ? csrfInput.value : "";
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      if (!textarea.value.trim()) return;
+
+      sendButton.disabled = true;
+      sendButton.classList.add("disabled", "is-checking");
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken,
+          },
+          body: formData,
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          const container = document.querySelector(".tickets-container");
+          if (container) {
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = data.html.trim();
+            const newContainer = wrapper.firstElementChild;
+            container.replaceWith(newContainer);
+
+            // Список сообщений переотрисован целиком — подсвечиваем именно
+            // последнее (только что отправленное) и прокручиваем его список
+            // вниз, чтобы оно было видно, не дожидаясь ручного скролла.
+            const messagesList = newContainer.querySelector(".tickets-messages-list");
+            if (messagesList) {
+              const lastMessage = messagesList.lastElementChild;
+              if (lastMessage) {
+                lastMessage.classList.add("tickets-message--just-sent");
+              }
+              messagesList.scrollTop = messagesList.scrollHeight;
+            }
+          }
+
+          // Отправка сообщения выставляет plan.afch = True на сервере —
+          // кнопка "Есть ошибки" (и текст подсказки рядом) могли
+          // разблокироваться, поэтому карточку "Сменить статус" тоже
+          // переотрисовываем, а не только список сообщений.
+          if (data.status_html) {
+            const statusCard = document.getElementById("planStatusCard");
+            if (statusCard) {
+              const statusWrapper = document.createElement("div");
+              statusWrapper.innerHTML = data.status_html.trim();
+              statusCard.replaceWith(statusWrapper.firstElementChild);
+            }
+          }
+
+          textarea.value = "";
+          updateCounter();
+          autoResize();
+
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage("Сообщение отправлено", "success");
+          }
+        } else {
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage(data.error || "Не удалось отправить сообщение", "error");
+          }
+        }
+      } catch (error) {
+        console.error("[create_ticket] error", error);
+        if (typeof messageFlash !== "undefined") {
+          messageFlash.addMessage("Не удалось отправить сообщение. Проверьте соединение.", "error");
+        }
+      } finally {
+        sendButton.classList.remove("is-checking");
+        updateButtonState();
+      }
+    });
   });
 </script>
 {% endblock %}

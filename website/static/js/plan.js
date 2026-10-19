@@ -2436,19 +2436,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initDeletePlanConfirmModal();
 
-    if (document.getElementById('sent_mesPlanButton')) {
-        initConfirmModal({
-            triggerId: 'sent_mesPlanButton',
-            formId: 'sent_mesPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отправить сообщение пользователю?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Если есть ошибки описывайте максимально подробно, для наилучшего восприятия со стороны пользователя.'
-        });
-    }
+    // Отправка сообщения больше не требует подтверждения — шлётся сразу по
+    // клику/Enter через AJAX (см. plan_audit.html), без промежуточного
+    // "Вы действительно хотите отправить?".
 
     if (document.getElementById('to_deletePlanButton')) {
         initConfirmModal({
