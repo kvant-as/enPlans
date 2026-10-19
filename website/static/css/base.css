@@ -4773,22 +4773,22 @@ input[type="checkbox"]:focus {
   border-color: rgba(0, 0, 0, 0.5);
 }
 .plan-cont-redac {
-  background: var(--background-redaced);
+  background: linear-gradient(135deg, #f3f0ff 0%, #d7cbff 100%);
 }
 .plan-cont-control {
-  background: var(--background-controled);
+  background: linear-gradient(135deg, #f0fffb 0%, #aef5e0 100%);
 }
 .plan-cont-sent {
-  background: var(--background-sented);
+  background: linear-gradient(135deg, #f0f6ff 0%, #bcd9ff 100%);
 }
 .plan-cont-sogl {
-  background: var(--background-sogl);
+  background: linear-gradient(135deg, #effffe 0%, #a9f2f5 100%);
 }
 .plan-cont-eror {
-  background: var(--background-erorsed);
+  background: linear-gradient(135deg, #fff1f1 0%, #ffb3b3 100%);
 }
 .plan-cont-sub {
-  background: var(--background-submited);
+  background: linear-gradient(135deg, #f1fff2 0%, #aff0b8 100%);
 }
 
 .plan-cont-column {
