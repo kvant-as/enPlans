@@ -185,10 +185,16 @@ def edit_param():
     telephone = request.form.get('telephone')
     post = request.form.get('post')
 
+    from ..user import parse_and_validate_phones
+    normalized_telephone, phone_error = parse_and_validate_phones(telephone)
+    if phone_error:
+        flash(phone_error, 'error')
+        return redirect(url_for('views.profile'))
+
     current_user.first_name = first_name
     current_user.last_name = last_name
     current_user.patronymic_name = patronymic_name
-    current_user.telephone = telephone
+    current_user.telephone = normalized_telephone
     current_user.post = post
     db.session.commit()
 

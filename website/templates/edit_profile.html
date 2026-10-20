@@ -57,18 +57,13 @@
       </div>
       <div class="app-group">
         <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
-        <div class="input-with-icon">
-          {{ icons.icon_contacts() }}
-          <input
-            type="text"
-            maxlength="13"
-            name="telephone"
-            value="{{current_user.telephone}}"
-            placeholder="Введите номер телефона"
-            class="app-input"
-            required
-          />
-        </div>
+        <div class="phone-group-list" id="edit-phone-group-list" data-existing-phones="{{ current_user.telephone or '' }}"></div>
+        <button type="button" class="phone-row-add" id="edit-add-phone-row">
+          {{ icons.icon_plus() }}
+          <span>{{ _('Добавить номер телефона') }}</span>
+        </button>
+        <div class="phone-hint">{{ _('Номер должен содержать 12 цифр вместе с кодом (+375). Можно указать не более 2 номеров') }}</div>
+        <input type="hidden" name="telephone" id="edit-telephone" required />
       </div>
       <div class="app-group">
         <label>{{ _('Должность') }}</label>

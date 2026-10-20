@@ -325,13 +325,25 @@ def export():
     status = request.args.get('status', 'all')
     year = request.args.get('year', 'all')
 
+    preselect_plan_id = request.args.get('plan_id', type=int)
+    preselect_format = request.args.get('format', '')
+    preselect_year = None
+    if preselect_plan_id:
+        preselect_plan = Plan.query.get(preselect_plan_id)
+        if preselect_plan:
+            preselect_year = preselect_plan.year
+            year = str(preselect_year)
+
     return render_template(
         'export.html',
         years=range(2026, 2050),
         current_user=current_user,
         hide_header=False,
         selected_status=status,
-        selected_year=year
+        selected_year=year,
+        preselect_plan_id=preselect_plan_id,
+        preselect_format=preselect_format,
+        preselect_year=preselect_year
     )
     
 @views.route('/export/start', methods=['POST'])
@@ -403,8 +415,8 @@ def download_export(task_id):
     return send_file(
         task['file_path'],
         as_attachment=True,
-        download_name=f'plans_export_{task_id[:8]}.zip',
-        mimetype='application/zip'
+        download_name=task.get('filename', f'plans_export_{task_id[:8]}.zip'),
+        mimetype=task.get('mime', 'application/zip')
     )
 
 @views.route('/news', methods=['GET'])

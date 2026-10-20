@@ -48,6 +48,9 @@
     </div>
 
     <div class="about-section">
+      
+      <h2 class="contact-title">Что такое Enplans?
+      </h2>
       <div class="features-container">
         <div class="about-feature-card">
           <div class="about-feature-header">
@@ -81,6 +84,8 @@
     </div>
 
     {% if latest_news %}
+    <div>
+      <h2 class="contact-title">Последняя новость</h2>
       <div class="news-card-large">
         <div class="news-card-large-content">
           <h2>{{ latest_news.title }}</h2>
@@ -104,6 +109,7 @@
         {% endif %}
       </div>
     {% endif %}
+    </div>
 
     <div id="contacts-cont" class="contact-glass">
       <h2 class="contact-title">Контакты</h2>

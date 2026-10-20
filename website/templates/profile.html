@@ -120,18 +120,7 @@
           />
         </div>
       </div>
-      <div class="app-group">
-        <label>{{ _('Телефон') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_contacts() }}
-          <input
-            type="text"
-            value="{{current_user.telephone}}"
-            placeholder="Номер телефона пользователя"
-            class="app-input"
-          />
-        </div>
-      </div>
+      {{ component.phone_display_group(current_user.telephone, label=_('Телефон'), placeholder=_('Номер телефона пользователя')) }}
       <div class="app-group">
         <label>{{ _('Должность') }}</label>
         <div class="input-with-icon">

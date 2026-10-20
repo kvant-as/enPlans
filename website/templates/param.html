@@ -8,7 +8,7 @@ endblock %} {% block content %}
       <a>EnPlans</a>
     </div>
     <p class="auth-subtitle">
-      {{ _('Формирование планов мероприятий <br/> по энергосбережению') }}
+      {{ _('Автоматизированный комплекс формирования, согласования и утверждения планов мероприятий по энергосбережению организаций') }}
     </p>
   </div>
 
@@ -19,9 +19,9 @@ endblock %} {% block content %}
     id="registration-form"
   >
     <div class="step auth-step-1 active auth-container">
-      <div class="auth-container-title">
-        {{ _('Ввод персональных данных') }}
-      </div>
+      <!-- <div class="auth-container-title">
+        {{ _('Шаг 1') }}
+      </div> -->
       <div class="auth-choose" style="justify-content: center" role="tablist">
         <a
           class="auth-tab active wave-effect"
@@ -29,7 +29,7 @@ endblock %} {% block content %}
           style="width: 100%"
           aria-selected="true"
         >
-          {{ _('Шаг 1') }}
+          {{ _('Ввод персональных данных') }}
         </a>
       </div>
       <div class="auth-form" id="form-part-1">
@@ -71,20 +71,74 @@ endblock %} {% block content %}
             maxlength="15"
             placeholder="{{ _('Введите отчество') }}"
             class="auth-input"
+            required
           />
         </div>
         <div class="form-group">
-          <label for="telephone">{{ _('Телефон') }} <span class="required-star">*</span></label>
-          <input
-            type="tel"
-            name="telephone"
-            value="{{ current_user.telephone or '' }}"
-            id="telephone"
-            maxlength="13"
-            placeholder="{{ _('Введите номер телефона') }}"
-            class="auth-input"
-            required
-          />
+          <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+          <div class="phone-group-list" id="phone-group-list">
+            <div class="phone-row" data-phone-row>
+              <div class="phone-code-select" data-code="29">
+                <button type="button" class="phone-code-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="phone-code-value">+375 29</span>
+                  <svg class="phone-code-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                <div class="phone-code-dropdown" role="listbox">
+                  <div class="phone-code-group-label">{{ _('Операторы') }}</div>
+                  <button type="button" class="phone-code-option selected" data-code="29" role="option">
+                    <span>+375 29</span><span class="phone-code-hint">A1</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="33" role="option">
+                    <span>+375 33</span><span class="phone-code-hint">МТС</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="44" role="option">
+                    <span>+375 44</span><span class="phone-code-hint">life:)</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="25" role="option">
+                    <span>+375 25</span><span class="phone-code-hint">МТС</span>
+                  </button>
+                  <div class="phone-code-group-label">{{ _('Города') }}</div>
+                  <button type="button" class="phone-code-option" data-code="17" role="option">
+                    <span>+375 17</span><span class="phone-code-hint">Минск</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="162" role="option">
+                    <span>+375 162</span><span class="phone-code-hint">Брест</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="212" role="option">
+                    <span>+375 212</span><span class="phone-code-hint">Витебск</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="232" role="option">
+                    <span>+375 232</span><span class="phone-code-hint">Гомель</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="152" role="option">
+                    <span>+375 152</span><span class="phone-code-hint">Гродно</span>
+                  </button>
+                  <button type="button" class="phone-code-option" data-code="222" role="option">
+                    <span>+375 222</span><span class="phone-code-hint">Могилёв</span>
+                  </button>
+                </div>
+              </div>
+              <input
+                type="text"
+                class="phone-digits-input auth-input"
+                inputmode="numeric"
+                autocomplete="off"
+                maxlength="7"
+                placeholder="{{ _('Номер телефона') }}"
+              />
+              <button type="button" class="phone-row-remove" aria-label="{{ _('Удалить номер') }}" style="display: none">
+                {{ icons.icon_delete() }}
+              </button>
+            </div>
+          </div>
+          <button type="button" class="phone-row-add" id="add-phone-row">
+            {{ icons.icon_plus() }}
+            <span>{{ _('Добавить номер телефона') }}</span>
+          </button>
+          <div class="phone-hint">{{ _('Номер должен содержать 12 цифр вместе с кодом (+375). Можно указать не более 2 номеров') }}</div>
+          <input type="hidden" name="telephone" id="telephone" required />
         </div>
         <div class="form-group">
           <label>{{ _('Должность') }}</label>
@@ -108,7 +162,6 @@ endblock %} {% block content %}
     </div>
 
     <div class="step auth-step-2 auth-container" style="display: none;">
-      <div class="auth-container-title">{{ _('Ваша роль в системе') }}</div>
       <div class="auth-choose" style="justify-content: center" role="tablist">
         <a
           class="auth-tab active wave-effect"
@@ -116,7 +169,7 @@ endblock %} {% block content %}
           style="width: 100%"
           aria-selected="true"
         >
-          {{ _('Шаг 2') }}
+          {{ _('Роль в системе') }}
         </a>
       </div>
 
@@ -180,9 +233,6 @@ endblock %} {% block content %}
     <div class="step auth-step-3 auth-container" style="display: none">
       <div class="auth-step3-layout">
         <div class="auth-step3-main">
-          <div class="auth-container-title">
-            {{ _('Выбор организации') }}
-          </div>
           <div class="auth-choose" style="justify-content: center" role="tablist">
             <a
               class="auth-tab active wave-effect"
@@ -190,7 +240,7 @@ endblock %} {% block content %}
               style="width: 100%"
               aria-selected="true"
             >
-              {{ _('Шаг 3') }}
+              {{ _('Выбор организации') }}
             </a>
           </div>
 

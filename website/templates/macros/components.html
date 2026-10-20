@@ -56,6 +56,14 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
         <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
         <span class="element-text">Квитанции</span>
       </a>
+      <a
+        href="{{ url_for('views.export', plan_id=plan.id, format='xlsx') }}"
+        class="element"
+        id=""
+      >
+        <img src="{{ url_for('static', filename='img/icon-excel.svg') }}" />
+        <span class="element-text">Экспорт в Excel</span>
+      </a>
     </div>
     <div class="menu-conteiner-title">
       <span>План</span>
@@ -109,7 +117,9 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
   <span>{{ _('Одобрен') }}</span>
   {% endif %}
 </a>
-{% endmacro %} {% macro back_header(plan=None, current_user=None,
+{% endmacro %} 
+
+{% macro back_header(plan=None, current_user=None,
 show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
 <div class="header-cont-for-back">
   <div class="plan-back-header">
@@ -119,7 +129,10 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
       onclick="window.location.href='{{ back_url }}'"
     >
       {{ icons.back_icon() }}
-      <span class="btn-text">{{ back_text if back_text else _('Назад') }}</span>
+      {% set computed_back_text = back_text if back_text is not none else _('Назад') %}
+      {% if computed_back_text %}
+      <span class="btn-text">{{ computed_back_text }}</span>
+      {% endif %}
     </button>
 
     <a class="plan-info">
@@ -141,6 +154,18 @@ current_user=None)%}
 <div class="header-cont">
   <nav class="navigation-container">
     <div
+      class="nav-item {% if active_tab == 'account' %} active{% endif %}"
+      onclick="window.location.href = '/profile'"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_profile() }} {% if active_tab == 'account' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Кабинет') }}</span>
+      <span class="nav-text-mobile">{{ _('Кабинет') }}</span>
+    </div>
+    <div
       class="nav-item {% if active_tab == 'plans' %} active{% endif %}"
       onclick="window.location.href = '/plans'"
     >
@@ -152,7 +177,7 @@ current_user=None)%}
       <span class="nav-text">{{ _('Планы') }}</span>
       <span class="nav-text-mobile">{{ _('Планы') }}</span>
     </div>
-    {% if current_user.is_auditor == false and current_user.is_reader == false %}
+  {#  {% if current_user.is_auditor == false and current_user.is_reader == false %}
     <div
       class="nav-item {% if active_tab == 'create' %} active{% endif %}"
       onclick="window.location.href = '/create-plan'"
@@ -165,7 +190,7 @@ current_user=None)%}
       <span class="nav-text">{{ _('Создать') }}</span>
       <span class="nav-text-mobile">{{ _('Создать') }}</span>
     </div>
-    {% endif %}
+    {% endif %}#}
  {#
     <div
       class="nav-item disabled-tab {% if active_tab == 'stats' %} active {% endif %}"
@@ -187,19 +212,6 @@ current_user=None)%}
       </div>
       <span class="nav-text">{{ _('Экспорт') }}</span>
       <span class="nav-text-mobile">{{ _('Экспорт') }}</span>
-    </div>
-
-    <div
-      class="nav-item {% if active_tab == 'account' %} active{% endif %}"
-      onclick="window.location.href = '/profile'"
-    >
-      <div class="nav-icon-wrapper">
-        {{ icons.icon_profile() }} {% if active_tab == 'account' %}
-        <div class="active-indicator"></div>
-        {% endif %}
-      </div>
-      <span class="nav-text">{{ _('Кабинет') }}</span>
-      <span class="nav-text-mobile">{{ _('Кабинет') }}</span>
     </div>
 
     {% if current_user and current_user.is_admin == true %}
@@ -827,21 +839,21 @@ selected_status='all', selected_year='all') %}
 {% endmacro %} {% macro plan_count(current_user) %}
 <div class="stats-container">
   <div class="stats-track">
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="all">
       <div class="stat">
         <a class="stat-number" id="stat-all">-</a>
         <a class="word-numb">{{ _('Все') }}</a>
       </div>
     </div>
     {% if current_user.is_auditor %}
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="sent">
       <div class="stat">
         <a class="stat-number-sent" id="stat-sent">-</a>
         <a class="word-numb">{{ _('Не просмотренные') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="sogl">
       <div class="stat">
         <a class="stat-number-sogl" id="stat-sogl">-</a>
         <a class="word-numb">{{ _('Согласованные') }}</a>
@@ -849,21 +861,21 @@ selected_status='all', selected_year='all') %}
       <div class="status-dot"></div>
     </div>
     {% else %}
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="draft">
       <div class="stat">
         <a class="stat-number-redac" id="stat-draft">-</a>
         <a class="word-numb">{{ _('В редакции') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="control">
       <div class="stat">
         <a class="stat-number-control" id="stat-control">-</a>
         <a class="word-numb">{{ _('Контроль пройден') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="sent">
       <div class="stat">
         <a class="stat-number-sent" id="stat-sent">-</a>
         <a class="word-numb">{{ _('На согласовании') }}</a>
@@ -871,14 +883,14 @@ selected_status='all', selected_year='all') %}
       <div class="status-dot"></div>
     </div>
     {% endif %}
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="error">
       <div class="stat">
         <a class="stat-number-eror" id="stat-error">-</a>
         <a class="word-numb">{{ _('Есть ошибки') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
-    <div class="stat-and-dot">
+    <div class="stat-and-dot" data-value="approved">
       <div class="stat">
         <a class="stat-number-sub" id="stat-approved">-</a>
         <a class="word-numb">{{ _('Утвержденные') }}</a>
@@ -966,5 +978,30 @@ selected_status='all', selected_year='all') %}
   </div>
 </div>
 {% endif %}
+{% endmacro %}
+
+{% macro phone_display_group(telephone, label=_('Телефон'), placeholder='+375..') %}
+{% set phones = (telephone or '').split(';') | map('trim') | select | list %}
+<div class="row-app-group">
+  {% if phones %}
+    {% for phone in phones %}
+    <div class="app-group">
+      <label>{{ label if loop.index == 1 else _('Дополнительный телефон') }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_contacts() }}
+        <input type="text" value="{{ phone }}" class="app-input" />
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="app-group">
+      <label>{{ label }}</label>
+      <div class="input-with-icon">
+        {{ icons.icon_contacts() }}
+        <input type="text" value="" placeholder="{{ placeholder }}" class="app-input" />
+      </div>
+    </div>
+  {% endif %}
+</div>
 {% endmacro %}
 

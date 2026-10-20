@@ -18,6 +18,42 @@ from werkzeug.security import generate_password_hash
 
 logger = logging.getLogger(__name__)
 
+PHONE_PREFIX = '+375'
+PHONE_TOTAL_DIGITS = 12
+PHONE_MAX_COUNT = 2
+
+FIELD_LABELS = {
+    'first_name': 'Имя',
+    'last_name': 'Фамилия',
+    'patronymic_name': 'Отчество',
+}
+
+def parse_and_validate_phones(raw_telephone):
+    """Разбирает один или несколько номеров (разделённых ';' или ','),
+    проверяет, что каждый начинается с +375 (международный формат хранения)
+    и содержит ровно PHONE_TOTAL_DIGITS цифр вместе с кодом, и что номеров
+    не больше PHONE_MAX_COUNT. Возвращает (строка_для_сохранения, ошибка)."""
+    if not raw_telephone or not str(raw_telephone).strip():
+        return None, 'Поле "Телефон" обязательно для заполнения!'
+
+    raw_numbers = [n.strip() for n in re.split(r'[;,]', raw_telephone) if n.strip()]
+    if not raw_numbers:
+        return None, 'Поле "Телефон" обязательно для заполнения!'
+
+    if len(raw_numbers) > PHONE_MAX_COUNT:
+        return None, f'Можно указать не более {PHONE_MAX_COUNT} номеров телефона!'
+
+    validated = []
+    for number in raw_numbers:
+        if not number.startswith(PHONE_PREFIX):
+            return None, f'Номер телефона "{number}" должен начинаться с {PHONE_PREFIX}!'
+        digits_only = re.sub(r'\D', '', number)
+        if len(digits_only) != PHONE_TOTAL_DIGITS:
+            return None, f'Номер телефона "{number}" должен содержать {PHONE_TOTAL_DIGITS} цифр вместе с кодом!'
+        validated.append(number)
+
+    return '; '.join(validated), None
+
 def gener_password():
     length=5
     characters = string.digits
@@ -81,18 +117,19 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     required_fields = {
         'first_name': first_name,
         'last_name': last_name,
-        'telephone': telephone
+        'patronymic_name': patronymic_name,
     }
-    
+
     for field_name, value in required_fields.items():
         if not value or not str(value).strip():
-            flash(f'Поле "{field_name}" обязательно для заполнения!', 'error')
+            flash(f'Поле "{FIELD_LABELS.get(field_name, field_name)}" обязательно для заполнения!', 'error')
             return redirect(url_for('auth.param'))
-    
-    if not telephone or len(telephone.strip()) < 5:
-        flash('Номер телефона должен содержать не менее 5 символов!', 'error')
-        return redirect(url_for('views.profile'))
-    
+
+    normalized_telephone, phone_error = parse_and_validate_phones(telephone)
+    if phone_error:
+        flash(phone_error, 'error')
+        return redirect(url_for('auth.param'))
+
     def parse_id(id_value):
         if not id_value or not str(id_value).strip():
             return None
@@ -112,19 +149,6 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     if len(filled_ids) == 0:
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
-    
-    normalized_telephone = telephone.strip()
-    # if normalized_telephone.startswith('+'):
-    #     plus = '+'
-    #     digits = ''.join(filter(str.isdigit, normalized_telephone[1:]))
-    #     normalized_telephone = plus + digits
-    # else:
-    #     normalized_telephone = ''.join(filter(str.isdigit, normalized_telephone))
-    
-    # existing_user = User.query.filter_by(telephone=normalized_telephone).first()
-    # if existing_user and existing_user.id != current_user.id:
-    #     flash('Пользователь с таким номером телефона уже зарегистрирован!', 'error')
-    #     return redirect(url_for('auth.param'))
     
     if user_type == 'respondent':
         current_user.is_auditor = False

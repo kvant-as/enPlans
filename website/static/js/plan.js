@@ -1366,8 +1366,7 @@ class PlansLoader {
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
-            const selectedSpan = document.getElementById('selected-status');
-            
+
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1377,20 +1376,22 @@ class PlansLoader {
                     statusDropdown.classList.toggle('active');
                 });
             }
-            
+
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const value = item.dataset.value;
-                    this.currentStatus = value;
-                    this.currentPage = 1;
-                    if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
-                    this.updateUrl();
-                    this.loadPlans();
+                    this.applyStatusFilter(item.dataset.value);
                 });
             });
         }
+
+        const statTiles = document.querySelectorAll('.stat-and-dot[data-value]');
+        statTiles.forEach(tile => {
+            tile.addEventListener('click', () => {
+                this.applyStatusFilter(tile.dataset.value);
+            });
+        });
         
         if (yearDropdown) {
             const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
@@ -1559,20 +1560,40 @@ class PlansLoader {
         if (selectedRegionSpan && regionMap[this.currentRegion]) {
             selectedRegionSpan.textContent = regionMap[this.currentRegion];
         }
+
+        this.updateActiveStatTile();
     }
-    
+
+    updateActiveStatTile() {
+        document.querySelectorAll('.stat-and-dot[data-value]').forEach(tile => {
+            tile.classList.toggle('active', tile.dataset.value === this.currentStatus);
+        });
+    }
+
+    applyStatusFilter(value) {
+        this.currentStatus = value;
+        this.currentPage = 1;
+        this.updateFilterDisplay();
+        this.updateUrl();
+        this.loadPlans();
+    }
+
     init() {
         this.selectedPlans = new Set();
         this.selectedFormat = null;
         this.initFilters();
+        this.updateFilterDisplay();
         this.loadPlans();
     }
 }
 
 class ExportPlansLoader {
     constructor(options = {}) {
+        this.preselectPlanId = options.preselectPlanId ? String(options.preselectPlanId) : null;
+        this.preselectFormat = options.preselectFormat || null;
+
         this.currentStatus = options.initialStatus || 'all';
-        this.currentYear = options.initialYear || 'all';
+        this.currentYear = options.preselectYear ? String(options.preselectYear) : (options.initialYear || 'all');
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchYnp = '';
@@ -1587,6 +1608,10 @@ class ExportPlansLoader {
         this.currentTaskId = null;
         this.progressInterval = null;
         this.isInitialLoad = true;
+
+        if (this.preselectPlanId) {
+            this.selectedPlans.add(this.preselectPlanId);
+        }
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
@@ -1670,9 +1695,10 @@ class ExportPlansLoader {
                 
                 this.updatePagination();
                 this.attachCheckboxListeners();
+                this.applyPreselectPlanCheckbox();
                 this.updateButtons();
                 this.updateExportButton();
-                
+
                 if (typeof initStatusProgress === 'function') {
                     setTimeout(initStatusProgress, 100);
                 }
@@ -1741,7 +1767,18 @@ class ExportPlansLoader {
         this.updateButtons();
         this.updateExportButton();
     }
-    
+
+    applyPreselectPlanCheckbox() {
+        if (!this.preselectPlanId) return;
+        const checkbox = document.querySelector(`.plans-area input[type="checkbox"][value="${this.preselectPlanId}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+        // Плана может не быть на текущей странице/с текущими фильтрами —
+        // экспорт всё равно должен сработать, т.к. id уже в selectedPlans
+        // (добавлен в конструкторе), чекбокс здесь только для визуальной синхронизации.
+    }
+
     handleCheckboxChange(e) {
         const checkbox = e.target;
         const planId = checkbox.value;
@@ -2247,9 +2284,18 @@ class ExportPlansLoader {
         }
         
         this.initFormatSelection();
+        this.applyPreselectFormat();
         this.initFormSubmit();
         this.isInitialLoad = true;
         this.loadPlans(true);
+    }
+
+    applyPreselectFormat() {
+        if (!this.preselectFormat) return;
+        const item = document.querySelector(`.export-choose[data-format="${this.preselectFormat}"]`);
+        if (item && !item.classList.contains('disabled')) {
+            item.click();
+        }
     }
 }
 
@@ -2333,6 +2379,9 @@ document.addEventListener('DOMContentLoaded', function() {
             window.exportPlansLoader = new ExportPlansLoader({
                 initialStatus: window.initialStatus || 'all',
                 initialYear: window.initialYear || 'all',
+                preselectPlanId: window.preselectPlanId || null,
+                preselectFormat: window.preselectFormat || null,
+                preselectYear: window.preselectYear || null,
                 perPage: 50,
                 containerId: 'plans-container',
                 loadMoreBtnId: 'load-more-btn',
@@ -2522,6 +2571,27 @@ document.addEventListener('DOMContentLoaded', function() {
             textSecondId: 'modal-text-second',
             modalTextSecond: 'Это действие нельзя будет отменить.'
         });
+
+        const editPhoneList = document.getElementById('edit-phone-group-list');
+        if (editPhoneList) {
+            const editPhoneHidden = document.getElementById('edit-telephone');
+            const editAddPhoneBtn = document.getElementById('edit-add-phone-row');
+            const editProfileButton = document.getElementById('editprofileButton');
+
+            const editPhoneInput = new PhoneGroupInput(editPhoneList, editPhoneHidden, editAddPhoneBtn, {
+                maxCount: 2,
+                inputClass: 'app-input',
+                onChange: () => {
+                    if (editProfileButton) {
+                        editProfileButton.disabled = !editPhoneInput.validate();
+                    }
+                }
+            });
+
+            if (editProfileButton) {
+                editProfileButton.disabled = !editPhoneInput.validate();
+            }
+        }
     }
 
     const ticketsContainer = document.querySelector('.tickets-container');

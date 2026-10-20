@@ -2,7 +2,7 @@ import io
 import os
 import zipfile
 from flask import current_app
-from .models import Direction, Indicator, Plan, Event, IndicatorUsage
+from .models import Direction, Indicator, Plan, Event, IndicatorUsage, Organization
 from sqlalchemy.orm import sessionmaker, joinedload
 
 export_tasks = {}
@@ -34,7 +34,10 @@ def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
         from website import db
         Session = sessionmaker(bind=db.engine)
         session = Session()
-        
+
+        excel_app = None
+        com_initialized = False
+
         try:
             export_tasks[task_id] = {
                 'status': 'processing',
@@ -42,41 +45,79 @@ def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
                 'format': export_format,
                 'user_id': user_id
             }
-            
+
             temp_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', '/tmp'), 'exports', task_id)
             os.makedirs(temp_dir, exist_ok=True)
-            
-            zip_path = os.path.join(temp_dir, f'plans_export_{task_id}.zip')
+
             export_tasks[task_id]['progress'] = 10
-            
+
+            if export_format == "pdf":
+                # Excel COM доступен только из того же потока, где был
+                # вызван CoInitialize — create_export_archive_async целиком
+                # выполняется в своём отдельном threading.Thread, так что
+                # инициализация здесь корректна для всего дальнейшего цикла.
+                import pythoncom
+                import win32com.client
+                pythoncom.CoInitialize()
+                com_initialized = True
+                excel_app = win32com.client.DispatchEx("Excel.Application")
+                excel_app.Visible = False
+                excel_app.DisplayAlerts = False
+
             total_plans = len(plan_ids)
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                for idx, plan_id in enumerate(plan_ids):
-                    progress = 10 + int((idx + 1) / total_plans * 80)
-                    export_tasks[task_id]['progress'] = progress
-                    
-                    plan = session.query(Plan).options(
-                        joinedload(Plan.indicators_usage).joinedload(IndicatorUsage.indicator).joinedload(Indicator.unit),
-                        joinedload(Plan.events).joinedload(Event.direction).joinedload(Direction.unit),
-                        joinedload(Plan.organization),
-                    ).filter(Plan.id == plan_id).first()
-                    
-                    if not plan:
-                        continue
-                    
-                    if export_format == "xlsx":
-                        file_stream, mime, filename = export_xlsx_single(plan)
-                    elif export_format == "xml":
-                        file_stream, mime, filename = export_xml_single(plan)
-                    else:
-                        continue
-                    
-                    zip_file.writestr(filename, file_stream.getvalue())
-            
+            generated = []
+            for idx, plan_id in enumerate(plan_ids):
+                progress = 10 + int((idx + 1) / total_plans * 80)
+                export_tasks[task_id]['progress'] = progress
+
+                plan = session.query(Plan).options(
+                    joinedload(Plan.indicators_usage).joinedload(IndicatorUsage.indicator).joinedload(Indicator.unit),
+                    joinedload(Plan.events).joinedload(Event.direction).joinedload(Direction.unit),
+                    joinedload(Plan.organization).joinedload(Organization.region),
+                ).filter(Plan.id == plan_id).first()
+
+                if not plan:
+                    continue
+
+                if export_format == "xlsx":
+                    file_stream, mime, filename = export_xlsx_single(plan)
+                elif export_format == "xml":
+                    file_stream, mime, filename = export_xml_single(plan)
+                elif export_format == "pdf":
+                    file_stream, mime, filename = export_pdf_single(plan, excel_app, temp_dir)
+                else:
+                    continue
+
+                generated.append((file_stream, mime, filename))
+
+            if not generated:
+                raise ValueError('Не удалось сформировать ни одного файла — планы не найдены')
+
+            if len(generated) == 1:
+                # Один файл — отдаём его как есть, без архивирования в zip.
+                file_stream, mime, filename = generated[0]
+                file_path = os.path.join(temp_dir, filename)
+                with open(file_path, 'wb') as f:
+                    f.write(file_stream.getvalue())
+
+                export_tasks[task_id]['file_path'] = file_path
+                export_tasks[task_id]['filename'] = filename
+                export_tasks[task_id]['mime'] = mime
+                export_tasks[task_id]['is_archive'] = False
+            else:
+                zip_path = os.path.join(temp_dir, f'plans_export_{task_id}.zip')
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for file_stream, mime, filename in generated:
+                        zip_file.writestr(filename, file_stream.getvalue())
+
+                export_tasks[task_id]['file_path'] = zip_path
+                export_tasks[task_id]['filename'] = f'plans_export_{task_id[:8]}.zip'
+                export_tasks[task_id]['mime'] = 'application/zip'
+                export_tasks[task_id]['is_archive'] = True
+
             export_tasks[task_id]['status'] = 'completed'
             export_tasks[task_id]['progress'] = 100
-            export_tasks[task_id]['file_path'] = zip_path
-            
+
         except Exception as e:
             current_app.logger.error(f"Export error for task {task_id}: {str(e)}", exc_info=True)
             export_tasks[task_id] = {
@@ -87,12 +128,126 @@ def create_export_archive_async(export_format, task_id, user_id, plan_ids, app):
             }
         finally:
             session.close()
+            if excel_app is not None:
+                try:
+                    excel_app.Quit()
+                except Exception:
+                    pass
+            if com_initialized:
+                import pythoncom
+                pythoncom.CoUninitialize()
 
 def export_xml_single(plan: Plan):
-        pass
+    import xml.etree.ElementTree as ET
 
-def export_pdf_single(plan: Plan):
-        pass
+    export_type = type_of_export(plan)
+
+    def text_of(value):
+        return '' if value is None else str(value)
+
+    root = ET.Element('Plan', id=str(plan.id), year=str(plan.year))
+
+    org = plan.organization
+    org_el = ET.SubElement(root, 'Organization')
+    ET.SubElement(org_el, 'FullName').text = text_of(org.full_name if org else None)
+    ET.SubElement(org_el, 'OKPO').text = text_of(org.okpo if org else None)
+    ET.SubElement(org_el, 'YNP').text = text_of(org.ynp if org else None)
+    ET.SubElement(org_el, 'Region').text = text_of(org.region.name if org and org.region else None)
+
+    status_el = ET.SubElement(root, 'Status')
+    ET.SubElement(status_el, 'IsDraft').text = text_of(plan.is_draft)
+    ET.SubElement(status_el, 'IsSent').text = text_of(plan.is_sent)
+    ET.SubElement(status_el, 'IsApproved').text = text_of(plan.is_approved)
+    ET.SubElement(status_el, 'IsError').text = text_of(plan.is_error)
+
+    totals_el = ET.SubElement(root, 'Totals')
+    ET.SubElement(totals_el, 'EnergySaving').text = text_of(plan.energy_saving)
+    ET.SubElement(totals_el, 'ShareFuel').text = text_of(plan.share_fuel)
+    ET.SubElement(totals_el, 'SavingFuel').text = text_of(plan.saving_fuel)
+    ET.SubElement(totals_el, 'ShareEnergy').text = text_of(plan.share_energy)
+
+    indicators_el = ET.SubElement(root, 'Indicators')
+    for usage in plan.indicators_usage:
+        indicator = usage.indicator
+        indicator_el = ET.SubElement(
+            indicators_el, 'Indicator',
+            code=text_of(indicator.code if indicator else None),
+            unit=text_of(indicator.unit.name if indicator and indicator.unit else None)
+        )
+        ET.SubElement(indicator_el, 'Name').text = text_of(indicator.name if indicator else None)
+        ET.SubElement(indicator_el, 'QYearBeforePrev').text = text_of(usage.QYearBeforePrev)
+        ET.SubElement(indicator_el, 'QYearPrev').text = text_of(usage.QYearPrev)
+        ET.SubElement(indicator_el, 'QYearCurrent').text = text_of(usage.QYearCurrent)
+        if usage.note:
+            ET.SubElement(indicator_el, 'Note').text = text_of(usage.note)
+
+    events_el = ET.SubElement(root, 'Events')
+    for event in plan.events:
+        direction = event.direction
+        event_el = ET.SubElement(
+            events_el, 'Event',
+            code=text_of(event.display_code or (direction.code if direction else None)),
+            type='increase' if event.is_increase else ('econom' if event.is_econom else '')
+        )
+        ET.SubElement(event_el, 'Name').text = text_of(event.name)
+        ET.SubElement(event_el, 'Direction').text = text_of(direction.name if direction else None)
+        ET.SubElement(event_el, 'Volume').text = text_of(event.Volume)
+        ET.SubElement(event_el, 'EffTut').text = text_of(event.EffTut)
+        ET.SubElement(event_el, 'EffRub').text = text_of(event.EffRub)
+        ET.SubElement(event_el, 'ExpectedQuarter').text = text_of(event.ExpectedQuarter)
+        ET.SubElement(event_el, 'EffCurrYear').text = text_of(event.EffCurrYear)
+        ET.SubElement(event_el, 'Payback').text = text_of(event.Payback)
+        ET.SubElement(event_el, 'ObchVolumeFin').text = text_of(event.ObchVolumeFin)
+        ET.SubElement(event_el, 'VolumeFinCurrentYear').text = text_of(event.VolumeFinCurrentYear)
+        ET.SubElement(event_el, 'BudgetState').text = text_of(event.BudgetState)
+        ET.SubElement(event_el, 'BudgetRep').text = text_of(event.BudgetRep)
+        ET.SubElement(event_el, 'BudgetLoc').text = text_of(event.BudgetLoc)
+        ET.SubElement(event_el, 'BudgetOther').text = text_of(event.BudgetOther)
+        ET.SubElement(event_el, 'MoneyOwn').text = text_of(event.MoneyOwn)
+        ET.SubElement(event_el, 'MoneyLoan').text = text_of(event.MoneyLoan)
+        ET.SubElement(event_el, 'MoneyOther').text = text_of(event.MoneyOther)
+
+    ET.indent(root, space='  ')
+    file_stream = io.BytesIO()
+    file_stream.write(b"<?xml version='1.0' encoding='UTF-8'?>\n")
+    file_stream.write(ET.tostring(root, encoding='utf-8'))
+    file_stream.seek(0)
+
+    if export_type in ("org_small", "org_large"):
+        filename = f"{plan.organization.okpo}_{plan.year}_{plan.id}.xml"
+    else:
+        filename = f"{plan.year}_{plan.id}.xml"
+
+    return (file_stream, "application/xml", filename)
+
+def export_pdf_single(plan: Plan, excel_app, temp_dir):
+    import os
+    import uuid as uuid_module
+
+    xlsx_stream, _, xlsx_filename = export_xlsx_single(plan)
+
+    unique_id = uuid_module.uuid4().hex
+    xlsx_path = os.path.abspath(os.path.join(temp_dir, f'_tmp_{unique_id}.xlsx'))
+    pdf_path = os.path.abspath(os.path.join(temp_dir, f'_tmp_{unique_id}.pdf'))
+
+    with open(xlsx_path, 'wb') as f:
+        f.write(xlsx_stream.getvalue())
+
+    workbook = excel_app.Workbooks.Open(xlsx_path)
+    try:
+        # Type=0 -> xlTypePDF
+        workbook.ExportAsFixedFormat(0, pdf_path)
+    finally:
+        workbook.Close(SaveChanges=False)
+
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+
+    os.remove(xlsx_path)
+    os.remove(pdf_path)
+
+    pdf_filename = os.path.splitext(xlsx_filename)[0] + '.pdf'
+    return (io.BytesIO(pdf_bytes), "application/pdf", pdf_filename)
 
 def export_xlsx_single(plan: Plan):
     from openpyxl import Workbook

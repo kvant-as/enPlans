@@ -1344,6 +1344,7 @@ body {
   font-weight: 500;
   padding: 5px 7px;
   background-color: var(--background-grey);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
   max-width: 100%;
@@ -1890,6 +1891,7 @@ hr {
 .auth-subtitle {
   color: var(--text-subtitle);
   font-size: 0.9rem;
+  max-width: 400px;
 }
 .auth-container {
   width: 100%;
@@ -2070,6 +2072,7 @@ input::placeholder {
   width: 100%;
   box-sizing: border-box;
   margin: 19px 0;
+  margin-top: 0;
   margin-left: auto;
   margin-right: auto;
   background: var(--blur2);
@@ -2093,7 +2096,7 @@ input::placeholder {
   overflow: hidden;
   z-index: 1;
   display: flex;
-  gap: 4px;
+  gap: 7px;
   justify-content: center;
   text-align: center;
 }
@@ -2183,6 +2186,168 @@ input::placeholder {
 .form-group {
   margin-bottom: 20px;
 }
+
+.phone-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone-code-select {
+  position: relative;
+  flex: 0 0 auto;
+}
+.phone-code-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 9px 10px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.phone-code-trigger:hover {
+  border-color: var(--primary);
+}
+.phone-code-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+.phone-code-select.open .phone-code-trigger {
+  border-color: var(--primary);
+}
+.phone-code-select.open .phone-code-chevron {
+  transform: rotate(180deg);
+}
+.phone-code-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 190px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+  padding: 6px;
+}
+.phone-code-select.open .phone-code-dropdown {
+  display: block;
+}
+.phone-code-group-label {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+.phone-code-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.phone-code-option:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+.phone-code-option.selected {
+  background-color: var(--green-back-gradient, #e3f2fd);
+  color: var(--green-main);
+  font-weight: 600;
+}
+.phone-code-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.phone-code-option.selected .phone-code-hint {
+  color: var(--green-main);
+}
+.phone-digits-input {
+  width: 100%;
+  flex: 1 1 auto;
+}
+.phone-row.invalid .phone-digits-input {
+  border-color: var(--delete-color, #e53935);
+  box-shadow: 0 0 0 1px var(--delete-color, #e53935);
+}
+.phone-row-remove {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.phone-row-remove svg {
+  width: 16px;
+  height: 16px;
+}
+.phone-row-remove:hover {
+  background-color: rgba(229, 57, 53, 0.08);
+  border-color: var(--delete-color, #e53935);
+  color: var(--delete-color, #e53935);
+}
+.phone-row-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--green-light);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.phone-row-add svg {
+  width: 16px;
+  height: 16px;
+}
+.phone-row-add:hover {
+  color: var(--green-main);
+}
+.phone-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .row-form-group {
   display: flex;
   flex-direction: row;
@@ -3542,6 +3707,9 @@ input::placeholder {
   display: flex;
   align-items: center;
 }
+.input-with-icon + .input-with-icon {
+  margin-top: 8px;
+}
 
 .input-with-icon svg,
 .input-with-icon img {
@@ -4302,10 +4470,10 @@ input::placeholder {
   background-color: var(--green-hover);
   box-sizing: border-box;
 }
-.export-choose.active svg {
+/* .export-choose.active svg {
   color: var(--green-light);
   stroke: var(--green-light);
-}
+} */
 .export-choose.active .export-choose-text-title {
   color: var(--green-light);
 }
@@ -4513,6 +4681,19 @@ input[type="checkbox"]:focus {
   font-size: 16px;
   font-weight: 500;
   width: calc(100% - 110px);
+  transition: all 0.2s ease;
+}
+
+.stat-and-dot[data-value] {
+  cursor: pointer;
+}
+.stat-and-dot[data-value]:hover .stat {
+  border-color: var(--green-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.stat-and-dot[data-value].active .stat {
+  border: 2px solid var(--green-main);
+  background-color: var(--green-hover);
 }
 
 .status-dot {
@@ -9179,7 +9360,7 @@ main {
 .modern-hero {
   display: flex;
   flex-direction: column;
-  gap: 60px;
+  gap: 40px;
   margin-bottom: 60px;
   animation: fadeInUp 0.8s ease-out;
 }
