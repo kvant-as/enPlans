@@ -1,5 +1,5 @@
 from datetime import timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from venv import logger
 
 from flask_login import current_user
@@ -18,32 +18,37 @@ from flask import (
 from decimal import Decimal, InvalidOperation
 import logging
 
+# quantize() без явного rounding по умолчанию использует ROUND_HALF_EVEN
+# ("банковское" округление: 2,25 -> 2,2), а не привычное "математическое"
+# округление половины вверх (2,25 -> 2,3) — отсюда расхождения, заметные
+# только на границе X,X5 ("в отдельных случаях применяется некорректное
+# округление"). Везде ниже округляем явно через ROUND_HALF_UP.
 def to_decimal_1(value):
     try:
         if value is None or value == '':
             return Decimal('0.0')
-        
+
         if isinstance(value, Decimal):
-            return value.quantize(Decimal('0.0'))
-        
+            return value.quantize(Decimal('0.0'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, (int, float)):
-            return Decimal(str(value)).quantize(Decimal('0.0'))
-        
+            return Decimal(str(value)).quantize(Decimal('0.0'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, str):
             value = value.strip()
             if not value:
                 return Decimal('0.0')
-            
+
             value = value.replace(',', '.')
-            
+
             if value.count('.') > 1:
                 parts = value.split('.')
                 value = parts[0] + '.' + ''.join(parts[1:])
-            
-            return Decimal(value).quantize(Decimal('0.0'))
-        
+
+            return Decimal(value).quantize(Decimal('0.0'), rounding=ROUND_HALF_UP)
+
         return Decimal('0.0')
-        
+
     except (InvalidOperation, TypeError, ValueError):
         return Decimal('0.0')
 
@@ -51,57 +56,57 @@ def to_decimal_2(value):
     try:
         if value is None or value == '':
             return Decimal('0.00')
-        
+
         if isinstance(value, Decimal):
-            return value.quantize(Decimal('0.00'))
-        
+            return value.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, (int, float)):
-            return Decimal(str(value)).quantize(Decimal('0.00'))
-        
+            return Decimal(str(value)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, str):
             value = value.strip()
             if not value:
                 return Decimal('0.00')
-            
+
             value = value.replace(',', '.')
-            
+
             if value.count('.') > 1:
                 parts = value.split('.')
                 value = parts[0] + '.' + ''.join(parts[1:])
-            
-            return Decimal(value).quantize(Decimal('0.00'))
-        
+
+            return Decimal(value).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
+
         return Decimal('0.00')
-        
+
     except (InvalidOperation, TypeError, ValueError):
         return Decimal('0.00')
-    
+
 def to_decimal_3(value):
     try:
         if value is None or value == '':
             return Decimal('0.000')
-        
+
         if isinstance(value, Decimal):
-            return value.quantize(Decimal('0.000'))
-        
+            return value.quantize(Decimal('0.000'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, (int, float)):
-            return Decimal(str(value)).quantize(Decimal('0.000'))
-        
+            return Decimal(str(value)).quantize(Decimal('0.000'), rounding=ROUND_HALF_UP)
+
         if isinstance(value, str):
             value = value.strip()
             if not value:
                 return Decimal('0.000')
-            
+
             value = value.replace(',', '.')
-            
+
             if value.count('.') > 1:
                 parts = value.split('.')
                 value = parts[0] + '.' + ''.join(parts[1:])
-            
-            return Decimal(value).quantize(Decimal('0.000'))
-        
+
+            return Decimal(value).quantize(Decimal('0.000'), rounding=ROUND_HALF_UP)
+
         return Decimal('0.000')
-        
+
     except (InvalidOperation, TypeError, ValueError):
         return Decimal('0.000')
     
@@ -346,15 +351,7 @@ def other_data_indicatorUpdate(plan_id):
     def get_value(indicator, field_name):
         value = getattr(indicator, field_name)
         return value if value is not None else Decimal('0')
-    
-    def safe_divide(numerator, denominator):
-        try:
-            if denominator == 0:
-                return Decimal('0')
-            return to_decimal_2(numerator / denominator)
-        except (InvalidOperation, ZeroDivisionError):
-            return Decimal('0')
-    
+
     def get_indicator_by_code(indicator_usages, code):
         for usage in indicator_usages:
             if usage.indicator.code == code:
@@ -572,9 +569,18 @@ def other_data_indicatorUpdate(plan_id):
         
         numerator = get_value(indicator_9999, 'QYearCurrent')
         denominator = get_value(indicator_260, 'QYearPrev')
-        
-        result = safe_divide(numerator, denominator) * 100
-        indicator_9915.QYearCurrent = to_decimal_1(-abs(result))
+
+        # Раньше тут было safe_divide(...) * 100 — safe_divide округляет
+        # ОТНОШЕНИЕ до 2 знаков ДО умножения на 100, а значит итоговый
+        # процент мог быть только кратен целому (0,01 * 100 = 1): дробная
+        # доля процента терялась ещё до этого умножения, поэтому
+        # результат всегда выглядел как "X,0". Делим без промежуточного
+        # округления и округляем только готовый процент.
+        if denominator == 0:
+            result = Decimal('0.00')
+        else:
+            result = (numerator / denominator) * 100
+        indicator_9915.QYearCurrent = to_decimal_2(-abs(result))
         
         current_app.logger.info(f'Set 9915.QYearCurrent = {result}')
         commit_changes()
@@ -616,7 +622,7 @@ def other_data_indicatorUpdate(plan_id):
             else:
                 result = (numerator / denominator) * 100
 
-            setattr(indicator_9916, period, to_decimal_1(result))
+            setattr(indicator_9916, period, to_decimal_2(result))
             current_app.logger.info(f'Set 9916.{period} = {result}')
         
         commit_changes()
@@ -658,7 +664,7 @@ def other_data_indicatorUpdate(plan_id):
             else:
                 result = (numerator / denominator) * 100
             
-            setattr(indicator_9917, period, to_decimal_1(result))
+            setattr(indicator_9917, period, to_decimal_2(result))
             current_app.logger.info(f'Set 9917.{period} = {result}')
         
         commit_changes()

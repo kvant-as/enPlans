@@ -157,7 +157,7 @@
 
   /* ----- Status Colors ----- */
   --color-redaced: #8974FF;
-  --color-controled: #74FFD8;
+  --color-controled: #2ee3af;
   --color-sented: #83B4FF;
   --color-sogl: #83e6ff;
   --color-erorsed: #FF6565;
@@ -166,7 +166,7 @@
 
   /* ----- Background Status ----- */
   --background-redaced: #E1DBFF;
-  --background-controled: #cefff1;
+  --background-controled: #a6f5dc;
   --background-sented: #CFE2FF;
   --background-sogl: #cffdff;
   --background-erorsed: #ffb2b3;
@@ -187,7 +187,7 @@
   --green-element-gradient-apr: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   --color-green-text-main: #005867;
   --color-green-text-main-hover: #007c92;
-  --color-control: #006748;
+  --color-control: #004d36;
 
   /* ----- Blue Theme ----- */
   --color1: #ffffff;
@@ -769,18 +769,23 @@ body {
 /* ============================================
    FLASH MESSAGES
    ============================================ */
+/* Уведомления накладываются друг на друга стопкой (как группа уведомлений
+   на iOS), а не растут отдельным списком вниз/вверх — самое новое сверху
+   и полностью видимо, более старые чуть выглядывают из-под него (меньше,
+   прозрачнее). Наведение на стопку разворачивает её в обычный список
+   (см. .stack-expanded ниже и updateMessagesDisplay в base.js). */
 #flash-container {
   position: fixed;
   bottom: 24px;
   left: 24px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 10px;
-  z-index: 1000;
-  align-items: stretch;
+  z-index: 10050;
   box-sizing: border-box;
   width: 360px;
   max-width: calc(100vw - 48px);
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#flash-container.stack-expanded {
   max-height: 80vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -807,16 +812,38 @@ body {
   line-height: 1.45;
   color: #1f2937;
   font-weight: 500;
-  position: relative;
   background: #ffffff;
-  /* border: 2px solid #e5e7eb; */
   border: 1px solid rgb(189, 189, 189);
-  /* box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22), 0 4px 10px rgba(0, 0, 0, 0.12); */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   overflow: hidden;
-  transition: opacity 0.3s ease, transform 0.3s ease, max-height 0.3s ease, padding 0.3s ease;
+  /* Позиция/масштаб/прозрачность в стопке считает updateMessagesDisplay
+     в base.js и проставляет как inline style — transition здесь просто
+     анимирует переход между вызовами того расчёта. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform-origin: bottom center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, box-shadow 0.3s ease;
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Развёрнутое состояние (наведение на стопку) — просто возвращаемся к
+   обычному flex-списку, браузер сам раскладывает карточки по высоте,
+   никакой JS-арифметики для этого не нужно. */
+#flash-container.stack-expanded {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 10px;
+}
+#flash-container.stack-expanded .custom-alert {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
   flex-shrink: 0;
 }
 
@@ -4905,6 +4932,22 @@ input[type="checkbox"]:focus {
 .custom-dropdown.active .dropdown-arrow {
   transform: rotate(180deg);
 }
+
+/* Дропдаун отчет/оценка/прогноз в шапке таблицы показателей (plan.js ::
+   initEditableHeaders). Меню рендерится в document.body с position:fixed,
+   чтобы не обрезаться скроллящимся .table-container — поэтому оно не
+   вложено в .custom-dropdown и не получает видимость через обычный
+   ancestor-комбинатор, а показывается напрямую. */
+.header-label-toggle.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+.dropdown-menu-filter.header-label-menu {
+  position: fixed;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
 .dropdown-item {
   padding: 8px 16px;
   cursor: pointer;
@@ -4957,7 +5000,7 @@ input[type="checkbox"]:focus {
   background: linear-gradient(135deg, #f3f0ff 0%, #d7cbff 100%);
 }
 .plan-cont-control {
-  background: linear-gradient(135deg, #f0fffb 0%, #aef5e0 100%);
+  background: linear-gradient(135deg, #e3fbf3 0%, #7ee9c6 100%);
 }
 .plan-cont-sent {
   background: linear-gradient(135deg, #f0f6ff 0%, #bcd9ff 100%);
@@ -4970,6 +5013,45 @@ input[type="checkbox"]:focus {
 }
 .plan-cont-sub {
   background: linear-gradient(135deg, #f1fff2 0%, #aff0b8 100%);
+}
+
+/* Переливание градиентом при наведении — частота зависит от того,
+   насколько план близок к финальному этапу (Утверждён, .plan-cont-sub):
+   чем ближе к завершению цепочки (В редакции -> Контроль -> Отправлен ->
+   Согласован -> Утверждён), тем быстрее "переливается" градиент. */
+@keyframes planGradientShimmer {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
+.plan-cont-redac:hover,
+.plan-cont-control:hover,
+.plan-cont-sent:hover,
+.plan-cont-sogl:hover,
+.plan-cont-eror:hover,
+.plan-cont-sub:hover {
+  background-size: 220% 220%;
+  animation-name: planGradientShimmer;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.plan-cont-redac:hover { animation-duration: 6s; }    /* В редакции — дальше всего от финала */
+.plan-cont-control:hover { animation-duration: 4.6s; } /* Контроль пройден */
+.plan-cont-sent:hover { animation-duration: 3.4s; }    /* Отправлен / на согласовании */
+.plan-cont-sogl:hover { animation-duration: 2.4s; }    /* Согласован */
+.plan-cont-sub:hover { animation-duration: 1.3s; }     /* Утверждён — финальный этап */
+.plan-cont-eror:hover { animation-duration: 4.6s; }    /* Есть ошибки — вне основной цепочки */
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-cont-redac:hover,
+  .plan-cont-control:hover,
+  .plan-cont-sent:hover,
+  .plan-cont-sogl:hover,
+  .plan-cont-eror:hover,
+  .plan-cont-sub:hover {
+    animation: none;
+  }
 }
 
 .plan-cont-column {
@@ -5109,9 +5191,9 @@ input[type="checkbox"]:focus {
   border: 1px solid rgba(72, 59, 246, 0.2) !important;
 }
 .status-control {
-  background: rgba(96, 255, 228, 0.2) !important;
-  color: rgb(28, 87, 77) !important;
-  border: 1px solid rgba(34, 197, 94, 0.2) !important;
+  background: rgba(46, 201, 170, 0.25) !important;
+  color: rgb(18, 65, 56) !important;
+  border: 1px solid rgba(34, 197, 94, 0.25) !important;
 }
 .status-approved {
   background: rgba(34, 197, 94, 0.1) !important;
@@ -9396,10 +9478,11 @@ main {
 }
 
 .hero-gradient-text {
-  font-size: 3.5rem;
+  font-size: 2.1rem;
   font-weight: 600;
-  line-height: 1.1;
-  margin-bottom: 24px;
+  line-height: 1.15;
+  margin-bottom: 4px;
+  text-transform: uppercase;
   background: linear-gradient(135deg, var(--text) 0%, var(--text-secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: var(--transparent);
@@ -9409,11 +9492,13 @@ main {
 }
 
 .hero-subtext {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  max-width: 600px;
-  margin-bottom: 48px;
-  line-height: 1.3;
+  font-size: 2.1rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--green-main-dark);
+  max-width: 100%;
+  margin-bottom: 50px;
 }
 .hero-actions {
   display: flex;
@@ -9864,7 +9949,7 @@ main {
     font-size: 1.8rem;
   }
   .hero-subtext {
-    font-size: 1.125rem;
+    font-size: 1.8rem;
   }
   .section-title {
     font-size: 2rem;

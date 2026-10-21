@@ -118,7 +118,7 @@ html[data-theme] .fixed-header {
   --primary-dark: #1a8293;       /* было #003b45 */
   --color-green-text-main: #67d6e9;        /* было #005867 — на тёмном фоне не читалось бы */
   --color-green-text-main-hover: #8be3f2;  /* было #007c92 */
-  --color-control: #5fe0a6;                /* было #006748 */
+  --color-control: #3fc98c;                /* было #5fe0a6 (ещё раньше #006748) */
 
   --green-hover: #16232a;
   --green-light-back: #12262a;
@@ -131,7 +131,7 @@ html[data-theme] .fixed-header {
  * ------------------------------------------------------------ */
 :root[data-theme="dark"] {
   --background-redaced: #8269ff;     /* было #E1DBFF */
-  --background-controled: #cefff1;   /* было #cefff1 */
+  --background-controled: #a6f5dc;   /* было #cefff1 */
   --background-sented: #CFE2FF;      /* было #CFE2FF */
   --background-sogl: #cffdff;        /* было #cffdff */
   --background-erorsed: #ffb2b3;     /* было #ffb2b3 */
@@ -148,7 +148,7 @@ html[data-theme] .fixed-header {
   background: linear-gradient(135deg, #241f3d 0%, #352c5c 100%);
 }
 :root[data-theme="dark"] .plan-cont-control {
-  background: linear-gradient(135deg, #0f2a26 0%, #184940 100%);
+  background: linear-gradient(135deg, #0a1f1c 0%, #123832 100%);
 }
 :root[data-theme="dark"] .plan-cont-sent {
   background: linear-gradient(135deg, #15233a 0%, #203e63 100%);
@@ -873,6 +873,11 @@ html[data-theme] .fixed-header {
 /* website/static/css/base.css :: .dropdown-item:hover */
 :root[data-theme="dark"] .dropdown-item:hover {
   background-color: #1b2027;
+}
+
+/* website/static/css/base.css :: .status-draft */
+:root[data-theme="dark"] .status-draft {
+  color: #c3b8ff !important;
 }
 
 /* website/static/css/base.css :: .status-control */
@@ -2116,6 +2121,17 @@ html[data-theme] .fixed-header {
 /* website/static/css/faq.css :: .convert-stat */
 :root[data-theme="dark"] .convert-stat {
   background: #1b2027;
+}
+
+/* website/static/css/faq.css :: .control-flow-step */
+:root[data-theme="dark"] .control-flow-step {
+  background: #1b2027;
+  border-color: #2b313b;
+}
+
+/* website/static/css/faq.css :: .control-flow-outcome */
+:root[data-theme="dark"] .control-flow-outcome-title {
+  color: #eef1f5;
 }
 
 /* ------------------------------------------------------------ *

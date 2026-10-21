@@ -447,8 +447,42 @@ def edit_indicator(token):
             return _indicator_action_response(token, error, 'error')
 
         is_codes_9911_9914 = indicator_code in ['9911', '9912', '9913', '9914']
-        
+
         if is_codes_9911_9914:
+            # 9911-9914 — экономия ТЭР от мероприятий предыдущего года
+            # внедрения нарастающим итогом (январь-март/июнь/сентябрь/декабрь).
+            # Каждый следующий период обязан быть >= предыдущего, иначе
+            # получится отрицательный вклад квартала, чего быть не может.
+            period_order = ['9911', '9912', '9913', '9914']
+            period_labels = {
+                '9911': 'январь-март',
+                '9912': 'январь-июнь',
+                '9913': 'январь-сентябрь',
+                '9914': 'январь-декабрь',
+            }
+
+            period_values = {}
+            for code in period_order:
+                if code == indicator_code:
+                    period_values[code] = data['QYearCurrent']
+                    continue
+                sibling_usage = next(
+                    (iu for iu in current_plan.indicators_usage if iu.indicator.code == code),
+                    None
+                )
+                period_values[code] = to_decimal_2(sibling_usage.QYearCurrent) if sibling_usage else to_decimal_2(0)
+
+            for i in range(1, len(period_order)):
+                prev_code = period_order[i - 1]
+                curr_code = period_order[i]
+                if period_values[curr_code] < period_values[prev_code]:
+                    return _indicator_action_response(
+                        token,
+                        f'Экономия ТЭР за {period_labels[curr_code]} ({period_values[curr_code]}) не может быть меньше, '
+                        f'чем за {period_labels[prev_code]} ({period_values[prev_code]}) — значения вводятся нарастающим итогом.',
+                        'error'
+                    )
+
             indicator_usage.QYearCurrent = data['QYearCurrent']
         else:
             indicator_usage.QYearBeforePrev = data['QYearBeforePrev']

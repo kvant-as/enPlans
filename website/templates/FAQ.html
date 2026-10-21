@@ -1791,7 +1791,75 @@
             <h3 id="plan-control-check">Контроль заполнения плана</h3>
             <div class="answer-text">
               <p>
-                Система автоматически проверяет корректность заполнения всех разделов плана. Контроль осуществляется по следующим направлениям:
+                Коротко — как это работает:
+              </p>
+            </div>
+
+            <div class="control-flow">
+              <div class="control-flow-step control-flow-step--fill">
+                <div class="control-flow-step-icon">{{ icons.icon_edit() }}</div>
+                <div class="control-flow-step-text">
+                  <strong>1. Заполните план</strong>
+                  <span>Титульный лист, показатели ТЭР (Часть 1), мероприятия по экономии (Часть 2) и по увеличению местных ТЭР (Часть 3)</span>
+                </div>
+              </div>
+
+              <div class="control-flow-arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              </div>
+
+              <div class="control-flow-step control-flow-step--action">
+                <div class="control-flow-step-icon">{{ icons.icon_confirm() }}</div>
+                <div class="control-flow-step-text">
+                  <strong>2. Нажмите «Пройти контроль»</strong>
+                  <span>Кнопка находится на странице с заданиями плана</span>
+                </div>
+              </div>
+              <div class="faq-image-wrapper ogr">
+                <img src="/static/img/faq/plan-control.png" alt="Контроль плана" class="faq-image">
+              </div>
+
+              <div class="control-flow-arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              </div>
+
+              <div class="control-flow-step control-flow-step--check">
+                <div class="control-flow-step-icon">{{ icons.icon_stats() }}</div>
+                <div class="control-flow-step-text">
+                  <strong>Система автоматически проверяет план</strong>
+                  <span>Все 4 раздела сразу — обязательные поля, Часть 1, Часть 2, Часть 3</span>
+                </div>
+              </div>
+
+              <div class="control-flow-arrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              </div>
+
+              <div class="control-flow-branches">
+                <div class="control-flow-outcome control-flow-outcome--ok">
+                  <div class="control-flow-outcome-icon">✅</div>
+                  <div class="control-flow-outcome-title">Всё верно</div>
+                  <div class="control-flow-outcome-desc">
+                    Статус плана меняется на <strong>«Контроль пройден»</strong>. План готов — можно нажимать «Отправить план» и переходить к согласованию.
+                  </div>
+                </div>
+                <div class="control-flow-outcome control-flow-outcome--error">
+                  <div class="control-flow-outcome-icon">❌</div>
+                  <div class="control-flow-outcome-title">Есть ошибки</div>
+                  <div class="control-flow-outcome-desc">
+                    Система покажет список ошибок обычным языком — что именно не так и в каком разделе. Отправка плана при этом недоступна.
+                  </div>
+                  <div class="control-flow-outcome-loop">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.3-6.4M21 12a9 9 0 0 1-15.3 6.4M3 7v5h5M21 17v-5h-5"/></svg>
+                    Исправьте и нажмите «Пройти контроль» ещё раз
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="answer-text">
+              <p>
+                Ниже — подробный список того, что именно проверяется в каждом разделе, если нужно разобраться точнее:
               </p>
             </div>
 
@@ -1807,7 +1875,6 @@
                   <li>Наименование организации</li>
                   <li>Код ОКПО (12 знаков)</li>
                   <li>Региональное управление</li>
-                  <li>Должность и ФИО руководителя</li>
                   <li>Контактные данные исполнителя</li>
                   <li>Курс доллара</li>
                 </ul>
@@ -1865,21 +1932,6 @@
                 </ul>
               </div>
             </div>
-            <div class="steps-container">
-              <div class="step-item">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                  <h4>Контроль плана</h4>
-                  <p>
-                    На странице с заданиями плана необходимо выбрать <strong>«Пройти контроль»</strong>.
-                  </p>
-                    <div class="faq-image-wrapper ogr">
-                      <img src="/static/img/faq/plan-control.png" alt="Контроль плана" class="faq-image">
-                    </div>
-                </div>
-              </div>
-            </div>
-
             <h3 id="plan-control-submit">Отправка плана на согласование</h3>
             <div class="answer-text">
               <p>

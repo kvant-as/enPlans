@@ -44,6 +44,19 @@ const messageFlash = (function() {
 
         localStorage.setItem('flashMessages', JSON.stringify(messages));
         renderMessages();
+
+        // Наведение на стопку уведомлений разворачивает её в обычный
+        // список (как долгое нажатие на группу уведомлений в iOS) —
+        // иначе старые сообщения были бы видны только краешком и до
+        // кнопки закрытия/текста было бы не добраться.
+        container.addEventListener('mouseenter', () => {
+            container.classList.add('stack-expanded');
+            updateMessagesDisplay();
+        });
+        container.addEventListener('mouseleave', () => {
+            container.classList.remove('stack-expanded');
+            updateMessagesDisplay();
+        });
     }
 
     function _showMessage(msgObj) {
@@ -114,6 +127,11 @@ const messageFlash = (function() {
             delete autoRemoveTimers[msgObj.id];
         }
 
+        // Сбрасываем inline transform/opacity, которые проставляет
+        // updateMessagesDisplay для раскладки стопки — иначе они (как
+        // более специфичные) перебивают анимацию выезда из .removing.
+        alertBox.style.transform = '';
+        alertBox.style.opacity = '';
         alertBox.classList.add('removing');
         setTimeout(() => {
             if (container.contains(alertBox)) container.removeChild(alertBox);
@@ -146,14 +164,20 @@ const messageFlash = (function() {
         messages.forEach(msg => _showMessage(msg));
     }
 
+    // Сколько карточек позади самой новой ещё выглядывают из-под неё —
+    // остальные (если сообщений больше) просто скрыты (opacity 0), но
+    // остаются в DOM и по-прежнему посчитаны таймером авто-закрытия.
+    const MAX_PEEK = 3;
+
     function updateMessagesDisplay() {
-        const alerts = container.querySelectorAll('.custom-alert');
-        
+        const alerts = Array.from(container.querySelectorAll('.custom-alert'));
+        const isStackExpanded = container.classList.contains('stack-expanded');
+
         alerts.forEach((alert, index) => {
             const pElement = alert.querySelector('.p_message_cont p');
             const hintElement = alert.querySelector('.expand-hint');
             const msgObj = messages.find(m => m.id === alert.dataset.msgId);
-            
+
             if (index === 0) {
                 alert.classList.remove('collapsed');
                 alert.classList.add('expanded');
@@ -173,7 +197,37 @@ const messageFlash = (function() {
                     }
                 }
             }
+
+            if (isStackExpanded) {
+                // Развёрнуто — обычный flex-список, раскладку делает CSS,
+                // никаких inline-стилей позиции тут не нужно.
+                alert.style.transform = '';
+                alert.style.opacity = '';
+                alert.style.zIndex = '';
+                alert.style.pointerEvents = '';
+            } else if (index >= MAX_PEEK) {
+                alert.style.transform = 'translateY(0) scale(0.86)';
+                alert.style.opacity = '0';
+                alert.style.zIndex = String(alerts.length - index);
+                alert.style.pointerEvents = 'none';
+            } else {
+                alert.style.transform = `translateY(-${index * 10}px) scale(${1 - index * 0.05})`;
+                alert.style.opacity = String(1 - index * 0.3);
+                alert.style.zIndex = String(alerts.length - index);
+                // Пока стопка свёрнута, кликабельна только передняя (самая
+                // новая) карточка — как в iOS, чтобы случайно не попасть
+                // по кнопке закрытия карточки, которая визуально скрыта
+                // позади.
+                alert.style.pointerEvents = index === 0 ? 'auto' : 'none';
+            }
         });
+
+        if (!isStackExpanded) {
+            const topAlert = alerts[0];
+            container.style.height = topAlert ? `${topAlert.offsetHeight}px` : '0px';
+        } else {
+            container.style.height = '';
+        }
     }
 
     return { init, addMessage };
@@ -887,19 +941,15 @@ var NumericInputHandler = {
         if (input.value === '' || input.value === '-') {
             input.value = settings.defaultValue;
         }
-        if (settings.allowNegative || settings.decimalPlaces === 0) {
-            // поле может начинаться со знака «минус» — проще и удобнее
-            // выделить всё значение целиком, чтобы первое же нажатие
-            // клавиши (в т.ч. «-») заменило его полностью
-            input.select();
-            return;
-        }
-        var commaIndex = input.value.indexOf(',');
-        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
-            input.setSelectionRange(commaIndex, commaIndex);
-        }
+        // Всегда выделяем значение целиком: раньше для полей без
+        // allowNegative курсор просто ставился перед запятой, не трогая
+        // остальное — из-за этого печатание нового числа в поле со
+        // значением "0,0" вставляло цифры ПЕРЕД этим нулём вместо замены
+        // (например, набор "34,5" превращался в "345,0"). select() этого
+        // не делает: первое же нажатие клавиши заменяет всё значение.
+        input.select();
     },
-    
+
     handleBlur: function(e, settings) {
         var input = e.target;
         if (input.value === '' || input.value === '-' || input.value === null) {
@@ -909,8 +959,17 @@ var NumericInputHandler = {
             var num = parseFloat(valueWithDot);
             if (!isNaN(num)) {
                 // Только отрицательное число либо 0 — положительное вводить
-                // нельзя (см. "целевой показатель энергосбережения").
+                // нельзя (см. "целевой показатель энергосбережения"). Раньше
+                // такое значение молча обнулялось; теперь показываем ошибку,
+                // чтобы пользователь понимал, почему поле не сохранило то,
+                // что он ввёл.
                 if (settings.negativeOnly && num > 0) {
+                    if (typeof messageFlash !== 'undefined') {
+                        messageFlash.addMessage(
+                            settings.negativeOnlyMessage || 'Значение должно быть отрицательным числом или 0',
+                            'error'
+                        );
+                    }
                     num = 0;
                 }
                 var formatted = num.toFixed(settings.decimalPlaces);
@@ -955,7 +1014,8 @@ NumericInputHandler.init('.app-numeric-input-negative-one-decimal', {
     allowNegative: true,
     negativeOnly: true,
     decimalPlaces: 1,
-    defaultValue: '0,0'
+    defaultValue: '0,0',
+    negativeOnlyMessage: 'Целевой показатель энергосбережения должен быть отрицательным числом или 0 — это цель снижения потребления'
 });
 
 NumericInputHandler.init('.app-numeric-input-integer', {

@@ -100,14 +100,18 @@ def handle_control_status(plan):
                 current_app.logger.error(f"Ошибка при проверке индикатора 9915: {e}")
                 errors.append("Ошибка при проверке целевого показателя энергосбережения")
         
-        # Проверка 4: Ожидаемая экономия ТЭР
-        if indicator_9900 and plan.saving_fuel:
+        # Проверка 4: Целевой показатель по экономии ТЭР (задание на титульном
+        # листе, plan.saving_fuel) сравнивается с п.5 "Годовая экономия ТЭР
+        # от энергосберегающих мероприятий всего" (индикатор 9999), а не с
+        # 9900 "Ожидаемая экономия ТЭР от внедрения мероприятий в текущем
+        # году" — это разные показатели, сравнение с 9900 было ошибочным.
+        if indicator_9999 and plan.saving_fuel:
             try:
-                if indicator_9900.QYearCurrent < plan.saving_fuel:
-                    errors.append(f"Ожидаемая экономия ТЭР ({indicator_9900.QYearCurrent} т у.т.) должна быть больше или равна заданию ({plan.saving_fuel} т у.т.).")
+                if indicator_9999.QYearCurrent < plan.saving_fuel:
+                    errors.append(f"Годовая экономия ТЭР ({indicator_9999.QYearCurrent} т у.т.) должна быть больше или равна заданию по экономии ТЭР ({plan.saving_fuel} т у.т.).")
             except AttributeError as e:
-                current_app.logger.error(f"Ошибка при проверке индикатора 9900: {e}")
-                errors.append("Ошибка при проверке ожидаемой экономии ТЭР")
+                current_app.logger.error(f"Ошибка при проверке индикатора 9999: {e}")
+                errors.append("Ошибка при проверке годовой экономии ТЭР")
         
         # Проверка 5: Доля местных ТЭР
         if indicator_9916 and plan.share_fuel:

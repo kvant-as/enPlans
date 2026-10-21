@@ -2300,67 +2300,139 @@ class ExportPlansLoader {
 }
 
 function initEditableHeaders() {
+    const LABEL_OPTIONS = ['отчет', 'оценка', 'прогноз'];
     const editIcons = document.querySelectorAll('.edit-header-icon');
-    
+    const planYearAttr = document.querySelector('#indicatorsTable')?.dataset?.planYear;
+    const planYear = planYearAttr ? parseInt(planYearAttr, 10) : null;
+
+    // Карточки "Добавление/Редактирование показателя" рисуют свои подписи
+    // года (value-label) один раз при загрузке страницы из plan.column_configs
+    // — без этой синхронизации они оставались бы со старым наименованием
+    // (отчет/оценка/прогноз) до перезагрузки страницы, даже если шапку
+    // таблицы только что переименовали через этот же дропдаун.
+    function syncModalValueLabels(yearNum, newLabel) {
+        if (planYear === null) return;
+        let slot = null;
+        if (yearNum === planYear - 2) slot = 'before';
+        else if (yearNum === planYear - 1) slot = 'prev';
+        else if (yearNum === planYear) slot = 'current';
+        if (!slot) return;
+
+        const labelText = `${newLabel} ${yearNum} г.`;
+        const addLabel = document.getElementById(`add-value-label-${slot}`);
+        const editLabel = document.getElementById(`edit-value-label-${slot}`);
+        if (addLabel) addLabel.textContent = labelText;
+        if (editLabel) editLabel.textContent = labelText;
+    }
+
+    // .table-container скроллится (overflow: auto), поэтому меню дропдауна,
+    // позиционированное как потомок ячейки заголовка, обрезалось бы рамкой
+    // контейнера. Вместо этого рендерим меню отдельным элементом в
+    // document.body с position:fixed и координатами, посчитанными от
+    // кнопки-триггера — тогда оно всегда поверх таблицы и никогда не режется.
+    let closeActiveDropdown = null;
+
     editIcons.forEach(icon => {
         icon.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+            if (closeActiveDropdown) closeActiveDropdown();
+
             const th = icon.closest('.colspan-header');
             const link = th.querySelector('a');
             const currentText = link.textContent;
             const configId = icon.dataset.configId;
             const currentYear = icon.dataset.year;
             const currentLabel = icon.dataset.label;
-            
-            const select = document.createElement('select');
-            select.className = 'header-edit-input';
-            select.innerHTML = `
-                <option value="отчет" ${currentLabel === 'отчет' ? 'selected' : ''}>отчет</option>
-                <option value="оценка" ${currentLabel === 'оценка' ? 'selected' : ''}>оценка</option>
-                <option value="прогноз" ${currentLabel === 'прогноз' ? 'selected' : ''}>прогноз</option>
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'dropdown-toggle header-label-toggle';
+            toggle.innerHTML = `
+                <span class="selected-option">${currentLabel}</span>
+                <svg class="dropdown-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L6 6L11 1" stroke="#666" stroke-width="2" stroke-linecap="round"/></svg>
             `;
-            
+
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu-filter header-label-menu';
+            menu.innerHTML = LABEL_OPTIONS.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join('');
+
             link.textContent = '';
-            link.appendChild(select);
-            select.focus();
-            
-            const saveChanges = async () => {
-                const newLabel = select.value;
-                const newText = `${currentYear} г. ${newLabel}`;
-                
-                if (newLabel !== currentLabel) {
-                    try {
-                        const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                config_id: configId,
-                                label: newLabel
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        if (data.success) {
-                            link.textContent = newText;
-                            icon.dataset.label = newLabel;
-                        } else {
-                            link.textContent = currentText;
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        link.textContent = currentText;
+            link.appendChild(toggle);
+            document.body.appendChild(menu);
+            toggle.classList.add('active');
+
+            function positionMenu() {
+                const rect = toggle.getBoundingClientRect();
+                menu.style.top = `${rect.bottom + 4}px`;
+                menu.style.left = `${rect.left}px`;
+                menu.style.minWidth = `${rect.width}px`;
+            }
+            positionMenu();
+
+            function cleanup(restoreText) {
+                closeActiveDropdown = null;
+                document.removeEventListener('click', outsideClickHandler);
+                document.removeEventListener('scroll', scrollHandler, true);
+                window.removeEventListener('resize', positionMenu);
+                if (menu.parentNode) menu.parentNode.removeChild(menu);
+                link.textContent = restoreText;
+            }
+
+            const saveChanges = async (newLabel) => {
+                if (newLabel === currentLabel) {
+                    cleanup(currentText);
+                    return;
+                }
+                try {
+                    const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            config_id: configId,
+                            label: newLabel
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        cleanup(`${currentYear} г. ${newLabel}`);
+                        icon.dataset.label = newLabel;
+                        syncModalValueLabels(parseInt(currentYear, 10), newLabel);
+                    } else {
+                        cleanup(currentText);
                     }
-                } else {
-                    link.textContent = currentText;
+                } catch (error) {
+                    console.error('Error:', error);
+                    cleanup(currentText);
                 }
             };
-            
-            select.addEventListener('blur', saveChanges);
-            select.addEventListener('change', saveChanges);
+
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                item.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    saveChanges(item.dataset.value);
+                });
+            });
+
+            function outsideClickHandler(ev) {
+                if (!menu.contains(ev.target) && !toggle.contains(ev.target)) {
+                    cleanup(currentText);
+                }
+            }
+            function scrollHandler() {
+                cleanup(currentText);
+            }
+
+            closeActiveDropdown = () => cleanup(currentText);
+
+            setTimeout(() => {
+                document.addEventListener('click', outsideClickHandler);
+                document.addEventListener('scroll', scrollHandler, true);
+                window.addEventListener('resize', positionMenu);
+            }, 0);
         });
     });
 }
@@ -2653,6 +2725,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const addIndicatorModal = document.getElementById('AddIndicatorModal');
     const IndicatorModal = new EventModal('AddIndicatorModal');
+    window.addIndicatorModalWizard = IndicatorModal;
     if (addIndicatorModal && IndicatorModal) {
         handleModal(addIndicatorModal, document.getElementById('AddIndicatorModalButton'), addIndicatorModal.querySelector('.close'));
     }

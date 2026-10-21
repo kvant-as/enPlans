@@ -1,6 +1,7 @@
 import io
 import os
 import zipfile
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from flask import current_app
 from .models import Direction, Indicator, Plan, Event, IndicatorUsage, Organization
 from sqlalchemy.orm import sessionmaker, joinedload
@@ -1266,18 +1267,23 @@ def export_xlsx_single(plan: Plan):
         def format_value(value, group):
             if value is None or value == '':
                 return ''
-            
+
             try:
-                num = float(value)
-            except (ValueError, TypeError):
+                # round()/float() используют банковское округление
+                # (ROUND_HALF_EVEN) и теряют точность на двоичном float —
+                # отсюда "может отличаться на единицу" на границе X,X5.
+                # Decimal.quantize с ROUND_HALF_UP считает так, как от
+                # него ожидают (половина всегда вверх).
+                dec = value if isinstance(value, Decimal) else Decimal(str(value))
+            except (InvalidOperation, ValueError, TypeError):
                 return value
-            
+
             if group == 5:
-                return round(num, 1)
+                return float(dec.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP))
             elif group in [6, 7, 8]:
-                return round(num, 2)
+                return float(dec.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
             else:
-                return int(round(num))
+                return int(dec.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
         
         previous_group = None
         row_index = 3
@@ -1306,16 +1312,34 @@ def export_xlsx_single(plan: Plan):
                 group_value = ""
             
             previous_group = group
-            
+
+            # QYearBeforePrev/Prev/Current в БД всегда хранятся в т у.т.
+            # (см. process_indicator_data: natural_value * coeff при
+            # сохранении) — колонка "Единица измерения" показывает
+            # натуральную единицу показателя (Гкал, кВт·ч и т.д.), поэтому
+            # для вывода их нужно делить обратно на тот же коэффициент,
+            # иначе в колонке с подписью "Гкал" оказывается число в т у.т.
+            def natural_value(stored_value, year_type):
+                if stored_value is None:
+                    return None
+                coeff = usage.get_coeff_for_year(year_type) or 1
+                try:
+                    return stored_value / coeff
+                except (TypeError, ZeroDivisionError):
+                    return stored_value
+
             if group in [5, 6]:
                 QYearBeforePrev = 'x'
                 QYearPrev = 'x'
-                QYearCurrent = format_value(usage.QYearCurrent, group)
+                QYearCurrent = format_value(natural_value(usage.QYearCurrent, 'current'), group)
                 difference = 'x'
             else:
-                QYearBeforePrev = format_value(usage.QYearBeforePrev, group)
-                QYearPrev = format_value(usage.QYearPrev, group)
-                QYearCurrent = format_value(usage.QYearCurrent, group)
+                QYearBeforePrev = format_value(natural_value(usage.QYearBeforePrev, 'before'), group)
+                QYearPrev = format_value(natural_value(usage.QYearPrev, 'prev'), group)
+                QYearCurrent = format_value(natural_value(usage.QYearCurrent, 'current'), group)
+                # "Изменение... т у.т." — эта колонка, в отличие от
+                # предыдущих трёх, явно подписана как "т у.т." в заголовке,
+                # поэтому остаётся в хранимых (не переведённых) величинах.
                 difference = format_value((usage.QYearCurrent or 0) - (usage.QYearPrev or 0), group)
             
             row = [

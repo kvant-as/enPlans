@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="pers-page">
-  {{ component.back_header(show_plan_info=False, back_url='/plans', back_text='Назад', plan_text='План мероприятий по энергосбережению')  }}
+  {{ component.back_header(show_plan_info=False, back_url='/plans', back_text='Назад', plan_text='Планы мероприятий по энергосбережению')  }}
   <div class="personal-acc-conteiner edit-page">
     <a class="name">{{ _('Создание нового плана') }}</a>
     <form class="main-form" action="/create-plan" method="POST" id="plan-form">
