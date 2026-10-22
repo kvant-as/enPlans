@@ -711,34 +711,45 @@ def validate_period_values(plan_id, current_period_code, current_value, exclude_
     
     period_events = period_events.all()
     
-    period_values = {}
+    # Январь-декабрь (0004) считается автоматически как сумма всех реальных
+    # мероприятий плана (см. update_period_eff_values) и служит потолком
+    # сразу для всех трёх периодов — март, июнь и сентябрь по отдельности
+    # не могут превышать декабрь. Пока декабрь равен 0 (реальных мероприятий
+    # с эффектом ещё нет), заполнить ненулевое значение нельзя ни в одном
+    # из периодов.
+    #
+    # Сверх этого — цепочка март <= июнь <= сентябрь: но сосед проверяется
+    # только если он уже РЕАЛЬНО заполнен (None, а не 0, если ещё не
+    # тронут) — иначе возвращается бага "нельзя заполнить март, пока не
+    # заполнен июнь" (июнь молча считался бы за 0, и любое март > 0 всегда
+    # "превышало" бы этот фиктивный 0).
+    raw_period_values = {}
     for pe in period_events:
         if pe.direction and pe.direction.code:
-            period_values[pe.direction.code] = float(pe.EffCurrYear) if pe.EffCurrYear else 0
-    
-    period_values[current_period_code] = float(current_value) if current_value else 0
-    
-    if current_period_code == '0001':
-        if period_values.get('0001', 0) > period_values.get('0002', 0):
+            raw_period_values[pe.direction.code] = pe.EffCurrYear
+
+    def _as_float(code):
+        raw = raw_period_values.get(code)
+        return float(raw) if raw is not None else None
+
+    current_value_num = float(current_value) if current_value else 0
+    december_value = _as_float('0004') or 0
+
+    if current_value_num > december_value:
+        return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
+            period_names[current_period_code], current_value_num,
+            period_names['0004'], december_value
+        )
+
+    next_code = {'0001': '0002', '0002': '0003'}.get(current_period_code)
+    if next_code:
+        next_value = _as_float(next_code)
+        if next_value is not None and current_value_num > next_value:
             return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
-                period_names['0001'], period_values.get('0001', 0),
-                period_names['0002'], period_values.get('0002', 0)
+                period_names[current_period_code], current_value_num,
+                period_names[next_code], next_value
             )
-    
-    elif current_period_code == '0002':
-        if period_values.get('0002', 0) > period_values.get('0003', 0):
-            return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
-                period_names['0002'], period_values.get('0002', 0),
-                period_names['0003'], period_values.get('0003', 0)
-            )
-    
-    elif current_period_code == '0003':
-        if period_values.get('0003', 0) > period_values.get('0004', 0):
-            return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
-                period_names['0003'], period_values.get('0003', 0),
-                period_names['0004'], period_values.get('0004', 0)
-            )
-    
+
     return None
 
 def check_and_create_period_directions(plan_id, event_type):

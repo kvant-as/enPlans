@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, abort, current_app, g, jsonify, render_template, request, flash, redirect, url_for
+    Blueprint, abort, current_app, g, jsonify, render_template, request, flash, redirect, url_for, send_from_directory
 )
 
 from flask_login import (
@@ -14,6 +14,7 @@ from website.sessions import session_required
 from website.user import send_email
 
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
+from website.utils.teo import save_teo_file, delete_teo_file
 
 from ..ecp import verify_certificate
 
@@ -666,6 +667,12 @@ def create_event(token):
         new_event = create_event_record(current_plan, direction, event_data)
 
         db.session.add(new_event)
+        db.session.flush()
+
+        teo_file = request.files.get('teo_file')
+        if teo_file and teo_file.filename:
+            save_teo_file(new_event, teo_file)
+
         db.session.commit()
 
         if event_data['is_double_effect'] and event_type == 'increase':
@@ -737,7 +744,21 @@ def edit_event(id):
             ExpectedQuarter_value = request.form.get('ExpectedQuarter')
             EffTut = to_decimal_2(request.form.get('EffTut'))
             EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-            
+
+            # При объёме внедрения = 1 мероприятие не может внедряться "в
+            # течение" нескольких кварталов — только в одном конкретном.
+            if Volume_value and ExpectedQuarter_value and '-' in ExpectedQuarter_value:
+                try:
+                    volume_int = int(float(Volume_value))
+                except (TypeError, ValueError):
+                    volume_int = None
+                if volume_int == 1:
+                    return _event_action_response(
+                        'При объёме внедрения, равном 1, ожидаемый срок внедрения мероприятия должен '
+                        'быть одним конкретным кварталом (1, 2, 3 или 4), а не диапазоном.',
+                        'error', event_type, current_plan.token
+                    )
+
             event_category = request.form.get('event_category')
             current_app.logger.info(f'event_category from form: {event_category}')
             
@@ -768,22 +789,35 @@ def edit_event(id):
                 current_app.logger.info(f'Double effect saving event: financing blocked')
                 
             else:
-                ObchVolumeFin = to_decimal_2(request.form.get('ObchVolumeFin')) 
-                BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-                BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+                ObchVolumeFin = to_decimal_2(request.form.get('ObchVolumeFin'))
+                BudgetState = to_decimal_2(request.form.get('BudgetState'))
+                BudgetRep = to_decimal_2(request.form.get('BudgetRep'))
+                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc'))
                 BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn'))
+                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan'))
                 MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-                
+
                 VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
-                
-                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
-                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
-                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
-                
-                if EffRub > 0:
+
+                # Код 1013 в Части 2 ("Замена неэкономичных котлов и печей...")
+                # — графы 7 (EffRub) и 10 (Payback) заполняются напрямую
+                # юрлицом, не по формуле.
+                direction_code = current_event.direction.code if current_event.direction else None
+                is_manual_eff_rub = current_event.is_econom and not current_event.is_increase and direction_code == '1013'
+
+                if is_manual_eff_rub:
+                    EffRub = int(to_decimal_2(request.form.get('EffRub')))
+                else:
+                    USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                    COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                    EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+
+                if is_manual_eff_rub or current_event.is_increase:
+                    # Графа 10 в Части 3 (для всех направлений) и в Части 2
+                    # по коду 1013 — тоже напрямую от юрлица, не по формуле.
+                    Payback = to_decimal_1(request.form.get('Payback'))
+                elif EffRub > 0:
                     payback_value = float(ObchVolumeFin) / float(EffRub)
                     if payback_value < 0.01:
                         Payback = to_decimal_1(0.1)
@@ -791,7 +825,7 @@ def edit_event(id):
                         Payback = to_decimal_1(payback_value)
                 else:
                     Payback = to_decimal_1(0)
-                
+
                 current_app.logger.info(f'Regular event calculation: EffRub={EffRub}, Payback={Payback}')
 
             Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
@@ -815,7 +849,11 @@ def edit_event(id):
             current_event.MoneyOther = MoneyOther
             current_event.is_local = is_local
             current_event.is_corrected = is_corrected
-            
+
+            teo_file = request.files.get('teo_file')
+            if teo_file and teo_file.filename:
+                save_teo_file(current_event, teo_file)
+
             current_app.logger.info(f'Updated all fields for event {id}, is_local={is_local}, is_corrected={is_corrected}')
 
         db.session.commit()
@@ -884,7 +922,76 @@ def delete_eventes(id):
     update_period_eff_values(current_plan.id, event_type)
     other_data_indicatorUpdate(current_plan.id)
     return _event_action_response('Мероприятие успешно удалено', 'success', event_type, current_plan.token)
-        
+
+@plan_bp.route('/event/<int:id>/teo', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+def get_event_teo(id):
+    """Отдаёт файл ТЭО мероприятия. ?download=1 — принудительное скачивание
+    (Content-Disposition: attachment), иначе — показ прямо в браузере (для
+    .pdf) там, где это возможно."""
+    current_event = Event.query.get_or_404(id)
+    if not current_event.teo_filename:
+        abort(404)
+
+    folder = current_app.config['TEO_UPLOAD_FOLDER']
+    as_attachment = request.args.get('download') == '1'
+
+    return send_from_directory(
+        folder,
+        current_event.teo_filename,
+        as_attachment=as_attachment,
+        download_name=current_event.teo_original_name or current_event.teo_filename
+    )
+
+@plan_bp.route('/event/<int:id>/teo', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+@reader_forbidden
+def upload_event_teo(id):
+    """Прикрепление/замена файла ТЭО прямо из графы 20 таблицы мероприятий,
+    без открытия модалки редактирования."""
+    current_event = Event.query.get_or_404(id)
+
+    teo_file = request.files.get('teo_file')
+    if not teo_file or not teo_file.filename:
+        return jsonify({'success': False, 'message': 'Файл не выбран'}), 400
+
+    try:
+        save_teo_file(current_event, teo_file)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Файл ТЭО прикреплён',
+            'teo_original_name': current_event.teo_original_name
+        })
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error uploading TEO file for event {id}: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'message': 'Ошибка при загрузке файла ТЭО'}), 400
+
+@plan_bp.route('/event/<int:id>/teo', methods=['DELETE'])
+@user_with_all_params()
+@login_required
+@session_required
+@reader_forbidden
+def delete_event_teo(id):
+    current_event = Event.query.get_or_404(id)
+
+    try:
+        delete_teo_file(current_event)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Файл ТЭО удалён'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting TEO file for event {id}: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'message': 'Ошибка при удалении файла ТЭО'}), 400
+
 @plan_bp.route('/change-status/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required

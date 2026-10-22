@@ -90,7 +90,22 @@ def create_app():
         # в debug-режиме (см. common_models.sessions._enforcing), и пользователь
         # никогда не разлогинивается по истечении сессии.
         SESSION_ENFORCE_IN_DEBUG=True,
+        # Файлы ТЭО (технико-экономическое обоснование), прикрепляемые к
+        # мероприятиям — по умолчанию кладутся в instance/teo_files, путь
+        # переопределяется в .env (например, на боевом сервере — на реальный
+        # постоянный диск/раздел).
+        TEO_UPLOAD_FOLDER=os.getenv('TEO_UPLOAD_FOLDER', os.path.join(app.instance_path, 'teo_files')),
+        TEO_MAX_FILE_SIZE=int(os.getenv('TEO_MAX_FILE_SIZE', 20 * 1024 * 1024)),
+        # Если диск, на котором лежит TEO_UPLOAD_FOLDER, заполнен на этот
+        # процент и более — загрузка новых файлов ТЭО блокируется с понятным
+        # сообщением (см. website/utils/teo.py:check_disk_space).
+        TEO_DISK_USAGE_LIMIT_PERCENT=float(os.getenv('TEO_DISK_USAGE_LIMIT_PERCENT', 80)),
     )
+
+    os.makedirs(app.config['TEO_UPLOAD_FOLDER'], exist_ok=True)
+
+    from website.utils.teo import register_teo_cleanup_listeners
+    register_teo_cleanup_listeners()
 
     db.init_app(app)
     socketio.init_app(app)

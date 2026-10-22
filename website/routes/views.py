@@ -38,7 +38,7 @@ def block_unverified_auditor():
     согласования/утверждения — без неё он не видит ни одного плана.
     Возвращает redirect, если доступ нужно заблокировать, иначе None."""
     if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        flash('Для просмотра и экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.', 'error')
+        flash('Для просмотра и экспорта планов согласовывающей организации необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.', 'error')
         return redirect(url_for('views.profile'))
     return None
 
@@ -352,7 +352,7 @@ def export():
 @session_required
 def start_export():
     if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        return jsonify({'success': False, 'error': 'Для экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.'})
+        return jsonify({'success': False, 'error': 'Для экспорта планов согласовывающей организации необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.'})
 
     try:
         export_format = request.form.get('format', '').lower()

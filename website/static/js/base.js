@@ -855,12 +855,6 @@ function handleModal(modalElement, openLink, closeLink) {
     closeLink.addEventListener('click', function() {
         modalElement.classList.remove('active');
     });
-
-    window.addEventListener('click', function(event) {
-        if (event.target === modalElement) {
-            modalElement.classList.remove('active');
-        }
-    });
 }
 
 var NumericInputHandler = {
@@ -1741,18 +1735,6 @@ function initConfirmModal(config) {
 
     if (!modalElement.dataset.confirmModalBound) {
         modalElement.dataset.confirmModalBound = 'true';
-
-        modalElement.addEventListener('click', function (event) {
-            if (event.target === modalElement) {
-                modalElement.classList.remove('active');
-            }
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && modalElement.classList.contains('active')) {
-                modalElement.classList.remove('active');
-            }
-        });
     }
 }
 
@@ -2197,16 +2179,16 @@ class MultiStepForm {
     updateSelectedRoleDisplay() {
         const roles = {
             'respondent': {
-                title: 'Респондент',
-                subtitle: 'Формирование и подача плана мероприятий по энергосбережению'
+                title: 'Организация-разработчик',
+                subtitle: 'Юридическое лицо, создающее, редактирующее и направляющее планы на согласование'
             },
             'auditor': {
-                title: 'Аудитор',
-                subtitle: 'Согласование отправленных планов мероприятий по энергосбережению'
+                title: 'Согласовывающая организация',
+                subtitle: 'Проверяющее юридическое лицо, по результатам рассмотрения которого документ согласовывается либо не согласовывается'
             },
             'approver': {
-                title: 'Утверждающий',
-                subtitle: 'Утверждение согласованных планов мероприятий по энергосбережению'
+                title: 'Утверждающая организация',
+                subtitle: 'Проверяющее юридическое лицо, по результатам рассмотрения которого документ утверждается'
             }
         };
         
@@ -2221,11 +2203,11 @@ class MultiStepForm {
 
     getPlaceholder() {
         const placeholders = {
-            'respondent': 'Наименование или ОКПО или УНП',
-            'auditor': 'Наименование или ОКПО или УНП',
-            'approver': 'Наименование или ОКПО или УНП'
+            'respondent': 'Введите наименование или УНП',
+            'auditor': 'Введите наименование или УНП',
+            'approver': 'Введите наименование или УНП'
         };
-        return placeholders[this.currentEntityType] || 'Наименование или ОКПО или УНП';
+        return placeholders[this.currentEntityType] || 'Введите наименование или УНП';
     }
 
     selectItem(item) {
@@ -2237,25 +2219,22 @@ class MultiStepForm {
         if (clickedElement) {
             clickedElement.classList.add('selected');
         }
-        
-        if (this.elements.searchInput) {
-            this.elements.searchInput.value = item.name;
-        }
-        
+
+        // Строка результата просто подсвечивается — поле поиска не трогаем
+        // (раньше туда подставлялось полное наименование организации,
+        // перетирая то, что ввёл пользователь).
         if (this.elements.hiddenInput) {
             this.elements.hiddenInput.value = item.id;
         }
-        
+
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
-        
-        this.hideDropdown();
-        
+
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = false;
         }
-        
+
         this.selectedItem = item;
     }
 
@@ -2479,7 +2458,7 @@ class MultiStepForm {
         }
         
         try {
-            const url = `/api/organizations?q=${encodeURIComponent(query)}&page=${page}&type=${this.currentEntityType}`;
+            const url = `/api/organizations?q=${encodeURIComponent(query)}&page=${page}&type=${this.currentEntityType}&exclude_registered=true`;
             
             const response = await fetch(url);
             
@@ -2564,6 +2543,15 @@ class MultiStepForm {
     }
 
     hideDropdown() {
+        // Пока организация выбрана (this.selectedItem), таблица результатов
+        // остаётся открытой — иначе клик по строке сам уводит фокус с
+        // инпута поиска, который через blur дёргает hideDropdown() и тут же
+        // схлопывает панель с результатами (.active убирает display:flex у
+        // самой панели, .has-results — сужает контейнер), из-за чего
+        // подсвеченную строку не видно. Сбрасывается в handleSearchInput()
+        // при новом вводе.
+        if (this.selectedItem) return;
+
         if (this.elements.dropdown) {
             this.elements.dropdown.classList.remove('active');
         }

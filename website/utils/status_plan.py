@@ -26,8 +26,19 @@ def handle_draft_status(plan):
 
 def handle_control_status(plan):
     errors = []
-    
+
     try:
+        from website.utils.teo import find_directions_missing_teo
+
+        missing_teo = find_directions_missing_teo(plan)
+        if missing_teo:
+            code, _name = missing_teo[0]
+            errors.append(
+                f'План не может пройти контроль. Отсутствует обязательное ТЭО по направлению '
+                f'энергосбережению с кодом: {code}. Необходимо прикрепить файл ТЭО в графу 20 '
+                f'хотя бы к одному мероприятию с этим кодом.'
+            )
+
         indicator_9999 = next(
             (iu for iu in plan.indicators_usage if iu.indicator.code == '9999'), 
             None

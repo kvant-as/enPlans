@@ -20,6 +20,77 @@ class PlanEvents {
         this.initCollapseSections();
         this.initColumnResize();
         this.initAjaxForms();
+        this.initTeoCellClicks();
+    }
+
+    initTeoCellClicks() {
+        const table = document.getElementById('eventTable');
+        if (!table) return;
+
+        // Каждая <tr> таблицы уже имеет свой click-листенер
+        // (TableContextMenu.onRowLeftClick — выбор строки + открытие модалки
+        // редактирования), который сам вызывает event.stopPropagation() и
+        // делает это раньше, чем событие дошло бы всплытием до делегированного
+        // листенера на #eventTable. Поэтому здесь используется фаза
+        // перехвата (capture) — она выполняется до того, как событие вообще
+        // достигнет строки, и stopPropagation() на этом этапе гарантированно
+        // не даёт клику по скрепке/загрузке открыть модалку редактирования.
+        table.addEventListener('click', (e) => {
+            const btn = e.target.closest('.teo-cell-icon');
+            const uploadLabel = e.target.closest('.teo-cell-upload');
+            if (!btn && !uploadLabel) return;
+
+            e.stopPropagation();
+
+            if (btn) {
+                e.preventDefault();
+                window.TeoViewer?.open(btn.dataset.teoId, btn.dataset.teoName);
+            }
+            // для uploadLabel preventDefault не вызывается — нужно, чтобы
+            // клик по <label> штатно открыл системный диалог выбора файла
+        }, true);
+
+        table.addEventListener('change', async (e) => {
+            const input = e.target.closest('.teo-cell-upload-input');
+            if (!input) return;
+
+            const label = input.closest('.teo-cell-upload');
+            const eventId = label?.dataset.teoUploadId;
+            const file = input.files[0];
+            if (!eventId || !file) return;
+
+            await this.uploadTeoFile(eventId, file);
+        });
+    }
+
+    async uploadTeoFile(eventId, file) {
+        await this.withScrollPreserved(async () => {
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const formData = new FormData();
+                formData.append('teo_file', file);
+                if (csrfMeta) formData.append('csrf_token', csrfMeta.content);
+
+                const response = await fetch(`/plans/plan/event/${eventId}/teo`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfMeta ? csrfMeta.content : ''
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanEvents] teo upload error', e);
+                this.notify('Не удалось прикрепить файл ТЭО', false);
+            }
+        });
     }
 
     async loadEvents() {
@@ -60,7 +131,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving' 
                 ? 'Нет мероприятий по экономии ТЭР (первоначальная редакция)' 
                 : 'Нет мероприятий по увеличению использования местных ТЭР (первоначальная редакция)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="20">${emptyMessage}</tr>`;
             return;
         }
         
@@ -82,7 +153,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving'
                 ? 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)'
                 : 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="19">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="20">${emptyMessage}</tr>`;
             return;
         }
         
@@ -119,9 +190,33 @@ class PlanEvents {
             <td style="text-align: end;">${(row.MoneyOwn || 0).toString()}</td>
             <td style="text-align: end;">${(row.MoneyLoan || 0).toString()}</td>
             <td style="text-align: end;">${(row.MoneyOther || 0).toString()}</td>
+            <td style="text-align: center;" class="teo-cell no-print-col">${this.renderTeoCell(row)}</td>
         `;
-        
+
         return tr;
+    }
+
+    teoPaperclipSvg() {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">`
+            + `<path d="M21.44 11.05l-9.19 9.19a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.49"/>`
+            + `</svg>`;
+    }
+
+    renderTeoCell(row) {
+        if (row.has_teo) {
+            const name = this.escapeHtml(row.teo_original_name || 'ТЭО');
+            return `<button type="button" class="teo-cell-icon" data-teo-id="${row.id}" data-teo-name="${name}" title="${name}">`
+                + this.teoPaperclipSvg()
+                + `</button>`;
+        }
+
+        // Файл не прикреплён — ячейка внешне пустая, но кликабельная зона
+        // (скрытый input[type=file]) позволяет прикрепить ТЭО прямо из
+        // таблицы, без открытия модалки редактирования.
+        return `<label class="teo-cell-upload" data-teo-upload-id="${row.id}" title="Прикрепить ТЭО">`
+            + `<input type="file" class="teo-cell-upload-input" accept=".doc,.docx,.pdf">`
+            + this.teoPaperclipSvg()
+            + `</label>`;
     }
 
     getSectionTitle(isCorrected) {
@@ -167,6 +262,7 @@ class PlanEvents {
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
+            <td></td>
         `;
         tbody.appendChild(totalRow);
     }
@@ -207,7 +303,8 @@ class PlanEvents {
             { text: (this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',') },
             { text: (this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',') },
             { text: (this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',') },
-            { text: (this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',') }
+            { text: (this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',') },
+            { text: '' }
         ];
 
         totalRow.innerHTML = cells.map((cell, index) => {
@@ -242,7 +339,7 @@ class PlanEvents {
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
                 <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
-                <td colspan="10"></td>
+                <td colspan="11"></td>
             `;
             
             otherContent.appendChild(row);
@@ -320,15 +417,18 @@ class PlanEvents {
         await this.withScrollPreserved(async () => {
             const submitBtn = form.querySelector('button[type="submit"]');
             const wasDisabled = submitBtn ? submitBtn.disabled : null;
+            const submitBtnText = submitBtn?.querySelector('.btn-text');
+            const originalBtnText = submitBtnText?.textContent;
             if (submitBtn) submitBtn.disabled = true;
 
             try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: new FormData(form)
+                const data = await this.submitFormWithProgress(form, (percent) => {
+                    if (submitBtnText) {
+                        submitBtnText.textContent = percent < 100
+                            ? `Загрузка... ${percent}%`
+                            : 'Сохранение...';
+                    }
                 });
-                const data = await response.json();
 
                 this.notify(data.message, data.success);
 
@@ -349,6 +449,16 @@ class PlanEvents {
                     } else if (modalId === 'EditEventModal') {
                         window.editEventModalWizard?.resetForm();
                     }
+
+                    if (!document.getElementById('eventTable')) {
+                        // Самое первое мероприятие плана этого типа — на
+                        // странице ещё нет самой таблицы (она рендерится
+                        // только когда есть хотя бы одно мероприятие), её
+                        // некуда AJAX-обновлять. Перезагружаем страницу —
+                        // сервер отрисует уже появившуюся таблицу.
+                        window.location.reload();
+                        return;
+                    }
                     await this.refreshTable();
                 }
             } catch (e) {
@@ -356,7 +466,37 @@ class PlanEvents {
                 this.notify('Не удалось сохранить мероприятие', false);
             } finally {
                 if (submitBtn) submitBtn.disabled = wasDisabled;
+                if (submitBtnText && originalBtnText !== undefined) submitBtnText.textContent = originalBtnText;
             }
+        });
+    }
+
+    // fetch() не даёт отследить прогресс именно ОТПРАВКИ (upload), только
+    // получения ответа — на медленном канале с файлом 20 МБ это выглядело
+    // бы как "зависшая" кнопка без обратной связи. XMLHttpRequest умеет
+    // upload.onprogress, поэтому POST с файлом идёт через него.
+    submitFormWithProgress(form, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && onProgress) {
+                    onProgress(Math.round((e.loaded / e.total) * 100));
+                }
+            });
+
+            xhr.onload = () => {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            xhr.onerror = () => reject(new Error('network error'));
+
+            xhr.send(new FormData(form));
         });
     }
 
@@ -498,7 +638,13 @@ class PlanEvents {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
-        return div.innerHTML;
+        // innerHTML экранирует <, > и & в тексте, но не кавычки — а
+        // результат этой функции местами подставляется и внутрь HTML-
+        // атрибутов (например data-teo-name="${name}"), где значение может
+        // быть неконтролируемым вводом пользователя (оригинальное имя
+        // загруженного файла) — без этого кавычка в имени файла сломала бы
+        // атрибут и позволила бы внедрить произвольный HTML/JS.
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     showError(message) {
@@ -907,12 +1053,6 @@ class TableContextMenu {
 
         noBtn.onclick = () => {
             modal.classList.remove('active');
-        };
-
-        window.onclick = (event) => {
-            if (event.target === modal) {
-                modal.classList.remove('active');
-            }
         };
     }
 
@@ -2486,10 +2626,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    if (document.getElementById('eventTable')) {
-        const token = document.getElementById('eventTable')?.dataset?.token;
-        const eventType = document.getElementById('eventTable')?.dataset?.eventType || 
-                         (window.location.pathname.includes('saving') ? 'saving' : 'increase');
+    // #eventTable рендерится только когда в плане уже ЕСТЬ хотя бы одно
+    // мероприятие этого типа (has_events в plan_bp.py) — модалка же
+    // "Добавить мероприятие" существует всегда. Раньше PlanEvents (а вместе
+    // с ним и AJAX-перехват сабмита формы, см. initAjaxForms) создавался
+    // только при наличии таблицы — из-за этого самое первое мероприятие
+    // плана отправлялось обычной навигацией браузера, а не через fetch, и
+    // прикреплённый файл ТЭО до сервера не доходил (enctype у формы не был
+    // указан — см. тот же фикс в шаблоне). Методы рендера таблицы сами
+    // по себе no-op, если нужных элементов в DOM нет, поэтому PlanEvents
+    // безопасно создавать и без таблицы — только чтобы заработал AJAX-сабмит.
+    const addEventForm = document.getElementById('addEventForm');
+    if (document.getElementById('eventTable') || addEventForm) {
+        const token = document.getElementById('eventTable')?.dataset?.token
+            || document.getElementById('plan-token')?.value;
+        const eventType = document.getElementById('eventTable')?.dataset?.eventType
+            || addEventForm?.querySelector('[name="event_type"]')?.value
+            || (window.location.pathname.includes('saving') ? 'saving' : 'increase');
         if (token) {
             window.planEvents = new PlanEvents(token, eventType);
         }

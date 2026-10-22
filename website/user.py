@@ -149,7 +149,20 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     if len(filled_ids) == 0:
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
-    
+
+    # Один УНП — один аккаунт: для каждой организации в системе может быть
+    # зарегистрирован строго один аккаунт. Фронт уже прячет такие
+    # организации из результатов поиска (см. /api/organizations?exclude_registered=true),
+    # но это единственная настоящая защита от дублей — обходится напрямую
+    # через форму.
+    existing_user = User.query.filter(
+        User.organization_id == org_id,
+        User.id != current_user.id
+    ).first()
+    if existing_user:
+        flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
+        return redirect(url_for('auth.param'))
+
     if user_type == 'respondent':
         current_user.is_auditor = False
         current_user.is_approver = False

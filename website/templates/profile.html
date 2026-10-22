@@ -14,6 +14,17 @@
         {#{% if current_user.post %}
           <a class="employee-position">{{ current_user.post}}</a>
         {% endif%}#}
+        {% if current_user.is_admin %}
+          <span class="employee-role">{{ _('Администратор') }}</span>
+        {% elif current_user.is_auditor %}
+          <span class="employee-role">{{ _('Согласовывающая организация') }}</span>
+        {% elif current_user.is_approver %}
+          <span class="employee-role">{{ _('Утверждающая организация') }}</span>
+        {% elif current_user.is_reader %}
+          <span class="employee-role">{{ _('Читатель') }}</span>
+        {% else %}
+          <span class="employee-role">{{ _('Организация-разработчик') }}</span>
+        {% endif %}
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
@@ -163,13 +174,13 @@
                 {% if current_user.is_admin %}
                   <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_auditor %}
-                  <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Согласовывающая организация') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_approver %}
-                  <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Утверждающая организация') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_reader %}
                   <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
                 {% else %}
-                  <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Организация-разработчик') }}: demo-{{ current_user.id }}</span>
                 {% endif %}
               </div>
             </div>
@@ -465,7 +476,7 @@
         </div>
       </div>
       <p class="session-timer-hint" style="margin: -8px 0 16px;">
-        {{ _('Подтверждение личности сертификатом ЭЦП, раз в 30 дней. Аудиторам необходима, чтобы просматривать и экспортировать планы; согласующим и утверждающим — чтобы согласовывать и утверждать планы. Остальным пользователям доступна по желанию — альтернативно сертификат можно приложить прямо при отправке плана на согласование.') }}
+        {{ _('Подтверждение личности сертификатом ЭЦП, раз в 30 дней. Согласовывающим организациям необходима, чтобы просматривать и экспортировать планы; согласующим и утверждающим — чтобы согласовывать и утверждать планы. Остальным пользователям доступна по желанию — альтернативно сертификат можно приложить прямо при отправке плана на согласование.') }}
       </p>
 
       {% if current_user.is_ecp_verified() %}

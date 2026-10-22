@@ -10,7 +10,7 @@ from website.sessions import session_required, set_session_cookie, build_session
 from common_models import current_utc_time
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue
+from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue, User
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -163,8 +163,22 @@ def get_organizations_api():
         search_query = request.args.get("q", "", type=str).strip()
         org_type = request.args.get("type", "", type=str).strip()
         hide_region_management = request.args.get("hide_rm", "false", type=str).lower() == "true"
+        # Один УНП — один аккаунт: используется только при регистрации
+        # (поиск организации для привязки нового аккаунта), чтобы не
+        # предлагать организации, под которые аккаунт уже зарегистрирован.
+        # Для выбора согласующих/утверждающих организаций при отправке
+        # плана (plan_send.js) этот флаг не передаётся — там, наоборот,
+        # нужны именно организации с уже существующими аккаунтами.
+        exclude_registered = request.args.get("exclude_registered", "false", type=str).lower() == "true"
 
         query = Organization.query.filter_by(is_active=True)
+
+        if exclude_registered:
+            query = query.filter(
+                ~Organization.id.in_(
+                    db.session.query(User.organization_id).filter(User.organization_id.isnot(None))
+                )
+            )
 
         # Показываем только организации с хотя бы одной ролью в цепочке
         # согласования — без этого в списке попадались "пустые" организации
@@ -515,7 +529,9 @@ def get_events_data(token):
             'MoneyOwn': float(event.MoneyOwn) if event.MoneyOwn else None,
             'MoneyLoan': float(event.MoneyLoan) if event.MoneyLoan else None,
             'MoneyOther': float(event.MoneyOther) if event.MoneyOther else None,
-            'is_corrected': event.is_corrected
+            'is_corrected': event.is_corrected,
+            'has_teo': bool(event.teo_filename),
+            'teo_original_name': event.teo_original_name
         }
     
     return jsonify({

@@ -101,8 +101,11 @@
               <a>Обьем финансирования в текущем году, руб {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
-            <th colspan="7" class="resizable" style="border-right: none;">
+            <th colspan="7" class="resizable">
               <a>источники финансирования, руб.</a>
+            </th>
+            <th rowspan="3" class="resizable vertical-text" style="border-right: none;">
+              <a>ТЭО</a>
             </th>
           </tr>
           <tr>
@@ -126,7 +129,7 @@
               <a>кредиты банков, займы {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
-            <th rowspan="2" class="resizable vertical-text" style="border-right: none;">
+            <th rowspan="2" class="resizable vertical-text">
               <a>Иные {{ icons.icon_sort() }}</a>
               <div class="resizer"></div>
             </th>
@@ -168,12 +171,13 @@
             <th class="resizable">16<div class="resizer"></div></th>
             <th class="resizable">17<div class="resizer"></div></th>
             <th class="resizable">18<div class="resizer"></div></th>
-            <th class="resizable" style="border-right: none;">19</th>
+            <th class="resizable">19</th>
+            <th class="resizable no-print-col" style="border-right: none;">20</th>
           </tr>
         </thead>
-        
+
         <tr class="group-header" data-target="non-local-content">
-          <td colspan="19" style="border-bottom: 1px solid var(--border-color);">
+          <td colspan="20" style="border-bottom: 1px solid var(--border-color);">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_title }}</span>
@@ -182,12 +186,12 @@
         </tr>
         <tbody class="rows" id="non-local-content">
           <tr class="no-results-row">
-            <td colspan="19"></td>
+            <td colspan="20"></td>
           </tr>
         </tbody>
-        
+
         <tr class="group-header" data-target="local-content" >
-          <td colspan="19" style="border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important;">
+          <td colspan="20" style="border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important;">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>{{ section_changes_title }}</span>
@@ -196,12 +200,12 @@
         </tr>
         <tbody class="rows" id="local-content">
           <tr class="no-results-row">
-            <td colspan="19" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
+            <td colspan="20" style="text-align: center; padding: 50px 0 !important; "><div class="loading-spinner"></div></td>
           </tr>
         </tbody>
-        
+
         <!-- <tr class="group-header" data-target="other-content">
-          <td colspan="19">
+          <td colspan="20">
             <div class="group-header-content">
               {{ icons.dropdown_arrow() }}
               <span>Другое</span>
@@ -210,7 +214,7 @@
         </tr> -->
         <tbody id="other-content" class="rows">
           <tr>
-            <td colspan="19"></td>
+            <td colspan="20"></td>
           </tr>
         </tbody>
       </table>
@@ -290,7 +294,7 @@
                 </div>
             </div>
 
-            <form id="addEventForm" action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST">
+            <form id="addEventForm" action="{{ url_for('plan_bp.create_event', token=plan.token) }}" method="POST" enctype="multipart/form-data">
                 <div id="step2" class="modal-step" style="display: none;">
                     <div class="category-section" id="event-category-section">
                         <div class="name-section-title">Тип мероприятия</div>
@@ -323,7 +327,7 @@
                         <label>[5] {{ _('Объем внедрения') }}</label>
                         <div class="input-with-icon">
                             {{ icons.icon_half() }}
-                            <input type="number" name="Volume" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                            <input type="number" id="add-volume-input" name="Volume" class="app-numeric-input-integer" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
                         </div>
                     </div>
                     <div class="row-app-group">
@@ -492,6 +496,33 @@
                         </div>
                     </div>
                     <div class="row-app-group">
+                        <div class="app-group">
+                            <label>[20] {{ _('ТЭО') }}</label>
+                            <div class="teo-field">
+                                <input type="file" name="teo_file" id="add-teo-file-input" class="teo-file-input" accept=".doc,.docx,.pdf">
+
+                                <label for="add-teo-file-input" class="teo-dropzone" id="add-teo-dropzone">
+                                    <span class="teo-dropzone-icon">{{ icons.icon_paperclip() }}</span>
+                                    <span class="teo-dropzone-text">
+                                        <span class="teo-dropzone-title">{{ _('Прикрепить файл ТЭО') }}</span>
+                                        <span class="teo-dropzone-hint">DOC · DOCX · PDF</span>
+                                    </span>
+                                </label>
+
+                                <div class="teo-file-card" id="add-teo-file-card" style="display: none;">
+                                    <span class="teo-file-card-icon">{{ icons.icon_file() }}</span>
+                                    <div class="teo-file-card-info">
+                                        <span class="teo-file-card-name" id="add-teo-filename"></span>
+                                        <span class="teo-file-card-status">{{ _('Выбран, будет загружен') }}</span>
+                                    </div>
+                                    <button type="button" class="teo-file-card-action teo-file-card-action-danger" id="add-teo-clear-btn" title="{{ _('Убрать выбранный файл') }}">
+                                        {{ icons.icon_delete() }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row-app-group">
                         <div class="app-group" style="display: none;">
                             <label>id</label>
                             <div class="input-with-icon">
@@ -541,7 +572,7 @@
             <div class="progress-modal-bar-container">
                 <div class="progress-modal-bar" id="modal-progress-bar" style="width: 50%"></div>
             </div>
-            <form id="editEventeForm" method="POST">
+            <form id="editEventeForm" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="event_type" value="{{ event_type }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" id="edit-event-type" name="edit_type" value="full">
@@ -747,6 +778,38 @@
                             </div>
                         </div>
                         <div class="row-app-group">
+                            <div class="app-group">
+                                <label>[20] {{ _('ТЭО') }}</label>
+                                <div class="teo-field" id="edit-teo-upload-group">
+                                    <input type="file" name="teo_file" id="edit-teo-file-input" class="teo-file-input" accept=".doc,.docx,.pdf">
+
+                                    <label for="edit-teo-file-input" class="teo-dropzone" id="edit-teo-dropzone">
+                                        <span class="teo-dropzone-icon">{{ icons.icon_paperclip() }}</span>
+                                        <span class="teo-dropzone-text">
+                                            <span class="teo-dropzone-title">{{ _('Прикрепить файл ТЭО') }}</span>
+                                            <span class="teo-dropzone-hint">DOC · DOCX · PDF</span>
+                                        </span>
+                                    </label>
+
+                                    <div class="teo-file-card" id="edit-teo-file-card" style="display: none;">
+                                        <span class="teo-file-card-icon">{{ icons.icon_file() }}</span>
+                                        <div class="teo-file-card-info">
+                                            <a href="#" class="teo-file-card-name" id="edit-teo-current-link" target="_blank"></a>
+                                            <span class="teo-file-card-status">{{ _('Прикреплён') }}</span>
+                                        </div>
+                                        <div class="teo-file-card-actions">
+                                            <label for="edit-teo-file-input" class="teo-file-card-action" title="{{ _('Заменить файл') }}">
+                                                {{ icons.icon_paperclip() }}
+                                            </label>
+                                            <button type="button" class="teo-file-card-action teo-file-card-action-danger" id="edit-teo-remove-btn" title="{{ _('Удалить файл ТЭО') }}">
+                                                {{ icons.icon_delete() }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row-app-group">
                             <div class="app-group" style="display: none;">
                                 <label>id</label>
                                 <div class="input-with-icon">
@@ -805,7 +868,8 @@
     </div>
 </div>
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+<script src="{{ url_for('static', filename='js/teo-viewer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/event-calc.js') }}"></script>
 <script>
     // Переключатель расположения полей формы в модалках мероприятия

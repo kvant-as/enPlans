@@ -184,8 +184,8 @@ endblock %} {% block content %}
           />
           <div class="radio-org-card" data-type="respondent">
             {{ icons.icon_profile() }}
-            <div class="radio-org-title">Респондент</div>
-            <div class="radio-org-subtitle">Формирование и подача плана мероприятий по энергосбережению</div>
+            <div class="radio-org-title">Организация-разработчик</div>
+            <div class="radio-org-subtitle">Юридическое лицо, создающее, редактирующее и направляющее планы на согласование</div>
           </div>
         </label>
 
@@ -198,8 +198,8 @@ endblock %} {% block content %}
           />
           <div class="radio-org-card" data-type="auditor">
             {{ icons.icon_profile() }}
-            <div class="radio-org-title">Проверяющий</div>
-            <div class="radio-org-subtitle">Согласование отправленных планов мероприятий по энергосбережению</div>
+            <div class="radio-org-title">Согласовывающая организация</div>
+            <div class="radio-org-subtitle">Проверяющее юридическое лицо, по результатам рассмотрения которого документ согласовывается либо не согласовывается</div>
           </div>
         </label>
 
@@ -212,8 +212,8 @@ endblock %} {% block content %}
           />
           <div class="radio-org-card" data-type="approving">
             {{ icons.icon_profile() }}
-            <div class="radio-org-title">Утверждающий</div>
-            <div class="radio-org-subtitle">Утверждение согласованных планов мероприятий по энергосбережению</div>
+            <div class="radio-org-title">Утверждающая организация</div>
+            <div class="radio-org-subtitle">Проверяющее юридическое лицо, по результатам рассмотрения которого документ утверждается</div>
           </div>
         </label>
       </div>
@@ -252,22 +252,22 @@ endblock %} {% block content %}
               <div class="selected-role-info">
                 <div  class="selected-role-title">
                   <span>Ваша роль </span>
-                  <span id="selected-role-title">Респондент</span>
+                  <span id="selected-role-title">Организация-разработчик</span>
                 </div>
-                <div class="selected-role-subtitle" id="selected-role-subtitle">Формирование и подача плана мероприятий по энергосбережению</div>
+                <div class="selected-role-subtitle" id="selected-role-subtitle">Юридическое лицо, создающее, редактирующее и направляющее планы на согласование</div>
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label>{{ _('Поиск организации') }} <span class="required-star">*</span></label>
+            <label>{{ _('Поиск организации') }}</label>
             <div class="input-with-icon search-container">
               {{ icons.icon_search() }}
               <input
                 type="text"
                 name="organization_search"
                 id="organization-search"
-                placeholder="{{ _('Наименование или ОКПО или УНП') }}"
+                placeholder="{{ _('Введите наименование или УНП') }}"
                 class="search-input auth-input"
                 autocomplete="off"
               />
