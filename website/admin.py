@@ -1,12 +1,11 @@
 """EnPlans admin — model registry for the shared engine (common_models.admin)."""
 
-from flask import url_for
 from werkzeug.security import generate_password_hash
 
 from common_models.admin import AdminSite, Field as F
 from common_models import (
-    count_online,
-    User, UserAppActivity, Organization, Region, Ministry, News,
+    count_online, get_current_application_id,
+    User, Application, UserAppActivity, Organization, Region, Ministry, News,
     Plan, PlanApprovalPath, PlanColumnConfig, PlanTicket,
     Unit, Direction, Event, Indicator, IndicatorUsage,
     Notification, StatPlan, StatPlanValue, Chat, ChatMessage,
@@ -21,6 +20,40 @@ site = AdminSite(
     logout_endpoint="auth.logout",
 )
 
+site.link("Обращения «Другое»", "admin_support.list_view", group="Вспомогательные")
+
+
+def _scope_to_this_app(query):
+    """Аккаунты теперь привязаны к конкретному приложению — админка enPlans
+    должна видеть/создавать только свои (иначе тут же путается с
+    erespondentN-аккаунтами того же человека)."""
+    return query.filter(User.application_id == get_current_application_id())
+
+
+def _user_app_activity_scope(query):
+    return query.filter(UserAppActivity.app == "enplans")
+
+
+def _user_on_save(obj, creating):
+    """Новый аккаунт из админки всегда создаётся для ЭТОГО приложения —
+    поле application_id нарочно не редактируется через форму (см. ниже,
+    readonly), значение всегда берётся отсюда, а не из формы."""
+    if creating:
+        obj.application_id = get_current_application_id()
+
+
+def _user_application_display(obj):
+    return obj.application.name if obj.application else "—"
+
+
+def _org_account_emails(org):
+    """Email аккаунтов, привязанных к организации — только из ЭТОГО
+    приложения (у организации вполне может быть отдельный аккаунт и в
+    erespondentN, его сюда не подмешиваем)."""
+    app_id = get_current_application_id()
+    emails = [u.email for u in org.users if u.application_id == app_id and u.email]
+    return ", ".join(emails) if emails else "—"
+
 
 def _news_on_save(obj, creating):
     """Публикация новости на сайте EnPlans определяется полем published_at
@@ -34,41 +67,11 @@ def _news_on_save(obj, creating):
 
 
 def _support_chat_rows():
-    """Открытые обращения «Другое» из виджета виртуального помощника —
-    уходят живому администратору, минуя ИИ (см. routes/chat_bp.py и
-    routes/admin_support.py). Показываем последние на главной странице
-    админки, чтобы можно было сразу перейти и ответить."""
-    from .routes.chat_bp import SUPPORT_CHAT_TYPE
-
-    rows = []
-    chats = (
-        Chat.query.filter_by(chat_type=SUPPORT_CHAT_TYPE)
-        .order_by(Chat.updated_at.desc())
-        .limit(12)
-        .all()
-    )
-    for c in chats:
-        last = (
-            ChatMessage.query.filter_by(chat_id=c.id)
-            .order_by(ChatMessage.created_at.desc())
-            .first()
-        )
-        preview = (last.content or "") if last else ""
-        if len(preview) > 90:
-            preview = preview[:90].rstrip() + "…"
-        author = c.created_by
-        if author:
-            full = f"{author.last_name or ''} {author.first_name or ''}".strip()
-            name = author.fio or full or author.email or f"Чат №{c.id}"
-        else:
-            name = f"Чат №{c.id}"
-        rows.append({
-            "title": name,
-            "subtitle": preview,
-            "meta": c.updated_at.strftime("%d.%m %H:%M") if c.updated_at else "",
-            "url": url_for("admin_support.thread", chat_id=c.id),
-        })
-    return rows
+    """Превью обращений «Другое» для панели на главной странице админки —
+    полная логика и отдельная страница со всеми обращениями теперь в
+    routes/admin_support.py (list_view/dashboard_rows)."""
+    from .routes.admin_support import dashboard_rows
+    return dashboard_rows(limit=12)
 
 # --------------------------------------------------------------------------- #
 #  Основные
@@ -76,19 +79,22 @@ def _support_chat_rows():
 
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
-    list_display=["id", "email", "fio", "organization", "begin_time"],
+    list_display=["id", "email", "organization", "begin_time"],
     list_badges=["is_admin", "is_auditor", "is_approver", "is_reader"],
-    search=["email", "fio", "last_name", "first_name", "telephone"],
+    search=["email", "last_name", "first_name", "telephone"],
+    scope_query=_scope_to_this_app,
+    on_save=_user_on_save,
     fields=[
         F("email", "Email", type="email", required=True),
-        F("fio", "ФИО"),
         F("last_name", "Фамилия"), F("first_name", "Имя"), F("patronymic_name", "Отчество"),
         F("telephone", "Телефон"), F("post", "Должность"),
         F("is_admin", "Администратор", type="bool"),
         F("is_auditor", "Согласовывающая организация", type="bool"),
         F("is_approver", "Утверждающая организация", type="bool"),
         F("is_reader", "Читатель", type="bool"),
-        F("organization_id", "Организация", type="fk", target=Organization, target_label="full_name"),
+        F("organization_id", "Организация", type="fk-search", target=Organization, target_label="full_name"),
+        F("application_id", "Приложение", readonly=True, display=_user_application_display,
+          help="Аккаунт создаётся только для текущего приложения (EnPlans) — не редактируется."),
         F("password", "Пароль", type="password", create_only=False, skip_if_blank=True,
           transform=generate_password_hash, help="Оставьте пустым, чтобы не менять"),
     ],
@@ -96,8 +102,9 @@ site.register(
 
 site.register(
     Organization, name="Организации", group="Основные", stat_label="Организаций",
-    list_display=["id", "full_name", "okpo", "region", "ministry"],
+    list_display=["id", "full_name", "okpo", "region", "ministry", ("accounts", "Email аккаунта")],
     list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management"],
+    list_format={"accounts": _org_account_emails},
     search=["full_name", "okpo", "ynp"],
     fields=[
         F("full_name", "Полное название", required=True),
@@ -122,6 +129,15 @@ site.register(
     Ministry, name="Министерства", group="Основные",
     list_display=["id", "name"], search=["name"], order_by="name",
     fields=[F("name", "Название", required=True)],
+)
+
+site.register(
+    Application, name="Приложения", group="Основные",
+    list_display=["id", "code", "name"], search=["code", "name"], order_by="code",
+    fields=[
+        F("code", "Код (APP_NAME)", required=True),
+        F("name", "Название", required=True),
+    ],
 )
 
 site.register(
@@ -381,6 +397,7 @@ site.register(
     readonly=True, order_by="-last_active", per_page=50,
     list_display=["id", "user", "app", "first_seen", "last_active"],
     search=["app"],
+    scope_query=_user_app_activity_scope,
 )
 
 # --------------------------------------------------------------------------- #
@@ -394,6 +411,8 @@ site.dashboard(
             "title": "Обращения «Другое»",
             "rows": _support_chat_rows,
             "empty": "Открытых обращений нет",
+            "more_endpoint": "admin_support.list_view",
+            "more_label": "Все обращения",
         },
     ],
     actions=[

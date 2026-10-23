@@ -149,7 +149,7 @@ next_path.is_viewed)) or plan.is_error or plan.is_approved %}
     </div>
 
     <div class="profile-tab-panel active" data-tab-panel="org">
-      {{ component.organization_view_card(plan.organization) }}
+      {{ component.organization_view_card(plan.organization, plan.user) }}
     </div>
 
     <div class="profile-tab-panel" data-tab-panel="respondent">

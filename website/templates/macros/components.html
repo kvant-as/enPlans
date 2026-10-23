@@ -939,7 +939,7 @@ selected_status='all', selected_year='all') %}
 {% endmacro %}
 
 
-{% macro organization_view_card(organization) %}
+{% macro organization_view_card(organization, current_user=None) %}
 {% if organization %}
 <div class="org-card">
   <div class="org-card-header">
@@ -974,6 +974,22 @@ selected_status='all', selected_year='all') %}
     <div class="org-code-chip">
       {{ icons.icon_region() }}
       <span class="org-code-value">{{ organization.region.name or _('Нет данных') }}</span>
+    </div>
+    <div class="org-code-chip">
+      {{ icons.icon_org() }}
+        {% if current_user %}
+          {% if current_user.is_admin %}
+            <span class="org-code-value">{{ _('Администратор') }}</span>
+          {% elif current_user.is_auditor %}
+            <span class="org-code-value">{{ _('Согласовывающая организация') }}</span>
+          {% elif current_user.is_approver %}
+            <span class="org-code-value">{{ _('Утверждающая организация') }}</span>
+          {% elif current_user.is_reader %}
+            <span class="org-code-value">{{ _('Читатель') }}</span>
+          {% else %}
+            <span class="org-code-value">{{ _('Организация-разработчик') }}</span>
+          {% endif %}
+        {% endif %}
     </div>
   </div>
 </div>

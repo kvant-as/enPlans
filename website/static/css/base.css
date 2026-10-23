@@ -766,176 +766,9 @@ body {
   transform: scale(1);
 }
 
-/* ============================================
-   FLASH MESSAGES
-   ============================================ */
-/* Уведомления накладываются друг на друга стопкой (как группа уведомлений
-   на iOS), а не растут отдельным списком вниз/вверх — самое новое сверху
-   и полностью видимо, более старые чуть выглядывают из-под него (меньше,
-   прозрачнее). Наведение на стопку разворачивает её в обычный список
-   (см. .stack-expanded ниже и updateMessagesDisplay в base.js). */
-#flash-container {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  z-index: 10050;
-  box-sizing: border-box;
-  width: 360px;
-  max-width: calc(100vw - 48px);
-  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#flash-container.stack-expanded {
-  max-height: 80vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-#flash-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-#flash-container::-webkit-scrollbar-thumb {
-  background: rgba(136, 136, 136, 0.3);
-  border-radius: 10px;
-}
-
-.custom-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 40px 14px 16px;
-  border-radius: 12px;
-  width: 100%;
-  box-sizing: border-box;
-  font-size: 14px;
-  line-height: 1.45;
-  color: #1f2937;
-  font-weight: 500;
-  background: #ffffff;
-  border: 1px solid rgb(189, 189, 189);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  overflow: hidden;
-  /* Позиция/масштаб/прозрачность в стопке считает updateMessagesDisplay
-     в base.js и проставляет как inline style — transition здесь просто
-     анимирует переход между вызовами того расчёта. */
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  transform-origin: bottom center;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, box-shadow 0.3s ease;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Развёрнутое состояние (наведение на стопку) — просто возвращаемся к
-   обычному flex-списку, браузер сам раскладывает карточки по высоте,
-   никакой JS-арифметики для этого не нужно. */
-#flash-container.stack-expanded {
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: stretch;
-  gap: 10px;
-}
-#flash-container.stack-expanded .custom-alert {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  flex-shrink: 0;
-}
-
-/* status indicator dot */
-.custom-alert::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: #9ca3af;
-}
-
-.custom-alert.alert-success::before {
-  background: #22a565;
-}
-
-.custom-alert.alert-danger::before {
-  background: #dc2626;
-}
-
-.custom-alert.removing {
-  opacity: 0;
-  transform: translateX(40px) scale(0.9);
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  margin: 0;
-}
-
-.custom-alert img.alert-icon {
-  display: none;
-}
-
-.p_message_cont {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.p_message_cont p {
-  margin: 0;
-  word-break: break-word;
-}
-
-.alert-close {
-  background: none;
-  border: none;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  font-weight: 500;
-  color: #9ca3af;
-  transition: color 0.2s ease;
-}
-
-.alert-close:hover {
-  color: #dc2626;
-}
-
-.expand-hint {
-  display: block;
-  font-size: 11px;
-  color: #9ca3af;
-  margin-top: 6px;
-  cursor: pointer;
-  font-style: italic;
-}
-
-@media (max-width: 768px) {
-  #flash-container {
-    top: auto;
-    bottom: 90px;
-    left: 16px;
-    right: 16px;
-    transform: none;
-    width: auto;
-    max-width: none;
-    gap: 8px;
-    max-height: 55vh;
-  }
-
-  .custom-alert {
-    width: auto;
-    padding: 12px 34px 12px 14px;
-  }
-}
+/* Flash-уведомления (#flash-container, .custom-alert и т.д.) теперь в
+   общем common_models/static_assets/css/message-flash.css — подключается
+   отдельным <link> в base.html. */
 /* ============================================
    USER PROFILE PANEL
    ============================================ */
@@ -1354,17 +1187,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.employee-position {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-subtitle2);
-  overflow: hidden;
-  width: fit-content;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  display: block;
 }
 
 .employee-role {
@@ -4536,6 +4358,7 @@ input::placeholder {
 .export-choose svg {
   width: 31px;
   height: 31px;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.3));
 }
 .export-choose-text {
   display: flex;
@@ -10185,9 +10008,6 @@ main {
   }
   .employee-name {
     font-size: 15px;
-  }
-  .employee-position {
-    font-size: 12px;
   }
   .notif-popup {
     right: 5%;

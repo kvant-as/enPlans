@@ -11,20 +11,6 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        {#{% if current_user.post %}
-          <a class="employee-position">{{ current_user.post}}</a>
-        {% endif%}#}
-        {% if current_user.is_admin %}
-          <span class="employee-role">{{ _('Администратор') }}</span>
-        {% elif current_user.is_auditor %}
-          <span class="employee-role">{{ _('Согласовывающая организация') }}</span>
-        {% elif current_user.is_approver %}
-          <span class="employee-role">{{ _('Утверждающая организация') }}</span>
-        {% elif current_user.is_reader %}
-          <span class="employee-role">{{ _('Читатель') }}</span>
-        {% else %}
-          <span class="employee-role">{{ _('Организация-разработчик') }}</span>
-        {% endif %}
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
@@ -222,8 +208,8 @@
             </div>
         </div>
       </div>
-      {{ component.organization_view_card(current_user.organization) }}
-            <hr/>
+      {{ component.organization_view_card(current_user.organization, current_user) }}
+      <hr/>
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">
         <div class="dates-list">

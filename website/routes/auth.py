@@ -11,13 +11,12 @@ from flask_login import (
 
 from sqlalchemy import func
 from werkzeug.security import check_password_hash
-from common_models.models import Report, Version_report
 from website.user import send_email
 
 from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime, timedelta
 
-from common_models import current_utc_time
+from common_models import current_utc_time, get_current_application_id
 
 from .. import db
 from ..models import Plan, User, UserVerification
@@ -95,7 +94,13 @@ def login():
         password = request.form.get('password')
 
         if email and password:
-            user = User.query.filter(func.lower(User.email) == func.lower(email)).first()
+            # Аккаунт привязан к конкретному приложению — тот же email может
+            # быть отдельно зарегистрирован и в erespondentN, и в enPlans,
+            # поэтому логин ищет строго "свой" аккаунт в этом приложении.
+            user = User.query.filter(
+                func.lower(User.email) == func.lower(email),
+                User.application_id == get_current_application_id()
+            ).first()
             if user and user.password and check_password_hash(user.password, password):
                 login_user(user)
                 token = create_session_token(user)
@@ -230,21 +235,7 @@ def delete_account():
     if has_active_plans:
         flash('Невозможно удалить аккаунт. У вас есть отправленные, Утвержденные планы или планы с ошибками', 'error')
         return redirect(url_for('views.profile'))
-    
-    has_approved = db.session.query(
-        db.session.query(Version_report)
-        .join(Report)
-        .filter(
-            Report.user_id == current_user.id,
-            Version_report.status == 'Одобрен'
-        )
-        .exists()
-    ).scalar()
-    
-    if has_approved:
-        flash('Невозможно удалить аккаунт, так как есть отчеты в ErespodnentN со статусом "Одобрен"', 'error')
-        return redirect(url_for('views.profile'))     
-    
+
     try:
         user_email = user.email
         
@@ -272,8 +263,11 @@ def forgot_password():
     
     elif request.method == 'POST':
         email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        
+        user = User.query.filter(
+            func.lower(User.email) == func.lower(email),
+            User.application_id == get_current_application_id()
+        ).first()
+
         if user:
             serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
             token = serializer.dumps(email, salt='password-reset-salt')
@@ -412,7 +406,10 @@ def change_email():
                 flash('Неверный пароль', 'error')
                 return redirect(url_for('auth.change_email'))
             
-            existing_user = User.query.filter(func.lower(User.email) == func.lower(new_email)).first()
+            existing_user = User.query.filter(
+                func.lower(User.email) == func.lower(new_email),
+                User.application_id == get_current_application_id()
+            ).first()
             if existing_user and existing_user.id != current_user.id:
                 flash('Пользователь с таким email уже существует', 'error')
                 return redirect(url_for('auth.change_email'))

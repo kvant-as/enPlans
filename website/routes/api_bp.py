@@ -174,9 +174,17 @@ def get_organizations_api():
         query = Organization.query.filter_by(is_active=True)
 
         if exclude_registered:
+            # Аккаунты теперь привязаны к конкретному приложению — та же
+            # организация вполне может иметь отдельный аккаунт в erespondentN,
+            # это не должно мешать регистрации в enPlans, поэтому дубль
+            # проверяется только среди аккаунтов ЭТОГО приложения.
+            from common_models import get_current_application_id
             query = query.filter(
                 ~Organization.id.in_(
-                    db.session.query(User.organization_id).filter(User.organization_id.isnot(None))
+                    db.session.query(User.organization_id).filter(
+                        User.organization_id.isnot(None),
+                        User.application_id == get_current_application_id()
+                    )
                 )
             )
 

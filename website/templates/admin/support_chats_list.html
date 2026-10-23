@@ -1,0 +1,25 @@
+{% extends "cm_admin/base.html" %}
+{% block title %}{{ site.brand }} · Обращения «Другое»{% endblock %}
+
+{% block content %}
+  <div class="cm-section-head">
+    <h1 class="cm-h1">Обращения «Другое»</h1>
+    <a class="cm-link" href="{{ url_for('cm_admin.dashboard') }}">← к панели</a>
+  </div>
+
+  <div class="cm-rows">
+    {% for row in rows %}
+      <a class="cm-row" href="{{ row.url }}">
+        <div class="cm-row-block">
+          <span class="cm-row-title">{{ row.title }}</span>
+          {% if row.subtitle %}<span class="cm-row-sub">{{ row.subtitle }}</span>{% endif %}
+        </div>
+        {% if row.meta %}<span class="cm-row-meta">{{ row.meta }}</span>{% endif %}
+      </a>
+    {% else %}
+      <div class="cm-empty">Обращений пока нет</div>
+    {% endfor %}
+  </div>
+
+  <p class="cm-muted">Всего обращений: {{ rows|length }}</p>
+{% endblock %}

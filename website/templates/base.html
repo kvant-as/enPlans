@@ -26,6 +26,7 @@
     <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-SemiBold.woff2') }}" crossorigin>
 
     {% block extra_css %}
+        <link rel="stylesheet" href="{{ url_for('cm_assets.static', filename='css/message-flash.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
@@ -494,7 +495,8 @@
       {% block content %} 
       {% endblock %}
 
-      {% block javascript %} 
+      {% block javascript %}
+        <script src="{{ url_for('cm_assets.static', filename='js/message-flash.js') }}"></script>
         <script src="{{ url_for('static', filename='js/base.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
         <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>

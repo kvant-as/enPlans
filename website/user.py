@@ -5,6 +5,7 @@ from sqlalchemy import func
 from website import db
 from website.email import send_email
 from website.models import User
+from common_models import get_current_application_id
 from flask import request, flash, redirect, session, url_for
 import logging
 import re
@@ -67,7 +68,15 @@ def send_activation_email(email):
 
 def sign_def(email, password1, password2):
     if email and password1:
-        if User.query.filter(func.lower(User.email) == func.lower(email)).first():
+        # Аккаунт теперь привязан к конкретному приложению (Application) —
+        # тот же email может быть отдельно зарегистрирован в erespondentN и
+        # в enPlans, поэтому проверка на дубль ограничена только текущим
+        # приложением.
+        existing = User.query.filter(
+            func.lower(User.email) == func.lower(email),
+            User.application_id == get_current_application_id()
+        ).first()
+        if existing:
             flash('Пользователь с таким email уже существует', 'error')
             return redirect(url_for('auth.sign'))
         elif not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email):
@@ -99,7 +108,8 @@ def activate_account():
     if input_code == session.get('activation_code'):
         new_user = User(
             email=session['temp_user']['email'],
-            password=session['temp_user']['password']
+            password=session['temp_user']['password'],
+            application_id=get_current_application_id()
         )
         db.session.add(new_user)
         db.session.commit()
@@ -150,13 +160,14 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
 
-    # Один УНП — один аккаунт: для каждой организации в системе может быть
-    # зарегистрирован строго один аккаунт. Фронт уже прячет такие
-    # организации из результатов поиска (см. /api/organizations?exclude_registered=true),
-    # но это единственная настоящая защита от дублей — обходится напрямую
-    # через форму.
+    # Один УНП — один аккаунт (в рамках ЭТОГО приложения — та же организация
+    # вполне может иметь отдельный аккаунт в другом приложении, это другой
+    # Application.id). Фронт уже прячет такие организации из результатов
+    # поиска (см. /api/organizations?exclude_registered=true), но это
+    # единственная настоящая защита от дублей — обходится напрямую через форму.
     existing_user = User.query.filter(
         User.organization_id == org_id,
+        User.application_id == get_current_application_id(),
         User.id != current_user.id
     ).first()
     if existing_user:

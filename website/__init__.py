@@ -159,6 +159,9 @@ def create_app():
     from .admin import init_admin
     init_admin(app)
 
+    from common_models.assets import init_assets
+    init_assets(app)
+
     from common_models.forms_ui import init_forms_ui
     init_forms_ui(app)
 

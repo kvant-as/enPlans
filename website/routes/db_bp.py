@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, request
 import pandas as pd
 from werkzeug.security import generate_password_hash
 
-from common_models import current_utc_time
+from common_models import current_utc_time, get_current_application_id
 from website import csrf
 from common_models.logs import get_logger
 
@@ -210,7 +210,8 @@ def fill_users(db):
             is_admin=is_admin,
             is_auditor=is_auditor,
             organization_id=organization_id,
-            password=generate_password_hash(password)
+            password=generate_password_hash(password),
+            application_id=get_current_application_id()
         )
         db.session.add(user)
     db.session.commit()

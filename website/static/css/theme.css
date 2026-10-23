@@ -273,17 +273,8 @@ html[data-theme] .fixed-header {
   background: rgba(27, 32, 39, 0.85);
 }
 
-/* website/static/css/base.css :: .custom-alert */
-:root[data-theme="dark"] .custom-alert {
-  color: #eef1f5;
-  background: #1b2027;
-  border: 2px solid #2b313b;
-}
-
-/* website/static/css/base.css :: .alert-close:hover */
-:root[data-theme="dark"] .alert-close:hover {
-  color: #e87272;
-}
+/* Тёмная тема для flash-уведомлений (.custom-alert, .alert-close) теперь
+   в общем common_models/static_assets/css/message-flash.css. */
 
 /* website/static/css/base.css :: .user-profile-panel */
 :root[data-theme="dark"] .user-profile-panel {
@@ -2160,7 +2151,8 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
 
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
-:root[data-theme="dark"] #flash-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+/* #flash-container::-webkit-scrollbar-thumb (тёмная тема) — теперь в
+   common_models/static_assets/css/message-flash.css. */
 
 /* ------------------------------------------------------------ *
  * 10) Переключатель темы — какая иконка видна
