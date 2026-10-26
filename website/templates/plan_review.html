@@ -13,100 +13,15 @@
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
-        <div class="dropdown-menu-container">
-          <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Действия с планом">
-            {{ icons.icon_dots() }}
-          </button>
-
-          <div class="dropdown-menu" id="planActionsMenu" style="width: max-content">
-            <div class="nav-menu-list">
-              <button
-                type="button"
-                id="sentPlanButton"
-                class="nav-menu-item"
-                onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
-                {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}
-                  disabled
-                {% endif %}
-              >
-                {{ icons.icon_send() }}
-                <span>{{ _('Отправить на согласование') }}</span>
-              </button>
-
-              <form id="cancelsentPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <input type="hidden" name="status" value="draft" />
-                <button
-                  id="cancelSentPlanButton"
-                  class="nav-menu-item"
-                  {% if not (plan.is_sent == true and plan.user_id == current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_cancel() }}
-                  <span>{{ _('Отменить отправку') }}</span>
-                </button>
-              </form>
-
-              <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <input type="hidden" name="status" value="control" />
-                <button
-                  id="controlPlanButton"
-                  class="nav-menu-item"
-                  {% if not plan.is_draft or (plan.user_id != current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.control_icon() }}
-                  <span>{{ _('Пройти контроль') }}</span>
-                </button>
-              </form>
-
-              <hr />
-
-              <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button
-                  type="submit"
-                  class="nav-menu-item {% if not plan.tickets %}disabled{% endif %}"
-                  {% if not plan.tickets %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_print() }}
-                  <span>{{ _('Распечатать сообщения') }}</span>
-                </button>
-              </form>
-
-              <button
-                class="nav-menu-item"
-                onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-                {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}
-                  disabled
-                {% endif %}
-              >
-                {{ icons.icon_edit() }}
-                <span>{{ _('Редактировать') }}</span>
-              </button>
-
-              <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button
-                  type="submit"
-                  data-modal-trigger="deletePlan"
-                  class="nav-menu-item delete-item"
-                  {% if plan.is_sent or plan.is_approved or (plan.user_id != current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_delete() }}
-                  <span>{{ _('Удалить') }}</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          class="svg-btn dots-btn"
+          data-tooltip="Редактировать"
+          onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+          {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}disabled{% endif %}
+        >
+          {{ icons.icon_edit() }}
+        </button>
       </div>
     </div>
 
@@ -189,65 +104,11 @@
       </div>
     </div>
 
-    <hr />
-    <h1 class="name">{{ _('Результаты проверки') }}</h1>
-    {{ component.tickets_container(plan, current_user) }}
+    <!-- <hr />
+    <h1 class="name">{{ _('Путь согласования плана') }}</h1>
+    {{ component.plan_approval_table(plan, current_user) }} -->
 
-    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == false and current_user.is_admin == false %}
-      {{ component.plan_agree_slider(plan, current_user) }}
-    {% endif %}
 
-    <hr />
-    <h1 class="name">{{ _('Прочая информация') }}</h1>
-
-    <div class="dates-card">
-      <div class="dates-list">
-        <div class="date-item" data-type="created">
-          <div class="date-icon">{{ icons.icon_calendar() }}</div>
-          <div class="date-content">
-            <div class="date-info">
-              <span class="date-label">{{ _('Создан') }}</span>
-              {% if plan.begin_time %}
-                <span class="date-day">{{ plan.begin_time.strftime('%d.%m.%Y') }}</span>
-                <span class="date-time">{{ plan.begin_time.strftime('%H:%M') }}</span>
-              {% else %}
-                <span class="date-empty">—</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <div class="date-item" data-type="edited">
-          <div class="date-icon">{{ icons.icon_edit() }}</div>
-          <div class="date-content">
-            <div class="date-info">
-              <span class="date-label">{{ _('Редакция') }}</span>
-              {% if plan.change_time %}
-                <span class="date-day">{{ plan.change_time.strftime('%d.%m.%Y') }}</span>
-                <span class="date-time">{{ plan.change_time.strftime('%H:%M') }}</span>
-              {% else %}
-                <span class="date-empty">—</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <div class="date-item" data-type="sent">
-          <div class="date-icon">{{ icons.icon_send() }}</div>
-          <div class="date-content">
-            <div class="date-info">
-              <span class="date-label">{{ _('Отправлен') }}</span>
-              {% if plan.sent_time %}
-                <span class="date-day">{{ plan.sent_time.strftime('%d.%m.%Y') }}</span>
-                <span class="date-time">{{ plan.sent_time.strftime('%H:%M') }}</span>
-              {% else %}
-                <span class="date-empty">{{ _('Не отправлен') }}</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 

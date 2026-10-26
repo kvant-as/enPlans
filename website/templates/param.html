@@ -141,7 +141,7 @@ endblock %} {% block content %}
           <input type="hidden" name="telephone" id="telephone" required />
         </div>
         <div class="form-group">
-          <label>{{ _('Должность') }}</label>
+          <label>{{ _('Должность') }} <span class="required-star">*</span></label>
           <input
             type="text"
             name="post"
@@ -150,6 +150,7 @@ endblock %} {% block content %}
             maxlength="35"
             placeholder="{{ _('Введите должность') }}"
             class="auth-input"
+            required
           />
         </div>
         <div class="button-auth-area">

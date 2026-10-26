@@ -2558,6 +2558,44 @@ input::placeholder {
   cursor: not-allowed;
 }
 
+/* На странице плана вкладок может быть до 7 в одной "таблетке". Активная
+   вкладка — под свой контент (полное название), а все неактивные делят
+   оставшееся место поровну (flex: 1 1 0) — каждая показывает текст, но
+   обрезанный многоточием, если не помещается. Скоуп на .header-cont.planed
+   (чтобы не задеть общую навигацию сайта) И на десктопную ширину — у
+   мобильной вёрстки для этого меню совсем другие, отдельные правила
+   (см. @media max-width: 1080px), это не должно в них просачиваться. */
+@media (min-width: 1081px) {
+  .header-cont.planed .navigation-container {
+    width: 100%;
+    justify-content: center;
+  }
+  .header-cont.planed .nav-item {
+    flex: 0 0 auto;
+  }
+  .header-cont.planed .nav-item.active {
+    padding: 2px 18px;
+  }
+  .header-cont.planed .nav-item:not(.active) {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 2px 10px;
+  }
+  .header-cont.planed .nav-item:not(.active) .nav-icon-wrapper {
+    flex-shrink: 0;
+  }
+  .header-cont.planed .nav-item:not(.active) .nav-text {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    text-align: left;
+  }
+}
+
 .nav-icon-wrapper {
   position: relative;
   display: flex;
@@ -2595,7 +2633,7 @@ input::placeholder {
 }
 
 .nav-text.long-text {
-  max-width: 130px;
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2603,16 +2641,10 @@ input::placeholder {
 }
 
 .nav-item.active .nav-text.long-text {
-  font-size: 12px;
+
   font-weight: 600;
-  max-width: 300px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  white-space: normal;
-  word-wrap: break-word;
-  word-break: break-word;
+  max-width: none;
+  white-space: nowrap;
   line-height: 1.3;
   text-align: center;
 }
@@ -2621,19 +2653,11 @@ input::placeholder {
   .nav-text.long-text {
     max-width: 140px;
   }
-  .nav-item.active .nav-text.long-text {
-    max-width: 160px;
-    -webkit-line-clamp: 2;
-  }
 }
 
 @media (max-width: 992px) {
   .nav-text.long-text {
     max-width: 120px;
-  }
-  .nav-item.active .nav-text.long-text {
-    max-width: 130px;
-    -webkit-line-clamp: 2;
   }
 }
 
@@ -2751,6 +2775,7 @@ input::placeholder {
 
 .header-cont.planed{
   top: 120px;
+  max-width: 1250px;
 }
 
 .pers-page {
@@ -2794,6 +2819,9 @@ input::placeholder {
 .personal-acc-conteiner.planed{
   margin-top: 200px;
 }
+
+/* Вкладка «Подписи»: рельса слева + таблица — чуть шире стандартной
+   карточки, но без бокового сайдбара хватает скромной прибавки. */
 
 .personal-acc-conteiner.edit-page{
   margin-top: 125px;
@@ -5331,6 +5359,361 @@ input[type="checkbox"]:focus {
 }
 
 /* ============================================
+   APPROVAL TABLE (путь согласования плана)
+   ============================================ */
+.approval-table-wrap {
+  border: 1px solid var(--telegram-gray, #E5E5E5);
+  border-radius: 12px;
+  background-color: var(--white);
+  overflow: hidden;
+}
+.approval-table-scroll {
+  overflow-x: auto;
+}
+.approval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+.approval-table thead th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  background-color: #F8F9FA;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.approval-table thead th:last-child {
+  border-right: none;
+}
+.approval-row td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color-th, var(--border-color));
+  border-right: 1px solid var(--border-color-th, var(--border-color));
+  color: #334155;
+  vertical-align: middle;
+}
+.approval-row td:last-child {
+  border-right: none;
+}
+.approval-row:last-child td {
+  border-bottom: none;
+}
+.approval-type {
+  font-weight: 500;
+  color: var(--black);
+}
+/* Разделительная строка "Разработчик плана: ФИО, тел., email" —
+   во всю ширину таблицы, по центру, как в исходном макете. */
+.approval-dev-row td {
+  padding: 10px 14px;
+  text-align: center;
+  font-style: italic;
+  text-decoration: underline;
+  font-size: 12.5px;
+  color: var(--text-secondary, #64748b);
+  background-color: #F8F9FA;
+  border-bottom: 1px solid var(--border-color);
+  border-right: none;
+}
+/* Боковая линия слева от первой ячейки — показывает, на каком этапе
+   сейчас находится план (цвет меняется по статусу строки). */
+.approval-row td:first-child {
+  border-left: 4px solid var(--border-color, #E5E5E5);
+}
+.approval-row-done td:first-child {
+  border-left-color: var(--green-light, #009bb6);
+}
+.approval-row-active td:first-child {
+  border-left-color: #f59e0b;
+}
+.approval-row-rejected td:first-child {
+  border-left-color: #e53935;
+}
+.approval-row-blocked td:first-child {
+  border-left-color: var(--border-color, #E5E5E5);
+}
+.approval-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.approval-status svg {
+  width: 14px;
+  height: 14px;
+}
+.approval-status-done {
+  color: var(--green-light, #009bb6);
+}
+.approval-status-active {
+  color: #b45309;
+}
+.approval-status-rejected {
+  color: #e53935;
+}
+.approval-status-blocked {
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 400;
+}
+.approval-admin-btn {
+  border: 1px solid var(--green-light, #009bb6);
+  color: var(--green-light, #009bb6);
+  background: transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.approval-admin-btn:hover {
+  background: var(--green-light-back, #e9fcff);
+}
+.approval-admin-btn-cancel {
+  border-color: #e53935;
+  color: #e53935;
+}
+.approval-admin-btn-cancel:hover {
+  background: #fdecea;
+}
+
+/* ============================================
+   SIGNATURES PAGE (вкладка «Подписи»)
+   Таблица пути согласования на всю ширину контейнера — границы только
+   снизу у строк (без вертикальных разделителей колонок), цветные
+   статус-чипы с иконками. Цвета — фирменная бирюза приложения
+   (--green-main/--green-light) + семантические статусные цвета, уже
+   используемые в .status-plan.
+   ============================================ */
+.track-wrap {
+  --tr-text-dim: var(--text-subtitle, #7f8c8d);
+  --tr-border: var(--border-color);
+  --tr-done: #16a34a;
+  --tr-done-back: rgba(34, 197, 94, 0.12);
+  --tr-active: var(--green-main, #00798f);
+  --tr-active-back: var(--green-light-back, #e9fcff);
+  --tr-rejected: #c0392b;
+  --tr-rejected-back: rgba(192, 57, 43, 0.1);
+  width: 100%;
+}
+
+.track-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.track-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.track-table thead th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tr-text-dim);
+  border-bottom: 2px solid var(--tr-border);
+  white-space: nowrap;
+}
+.track-row td {
+  padding: 18px 14px;
+  border-bottom: 1px solid var(--tr-border);
+  color: var(--black);
+  vertical-align: top;
+}
+.track-row:last-child td {
+  border-bottom: none;
+}
+.track-row-type {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.track-row-icon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F8F9FA;
+  border: 2px solid var(--tr-border);
+  color: var(--tr-text-dim);
+}
+.track-row-icon svg {
+  width: 13px;
+  height: 13px;
+}
+.track-row-done .track-row-icon {
+  background: var(--tr-done-back);
+  border-color: var(--tr-done);
+  color: var(--tr-done);
+}
+.track-row-active .track-row-icon {
+  background: var(--tr-active-back);
+  border-color: var(--tr-active);
+  color: var(--tr-active);
+}
+.track-row-active td {
+  color: var(--tr-active);
+}
+.track-row-rejected .track-row-icon {
+  background: var(--tr-rejected-back);
+  border-color: var(--tr-rejected);
+  color: var(--tr-rejected);
+}
+.track-row-pending td {
+  color: var(--tr-text-dim);
+}
+.track-row-pending .track-row-icon {
+  color: var(--tr-text-dim);
+}
+/* Этап из отменённого/брошенного цикла отправки — не "отклонён"
+   проверяющим (это --tr-rejected, красный), а просто не успел пройти,
+   потому что сама отправка была отменена. Приглушённо-серый, не красный. */
+.track-row-abandoned td {
+  color: var(--tr-text-dim);
+  opacity: 0.7;
+}
+.track-row-abandoned .track-row-icon {
+  background: #F1F1F1;
+  border-color: var(--tr-border);
+  color: var(--tr-text-dim);
+}
+
+.track-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: #F8F9FA;
+  color: var(--tr-text-dim);
+  white-space: nowrap;
+}
+.track-chip-done {
+  background: var(--tr-done-back);
+  color: var(--tr-done);
+}
+.track-chip-active {
+  background: var(--tr-active-back);
+  color: var(--tr-active);
+}
+.track-chip-rejected {
+  background: var(--tr-rejected-back);
+  color: var(--tr-rejected);
+}
+.track-chip-abandoned {
+  background: #F1F1F1;
+  color: var(--tr-text-dim);
+}
+
+/* Разделительная строка "Разработчик плана: ФИО, тел., email" —
+   во всю ширину таблицы, по центру, курсивом. */
+.track-row-dev td {
+  padding: 10px 14px;
+  text-align: center;
+  font-style: italic;
+  text-decoration: underline;
+  font-size: 12.5px;
+  color: var(--tr-text-dim);
+  background-color: #F8F9FA;
+  border-bottom: 1px solid var(--tr-border);
+}
+
+.track-admin-form {
+  display: inline-block;
+  margin-left: 8px;
+}
+
+/* ============================================
+   PLAN ACTIONS (вкладка «Действия с планом»)
+   ============================================ */
+.plan-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+.plan-action-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  padding: 22px 16px;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.plan-action-tile svg {
+  width: 30px;
+  height: 30px;
+  color: var(--green-main, #00798f);
+  margin-bottom: 4px;
+}
+.plan-action-tile-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+.plan-action-tile-sub {
+  font-size: 12px;
+  color: var(--text-subtitle, #7f8c8d);
+  line-height: 1.3;
+}
+.plan-action-tile:hover:not(:disabled) {
+  border-color: var(--green-light, #009bb6);
+  box-shadow: 0 4px 14px rgba(0, 121, 143, 0.12);
+  transform: translateY(-2px);
+}
+.plan-action-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #f9fafb;
+  filter: grayscale(0.15);
+}
+.plan-action-tile-danger svg {
+  color: #c0392b;
+}
+.plan-action-tile-danger:hover:not(:disabled) {
+  border-color: #c0392b;
+  box-shadow: 0 4px 14px rgba(192, 57, 43, 0.12);
+}
+
+/* ============================================
+   CHAT FOOTER (поле ввода сообщения на вкладке «Проверка») —
+   прячется, пока у проверяющего есть неразрешённое сообщение с
+   замечаниями (см. applyHasRemarks в plan_audit.html); сама карточка —
+   это уже существующий .bottom_tickets_arrea.
+   ============================================ */
+.chat-footer.has-remarks #sent_mesPlanForm {
+  display: none;
+}
+
+/* ============================================
    TICKETS / MESSAGES
    ============================================ */
 .tickets-container {
@@ -5371,12 +5754,58 @@ input[type="checkbox"]:focus {
   padding: 0 16px 16px 16px;
   max-height: 700px;
   min-height: 200px;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
   scroll-behavior: smooth;
   background-color: #F8F9FA;
+}
+/* Панель "Есть ошибки"/"Согласовать" — закреплена внизу того же
+   контейнера с чатом, не прокручивается вместе с сообщениями. */
+.tickets-actions-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--telegram-gray, #E5E5E5);
+  background-color: var(--white);
+}
+.chat-inline-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.chat-inline-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.chat-inline-btn-success {
+  background: var(--green-light, #009bb6);
+  color: var(--white);
+}
+.chat-inline-btn-success:hover {
+  box-shadow: 0 4px 14px rgba(0, 155, 182, 0.3);
+  transform: translateY(-1px);
+}
+.chat-inline-btn-danger {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #f5c6c0;
+}
+.chat-inline-btn-danger:hover {
+  background: #fbdedb;
+  transform: translateY(-1px);
 }
 
 .tickets-message {
@@ -5771,6 +6200,16 @@ input[type="checkbox"]:focus {
   box-sizing: border-box;
   line-height: 1.5;
   background: var(--transparent);
+  box-shadow: none;
+}
+/* required="" + пустое поле изначально — браузеры (особенно Firefox)
+   обводят такие поля красным через :invalid в UA-стилях сами, даже без
+   попытки отправки. Явно убираем. */
+.sent-textarea:invalid,
+.sent-textarea:focus:invalid {
+  box-shadow: none;
+  outline: none;
+  border-color: transparent;
 }
 .sent-textarea::placeholder {
   color: var(--text-subtitle2);
@@ -10177,6 +10616,7 @@ main {
 
   .personal-acc-conteiner.planed{
     margin-top: 140px;
+    margin-bottom: 100px;
   }
 
   .nav-item {
@@ -10245,6 +10685,80 @@ main {
     display: flex;
     flex-direction: column;
     align-items: start;
+  }
+
+  /* Меню вкладок плана на мобильной вёрстке — сбрасываем все общие
+     мобильные стили нав-бара (плавающая капсула, фильтр-подсветка
+     активной иконки, подпись под каждой иконкой и т.д.) и делаем свой,
+     отдельный вид: плавающий "островок" с отступами от краёв экрана
+     (как нижняя панель в iOS), а не прилипшая во всю ширину полоса.
+     Имя активного раздела показывается одной подписью на чёрном фоне
+     над островком (тот же стиль тултипа, что и на десктопе). */
+  .header-cont.planed {
+    top: auto !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 16px;
+  }
+  .header-cont.planed .navigation-container {
+    position: relative;
+    height: 60px;
+    width: 100%;
+    margin: 0;
+    padding: 0 10px;
+    border-radius: 32px;
+    background: var(--blur3);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+    overflow: visible;
+    flex-wrap: nowrap;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .header-cont.planed .nav-item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    padding: 8px;
+    margin: 0;
+    height: auto;
+  }
+  .header-cont.planed .nav-item.active {
+    box-shadow: none;
+    background: transparent;
+  }
+  .header-cont.planed .nav-item.active .nav-icon {
+    filter: none;
+    color: var(--green-light);
+  }
+  .header-cont.planed .nav-icon-wrapper {
+    margin: 0;
+  }
+  .header-cont.planed .nav-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .header-cont.planed .nav-text,
+  .header-cont.planed .nav-text-mobile {
+    display: none;
+  }
+  .header-cont.planed .nav-item.active .nav-text-mobile {
+    display: block;
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    margin-bottom: 10px;
+    background: #333;
+    color: var(--white);
+    font-weight: 500;
+    font-size: 12px;
+    text-align: center;
+    padding: 5px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
   }
 }
 

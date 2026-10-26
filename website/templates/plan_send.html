@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="pers-page">
-  {{ component.back_header(plan, current_user, back_url='/plans/plan/review/' + plan.token, back_text=_('К плану')) }}
+  {{ component.back_header(plan, current_user, back_url='/plans/plan/tasks/' + plan.token, back_text=_('К плану')) }}
 
   <div class="personal-acc-conteiner edit-page">
     <a class="name">{{ _('Отправка плана на рассмотрение') }}</a>

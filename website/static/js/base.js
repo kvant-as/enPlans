@@ -2118,7 +2118,7 @@ class MultiStepForm {
     }
 
     validateStep1() {
-        const requiredFields = ['secondname', 'name', 'patronymic'];
+        const requiredFields = ['secondname', 'name', 'patronymic', 'post'];
         const textFieldsValid = requiredFields.every(fieldId => {
             const input = document.getElementById(fieldId);
             return input && input.value.trim() !== '';

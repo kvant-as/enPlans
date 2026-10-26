@@ -190,6 +190,10 @@ def edit_param():
     telephone = request.form.get('telephone')
     post = request.form.get('post')
 
+    if not post or not post.strip():
+        flash('Поле "Должность" обязательно для заполнения!', 'error')
+        return redirect(url_for('views.profile'))
+
     from ..user import parse_and_validate_phones
     normalized_telephone, phone_error = parse_and_validate_phones(telephone)
     if phone_error:

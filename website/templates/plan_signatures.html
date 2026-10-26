@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Подписи') }} - EnPlans{% endblock %}
+{% block content %}
+
+<div class="pers-page">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('signatures', plan, current_user) }}
+
+  <div class="personal-acc-conteiner planed">
+    {{ component.plan_signatures_page(plan, current_user, cycles) }}
+  </div>
+</div>
+
+{% endblock %}

@@ -27,6 +27,7 @@ FIELD_LABELS = {
     'first_name': 'Имя',
     'last_name': 'Фамилия',
     'patronymic_name': 'Отчество',
+    'post': 'Должность',
 }
 
 def parse_and_validate_phones(raw_telephone):
@@ -128,6 +129,7 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
         'first_name': first_name,
         'last_name': last_name,
         'patronymic_name': patronymic_name,
+        'post': post,
     }
 
     for field_name, value in required_fields.items():

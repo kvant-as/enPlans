@@ -797,6 +797,187 @@ def upload_statistics_route():
     }), 200
 
 
+_TRANSLIT_MAP = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm',
+    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+    'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+    'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+}
+
+
+def _slugify_ru(text):
+    """Транслитерация кириллицы в латиницу для читаемого email (например
+    «Брестское областное управление...» -> «brestskoe»). Берёт только первое
+    осмысленное слово названия, отбрасывая общие слова вроде «областное»/
+    «управление»/«по»/«надзору» и т.п., чтобы email не был гигантским."""
+    import re
+    stopwords = {
+        'областное', 'управление', 'по', 'надзору', 'за', 'рациональным',
+        'использованием', 'тэр', 'государственное', 'учреждение', 'г',
+    }
+    words = re.findall(r'[А-Яа-яЁё]+', text.lower())
+    meaningful = [w for w in words if w not in stopwords]
+    source_words = meaningful or words or ['org']
+
+    slug_parts = []
+    for word in source_words[:2]:
+        slug_parts.append(''.join(_TRANSLIT_MAP.get(ch, ch) for ch in word))
+    slug = '-'.join(p for p in slug_parts if p)
+    return slug or 'org'
+
+
+def _make_test_account(db, org, email_prefix, role_label, used_slugs, app_id, password_hash, now, verified_until):
+    """Создаёт тестовый аккаунт (is_auditor=True, верифицирован по ЭЦП на год)
+    для организации `org`, кладёт его и запись UserVerification в сессию.
+    `role_label` (например «Согласовывающая организация») сохраняется в
+    отчество — просто чтобы в списке пользователей было видно, зачем аккаунт."""
+    from website.models import User, UserVerification
+
+    base_slug = _slugify_ru(org.full_name)
+    slug = base_slug
+    suffix = 2
+    while slug in used_slugs:
+        slug = f'{base_slug}-{suffix}'
+        suffix += 1
+    used_slugs.add(slug)
+
+    user = User(
+        email=f'test.{email_prefix}.{slug}@test.local',
+        password=password_hash,
+        first_name='Тест',
+        last_name='Проверяющий',
+        patronymic_name=role_label,
+        telephone='+375291234567',
+        post='Проверяющий',
+        is_auditor=True,
+        organization_id=org.id,
+        application_id=app_id,
+        ecp_verified_until=verified_until,
+    )
+    db.session.add(user)
+    db.session.add(UserVerification(
+        user=user,
+        verified_at=now,
+        expires_at=verified_until,
+        cert_subject='Тестовая учётная запись (создано автоматически, без сертификата)',
+    ))
+    return user
+
+
+@db_bp.route('/create-test-auditors', methods=['POST'])
+@csrf.exempt
+def create_test_auditors_route():
+    """Кнопка в админке «Создать тестовых проверяющих»: пересоздаёт тестовые
+    аккаунты-проверяющие (is_auditor=True), по одному на каждое региональное
+    управление (Organization.is_region_management=True). Сначала удаляет
+    ВСЕ ранее созданные этой кнопкой тестовые аккаунты (email вида
+    test.auditor.*@test.local), затем создаёт заново — так в email попадает
+    актуальное, читаемое название управления. Пароль у всех — 12345678.
+    Аккаунтам сразу проставляется верификация по ЭЦП на год вперёд (как при
+    настоящей загрузке сертификата, см. website/ecp.py), чтобы согласование/
+    утверждение планов не требовало загрузки сертификата."""
+    from datetime import timedelta
+    from flask_login import current_user
+    from website import db
+    from website.models import User, Organization
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+        return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
+
+    app_id = get_current_application_id()
+    password_hash = generate_password_hash('12345678')
+    now = current_utc_time()
+    verified_until = now + timedelta(days=365)
+
+    deleted = User.query.filter(
+        User.application_id == app_id,
+        User.email.like('test.auditor.%@test.local'),
+    ).delete(synchronize_session=False)
+
+    region_orgs = Organization.query.filter_by(is_region_management=True).all()
+    if not region_orgs:
+        db.session.commit()
+        return jsonify({'success': False, 'message': 'В справочнике нет организаций с флагом «Региональное управление»'}), 400
+
+    created = 0
+    used_slugs = set()
+    for org in region_orgs:
+        region_name = org.region.name if org.region else org.full_name
+        _make_test_account(db, org, 'auditor', region_name, used_slugs, app_id, password_hash, now, verified_until)
+        created += 1
+
+    db.session.commit()
+    logger.info(f'Тестовые проверяющие: удалено старых {deleted}, создано новых {created}')
+
+    return jsonify({
+        'success': True,
+        'message': f'Готово: удалено старых {deleted}, создано новых {created} '
+                   f'тестовых аккаунтов проверяющих (верифицированы по ЭЦП на год). '
+                   f'Пароль у всех: 12345678',
+    }), 200
+
+
+# Фиксированный тестовый набор — ровно две организации, по УНП, вместо
+# всех организаций с флагом is_coordinator/is_approver в базе (их может
+# быть сотни, тестовые аккаунты нужны не на все, а на конкретные две для
+# прогона сценария согласования/утверждения).
+TEST_APPROVAL_ORGS = [
+    ('200100489', 'coordinator', 'Согласовывающая организация'),
+    ('500022116', 'approver', 'Утверждающая организация'),
+]
+
+
+@db_bp.route('/create-test-approvers', methods=['POST'])
+@csrf.exempt
+def create_test_approvers_route():
+    """Кнопка в админке «Создать тестовых согласующих/утверждающих»:
+    пересоздаёт ровно два тестовых аккаунта — по одному на согласовывающую и
+    утверждающую организацию из TEST_APPROVAL_ORGS (по УНП). Пароль у всех —
+    12345678, верификация по ЭЦП выставлена на год вперёд."""
+    from datetime import timedelta
+    from flask_login import current_user
+    from website import db
+    from website.models import User, Organization
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+        return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
+
+    app_id = get_current_application_id()
+    password_hash = generate_password_hash('12345678')
+    now = current_utc_time()
+    verified_until = now + timedelta(days=365)
+
+    deleted = User.query.filter(
+        User.application_id == app_id,
+        db.or_(
+            User.email.like('test.coordinator.%@test.local'),
+            User.email.like('test.approver.%@test.local'),
+            User.email.like('test.coord-appr.%@test.local'),
+        ),
+    ).delete(synchronize_session=False)
+
+    created = 0
+    missing = []
+    used_slugs = set()
+    for ynp, prefix, label in TEST_APPROVAL_ORGS:
+        org = Organization.query.filter_by(ynp=ynp).first()
+        if not org:
+            missing.append(ynp)
+            continue
+        _make_test_account(db, org, prefix, label, used_slugs, app_id, password_hash, now, verified_until)
+        created += 1
+
+    db.session.commit()
+    logger.info(f'Тестовые согласующие/утверждающие: удалено старых {deleted}, создано новых {created}')
+
+    message = f'Готово: удалено старых {deleted}, создано новых {created} тестовых аккаунтов (верифицированы по ЭЦП на год). Пароль у всех: 12345678'
+    if missing:
+        message += f'. Не найдены организации с УНП: {", ".join(missing)}'
+
+    return jsonify({'success': created > 0, 'message': message}), (200 if created else 400)
+
+
 @db_bp.route('/test-route', methods=['GET', 'POST'])
 @csrf.exempt
 def test_route():

@@ -200,15 +200,23 @@ def delete_ticket(token):
     db.session.commit()
 
     if is_ajax:
+        from website.utils.plans import get_audit_context
+        # Удалённое сообщение могло быть единственным, из-за которого была
+        # разблокирована кнопка "Есть ошибки" — пересчитываем весь контекст
+        # живьём (см. get_audit_context), а не полагаемся на сохранённый флаг.
+        ctx = get_audit_context(current_plan, current_user)
         html = render_template_string(
             '''
             {% import 'macros/components.html' as components %}
-            {{ components.tickets_container(plan, current_user) }}
+            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label) }}
             ''',
             plan=current_plan,
-            current_user=current_user
+            current_user=current_user,
+            can_audit=ctx['can_audit'],
+            has_remarks=ctx['has_remarks'],
+            approve_label=ctx['approve_label'],
         )
-        return jsonify({'success': True, 'html': html})
+        return jsonify({'success': True, 'html': html, 'has_remarks': ctx['has_remarks']})
 
     flash('Сообщение удалено', 'success')
     return redirect(request.referrer)
@@ -245,8 +253,16 @@ def create_ticket(token):
     if current_plan.is_approved or current_plan.is_error:
         return _error('План уже обработан')
 
+    # approval_paths больше не чистятся при повторной отправке (см. cycle) —
+    # искать "текущий" этап нужно строго в последнем цикле, иначе можно
+    # найти брошенный непройденный этап из отменённого старого цикла.
+    latest_cycle = db.session.query(db.func.max(PlanApprovalPath.cycle)).filter(
+        PlanApprovalPath.plan_id == current_plan.id
+    ).scalar() or 1
+
     current_path = PlanApprovalPath.query.filter_by(
         plan_id=current_plan.id,
+        cycle=latest_cycle,
         is_viewed=False
     ).order_by(PlanApprovalPath.step_order).first()
 
@@ -258,6 +274,7 @@ def create_ticket(token):
 
     prev_path = PlanApprovalPath.query.filter(
         PlanApprovalPath.plan_id == current_plan.id,
+        PlanApprovalPath.cycle == latest_cycle,
         PlanApprovalPath.step_order == current_path.step_order - 1
     ).first()
 
@@ -279,26 +296,23 @@ def create_ticket(token):
     db.session.commit()
 
     if is_ajax:
+        from website.utils.plans import get_audit_context
+        # Только что отправленное сообщение разблокирует кнопку "Есть
+        # ошибки" — пересчитываем весь контекст живьём (см.
+        # get_audit_context), а не доверяем plan.afch.
+        ctx = get_audit_context(current_plan, current_user)
         html = render_template_string(
             '''
             {% import 'macros/components.html' as components %}
-            {{ components.tickets_container(plan, current_user) }}
+            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label) }}
             ''',
             plan=current_plan,
-            current_user=current_user
+            current_user=current_user,
+            can_audit=ctx['can_audit'],
+            has_remarks=ctx['has_remarks'],
+            approve_label=ctx['approve_label'],
         )
-        # plan.afch стал True выше — "Есть ошибки" могла разблокироваться,
-        # поэтому карточку "Сменить статус" тоже нужно переотрисовать и
-        # отдать отдельно (см. обработчик в plan_audit.html).
-        status_html = render_template_string(
-            '''
-            {% import 'macros/components.html' as components %}
-            {{ components.plan_status_card(plan, current_user) }}
-            ''',
-            plan=current_plan,
-            current_user=current_user
-        )
-        return jsonify({'success': True, 'html': html, 'status_html': status_html})
+        return jsonify({'success': True, 'html': html, 'has_remarks': ctx['has_remarks']})
 
     flash('Сообщение отправлено', 'success')
     return redirect(request.referrer)

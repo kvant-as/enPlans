@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Действия с планом') }} - EnPlans{% endblock %}
+{% block content %}
+
+<div class="pers-page">
+  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_navigation_header('actions', plan, current_user) }}
+
+  <div class="personal-acc-conteiner planed">
+    <div class="header-content">
+      <div class="header-content-left">
+        <a class="name" style="padding-bottom: 0">{{ _('Действия с планом') }}</a>
+        {{ component.status_plan(plan, current_user) }}
+      </div>
+    </div>
+
+    <div class="plan-actions-grid">
+      <form id="controlPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="status" value="control" />
+        <button
+          type="submit"
+          class="plan-action-tile"
+          {% if not plan.is_draft or (plan.user_id != current_user.id) or current_user.is_reader %}disabled{% endif %}
+        >
+          {{ icons.control_icon() }}
+          <span class="plan-action-tile-title">{{ _('Пройти контроль') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Проверить план на ошибки перед отправкой') }}</span>
+        </button>
+      </form>
+
+      <button
+        type="button"
+        class="plan-action-tile"
+        onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
+        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}disabled{% endif %}
+      >
+        {{ icons.icon_send() }}
+        <span class="plan-action-tile-title">{{ _('Отправить на согласование') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Выбрать согласующие/утверждающую организации и отправить') }}</span>
+      </button>
+
+
+
+      <button
+        type="button"
+        id="cancelSendBtn"
+        class="plan-action-tile"
+        {% if not (plan.is_sent == true and plan.user_id == current_user.id) or current_user.is_reader %}disabled{% endif %}
+      >
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Вернуть план в статус «В редакции»') }}</span>
+      </button>
+      <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="plan-action-tile" {% if not plan.tickets %}disabled{% endif %}>
+          {{ icons.icon_print() }}
+          <span class="plan-action-tile-title">{{ _('Распечатать сообщения') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Все сообщения по плану в печатную форму') }}</span>
+        </button>
+      </form>
+      <button
+        type="button"
+        class="plan-action-tile"
+        onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+        {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}disabled{% endif %}
+      >
+        {{ icons.icon_edit() }}
+        <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Изменить год и целевые показатели плана') }}</span>
+      </button>
+
+
+
+      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button
+          type="submit"
+          data-modal-trigger="deletePlan"
+          class="plan-action-tile plan-action-tile-danger"
+          {% if plan.is_sent or plan.is_approved or (plan.user_id != current_user.id) or current_user.is_reader %}disabled{% endif %}
+        >
+          {{ icons.icon_delete() }}
+          <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
+        </button>
+      </form>
+
+    </div>
+
+    <hr />
+    <h1 class="name">{{ _('Разработчик плана') }}</h1>
+
+    <div class="profile-tabs" id="planActionsInfoTabs" role="tablist">
+      <button type="button" class="profile-tab active" data-tab="org" role="tab" aria-selected="true">
+        {{ icons.icon_org() }}
+        <span>{{ _('Предприятие') }}</span>
+      </button>
+      <button type="button" class="profile-tab" data-tab="respondent" role="tab" aria-selected="false">
+        {{ icons.icon_profile() }}
+        <span>{{ _('Ответственный исполнитель') }}</span>
+      </button>
+    </div>
+
+    <div class="profile-tab-panel active" data-tab-panel="org">
+      {{ component.organization_view_card(plan.organization, plan.user) }}
+    </div>
+
+    <div class="profile-tab-panel" data-tab-panel="respondent">
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Фамилия') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input type="text" readonly value="{{ plan.user.last_name if plan.user else '' }}" class="app-input" />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Имя') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input type="text" readonly value="{{ plan.user.first_name if plan.user else '' }}" class="app-input" />
+          </div>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Отчество') }}</label>
+        <div class="input-with-icon">
+          {{ icons.icon_profile() }}
+          <input type="text" readonly value="{{ plan.user.patronymic_name if plan.user else '' }}" class="app-input" />
+        </div>
+      </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Email') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_email() }}
+            <input type="text" readonly value="{{ plan.user.email if plan.user else '' }}" class="app-input" />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Должность') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input type="text" readonly value="{{ plan.user.post or '' if plan.user else '' }}" class="app-input" />
+          </div>
+        </div>
+      </div>
+      {{ component.phone_display_group(plan.user.telephone if plan.user else '') }}
+    </div>
+
+    <hr />
+    <h1 class="name">{{ _('Прочая информация') }}</h1>
+
+    <div class="dates-card">
+      <div class="dates-list">
+        <div class="date-item" data-type="created">
+          <div class="date-icon">{{ icons.icon_calendar() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Создан') }}</span>
+              {% if plan.begin_time %}
+                <span class="date-day">{{ plan.begin_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.begin_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="date-item" data-type="edited">
+          <div class="date-icon">{{ icons.icon_edit() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Редакция') }}</span>
+              {% if plan.change_time %}
+                <span class="date-day">{{ plan.change_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.change_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="date-item" data-type="sent">
+          <div class="date-icon">{{ icons.icon_send() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Отправлен') }}</span>
+              {% if plan.sent_time %}
+                <span class="date-day">{{ plan.sent_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.sent_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">{{ _('Не отправлен') }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ affects.bg_effect() }}
+
+<div id="cancelSendModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Отменить отправку') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="cancelSendForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="status" value="draft" />
+      <div class="app-group">
+        <label>{{ _('Причина отмены отправки') }} <span class="required-star">*</span></label>
+        <textarea
+          name="reason"
+          id="cancelSendReason"
+          class="app-input"
+          style="width: 100%; box-sizing: border-box; resize: vertical;"
+          rows="5"
+          maxlength="500"
+          required
+          placeholder="{{ _('Укажите, почему план возвращается в редакцию') }}"
+        ></textarea>
+      </div>
+      <div class="button-auth-area">
+        <button type="submit" id="cancelSendSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Подтвердить отмену') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var modal = document.getElementById("cancelSendModal");
+    var btn = document.getElementById("cancelSendBtn");
+    var reasonInput = document.getElementById("cancelSendReason");
+    var submitBtn = document.getElementById("cancelSendSubmit");
+    if (!modal || !btn) return;
+
+    handleModal(modal, btn, modal.querySelector(".close"));
+
+    function toggleSubmit() {
+      submitBtn.disabled = !reasonInput.value.trim();
+    }
+    reasonInput.addEventListener("input", toggleSubmit);
+    toggleSubmit();
+  });
+</script>
+
+{% endblock %}

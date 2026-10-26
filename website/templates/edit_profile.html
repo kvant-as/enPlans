@@ -66,7 +66,7 @@
         <input type="hidden" name="telephone" id="edit-telephone" required />
       </div>
       <div class="app-group">
-        <label>{{ _('Должность') }}</label>
+        <label>{{ _('Должность') }} <span class="required-star">*</span></label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
@@ -76,6 +76,7 @@
             value="{{ current_user.post or '' }}"
             placeholder="{{ _('Введите должность') }}"
             class="app-input"
+            required
           />
         </div>
       </div>

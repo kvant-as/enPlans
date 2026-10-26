@@ -797,3 +797,149 @@ def check_and_create_period_directions(plan_id, event_type):
         db.session.rollback()
         current_app.logger.error(f'Error creating period events for plan_id={plan_id}, event_type={event_type}: {str(e)}')
         raise
+
+
+CANCEL_SEND_NOTE_PREFIX = 'Отправка отменена'
+
+
+def build_signature_cycles(plan):
+    """Группирует plan.approval_paths по циклам отправки (PlanApprovalPath.cycle)
+    для вкладки "Подписи". Раньше при каждой повторной отправке (после отмены
+    или возврата на доработку) старые строки маршрута удалялись и история
+    терялась — теперь они остаются в БД с привязкой к своему циклу, а эта
+    функция собирает их в упорядоченный список для шаблона:
+
+        [{'cycle': 1, 'sent_at': datetime|None, 'paths': [...],
+          'cancel_ticket': PlanTicket|None, 'is_latest': bool}, ...]
+
+    Для НЕ последнего цикла непройденные этапы в шаблоне должны показываться
+    как "Не пройдено" (цикл брошен/отменён), а не "На рассмотрении"/"Ожидание
+    очереди" — это решает флаг is_latest, фактическую метку выбирает шаблон.
+    """
+    paths_by_cycle = {}
+    for path in plan.approval_paths:
+        paths_by_cycle.setdefault(path.cycle, []).append(path)
+
+    cycle_numbers = sorted(paths_by_cycle.keys())
+    if not cycle_numbers:
+        return []
+
+    for cycle_paths in paths_by_cycle.values():
+        cycle_paths.sort(key=lambda p: p.step_order)
+
+    cancel_tickets = sorted(
+        [t for t in plan.tickets if t.note and t.note.startswith(CANCEL_SEND_NOTE_PREFIX) and t.begin_time],
+        key=lambda t: t.begin_time,
+    )
+
+    def cycle_start(cycle_paths):
+        starts = [p.created_at for p in cycle_paths if p.created_at]
+        return min(starts) if starts else None
+
+    cycles = []
+    for idx, cycle_num in enumerate(cycle_numbers):
+        cycle_paths = paths_by_cycle[cycle_num]
+        sent_at = cycle_start(cycle_paths)
+
+        next_start = None
+        if idx + 1 < len(cycle_numbers):
+            next_start = cycle_start(paths_by_cycle[cycle_numbers[idx + 1]])
+
+        cancel_ticket = None
+        for ticket in cancel_tickets:
+            if sent_at and ticket.begin_time >= sent_at and (next_start is None or ticket.begin_time < next_start):
+                cancel_ticket = ticket
+                break
+
+        cycles.append({
+            'cycle': cycle_num,
+            'sent_at': sent_at,
+            'paths': cycle_paths,
+            'cancel_ticket': cancel_ticket,
+            'is_latest': idx == len(cycle_numbers) - 1,
+        })
+
+    return cycles
+
+
+def get_current_review_path(plan, current_user):
+    """Текущий (непройденный, первый по порядку) этап согласования из
+    ПОСЛЕДНЕГО цикла отправки — или None, если либо план не отправлен, либо
+    все этапы пройдены, либо organization_id пользователя на нём не стоит."""
+    if not plan.approval_paths:
+        return None
+    latest_cycle = max(p.cycle for p in plan.approval_paths)
+    latest_paths = sorted(
+        (p for p in plan.approval_paths if p.cycle == latest_cycle),
+        key=lambda p: p.step_order,
+    )
+    current_path = next((p for p in latest_paths if not p.is_viewed), None)
+    if not current_path or not current_user.organization_id:
+        return None
+    if current_path.organization_id != current_user.organization_id:
+        return None
+    return current_path
+
+
+def get_audit_context(plan, current_user):
+    """Весь контекст, нужный вкладке «Проверка» (plan_audit.html): какой
+    этап сейчас "ваш", можно ли писать/менять статус/отменять изменения,
+    оставил ли проверяющий уже сообщение по этому этапу, и как подписать
+    кнопку подтверждения («Одобрить» на последнем этапе, иначе
+    «Согласовать»). Централизовано здесь вместо повторения этой логики
+    прямо в шаблоне — там было легко забыть ограничить запрос последним
+    циклом отправки (approval_paths больше не чистятся при пересылке)."""
+    current_path = get_current_review_path(plan, current_user)
+    can_audit = bool(current_path) and not plan.is_approved and not plan.is_error
+
+    approve_label = 'Согласовать'
+    if current_path:
+        cycle_paths = [p for p in plan.approval_paths if p.cycle == current_path.cycle]
+        max_step = max((p.step_order for p in cycle_paths), default=current_path.step_order)
+        if current_path.step_order == max_step:
+            approve_label = 'Одобрить'
+
+    user_has_viewed_current = any(
+        p.organization_id == current_user.organization_id and p.is_viewed
+        for p in plan.approval_paths
+        if (not current_path) or p.cycle == current_path.cycle
+    )
+    next_path = None
+    if current_path:
+        next_path = next(
+            (p for p in plan.approval_paths
+             if p.cycle == current_path.cycle and p.step_order == current_path.step_order + 1),
+            None,
+        )
+    can_cancel = (user_has_viewed_current and (not next_path or not next_path.is_viewed)) or plan.is_error or plan.is_approved
+
+    has_remarks = has_pending_review_message(plan, current_user) if can_audit else False
+
+    return {
+        'current_path': current_path,
+        'can_audit': can_audit,
+        'can_cancel': can_cancel,
+        'has_remarks': has_remarks,
+        'approve_label': approve_label,
+    }
+
+
+def has_pending_review_message(plan, current_user):
+    """Заменяет флаг Plan.afch: вместо хранимого булева (который раньше
+    нужно было вручную сбрасывать, например при удалении сообщения — и
+    это легко забыть/разъехаться с реальностью) каждый раз живым запросом
+    проверяем, оставил ли ИМЕННО ТЕКУЩИЙ проверяющий (current_user) хотя бы
+    одно своё (не системное) сообщение по текущему этапу последнего цикла.
+    Удаление сообщения автоматически "сбрасывает" результат — отдельного
+    действия не требуется."""
+    current_path = get_current_review_path(plan, current_user)
+    if not current_path:
+        return False
+    cutoff = current_path.created_at
+    for ticket in plan.tickets:
+        if ticket.is_system or ticket.user_id != current_user.id:
+            continue
+        if cutoff and ticket.begin_time and ticket.begin_time < cutoff:
+            continue
+        return True
+    return False

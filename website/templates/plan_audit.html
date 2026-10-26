@@ -1,17 +1,9 @@
 {% extends "base.html" %} {% block title %}{{ _('Проверка плана') }} - EnPlans{%
-endblock%} {% block content %} {% set current_path =
-plan.approval_paths|selectattr('is_viewed', 'equalto',
-False)|sort(attribute='step_order')|first %} {% set is_current_user_step =
-current_path and current_path.organization_id == current_user.organization_id %}
-{% set user_has_viewed_current =
-plan.approval_paths|selectattr('organization_id', 'equalto',
-current_user.organization_id)|selectattr('is_viewed', 'equalto',
-True)|list|length > 0 %} {% set next_path = none %} {% if current_path %} {% set
-next_path = plan.approval_paths|selectattr('step_order', 'equalto',
-current_path.step_order + 1)|first %} {% endif %} {% set can_audit =
-is_current_user_step and (not plan.is_approved) and (not plan.is_error) %} {%
-set can_cancel = (user_has_viewed_current and (not next_path or not
-next_path.is_viewed)) or plan.is_error or plan.is_approved %}
+endblock%} {% block content %}
+{# can_audit / can_cancel / has_remarks / approve_label / current_path —
+   переданы из plan_bp.plan_audit() (get_audit_context), считать их заново
+   прямо в шаблоне больше не нужно (и не стоит — легко забыть ограничиться
+   последним циклом отправки). #}
 {% set cancel_hint = _('Доступно только после подтверждения текущего этапа и пока план не ушёл дальше по цепочке согласования') %}
 
 <div class="pers-page">
@@ -96,46 +88,17 @@ next_path.is_viewed)) or plan.is_error or plan.is_approved %}
       </div>
     </div>
 
-    {{ component.plan_status_card(plan, current_user) }}
-
-    {{ component.tickets_container(plan, current_user) }}
+    {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label) }}
 
     <form id="deleteTicketForm" action="{{ url_for('audit_bp.delete_ticket', token=plan.token) }}" method="POST" style="display: none;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="ticket_id" id="delete-ticket-id-input" value="" />
     </form>
 
-    {% if can_audit %}
-    <form
-      id="sent_mesPlanForm"
-      class="main-form"
-      action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}"
-      method="POST"
-    >
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="bottom_tickets_arrea">
-        <div class="textarea-wrapper">
-          <textarea
-            class="sent-textarea"
-            placeholder="Введите сообщение... Enter — отправить, Shift+Enter — новая строка"
-            rows="1"
-            maxlength="500"
-            name="note"
-            required=""
-          ></textarea>
-          <span class="char-counter">0/500</span>
-        </div>
-        <button id="sent_mesPlanButton" type="submit" class="chat-btn">
-          <span class="btn-spinner" aria-hidden="true"></span>
-          {{ icons.icon_chatbtn() }}
-          <span class="btn-text">Отправить</span>
-        </button>
-      </div>
-    </form>
-    {% endif %} 
-    
-    {% if plan.is_sent or plan.is_approved%} {{component.plan_agree_slider(plan, current_user) }} {%endif%}
-    <hr>
+    {{ component.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}
+
+    <!-- {% if plan.is_sent or plan.is_approved%} {{ component.plan_approval_table(plan, current_user) }} {%endif%}
+    --><hr> 
 
     <div class="profile-tabs" id="auditTabs" role="tablist">
       <button type="button" class="profile-tab active" data-tab="org" role="tab" aria-selected="true">
@@ -281,6 +244,19 @@ next_path.is_viewed)) or plan.is_error or plan.is_approved %}
     window.ticketInfoInstance.show(ticketId, event.currentTarget);
   }
 
+  // Пока проверяющий не оставил сообщение с замечаниями — поле ввода
+  // видно; как только сообщение появилось, оно прячется (нужно выбрать
+  // "Есть ошибки"/"Согласовать" в отдельной карточке "Сменить статус"
+  // выше чата). Переключаем классом, а не пересборкой HTML — иначе у
+  // textarea терялись бы навешанные обработчики событий.
+  function applyHasRemarks(hasRemarks) {
+    const footer = document.getElementById("chatFooterArea");
+    if (!footer) return;
+    footer.classList.toggle("has-remarks", !!hasRemarks);
+    footer.dataset.hasRemarks = hasRemarks ? "true" : "false";
+  }
+
+
   document.addEventListener("DOMContentLoaded", function () {
     const deleteForm = document.getElementById("deleteTicketForm");
     const ticketIdInput = document.getElementById("delete-ticket-id-input");
@@ -346,6 +322,9 @@ next_path.is_viewed)) or plan.is_error or plan.is_approved %}
             if (messagesList) {
               messagesList.scrollTop = messagesList.scrollHeight;
             }
+          }
+          if ("has_remarks" in data) {
+            applyHasRemarks(data.has_remarks);
           }
           if (typeof messageFlash !== "undefined") {
             messageFlash.addMessage("Сообщение удалено", "success");
@@ -489,17 +468,10 @@ next_path.is_viewed)) or plan.is_error or plan.is_approved %}
             }
           }
 
-          // Отправка сообщения выставляет plan.afch = True на сервере —
-          // кнопка "Есть ошибки" (и текст подсказки рядом) могли
-          // разблокироваться, поэтому карточку "Сменить статус" тоже
-          // переотрисовываем, а не только список сообщений.
-          if (data.status_html) {
-            const statusCard = document.getElementById("planStatusCard");
-            if (statusCard) {
-              const statusWrapper = document.createElement("div");
-              statusWrapper.innerHTML = data.status_html.trim();
-              statusCard.replaceWith(statusWrapper.firstElementChild);
-            }
+          // Отправленное сообщение разблокирует кнопку "Есть ошибки" и
+          // прячет поле ввода.
+          if ("has_remarks" in data) {
+            applyHasRemarks(data.has_remarks);
           }
 
           textarea.value = "";

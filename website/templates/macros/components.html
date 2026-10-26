@@ -49,7 +49,7 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
   <div class="menu-conteiner">
     <div class="menu-conteiner-btns">
       <a
-        href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/review/{{ plan.token }}{% endif %}#tickets_link"
+        href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/tasks/{{ plan.token }}{% endif %}#tickets_link"
         class="element"
         id=""
       >
@@ -238,6 +238,7 @@ plan=None, current_user=None) %}
     <div
       class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}"
       onclick="window.location.href='/plans/plan/audit/{{plan.token}}'"
+      data-tooltip="{{ _('Проверка') }}"
     >
       <div class="nav-icon-wrapper">
         {{ icons.icon_audit() }} {% if active_plan_tab == 'audit' %}
@@ -251,10 +252,11 @@ plan=None, current_user=None) %}
 
     <div
       class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}"
-      onclick="window.location.href='/plans/plan/review/{{plan.token}}'"
+      onclick="window.location.href='/plans/plan/tasks/{{plan.token}}'"
+      data-tooltip="{{ _('Задания') }}"
     >
       <div class="nav-icon-wrapper">
-        {{ icons.icon_view() }} {% if active_plan_tab == 'review' %}
+        {{ icons.icon_main() }} {% if active_plan_tab == 'review' %}
         <div class="active-indicator"></div>
         {% endif %}
       </div>
@@ -265,6 +267,7 @@ plan=None, current_user=None) %}
     <div
       class="nav-item {% if active_plan_tab == 'indicators' %} active{% endif %}"
       onclick="window.location.href='/plans/plan/indicators/{{plan.token}}'"
+      data-tooltip="{{ _('Часть 1. Показатели использования ТЭР') }}"
     >
       <div class="nav-icon-wrapper">
         {{ icons.icon_indicators() }} {% if active_plan_tab == 'indicators' %}
@@ -282,6 +285,7 @@ plan=None, current_user=None) %}
     <div
       class="nav-item {% if active_plan_tab == 'event-saving' %} active{% endif %}"
       onclick="window.location.href='/plans/plan/events-saving/{{plan.token}}'"
+      data-tooltip="{{ _('Часть 2. Мероприятия по экономии ТЭР') }}"
     >
       <div class="nav-icon-wrapper">
         {{ icons.icon_measure_saving() }} {% if active_plan_tab ==
@@ -300,6 +304,7 @@ plan=None, current_user=None) %}
     <div
       class="nav-item {% if active_plan_tab == 'event-increase' %} active{% endif %}"
       onclick="window.location.href='/plans/plan/events-increase/{{plan.token}}'"
+      data-tooltip="{{ _('Часть 3. Мероприятия по увеличению использования местных ТЭР') }}"
     >
       <div class="nav-icon-wrapper">
         {{ icons.icon_measure_increase() }} {% if active_plan_tab ==
@@ -314,6 +319,34 @@ plan=None, current_user=None) %}
         }}</span
       >
       <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'actions' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/actions/{{plan.token}}'"
+      data-tooltip="{{ _('Действия с планом') }}"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_view() }} {% if active_plan_tab == 'actions' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Действия с планом') }}</span>
+      <span class="nav-text-mobile">{{ _('Действия') }}</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not plan.sent_time %} disabled-tab{% endif %}"
+      onclick="{% if plan.sent_time %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
+      data-tooltip="{{ _('Подписи') }}{% if not plan.sent_time %} — {{ _('план ещё не отправлялся') }}{% endif %}"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Подписи') }}</span>
+      <span class="nav-text-mobile">{{ _('Подписи') }}</span>
     </div>
   </nav>
 </div>
@@ -406,95 +439,285 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     </span>
   </div>
 </div>
-{% endmacro %} {% macro plan_status_card(plan, current_user) %}
-{% set current_path =
-plan.approval_paths|selectattr('is_viewed', 'equalto', False)|sort(attribute='step_order')|first %}
-{% set is_current_user_step =
-current_path and current_path.organization_id == current_user.organization_id %}
-{% set can_audit =
-is_current_user_step and (not plan.is_approved) and (not plan.is_error) %}
-{% set can_change_status = can_audit and plan.afch %}
-{% set can_change_status_appr = can_audit %}
-{% if not can_audit %}
-  {% if plan.is_approved %}
-    {% set approve_hint = _('План уже утверждён — изменение статуса недоступно') %}
-  {% elif plan.is_error %}
-    {% set approve_hint = _('В плане уже отмечены ошибки — изменение статуса недоступно') %}
-  {% else %}
-    {% set approve_hint = _('Сейчас не ваш этап проверки плана') %}
-  {% endif %}
-{% else %}
-  {% set approve_hint = '' %}
-{% endif %}
-{% set error_hint = approve_hint if not can_audit else _('Сначала отправьте сообщение с описанием ошибок') %}
+{% endmacro %}
 
-<div class="plan-menu" id="planStatusCard" style="margin-bottom: 15px">
-  <div class="menu-conteiner">
-    <div class="menu-conteiner-btns">
-      <form
-        id="to_deletePlanForm"
-        action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
-        method="POST"
-        {% if not can_change_status %}title="{{ error_hint }}"{% endif %}
-      >
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <input type="hidden" name="status" value="error" />
-        <button
-          id="to_deletePlanButton"
-          type="submit"
-          class="element {% if not can_change_status %}non{% endif %}"
-          {% if not can_change_status %}disabled{% endif %}
-        >
-          <img src="/static/img/Error.svg" class="btn-icon" />
-          <span class="btn-text">{{ _('Есть ошибки') }}</span>
-        </button>
-      </form>
-      <form
-        id="confirmPlanForm"
-        action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}"
-        method="POST"
-        {% if not can_change_status_appr %}title="{{ approve_hint }}"{% endif %}
-      >
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <input type="hidden" name="status" value="approved" />
-        <button
-          id="confirmPlanButton"
-          type="submit"
-          class="element {% if not can_change_status_appr %}non{% endif %}"
-          {% if not can_change_status_appr %}disabled{% endif %}
-        >
-          <img src="/static/img/Checkmark.svg" alt="" class="btn-icon" />
-          <span class="btn-text">
-            {% set approval_paths =
-            plan.approval_paths|sort(attribute='step_order') %} {% set
-            total_steps = approval_paths|length %} {% set current_user_path
-            = approval_paths|selectattr('organization_id', 'equalto',
-            current_user.organization_id)|first %} {% set is_last =
-            current_user_path and current_user_path.step_order ==
-            total_steps %} {% if is_last %} {{ _('Одобрить') }} {% else %}
-            {{ _('Согласовать') }} {% endif %}
-          </span>
-        </button>
-      </form>
-    </div>
-    <div class="menu-conteiner-title">
-      <span>Сменить статус</span>
-    </div>
+<!-- {% macro plan_approval_table(plan, current_user) %}
+{% set approval_paths = plan.approval_paths|sort(attribute='step_order') %}
+{% set first_unviewed = approval_paths|selectattr('is_viewed', 'equalto', False)|first %}
+{% set col_count = 6 if current_user.is_admin else 5 %}
+<div class="approval-table-wrap">
+  {% if plan.sent_time %}
+  <div class="approval-table-scroll">
+    <table class="approval-table">
+      <thead>
+        <tr>
+          <th>{{ _('Тип действия') }}</th>
+          <th>{{ _('Организация') }}</th>
+          <th>{{ _('Должность, ФИО') }}</th>
+          <th>{{ _('Статус') }}</th>
+          <th>{{ _('Дата') }}</th>
+          {% if current_user.is_admin %}<th>{{ _('Действия') }}</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="approval-dev-row">
+          <td colspan="{{ col_count }}">
+            {{ _('Разработчик плана') }}:
+            {% if plan.user %}
+              {{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }},
+              {{ _('тел.') }}: {{ plan.user.telephone or '—' }},
+              email: {{ plan.user.email or '—' }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        <tr class="approval-row approval-row-done">
+          <td class="approval-type">{{ _('Направление плана') }}</td>
+          <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
+          <td>
+            {% if plan.user %}
+              {{ plan.user.post or '—' }}, {{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }}
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="approval-status approval-status-done">{{ icons.icon_send() }} {{ _('Направлен') }}</span></td>
+          <td>{{ plan.sent_time|ru_date if plan.sent_time else '—' }}</td>
+          {% if current_user.is_admin %}<td>—</td>{% endif %}
+        </tr>
+
+        {% for path in approval_paths %}
+        {% set is_active = (not path.is_viewed) and path == first_unviewed %}
+        {% set is_rejected = is_active and plan.is_error %}
+        {% set action_label = _('Утверждение') if path.step_type == 'approver' else _('Согласование') %}
+        {% set done_label = _('Утверждено') if (path.step_type == 'approver' and path.is_viewed) else _('Согласовано') %}
+        <tr class="approval-row {% if path.is_viewed %}approval-row-done{% elif is_rejected %}approval-row-rejected{% elif is_active %}approval-row-active{% else %}approval-row-blocked{% endif %}">
+          <td class="approval-type">{{ action_label }}</td>
+          <td>{{ path.organization.full_name if path.organization else '—' }}</td>
+          <td>—</td>
+          <td>
+            {% if path.is_viewed %}
+              <span class="approval-status approval-status-done">{{ icons.icon_check() }} {{ done_label }}</span>
+            {% elif is_rejected %}
+              <span class="approval-status approval-status-rejected">{{ _('Не согласовано') }}</span>
+            {% elif is_active %}
+              <span class="approval-status approval-status-active">{{ _('На рассмотрении') }}</span>
+            {% else %}
+              <span class="approval-status approval-status-blocked">{{ _('Ожидание очереди') }}</span>
+            {% endif %}
+          </td>
+          <td>{{ path.viewed_at|ru_date if path.viewed_at else '—' }}</td>
+          {% if current_user.is_admin %}
+          <td>
+            <form method="POST" action="{{ url_for('plan_bp.api_admin_set_approval_step', token=plan.token) }}" class="enplans-approval-admin-form" data-org-name="{{ path.organization.full_name if path.organization else path.id }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="path_id" value="{{ path.id }}">
+              {% if path.is_viewed %}
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="approval-admin-btn approval-admin-btn-cancel" data-confirm-action="cancel">{{ _('Отменить') }}</button>
+              {% else %}
+              <input type="hidden" name="action" value="confirm">
+              <button type="submit" class="approval-admin-btn" data-confirm-action="confirm">{{ _('Подтвердить') }}</button>
+              {% endif %}
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-
-  <div class="menu-info-callout">
-    <span class="menu-info-callout-icon">{{ icons.icon_info() }}</span>
-    <div class="menu-info-callout-body">
-      <p class="menu-info-callout-title">{{ _('Как сменить статус') }}</p>
-      <p class="menu-info-callout-text">
-        {{ _('Чтобы отметить план как содержащий ошибки, сначала отправьте сообщение с их описанием — кнопка «Есть ошибки» станет доступна после этого. В противном случае просто кликните на кнопку "Согласовать"') }}
+  {% else %}
+  <div class="no-info-container">
+    <div class="empty-state">
+      {{ icons.icon_no_info() }}
+      <h1>{{ _('План ещё не отправлялся') }}</h1>
+      <p class="empty-subtitle">
+        {{ _('После отправки на согласование здесь появится путь движения плана: направление, согласование, утверждение') }}
       </p>
     </div>
   </div>
+  {% endif %}
 </div>
-{% endmacro %} {% macro tickets_container(plan, current_user) %}
+{% endmacro %} -->
+
+{% macro plan_signatures_page(plan, current_user, cycles=[]) %}
+{% set latest = cycles[-1] if cycles else none %}
+{% set latest_paths = latest.paths if latest else [] %}
+{% set first_unviewed = latest_paths|selectattr('is_viewed', 'equalto', False)|first %}
+{% set total_stages = 1 + latest_paths|length %}
+
+{% if not plan.sent_time %}
+  {% set status_key, current_stage = 'draft', 1 %}
+{% elif plan.is_error %}
+  {% set status_key = 'rejected' %}
+  {% set current_stage = (latest_paths.index(first_unviewed) + 2) if first_unviewed else total_stages %}
+{% elif plan.is_approved or not first_unviewed %}
+  {% set status_key, current_stage = 'approved', total_stages %}
+{% else %}
+  {% set status_key = 'review' %}
+  {% set current_stage = latest_paths.index(first_unviewed) + 2 %}
+{% endif %}
+
+{% set status_meta = {
+  'draft':    {'label': _('В редакции'), 'cls': 'track-s-draft', 'icon': icons.draft_icon()},
+  'review':   {'label': _('На рассмотрении'), 'cls': 'track-s-active', 'icon': icons.pending_icon()},
+  'rejected': {'label': _('Возвращено на доработку'), 'cls': 'track-s-rejected', 'icon': icons.error_icon()},
+  'approved': {'label': _('Утверждён'), 'cls': 'track-s-done', 'icon': icons.approved_icon()},
+}[status_key] %}
+
+{% set current_holder = none %}
+{% if status_key in ('review', 'rejected') and first_unviewed and first_unviewed.organization %}
+  {% set current_holder = first_unviewed.organization.full_name %}
+{% elif status_key == 'approved' %}
+  {% set current_holder = _('Весь путь согласования пройден') %}
+{% elif status_key == 'draft' %}
+  {% set current_holder = _('У вас — ещё не отправлен') %}
+{% endif %}
+
+<div class="track-wrap">
+  {% if cycles %}
+  {% set col_count = 6 %}
+  {% set dev_name %}{% if plan.user %}{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }}{% endif %}{% endset %}
+  {% set dev_phone = plan.user.telephone if plan.user else none %}
+  {% set dev_email = plan.user.email if plan.user else none %}
+  <div class="track-table-scroll">
+    <table class="track-table">
+      <thead>
+        <tr>
+          <th>{{ _('Тип действия') }}</th>
+          <th>{{ _('Организация') }}</th>
+          <th>{{ _('Должность, ФИО') }}</th>
+          <th>{{ _('Статус') }}</th>
+          <th>{{ _('Дата') }}</th>
+          <th>{{ _('Замечания') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cycle in cycles %}
+        <tr class="track-row-dev">
+          <td colspan="{{ col_count }}">
+            {{ _('Разработчик плана') }}:
+            {% if dev_name %}
+              {{ dev_name }}, {{ _('тел.') }}: {{ dev_phone or '—' }}, email: {{ dev_email or '—' }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+
+        <tr class="track-row track-row-done">
+          <td class="track-row-type"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</td>
+          <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
+          <td>{% if dev_name %}{{ plan.user.post or '—' if plan.user else '' }}, {{ dev_name }}{% else %}—{% endif %}</td>
+          <td><span class="track-chip track-chip-done">{{ _('Направлен') }}</span></td>
+          <td>{{ cycle.sent_at.strftime('%d.%m.%Y') if cycle.sent_at else '—' }}</td>
+          <td>—</td>
+        </tr>
+
+        {% for path in cycle.paths %}
+        {% set is_active = cycle.is_latest and path == first_unviewed %}
+        {% set is_rejected_step = is_active and status_key == 'rejected' %}
+        {% set is_abandoned = (not cycle.is_latest) and not path.is_viewed %}
+        {% set action_label = _('Утверждение') if path.step_type == 'approver' else _('Согласование') %}
+        {% set done_label = _('Утверждено') if (path.step_type == 'approver' and path.is_viewed) else _('Согласовано') %}
+        {% set row_state = 'done' if path.is_viewed else ('abandoned' if is_abandoned else ('rejected' if is_rejected_step else ('active' if is_active else 'pending'))) %}
+        <tr class="track-row track-row-{{ row_state }}">
+          <td class="track-row-type">
+            <span class="track-row-icon">
+              {% if path.is_viewed %}{{ icons.icon_check() }}{% elif is_rejected_step or is_abandoned %}{{ icons.error_icon() }}{% else %}{{ icons.pending_icon() }}{% endif %}
+            </span>
+            {{ action_label }}
+          </td>
+          <td>{{ path.organization.full_name if path.organization else '—' }}</td>
+          <td>—</td>
+          <td>
+            <span class="track-chip track-chip-{{ row_state }}">
+              {% if path.is_viewed %}{{ done_label }}
+              {% elif is_abandoned %}{{ _('Не пройдено') }}
+              {% elif is_rejected_step %}{{ _('Возвращено на доработку') }}
+              {% elif is_active %}{{ _('На рассмотрении') }}
+              {% else %}{{ _('Ожидание очереди') }}
+              {% endif %}
+            </span>
+            {% if current_user.is_admin and cycle.is_latest %}
+            <form method="POST" action="{{ url_for('plan_bp.api_admin_set_approval_step', token=plan.token) }}" class="enplans-approval-admin-form track-admin-form" data-org-name="{{ path.organization.full_name if path.organization else path.id }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="path_id" value="{{ path.id }}">
+              {% if path.is_viewed %}
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="approval-admin-btn approval-admin-btn-cancel" data-confirm-action="cancel">{{ _('Отменить') }}</button>
+              {% else %}
+              <input type="hidden" name="action" value="confirm">
+              <button type="submit" class="approval-admin-btn" data-confirm-action="confirm">{{ _('Подтвердить') }}</button>
+              {% endif %}
+            </form>
+            {% endif %}
+          </td>
+          <td>{{ path.viewed_at.strftime('%d.%m.%Y') if path.viewed_at else '—' }}</td>
+          <td>—</td>
+        </tr>
+        {% endfor %}
+
+        {% if cycle.cancel_ticket %}
+        <tr class="track-row-dev">
+          <td colspan="{{ col_count }}">
+            {{ cycle.cancel_ticket.note }}{% if cycle.cancel_ticket.user %} — {{ cycle.cancel_ticket.user.last_name }} {{ cycle.cancel_ticket.user.first_name }} {{ cycle.cancel_ticket.user.patronymic_name or '' }}{% endif %}{% if cycle.cancel_ticket.begin_time %}, {{ cycle.cancel_ticket.begin_time.strftime('%d.%m.%Y') }}{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="no-info-container">
+    <div class="empty-state">
+      {{ icons.icon_no_info() }}
+      <h1>{{ _('План ещё не отправлялся') }}</h1>
+      <p class="empty-subtitle">
+        {{ _('После отправки на согласование здесь появится путь движения плана: направление, согласование, утверждение') }}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) %}
+{% if can_audit %}
+{#  Поле ввода сообщения — переключается классом has-remarks (JS), а не
+    пересборкой HTML, чтобы у textarea не терялись навешанные обработчики
+    событий (автовысота/счётчик/Enter). Кнопки решения ("Есть ошибки"/
+    "Согласовать") теперь внутри чата, как сообщение от системы — см.
+    tickets_container — и просто перерисовываются вместе с остальными
+    сообщениями при AJAX-обновлении. #}
+<div class="chat-footer {% if has_remarks %}has-remarks{% endif %}" id="chatFooterArea" data-has-remarks="{{ has_remarks|lower }}">
+  <form
+    id="sent_mesPlanForm"
+    class="main-form"
+    action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}"
+    method="POST"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="bottom_tickets_arrea">
+      <div class="textarea-wrapper">
+        <textarea
+          class="sent-textarea"
+          placeholder="{{ _('Введите сообщение... Enter — отправить, Shift+Enter — новая строка') }}"
+          rows="1"
+          maxlength="500"
+          name="note"
+        ></textarea>
+        <span class="char-counter">0/500</span>
+      </div>
+      <button id="sent_mesPlanButton" type="submit" class="chat-btn">
+        <span class="btn-spinner" aria-hidden="true"></span>
+        {{ icons.icon_chatbtn() }}
+        <span class="btn-text">{{ _('Отправить') }}</span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endmacro %} {% macro tickets_container(plan, current_user, can_audit=False, has_remarks=False, approve_label='') %}
 <div class="tickets-container">
-  {% if plan.tickets %}
+  {% if plan.tickets or can_audit %}
   <div class="tickets-header">
     <span class="tickets-title">{{ _('Сообщения') }}</span>
     <div class="tickets-divider"></div>
@@ -551,6 +774,32 @@ is_current_user_step and (not plan.is_approved) and (not plan.is_error) %}
     </div>
     {% endfor %}
   </div>
+
+  {% if can_audit %}
+  {#  Кнопки смены статуса — не сообщение, а закреплённая панель внизу
+      того же контейнера с чатом (как нижняя панель действий под
+      списком сообщений в Telegram), не часть прокручиваемого списка. #}
+  <div class="tickets-actions-bar">
+    {% if has_remarks %}
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="status" value="error" />
+      <button type="submit" class="chat-inline-btn chat-inline-btn-danger">
+        {{ icons.error_icon() }}
+        <span>{{ _('Есть ошибки') }}</span>
+      </button>
+    </form>
+    {% endif %}
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="status" value="approved" />
+      <button type="submit" class="chat-inline-btn chat-inline-btn-success">
+        {{ icons.icon_check() }}
+        <span>{{ approve_label }}</span>
+      </button>
+    </form>
+  </div>
+  {% endif %}
   {% else %}
   <div class="no-info-container">
     <div class="empty-state">

@@ -29,7 +29,7 @@ from sqlalchemy import func
 logger = logging.getLogger(__name__)
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
 
-@plan_bp.route('/review/<token>', methods=['GET', 'POST'])
+@plan_bp.route('/tasks/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @session_required
@@ -51,6 +51,37 @@ def plan_review(token):
                         plan=current_plan,
                         show_plan_type_modal=show_plan_type_modal,
                         )
+
+
+@plan_bp.route('/actions/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+def plan_actions(token):
+    """Вкладка «Действия с планом» — те же действия, что раньше были в
+    выпадающем меню на «Задания» (Пройти контроль / Отправить на
+    согласование / Отменить отправку / Редактировать / Удалить), плюс
+    информация о разработчике плана (данные берутся из профиля аккаунта,
+    создавшего план — отдельного переопределения нет)."""
+    current_plan = g.current_plan
+    return render_template('plan_actions.html', plan=current_plan)
+
+
+@plan_bp.route('/signatures/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+def plan_signatures(token):
+    """Вкладка «Подписи» — путь согласования плана (кто направил, кто уже
+    согласовал/утвердил, кто на очереди) + текущий статус и прогресс сбоку.
+    Планы могли отправляться несколько раз (отмена/возврат на доработку) —
+    build_signature_cycles группирует историю по циклам отправки."""
+    from website.utils.plans import build_signature_cycles
+    current_plan = g.current_plan
+    cycles = build_signature_cycles(current_plan)
+    return render_template('plan_signatures.html', plan=current_plan, cycles=cycles)
 
 
 @plan_bp.route('/send/<token>', methods=['GET'])
@@ -103,14 +134,17 @@ def api_verify_certificate(token):
 @login_required
 @owner_only
 @session_required
-def plan_audit(token):  
+def plan_audit(token):
     if request.method == 'POST':
         pass
-    
+
+    from website.utils.plans import get_audit_context
     current_plan = g.current_plan
-    return render_template('plan_audit.html', 
-                        plan=current_plan,     
-                        hide_header=False)
+    audit_ctx = get_audit_context(current_plan, current_user)
+    return render_template('plan_audit.html',
+                        plan=current_plan,
+                        hide_header=False,
+                        **audit_ctx)
 
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -1005,10 +1039,12 @@ def api_change_plan_status(token):
         status = data.get('status')
         coordinator_ids = data.get('coordinator_ids', '').split(',') if data.get('coordinator_ids') else []
         approver_id = data.get('approver_id')
+        reason = data.get('reason')
     else:
         status = request.form.get('status')
         coordinator_ids = request.form.get('coordinator_ids', '').split(',') if request.form.get('coordinator_ids') else []
         approver_id = request.form.get('approver_id')
+        reason = request.form.get('reason')
     
     if not status:
         if request.is_json:
@@ -1093,6 +1129,20 @@ def api_change_plan_status(token):
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
         result = handler(plan, current_user)
+    elif status == 'draft':
+        # "Отменить отправку" (план уже был отправлен) обязательно требует
+        # причину — она попадёт в "Подписи" отдельной строкой в конце
+        # списка. Сброс из любого другого статуса в "В редакции" причины
+        # не требует (reason тогда просто не используется обработчиком).
+        if plan.is_sent and not (reason and reason.strip()):
+            error_msg = 'Укажите причину отмены отправки'
+            if request.is_json:
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
+        result = handler(plan, reason)
+    elif status == 'error':
+        result = handler(plan, current_user)
     else:
         result = handler(plan)
     
@@ -1110,6 +1160,8 @@ def api_change_plan_status(token):
             return redirect(request.referrer or url_for('views.plans'))
         if status in ['sent_without_check']:
             return redirect(request.referrer)
+        if status == 'control':
+            return redirect(url_for('plan_bp.plan_actions', token=plan.token))
         else:
             return redirect(url_for('plan_bp.plan_review', token=plan.token))
 
