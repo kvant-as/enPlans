@@ -162,6 +162,7 @@
   --color-sogl: #83e6ff;
   --color-erorsed: #FF6565;
   --color-submited: #8BFF97;
+  --color-transit: #FFC168;
   --color-readonly: rgba(0, 0, 0, 0.6);
 
   /* ----- Background Status ----- */
@@ -2558,13 +2559,23 @@ input::placeholder {
   cursor: not-allowed;
 }
 
-/* На странице плана вкладок может быть до 7 в одной "таблетке". Активная
-   вкладка — под свой контент (полное название), а все неактивные делят
-   оставшееся место поровну (flex: 1 1 0) — каждая показывает текст, но
-   обрезанный многоточием, если не помещается. Скоуп на .header-cont.planed
-   (чтобы не задеть общую навигацию сайта) И на десктопную ширину — у
-   мобильной вёрстки для этого меню совсем другие, отдельные правила
-   (см. @media max-width: 1080px), это не должно в них просачиваться. */
+/* На странице плана вкладок может быть до 7 в одной "таблетке". Каждая
+   вкладка (включая активную) занимает ровно столько места, сколько нужно
+   её содержимому (flex: 0 0 auto) — раньше неактивные вкладки делили
+   оставшееся место ПОРОВНУ (flex: 1 1 0), из-за чего короткие подписи
+   («Подписи», «Задания») растягивались до ширины самой длинной соседней
+   вкладки и получали огромные пустые поля слева/справа от текста. Теперь
+   вкладки просто группируются по центру контейнера (justify-content:
+   center на .navigation-container), а текст обрезается многоточием
+   только если всем вкладкам вместе не хватает места по ширине (flex-shrink
+   на :not(.active), не flex-grow). Скоуп только на .header-cont.planed И
+   на десктопную ширину — общая навигация сайта (/plans, /export, /profile)
+   с 3-4 пунктами в этом не нуждается: там каждый пункт должен быть
+   статичной равной ширины (flex: 1 у всех, включая активный — см. базовое
+   правило .nav-item ниже), чтобы при переключении между страницами
+   остальные пункты не "скакали"/не меняли размер. На мобильном же оба
+   варианта специально сделаны одинаковыми (см. @media max-width: 1080px
+   ниже) — там разница в ширине неактуальна, а кнопки итак icon-only. */
 @media (min-width: 1081px) {
   .header-cont.planed .navigation-container {
     width: 100%;
@@ -2577,7 +2588,7 @@ input::placeholder {
     padding: 2px 18px;
   }
   .header-cont.planed .nav-item:not(.active) {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-width: 0;
     padding: 2px 10px;
   }
@@ -2613,7 +2624,6 @@ input::placeholder {
 
 .nav-text {
   font-size: 14px;
-  margin-right: 8px;
   position: relative;
   z-index: 2;
   white-space: normal;
@@ -3594,9 +3604,9 @@ input::placeholder {
   display: flex;
   align-items: center;
 }
-.input-with-icon + .input-with-icon {
+/* .input-with-icon + .input-with-icon {
   margin-top: 8px;
-}
+} */
 
 .input-with-icon svg,
 .input-with-icon img {
@@ -4147,7 +4157,7 @@ input::placeholder {
 
 /* ============================================
    ORG CARD — карточка просмотра данных об организации на /profile
-   и /plan/audit/<token> (см. macros/components.html ::
+   и /plan/actions/<token> (см. macros/components.html ::
    organization_view_card). Градиентная полоса-акцент + иконка-бейдж
    + код-чипы ОКПО/УНП с копированием в буфер по клику (см.
    initOrgCardCopyButtons в base.js).
@@ -4639,6 +4649,7 @@ input[type="checkbox"]:focus {
 .stat-number-redac,
 .stat-number-control,
 .stat-number-sent,
+.stat-number-transit,
 .stat-number-sogl,
 .stat-number-eror,
 .stat-number-sub {
@@ -4653,6 +4664,9 @@ input[type="checkbox"]:focus {
 }
 .stat-number-sent {
   color: var(--color-sented);
+}
+.stat-number-transit {
+  color: var(--color-transit);
 }
 .stat-number-sogl {
   color: var(--color-sogl);
@@ -4873,6 +4887,9 @@ input[type="checkbox"]:focus {
 .plan-cont-sent {
   background: linear-gradient(135deg, #f0f6ff 0%, #bcd9ff 100%);
 }
+.plan-cont-transit {
+  background: linear-gradient(135deg, #fff8ec 0%, #ffd79a 100%);
+}
 .plan-cont-sogl {
   background: linear-gradient(135deg, #effffe 0%, #a9f2f5 100%);
 }
@@ -4895,6 +4912,7 @@ input[type="checkbox"]:focus {
 .plan-cont-redac:hover,
 .plan-cont-control:hover,
 .plan-cont-sent:hover,
+.plan-cont-transit:hover,
 .plan-cont-sogl:hover,
 .plan-cont-eror:hover,
 .plan-cont-sub:hover {
@@ -4907,6 +4925,7 @@ input[type="checkbox"]:focus {
 .plan-cont-redac:hover { animation-duration: 6s; }    /* В редакции — дальше всего от финала */
 .plan-cont-control:hover { animation-duration: 4.6s; } /* Контроль пройден */
 .plan-cont-sent:hover { animation-duration: 3.4s; }    /* Отправлен / на согласовании */
+.plan-cont-transit:hover { animation-duration: 5.2s; } /* Ожидание очереди — ещё не дошёл до вас */
 .plan-cont-sogl:hover { animation-duration: 2.4s; }    /* Согласован */
 .plan-cont-sub:hover { animation-duration: 1.3s; }     /* Утверждён — финальный этап */
 .plan-cont-eror:hover { animation-duration: 4.6s; }    /* Есть ошибки — вне основной цепочки */
@@ -4915,6 +4934,7 @@ input[type="checkbox"]:focus {
   .plan-cont-redac:hover,
   .plan-cont-control:hover,
   .plan-cont-sent:hover,
+  .plan-cont-transit:hover,
   .plan-cont-sogl:hover,
   .plan-cont-eror:hover,
   .plan-cont-sub:hover {
@@ -5005,6 +5025,12 @@ input[type="checkbox"]:focus {
   color: var(--black);
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
+.plan-cont-transit .plan-org-name,
+.plan-cont-transit .plan-org-param {
+  background: rgba(255, 169, 64, 0.15);
+  color: var(--black);
+  border: 1px solid rgba(255, 169, 64, 0.3);
+}
 .plan-cont-sogl .plan-org-name,
 .plan-cont-sogl .plan-org-param {
   background: rgba(59, 202, 246, 0.1);
@@ -5021,6 +5047,7 @@ input[type="checkbox"]:focus {
 .plan-cont-control .plan-org-param svg,
 .plan-cont-sub .plan-org-param svg,
 .plan-cont-sent .plan-org-param svg,
+.plan-cont-transit .plan-org-param svg,
 .plan-cont-sogl .plan-org-param svg,
 .plan-cont-eror .plan-org-param svg {
   color: currentColor;
@@ -5072,6 +5099,11 @@ input[type="checkbox"]:focus {
   background: rgba(59, 130, 246, 0.1) !important;
   color: var(--black) !important;
   border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+.status-transit {
+  background: rgba(255, 169, 64, 0.15) !important;
+  color: #8a5a10 !important;
+  border: 1px solid rgba(255, 169, 64, 0.35) !important;
 }
 .status-sogl {
   background: rgba(59, 202, 246, 0.1) !important;
@@ -5252,12 +5284,13 @@ input[type="checkbox"]:focus {
   word-wrap: break-word;
   word-break: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 500px;
   line-height: 1.3;
-  max-height: 32px;
+  /* max-height: 32px; */
 }
 .enplans-approval-step-time {
   font-size: 11px;
@@ -5522,7 +5555,7 @@ input[type="checkbox"]:focus {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--tr-text-dim);
-  border-bottom: 2px solid var(--tr-border);
+  border-bottom: 1px solid var(--tr-border);
   white-space: nowrap;
 }
 .track-row td {
@@ -5565,9 +5598,26 @@ input[type="checkbox"]:focus {
   background: var(--tr-active-back);
   border-color: var(--tr-active);
   color: var(--tr-active);
+  animation: trackRowActivePulse 1.6s ease-in-out infinite;
+}
+.track-row-active .track-row-icon svg {
+  animation: trackRowActivePulse 1.6s ease-in-out infinite;
 }
 .track-row-active td {
   color: var(--tr-active);
+}
+
+/* Мигание иконки текущего (активного) этапа — "На рассмотрении" прямо
+   сейчас, в отличие от пройденных/ожидающих очереди этапов. */
+@keyframes trackRowActivePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
 }
 .track-row-rejected .track-row-icon {
   background: var(--tr-rejected-back);
@@ -5704,9 +5754,9 @@ input[type="checkbox"]:focus {
 }
 
 /* ============================================
-   CHAT FOOTER (поле ввода сообщения на вкладке «Проверка») —
+   CHAT FOOTER (поле ввода сообщения на вкладке «Действия с планом») —
    прячется, пока у проверяющего есть неразрешённое сообщение с
-   замечаниями (см. applyHasRemarks в plan_audit.html); сама карточка —
+   замечаниями (см. applyHasRemarks в plan_actions.html); сама карточка —
    это уже существующий .bottom_tickets_arrea.
    ============================================ */
 .chat-footer.has-remarks #sent_mesPlanForm {
@@ -5807,6 +5857,16 @@ input[type="checkbox"]:focus {
   background: #fbdedb;
   transform: translateY(-1px);
 }
+.chat-inline-btn-secondary {
+  background: #f1f3f5;
+  color: #555;
+  border: 1px solid #e0e0e0;
+  flex: 0 1 auto;
+}
+.chat-inline-btn-secondary:hover {
+  background: #e9ebed;
+  transform: translateY(-1px);
+}
 
 .tickets-message {
   display: flex;
@@ -5890,6 +5950,34 @@ input[type="checkbox"]:focus {
   color: var(--telegram-blue);
 }
 .btn-sender-info:active {
+  transform: scale(0.95);
+}
+.btn-sender-delete {
+  background: var(--transparent);
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--telegram-text-light);
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin-left: 4px;
+}
+.btn-sender-delete svg {
+  width: 16px;
+  height: 16px;
+}
+.btn-sender-delete:hover {
+  background: rgba(192, 57, 43, 0.08);
+  opacity: 1;
+  color: #c0392b;
+}
+.btn-sender-delete:active {
   transform: scale(0.95);
 }
 
@@ -10547,6 +10635,7 @@ main {
   .stat-number-redac,
   .stat-number-control,
   .stat-number-sent,
+  .stat-number-transit,
   .stat-number-sogl,
   .stat-number-eror,
   .stat-number-sub {
@@ -10581,29 +10670,6 @@ main {
 
 
 @media (max-width: 1080px) {
-  .header-cont {
-    top: auto !important;
-    bottom: 20px !important;
-    max-width: 100%;
-    width: calc(100% - 40px);
-    padding: 0 20px;
-  }
-
-  .navigation-container {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    border-radius: 100px;
-    background: var(--blur3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    justify-content: space-around;
-    align-items: center;
-  }
-
   .personal-acc-conteiner {
     margin-top: 75px;
   }
@@ -10619,45 +10685,6 @@ main {
     margin-bottom: 100px;
   }
 
-  .nav-item {
-    flex-direction: column;
-    padding: 8px;
-    margin: 0;
-    height: 100%;
-    gap: 4px;
-  }
-  .nav-item.active {
-    box-shadow: none;
-  }
-  .nav-item.active .nav-icon {
-    filter: invert(45%) sepia(88%) saturate(1250%) hue-rotate(195deg) brightness(95%) contrast(95%);
-  }
-  .nav-item.active .nav-text-mobile {
-    color: var(--green-light);
-    font-weight: 600;
-  }
-  .nav-item.disabled-tab .nav-icon {
-    filter: grayscale(1);
-  }
-  .nav-item:not(.disabled-tab):active {
-    opacity: 0.7;
-  }
-  .nav-icon-wrapper {
-    margin: 0;
-  }
-  .nav-icon {
-    width: 22px;
-    height: 22px;
-  }
-  .nav-text {
-    display: none;
-  }
-  .nav-text-mobile {
-    display: block;
-  }
-  .active-indicator {
-    display: block;
-  }
   .vertical-text {
     max-height: 100px;
   }
@@ -10687,22 +10714,22 @@ main {
     align-items: start;
   }
 
-  /* Меню вкладок плана на мобильной вёрстке — сбрасываем все общие
-     мобильные стили нав-бара (плавающая капсула, фильтр-подсветка
-     активной иконки, подпись под каждой иконкой и т.д.) и делаем свой,
-     отдельный вид: плавающий "островок" с отступами от краёв экрана
-     (как нижняя панель в iOS), а не прилипшая во всю ширину полоса.
-     Имя активного раздела показывается одной подписью на чёрном фоне
-     над островком (тот же стиль тултипа, что и на десктопе). */
-  .header-cont.planed {
+  /* Единый мобильный вид нав-бара — и для общей навигации сайта
+     (/plans, /export, /profile), и для вкладок внутри плана. Плавающий
+     "островок" с отступами от краёв экрана (как нижняя панель в iOS), а
+     не прилипшая во всю ширину полоса. Имя активного раздела
+     показывается одной подписью на чёрном фоне над островком (тот же
+     стиль тултипа, что и на десктопе). На десктопе они всё ещё
+     различаются (см. .header-cont / .header-cont.planed{ top: ... } и
+     @media min-width: 1081px выше) — только на мобильном одинаковые. */
+  .header-cont {
     top: auto !important;
     bottom: max(16px, env(safe-area-inset-bottom)) !important;
     left: 0;
-    width: 100%;
     max-width: 100%;
     padding: 0 16px;
   }
-  .header-cont.planed .navigation-container {
+  .header-cont .navigation-container {
     position: relative;
     height: 60px;
     width: 100%;
@@ -10717,33 +10744,39 @@ main {
     justify-content: space-around;
     align-items: center;
   }
-  .header-cont.planed .nav-item {
+  .header-cont .nav-item {
     flex: 0 0 auto;
     flex-direction: row;
     padding: 8px;
     margin: 0;
     height: auto;
   }
-  .header-cont.planed .nav-item.active {
+  .header-cont .nav-item.active {
     box-shadow: none;
     background: transparent;
   }
-  .header-cont.planed .nav-item.active .nav-icon {
+  .header-cont .nav-item.active .nav-icon {
     filter: none;
     color: var(--green-light);
   }
-  .header-cont.planed .nav-icon-wrapper {
+  .header-cont .nav-item.disabled-tab .nav-icon {
+    filter: grayscale(1);
+  }
+  .header-cont .nav-item:not(.disabled-tab):active {
+    opacity: 0.7;
+  }
+  .header-cont .nav-icon-wrapper {
     margin: 0;
   }
-  .header-cont.planed .nav-icon {
+  .header-cont .nav-icon {
     width: 24px;
     height: 24px;
   }
-  .header-cont.planed .nav-text,
-  .header-cont.planed .nav-text-mobile {
+  .header-cont .nav-text,
+  .header-cont .nav-text-mobile {
     display: none;
   }
-  .header-cont.planed .nav-item.active .nav-text-mobile {
+  .header-cont .nav-item.active .nav-text-mobile {
     display: block;
     position: absolute;
     left: 50%;

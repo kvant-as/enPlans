@@ -254,7 +254,7 @@ def export_xlsx_single(plan: Plan):
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
-    
+
     export_type = type_of_export(plan)
     # ===============================
     # Шрифт и выравнивание
@@ -287,10 +287,19 @@ def export_xlsx_single(plan: Plan):
         left=Side(style="thin"), right=Side(style="thin"),
         top=Side(style="thin"), bottom=Side(style="thin")
     )
+
+    def apply_border_to_range(ws, cell_range, border):
+        """Проставляет border на КАЖДУЮ ячейку объединённого диапазона —
+        Excel рисует границу по отдельным ячейкам, а не по объединению
+        целиком, так что border только на "якорной" ячейке обрезался бы
+        и не тянулся на всю ширину/высоту объединения."""
+        for row in ws[cell_range]:
+            for c in row:
+                c.border = border
     
-    def set_cell(ws, row_start, col_start, row_end=None, col_end=None, text="", 
+    def set_cell(ws, row_start, col_start, row_end=None, col_end=None, text="",
                         font=regular_font_10, row_height=None, alignment=left,
-                        merge_direction='both'):
+                        merge_direction='both', border=None):
         if merge_direction == 'horizontal':
             row_end = row_start
             if col_end is None:
@@ -318,7 +327,15 @@ def export_xlsx_single(plan: Plan):
             cell.font = font
         if alignment:
             cell.alignment = alignment
-        
+        if border:
+            # Excel рисует границу по каждой отдельной ячейке, а не по
+            # объединённому диапазону целиком — если поставить border
+            # только на "якорную" (верхнюю левую) ячейку, линия обрежется
+            # и не протянется на всю ширину объединения.
+            for r in range(row_start, row_end + 1):
+                for c in range(col_start, col_end + 1):
+                    ws.cell(row=r, column=c).border = border
+
         if row_height is not None:
             for row in range(row_start, row_end + 1):
                 ws.row_dimensions[row].height = row_height
@@ -335,6 +352,97 @@ def export_xlsx_single(plan: Plan):
         ws.page_margins.bottom = 0.75
         ws.page_margins.header = 0.3
         ws.page_margins.footer = 0.3
+
+    def extract_post_and_fio_from_snapshot(snapshot):
+        """Должность и ФИО по отдельности из снимка (viewed_by_snapshot,
+        см. utils/plans.py::build_signer_snapshot) — он собран как
+        "должность, ФИО[, тел.: номер]". "(подпись, инициалы и фамилия)"
+        и "(должность)" в бланке — это подписи-пояснения к линии НАД ними
+        (что на этой линии должно быть указано), а не замена самого
+        текста: ФИО/должность подписавшего подставляются на саму линию,
+        подписи-пояснения под линией остаются как есть."""
+        if not snapshot:
+            return "", ""
+        parts = [p.strip() for p in snapshot.split(',') if p.strip()]
+        parts = [p for p in parts if not p.startswith('тел.')]
+        if not parts:
+            return "", ""
+        if len(parts) == 1:
+            return "", parts[0]
+        return parts[0], parts[-1]
+
+    def extract_fio_from_snapshot(snapshot):
+        return extract_post_and_fio_from_snapshot(snapshot)[1]
+
+    MONTHS_RU_GENITIVE = {
+        1: 'января', 2: 'февраля', 3: 'марта', 4: 'апреля', 5: 'мая', 6: 'июня',
+        7: 'июля', 8: 'августа', 9: 'сентября', 10: 'октября', 11: 'ноября', 12: 'декабря',
+    }
+
+    def format_signed_date(dt):
+        """Дата подписи в формате бланка — «ДД» месяц ГГГГ г. (замена
+        плейсхолдера «___» ____________ 20__ г.). Подчёркивание — не
+        текстом, а нижней границей самой ячейки (см. apply_border_to_range
+        в местах вызова), чтобы линия не зависела от формата текста."""
+        if not dt:
+            return ""
+        return f'«{dt.day}» {MONTHS_RU_GENITIVE[dt.month]} {dt.year} г.'
+
+    def get_approval_signer_fio_and_date(plan, step_type):
+        """ФИО (без должности/телефона) того, кто согласовал/утвердил, и
+        дата (datetime, для format_signed_date) — для организаций
+        указанной роли (step_type: 'region'/'coordinator'/'approver') в
+        ПОСЛЕДНЕМ цикле согласования. Используется только для уже
+        утверждённого плана (is_approved) — пока план не утверждён,
+        подпись в экспорте не отображается вовсе."""
+        if not plan.approval_paths:
+            return "", None
+        latest_cycle = max(p.cycle for p in plan.approval_paths)
+        paths = [
+            p for p in sorted(plan.approval_paths, key=lambda p: p.step_order)
+            if p.cycle == latest_cycle and p.step_type == step_type and p.is_viewed
+        ]
+        fio_text = "; ".join(extract_fio_from_snapshot(p.viewed_by_snapshot) for p in paths if p.viewed_by_snapshot)
+        date_obj = next((p.viewed_at for p in paths if p.viewed_at), None)
+        return fio_text, date_obj
+
+    def get_approval_signer_post_fio_date(plan, step_type):
+        """Как get_approval_signer_fio_and_date, но дополнительно отдаёт
+        должность — для блоков с отдельной линией "(должность)" (только
+        на титульном листе)."""
+        if not plan.approval_paths:
+            return "", "", None
+        latest_cycle = max(p.cycle for p in plan.approval_paths)
+        paths = [
+            p for p in sorted(plan.approval_paths, key=lambda p: p.step_order)
+            if p.cycle == latest_cycle and p.step_type == step_type and p.is_viewed
+        ]
+        posts, fios = [], []
+        for p in paths:
+            if p.viewed_by_snapshot:
+                post, fio = extract_post_and_fio_from_snapshot(p.viewed_by_snapshot)
+                if post:
+                    posts.append(post)
+                if fio:
+                    fios.append(fio)
+        post_text = "; ".join(posts)
+        fio_text = "; ".join(fios)
+        date_obj = next((p.viewed_at for p in paths if p.viewed_at), None)
+        return post_text, fio_text, date_obj
+
+    def get_approval_org_name(plan, step_type):
+        """Название организации указанной роли (подтвердившей свой этап)
+        в ПОСЛЕДНЕМ цикле согласования — для линии НАД "(министерство,
+        концерн, государственный комитет)", куда подставляется реальное
+        наименование утверждающей организации."""
+        if not plan.approval_paths:
+            return ""
+        latest_cycle = max(p.cycle for p in plan.approval_paths)
+        paths = [
+            p for p in sorted(plan.approval_paths, key=lambda p: p.step_order)
+            if p.cycle == latest_cycle and p.step_type == step_type and p.is_viewed and p.organization
+        ]
+        return "; ".join(p.organization.full_name for p in paths)
 
     def get_org_name_by_okpo(okpo):
         dop_org_data = [
@@ -398,95 +506,119 @@ def export_xlsx_single(plan: Plan):
             ws["B1"].value = "Согласовано".upper()
             ws["B1"].font = bold_font_11
 
+            # "(должность)"/"(подпись, инициалы и фамилия)" ниже — не
+            # заменяемый текст, а подпись-пояснение к линии НАД собой (что
+            # на ней должно быть указано). Поэтому сами подписи-пояснения
+            # не трогаем никогда, а должность/ФИО подставляем прямо на
+            # линию (с нижней границей ячейки вместо текста-подчёркивания,
+            # чтобы линия не пропадала вместе с подставленным текстом).
+            region_post, region_fio, region_date = get_approval_signer_post_fio_date(plan, 'region') if plan.is_approved else ("", "", "")
+
             ws.merge_cells("B2:D2")
-            ws["B2"].value = "_______________________"
-            ws["B2"].font = bold_font_11
-            
+            cell = ws["B2"]
+            cell.value = region_post
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "B2:D2", bottom_border)
+
             ws.merge_cells("B3:D3")
             ws["B3"].value = "(должность)"
             ws["B3"].font = regular_font_9
             ws["B3"].alignment = center
-                    
+
             ws.merge_cells("B4:F4")
             ws["B4"].value = "_______________"
             ws["B4"].font = regular_font_11
             ws["B4"].alignment = left
-                            
+
             okpo = plan.organization.okpo if plan.organization else None
             org_name = get_org_name_by_okpo(okpo)
-            
+
             if org_name:
                 org_text = f"{org_name} по надзору за рациональным использованием ТЭР"
             else:
                 org_text = f"областное (городское) управление по надзору за рациональным использованием ТЭР"
-                        
+
             ws.merge_cells("B5:F5")
             ws["B5"].value = org_text
             ws["B5"].font = regular_font_11
             ws["B5"].alignment = left
-                    
+
             ws.merge_cells("B6:D6")
-            ws["B6"].value = "подписано ЭЦП"
+            ws["B6"].value = "Документ подписан электронной цифровой подписью" if plan.is_approved else ""
             ws["B6"].font = regular_font_9_italic
             ws["B6"].alignment = center
-            
+
             ws.merge_cells("B7:D7")
-            ws["B7"].value = "_______________________"
-            ws["B7"].font = bold_font_11
-            
+            cell = ws["B7"]
+            cell.value = region_fio
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "B7:D7", bottom_border)
+
             ws.merge_cells("B8:D8")
             ws["B8"].value = "(подпись, инициалы и фамилия)"
             ws["B8"].font = regular_font_9
             ws["B8"].alignment = left
-            
+
             ws.merge_cells("B9:E9")
-            ws["B9"].value = "«___» ____________ 20__ г."
+            ws["B9"].value = format_signed_date(region_date) if plan.is_approved else "«___» ____________ 20__ г."
             ws["B9"].font = regular_font_11
             ws["B9"].alignment = left
+            if plan.is_approved:
+                apply_border_to_range(ws, "B9:E9", bottom_border)
 
         def title_second_sign():
             ws.merge_cells("K1:M1")
             ws["K1"].value = "Утверждаю".upper()
             ws["K1"].font = bold_font_11
 
+            approver_post, approver_fio, approver_date = get_approval_signer_post_fio_date(plan, 'approver') if plan.is_approved else ("", "", "")
+
             ws.merge_cells("K2:M2")
-            ws["K2"].value = "_______________________"
-            ws["K2"].font = bold_font_11
-            
+            cell = ws["K2"]
+            cell.value = approver_post
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K2:M2", bottom_border)
+
             ws.merge_cells("K3:M3")
             ws["K3"].value = "(должность)"
             ws["K3"].font = regular_font_9
             ws["K3"].alignment = center
-                    
+
             ws.merge_cells("K4:M4")
-            ws["K4"].value = "_______________________"
-            ws["K4"].font = regular_font_11
-            ws["K4"].alignment = left
-                            
+            cell = ws["K4"]
+            cell.value = get_approval_org_name(plan, 'approver') if plan.is_approved else ""
+            cell.font = regular_font_11
+            cell.alignment = left
+            apply_border_to_range(ws, "K4:M4", bottom_border)
+
             ws.merge_cells("K5:M5")
             ws["K5"].value = "(министерство, концерн, государственный комитет)"
             ws["K5"].font = regular_font_11
             ws["K5"].alignment = left
-                    
+
             ws.merge_cells("K6:M6")
-            ws["K6"].value = "подписано ЭЦП"
+            ws["K6"].value = "Документ подписан электронной цифровой подписью" if plan.is_approved else ""
             ws["K6"].font = regular_font_9_italic
             ws["K6"].alignment = center
-            
+
             ws.merge_cells("K7:M7")
-            ws["K7"].value = "_______________________"
-            ws["K7"].font = bold_font_11
-            
+            cell = ws["K7"]
+            cell.value = approver_fio
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K7:M7", bottom_border)
+
             ws.merge_cells("K8:M8")
             ws["K8"].value = "(подпись, инициалы и фамилия)"
             ws["K8"].font = regular_font_9
             ws["K8"].alignment = left
-            
+
             ws.merge_cells("K9:N9")
-            ws["K9"].value = "«___» ____________ 20__ г."
+            ws["K9"].value = format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г."
             ws["K9"].font = regular_font_11
             ws["K9"].alignment = left
-        
+            if plan.is_approved:
+                apply_border_to_range(ws, "K9:N9", bottom_border)
+
         title_first_sign()
         title_second_sign()
         
@@ -634,21 +766,25 @@ def export_xlsx_single(plan: Plan):
             ws["B5"].value = 'Госстандарта'
             ws["B5"].font = regular_font_11
             ws["B5"].alignment = left
-                    
+
+            # Департамент — фиксированный республиканский адресат, не
+            # привязанный ни к одной организации из цепочки согласования
+            # этого плана, поэтому ФИО/дату взять неоткуда — заготовка
+            # подписи остаётся как в оригинале, меняется только фраза.
             ws.merge_cells("B6:D6")
-            ws["B6"].value = "подписано ЭЦП"
+            ws["B6"].value = "Документ подписан электронной цифровой подписью" if plan.is_approved else ""
             ws["B6"].font = regular_font_9_italic
             ws["B6"].alignment = center
-            
+
             ws.merge_cells("B7:D7")
             ws["B7"].value = "_______________________"
             ws["B7"].font = bold_font_11
-            
+
             ws.merge_cells("B8:D8")
             ws["B8"].value = "(подпись, инициалы и фамилия)"
             ws["B8"].font = regular_font_9
             ws["B8"].alignment = left
-            
+
             ws.merge_cells("B9:E9")
             ws["B9"].value = "«___» ____________ 20__ г."
             ws["B9"].font = regular_font_11
@@ -659,44 +795,54 @@ def export_xlsx_single(plan: Plan):
             ws["K1"].value = "Утверждаю".upper()
             ws["K1"].font = bold_font_11
 
+            approver_post, approver_fio, approver_date = get_approval_signer_post_fio_date(plan, 'approver') if plan.is_approved else ("", "", "")
+
             ws.merge_cells("K2:M2")
-            ws["K2"].value = "_______________________"
-            ws["K2"].font = bold_font_11
-            
+            cell = ws["K2"]
+            cell.value = approver_post
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K2:M2", bottom_border)
+
             ws.merge_cells("K3:M3")
             ws["K3"].value = "(должность)"
             ws["K3"].font = regular_font_9
             ws["K3"].alignment = center
-                    
+
             ws.merge_cells("K4:M4")
-            ws["K4"].value = "_______________________"
-            ws["K4"].font = regular_font_11
-            ws["K4"].alignment = left
-                            
+            cell = ws["K4"]
+            cell.value = get_approval_org_name(plan, 'approver') if plan.is_approved else ""
+            cell.font = regular_font_11
+            cell.alignment = left
+            apply_border_to_range(ws, "K4:M4", bottom_border)
+
             ws.merge_cells("K5:M5")
             ws["K5"].value = "(министерство, концерн, государственный комитет)"
             ws["K5"].font = regular_font_11
             ws["K5"].alignment = left
-                    
+
             ws.merge_cells("K6:M6")
-            ws["K6"].value = "подписано ЭЦП"
+            ws["K6"].value = "Документ подписан электронной цифровой подписью" if plan.is_approved else ""
             ws["K6"].font = regular_font_9_italic
             ws["K6"].alignment = center
-            
+
             ws.merge_cells("K7:M7")
-            ws["K7"].value = "_______________________"
-            ws["K7"].font = bold_font_11
-            
+            cell = ws["K7"]
+            cell.value = approver_fio
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K7:M7", bottom_border)
+
             ws.merge_cells("K8:M8")
             ws["K8"].value = "(подпись, инициалы и фамилия)"
             ws["K8"].font = regular_font_9
             ws["K8"].alignment = left
-            
+
             ws.merge_cells("K9:N9")
-            ws["K9"].value = "«___» ____________ 20__ г."
+            ws["K9"].value = format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г."
             ws["K9"].font = regular_font_11
             ws["K9"].alignment = left
-        
+            if plan.is_approved:
+                apply_border_to_range(ws, "K9:N9", bottom_border)
+
         title_first_sign()
         title_second_sign()
         
@@ -846,7 +992,7 @@ def export_xlsx_single(plan: Plan):
             ws["B5"].alignment = left
                     
             ws.merge_cells("B6:D6")
-            ws["B6"].value = "подписано ЭЦП"
+            ws["B6"].value = "Документ подписан электронной цифровой подписью"
             ws["B6"].font = regular_font_9_italic
             ws["B6"].alignment = center
             
@@ -869,44 +1015,54 @@ def export_xlsx_single(plan: Plan):
             ws["K1"].value = "Утверждаю".upper()
             ws["K1"].font = bold_font_11
 
+            approver_post, approver_fio, approver_date = get_approval_signer_post_fio_date(plan, 'approver') if plan.is_approved else ("", "", "")
+
             ws.merge_cells("K2:M2")
-            ws["K2"].value = "_______________________"
-            ws["K2"].font = bold_font_11
-            
+            cell = ws["K2"]
+            cell.value = approver_post
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K2:M2", bottom_border)
+
             ws.merge_cells("K3:M3")
             ws["K3"].value = "(должность)"
             ws["K3"].font = regular_font_9
             ws["K3"].alignment = center
-                    
+
             ws.merge_cells("K4:M4")
-            ws["K4"].value = "_______________________"
-            ws["K4"].font = regular_font_11
-            ws["K4"].alignment = left
-                            
+            cell = ws["K4"]
+            cell.value = get_approval_org_name(plan, 'approver') if plan.is_approved else ""
+            cell.font = regular_font_11
+            cell.alignment = left
+            apply_border_to_range(ws, "K4:M4", bottom_border)
+
             ws.merge_cells("K5:M5")
             ws["K5"].value = "(министерство, концерн, государственный комитет)"
             ws["K5"].font = regular_font_11
             ws["K5"].alignment = left
-                    
+
             ws.merge_cells("K6:M6")
-            ws["K6"].value = "подписано ЭЦП"
+            ws["K6"].value = "Документ подписан электронной цифровой подписью" if plan.is_approved else ""
             ws["K6"].font = regular_font_9_italic
             ws["K6"].alignment = center
-            
+
             ws.merge_cells("K7:M7")
-            ws["K7"].value = "_______________________"
-            ws["K7"].font = bold_font_11
-            
+            cell = ws["K7"]
+            cell.value = approver_fio
+            cell.font = bold_font_11
+            apply_border_to_range(ws, "K7:M7", bottom_border)
+
             ws.merge_cells("K8:M8")
             ws["K8"].value = "(подпись, инициалы и фамилия)"
             ws["K8"].font = regular_font_9
             ws["K8"].alignment = left
-            
+
             ws.merge_cells("K9:N9")
-            ws["K9"].value = "«___» ____________ 20__ г."
+            ws["K9"].value = format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г."
             ws["K9"].font = regular_font_11
             ws["K9"].alignment = left
-        
+            if plan.is_approved:
+                apply_border_to_range(ws, "K9:N9", bottom_border)
+
         title_first_sign()
         title_second_sign()
         
@@ -1056,7 +1212,7 @@ def export_xlsx_single(plan: Plan):
             ws["B5"].alignment = left
                     
             ws.merge_cells("B6:D6")
-            ws["B6"].value = "подписано ЭЦП"
+            ws["B6"].value = "Документ подписан электронной цифровой подписью"
             ws["B6"].font = regular_font_9_italic
             ws["B6"].alignment = center
             
@@ -1099,7 +1255,7 @@ def export_xlsx_single(plan: Plan):
             ws["K5"].alignment = left
                     
             ws.merge_cells("K6:M6")
-            ws["K6"].value = "подписано ЭЦП"
+            ws["K6"].value = "Документ подписан электронной цифровой подписью"
             ws["K6"].font = regular_font_9_italic
             ws["K6"].alignment = center
             
@@ -1408,57 +1564,56 @@ def export_xlsx_single(plan: Plan):
             else:
                 org_text = f"_______________ областное (городское) управление по надзору за рациональным использованием ТЭР"
             
-            set_cell(ws, row_start=start_row+2, col_start=2, row_end=start_row+3, col_end=2, 
+            set_cell(ws, row_start=start_row+2, col_start=2, row_end=start_row+3, col_end=2,
                     text=org_text, font=regular_font_10)
-            
-            set_cell(ws, row_start=start_row+4, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
-              
-            set_cell(ws, row_start=start_row+5, col_start=2, col_end=2, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+6, col_start=2, col_end=2, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=bottom_left) 
-             
-            set_cell(ws, row_start=start_row+7, col_start=2, col_end=2, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')  
-                    
-            set_cell(ws, row_start=start_row+2, col_start=5, col_end=7, 
-                    text="__________________________________", merge_direction='horizontal')           
-                                   
-            set_cell(ws, row_start=start_row+3, col_start=5, col_end=7, 
-                    text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)      
-                     
-            set_cell(ws, row_start=start_row+4, col_start=5, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-                     
-            set_cell(ws, row_start=start_row+5, col_start=5, col_end=7, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+6, col_start=5, col_end=7, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left) 
-                         
-            set_cell(ws, row_start=start_row+7, col_start=5, col_end=7, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')           
-                         
-            set_cell(ws, row_start=start_row+9, col_start=5, col_end=7, 
-                    text="__________________________________", merge_direction='horizontal')               
-                         
-            set_cell(ws, row_start=start_row+10, col_start=5, col_end=7, 
-                    text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)  
-                                 
-            set_cell(ws, row_start=start_row+11, col_start=5, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-                     
-            set_cell(ws, row_start=start_row+12, col_start=5, col_end=7, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+13, col_start=5, col_end=7, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left) 
-                         
-            set_cell(ws, row_start=start_row+14, col_start=5, col_end=7, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')  
-                 
+
+            # "(подпись, инициалы и фамилия)" ниже — не заменяемый текст,
+            # а подпись-пояснение к линии НАД собой; сама подпись-пояснение
+            # не трогается, ФИО подставляется прямо на линию (с нижней
+            # границей ячейки вместо текста-подчёркивания, чтобы линия не
+            # пропадала вместе с подставленным текстом).
+            region_fio, region_date = get_approval_signer_fio_and_date(plan, 'region') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+4, col_start=2, col_end=2,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+5, col_start=2, col_end=2,
+                    text=region_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+6, col_start=2, col_end=2,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+7, col_start=2, col_end=2,
+                    text=format_signed_date(region_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
+            set_cell(ws, row_start=start_row+2, col_start=5, col_end=7,
+                    text="__________________________________", merge_direction='horizontal')
+
+            set_cell(ws, row_start=start_row+3, col_start=5, col_end=7,
+                    text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)
+
+            coordinator_fio, coordinator_date = get_approval_signer_fio_and_date(plan, 'coordinator') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+4, col_start=5, col_end=7,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=5, col_end=7,
+                    text=coordinator_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+6, col_start=5, col_end=7,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
+            set_cell(ws, row_start=start_row+7, col_start=5, col_end=7,
+                    text=format_signed_date(coordinator_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
+            set_cell(ws, row_start=start_row+9, col_start=5, col_end=7,
+                    text=get_approval_org_name(plan, 'approver') if plan.is_approved else "", merge_direction='horizontal', border=bottom_border)
+
+            set_cell(ws, row_start=start_row+10, col_start=5, col_end=7,
+                    text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)
+
+            approver_fio, approver_date = get_approval_signer_fio_and_date(plan, 'approver') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+11, col_start=5, col_end=7,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+12, col_start=5, col_end=7,
+                    text=approver_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+13, col_start=5, col_end=7,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
+            set_cell(ws, row_start=start_row+14, col_start=5, col_end=7,
+                    text=format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
         def org_large_signatures_indicators_xlsx(ws, start_row, plan):
             set_cell(ws, row_start=start_row+2, col_start=2, col_end=2, merge_direction='horizontal', row_height=31,
                     text="Департамент по энергоэффективности Госстандарта", font=bold_font_11)
@@ -1466,92 +1621,80 @@ def export_xlsx_single(plan: Plan):
             set_cell(ws, row_start=start_row+3, col_start=2, row_end=start_row+4, col_end=2, 
                     text="Отдел анализа и прогнозирования развития энергосбережения производственно-технического управления", font=regular_font_10)
             
-            set_cell(ws, row_start=start_row+5, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
-              
-            set_cell(ws, row_start=start_row+6, col_start=2, col_end=2, 
-                    text="_______________________", merge_direction='horizontal', alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+7, col_start=2, col_end=2, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, alignment=bottom_left) 
-             
-            set_cell(ws, row_start=start_row+8, col_start=2, col_end=2, 
+            set_cell(ws, row_start=start_row+5, col_start=2, col_end=2,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+6, col_start=2, col_end=2,
+                    text="_______________________", merge_direction='horizontal', alignment=bottom_left)
+            set_cell(ws, row_start=start_row+7, col_start=2, col_end=2,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+8, col_start=2, col_end=2,
                     text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            
+
             okpo = plan.organization.okpo if plan.organization else None
             org_name = get_org_name_by_okpo(okpo)
-            
+
             if org_name:
                 org_text = f"{org_name} по надзору за рациональным использованием ТЭР"
             else:
                 org_text = f"_______________ областное (городское) управление по надзору за рациональным использованием ТЭР"
-            
-            set_cell(ws, row_start=start_row+10, col_start=2, row_end=start_row+11, col_end=2, 
+
+            set_cell(ws, row_start=start_row+10, col_start=2, row_end=start_row+11, col_end=2,
                     text=org_text, font=regular_font_10)
-            
-            set_cell(ws, row_start=start_row+12, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
-              
-            set_cell(ws, row_start=start_row+13, col_start=2, col_end=2, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+14, col_start=2, col_end=2, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=bottom_left) 
-             
-            set_cell(ws, row_start=start_row+15, col_start=2, col_end=2, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')   
-                    
-            set_cell(ws, row_start=start_row+3, col_start=5, col_end=7, 
-                    text="__________________________________", merge_direction='horizontal')           
-                                   
-            set_cell(ws, row_start=start_row+4, col_start=5, col_end=7, 
-                    text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)      
-                     
-            set_cell(ws, row_start=start_row+5, col_start=5, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-                     
-            set_cell(ws, row_start=start_row+6, col_start=5, col_end=7, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+7, col_start=5, col_end=7, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left) 
-                         
-            set_cell(ws, row_start=start_row+8, col_start=5, col_end=7, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')           
-                         
-            set_cell(ws, row_start=start_row+10, col_start=5, col_end=7, 
-                    text="__________________________________", merge_direction='horizontal')               
-                         
-            set_cell(ws, row_start=start_row+11, col_start=5, col_end=7, 
-                    text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)  
-                                 
-            set_cell(ws, row_start=start_row+12, col_start=5, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-                     
-            set_cell(ws, row_start=start_row+13, col_start=5, col_end=7, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+14, col_start=5, col_end=7, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left) 
-                         
-            set_cell(ws, row_start=start_row+15, col_start=5, col_end=7, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')      
-            
-            set_cell(ws, row_start=start_row+17, col_start=5, col_end=8, 
-                    text="_______________ облисполком (горисполком)", merge_direction='horizontal')               
-                               
-            set_cell(ws, row_start=start_row+18, col_start=5, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-                     
-            set_cell(ws, row_start=start_row+19, col_start=5, col_end=7, 
-                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
-                       
-            set_cell(ws, row_start=start_row+20, col_start=5, col_end=7, 
-                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left) 
-                         
-            set_cell(ws, row_start=start_row+21, col_start=5, col_end=7, 
-                    text="«___» ____________ 20__ г.", merge_direction='horizontal')     
-                    
+
+            region_fio, region_date = get_approval_signer_fio_and_date(plan, 'region') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+12, col_start=2, col_end=2,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+13, col_start=2, col_end=2,
+                    text=region_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+14, col_start=2, col_end=2,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+15, col_start=2, col_end=2,
+                    text=format_signed_date(region_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
+            set_cell(ws, row_start=start_row+3, col_start=5, col_end=7,
+                    text="__________________________________", merge_direction='horizontal')
+
+            set_cell(ws, row_start=start_row+4, col_start=5, col_end=7,
+                    text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)
+
+            coordinator_fio, coordinator_date = get_approval_signer_fio_and_date(plan, 'coordinator') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+5, col_start=5, col_end=7,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+6, col_start=5, col_end=7,
+                    text=coordinator_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+7, col_start=5, col_end=7,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
+            set_cell(ws, row_start=start_row+8, col_start=5, col_end=7,
+                    text=format_signed_date(coordinator_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
+            set_cell(ws, row_start=start_row+10, col_start=5, col_end=7,
+                    text=get_approval_org_name(plan, 'approver') if plan.is_approved else "", merge_direction='horizontal', border=bottom_border)
+
+            set_cell(ws, row_start=start_row+11, col_start=5, col_end=7,
+                    text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)
+
+            approver_fio, approver_date = get_approval_signer_fio_and_date(plan, 'approver') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+12, col_start=5, col_end=7,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+13, col_start=5, col_end=7,
+                    text=approver_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
+            set_cell(ws, row_start=start_row+14, col_start=5, col_end=7,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
+            set_cell(ws, row_start=start_row+15, col_start=5, col_end=7,
+                    text=format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
+            set_cell(ws, row_start=start_row+17, col_start=5, col_end=8,
+                    text="_______________ облисполком (горисполком)", merge_direction='horizontal')
+
+            set_cell(ws, row_start=start_row+18, col_start=5, col_end=7,
+                    text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+19, col_start=5, col_end=7,
+                    text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            set_cell(ws, row_start=start_row+20, col_start=5, col_end=7,
+                    text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
+            set_cell(ws, row_start=start_row+21, col_start=5, col_end=7,
+                    text="«___» ____________ 20__ г.", merge_direction='horizontal')
+
         def min_signatures_indicators_xlsx(ws, start_row, plan):
              
             set_cell(ws, row_start=start_row+2, col_start=2, col_end=2, merge_direction='horizontal', row_height=31,
@@ -1561,7 +1704,7 @@ def export_xlsx_single(plan: Plan):
                     text="Отдел анализа и прогнозирования развития энергосбережения производственно-технического управления", font=regular_font_10)
             
             set_cell(ws, row_start=start_row+5, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
+                    text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
               
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=2, 
                     text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
@@ -1579,7 +1722,7 @@ def export_xlsx_single(plan: Plan):
                     text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, alignment=left)      
                      
             set_cell(ws, row_start=start_row+5, col_start=4, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=left)
+                    text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=left)
                      
             set_cell(ws, row_start=start_row+6, col_start=4, col_end=7, 
                     text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
@@ -1598,7 +1741,7 @@ def export_xlsx_single(plan: Plan):
                     text="Отдел анализа и прогнозирования развития энергосбережения производственно-технического управления", font=regular_font_10)
             
             set_cell(ws, row_start=start_row+5, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
+                    text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
               
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=2, 
                     text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
@@ -1613,7 +1756,7 @@ def export_xlsx_single(plan: Plan):
                     text=f"{plan.region.name} областное (городское) управление по надзору за рациональным использованием ТЭР", merge_direction='horizontal')   
               
             set_cell(ws, row_start=start_row+11, col_start=2, col_end=2, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
+                    text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=bottom_left)   
               
             set_cell(ws, row_start=start_row+12, col_start=2, col_end=2, 
                     text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
@@ -1631,7 +1774,7 @@ def export_xlsx_single(plan: Plan):
                     text="(облисполком, горисполком)", merge_direction='horizontal', font=regular_font_9, alignment=left)      
                      
             set_cell(ws, row_start=start_row+5, col_start=4, col_end=7, 
-                    text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=left)
+                    text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=left)
                      
             set_cell(ws, row_start=start_row+6, col_start=4, col_end=7, 
                     text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)   
@@ -1947,23 +2090,26 @@ def export_xlsx_single(plan: Plan):
                 org_text = f"_______________ областное (городское) управление по надзору за рациональным использованием ТЭР"
 
             set_cell(ws, row_start=start_row+2, col_start=2, row_end=start_row+3, col_end=9, text=org_text)
-            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            region_fio, region_date = get_approval_signer_fio_and_date(plan, 'region') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text=region_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
-            set_cell(ws, row_start=start_row+7, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            
+            set_cell(ws, row_start=start_row+7, col_start=2, col_end=3, text=format_signed_date(region_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
             set_cell(ws, row_start=start_row+2, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
             set_cell(ws, row_start=start_row+3, col_start=12, col_end=16, text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)
-            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            coordinator_fio, coordinator_date = get_approval_signer_fio_and_date(plan, 'coordinator') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text=coordinator_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+6, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
-            set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            set_cell(ws, row_start=start_row+9, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
+            set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text=format_signed_date(coordinator_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+            set_cell(ws, row_start=start_row+9, col_start=12, col_end=17, text=get_approval_org_name(plan, 'approver') if plan.is_approved else "", merge_direction='horizontal', border=bottom_border)
             set_cell(ws, row_start=start_row+10, col_start=12, col_end=17, text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)
-            set_cell(ws, row_start=start_row+11, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+12, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            approver_fio, approver_date = get_approval_signer_fio_and_date(plan, 'approver') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+11, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+12, col_start=12, col_end=15, text=approver_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+13, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
-            set_cell(ws, row_start=start_row+14, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
+            set_cell(ws, row_start=start_row+14, col_start=12, col_end=15, text=format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
 
         def org_large_signatures_events(ws, start_row, plan):
             big_space = " " * 10
@@ -1972,46 +2118,49 @@ def export_xlsx_single(plan: Plan):
 
             set_cell(ws, row_start=start_row+2, col_start=2, col_end=9, merge_direction='horizontal', font=bold_font_10, text='Департамент по энергоэффективности Госстандарта')
             set_cell(ws, row_start=start_row+3, col_start=2, col_end=9, merge_direction='horizontal', text='Производственно-техническое управление')
-            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+7, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
 
             set_cell(ws, row_start=start_row+9, col_start=2, col_end=9, row_end=start_row+10, text='Управление экономики и финансов')
-            set_cell(ws, row_start=start_row+11, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+11, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+12, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+13, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+14, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
 
             okpo = plan.organization.okpo if plan.organization else None
             org_name = get_org_name_by_okpo(okpo)
-            
+
             if org_name:
                 org_text = f"{org_name} по надзору за рациональным использованием ТЭР"
             else:
                 org_text = f"_______________ областное (городское) управление по надзору за рациональным использованием ТЭР"
 
             set_cell(ws, row_start=start_row+16, col_start=2, merge_direction='horizontal', col_end=9, text=org_text)
-            set_cell(ws, row_start=start_row+17, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+18, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            region_fio, region_date = get_approval_signer_fio_and_date(plan, 'region') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+17, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+18, col_start=2, col_end=3, text=region_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+19, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
-            set_cell(ws, row_start=start_row+20, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            
+            set_cell(ws, row_start=start_row+20, col_start=2, col_end=3, text=format_signed_date(region_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
             set_cell(ws, row_start=start_row+2, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
             set_cell(ws, row_start=start_row+3, col_start=12, col_end=16, text="(юридическое лицо)", merge_direction='horizontal', font=regular_font_9, alignment=center)
-            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            coordinator_fio, coordinator_date = get_approval_signer_fio_and_date(plan, 'coordinator') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text=coordinator_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+6, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
-            set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            set_cell(ws, row_start=start_row+9, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
+            set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text=format_signed_date(coordinator_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+            set_cell(ws, row_start=start_row+9, col_start=12, col_end=17, text=get_approval_org_name(plan, 'approver') if plan.is_approved else "", merge_direction='horizontal', border=bottom_border)
             set_cell(ws, row_start=start_row+10, col_start=12, col_end=17, text="(министерство, концерн, государственный коммитет)", merge_direction='horizontal', font=regular_font_9, row_height=11)
-            set_cell(ws, row_start=start_row+11, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
-            set_cell(ws, row_start=start_row+12, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
+            approver_fio, approver_date = get_approval_signer_fio_and_date(plan, 'approver') if plan.is_approved else ("", "")
+            set_cell(ws, row_start=start_row+11, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+12, col_start=12, col_end=15, text=approver_fio, merge_direction='horizontal', row_height=5, alignment=bottom_left, border=bottom_border)
             set_cell(ws, row_start=start_row+13, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
-            set_cell(ws, row_start=start_row+14, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
-            
+            set_cell(ws, row_start=start_row+14, col_start=12, col_end=15, text=format_signed_date(approver_date) if plan.is_approved else "«___» ____________ 20__ г.", merge_direction='horizontal', border=(bottom_border if plan.is_approved else None))
+
             set_cell(ws, row_start=start_row+16, col_start=12, col_end=17, row_height=40, text="_______________ облисполком (горисполком)", merge_direction='horizontal')
-            set_cell(ws, row_start=start_row+17, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+17, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью" if plan.is_approved else "", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+18, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+19, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
             set_cell(ws, row_start=start_row+20, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
@@ -2023,20 +2172,20 @@ def export_xlsx_single(plan: Plan):
 
             set_cell(ws, row_start=start_row+2, col_start=2, col_end=9, merge_direction='horizontal', text="Департамент по энергоэффективности Госстандарта", font=bold_font_11)
             set_cell(ws, row_start=start_row+3, col_start=2, col_end=9, row_height=50, merge_direction='horizontal', text="Производственно-техническое управление")
-            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+4, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+7, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
 
             set_cell(ws, row_start=start_row+9, col_start=2, col_end=4, text="Управление экономики и финансов", merge_direction='horizontal')
-            set_cell(ws, row_start=start_row+10, col_start=2, col_end=4, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+10, col_start=2, col_end=4, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+11, col_start=2, col_end=4, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+12, col_start=2, col_end=4, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
             set_cell(ws, row_start=start_row+13, col_start=2, col_end=4, text="«___» ____________ 20__ г.", merge_direction='horizontal')
             
             set_cell(ws, row_start=start_row+2, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
             set_cell(ws, row_start=start_row+3, col_start=12, col_end=16, text="(министерство, концерн, государственный комитет)", merge_direction='horizontal', font=regular_font_9, alignment=center)
-            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+4, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+6, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
             set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')
@@ -2048,27 +2197,27 @@ def export_xlsx_single(plan: Plan):
 
             set_cell(ws, row_start=start_row+2, col_start=2, col_end=9, merge_direction='horizontal', font=bold_font_11, text="Департамент по энергоэффективности Госстандарта")
             set_cell(ws, row_start=start_row+4, col_start=2, col_end=9, merge_direction='horizontal', text="Производственно-техническое управление")
-            set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+6, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+7, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+8, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
 
             set_cell(ws, row_start=start_row+9, col_start=2, col_end=9, merge_direction='horizontal', text="Управление экономики и финансов")
-            set_cell(ws, row_start=start_row+10, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+10, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+11, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+12, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+13, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
 
             set_cell(ws, row_start=start_row+14, col_start=2, col_end=9, row_height=30, merge_direction='horizontal',
                      text=f"{plan.region.name} областное (городское) управление по надзору за рациональным использованием ТЭР")
-            set_cell(ws, row_start=start_row+15, col_start=2, col_end=3, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+15, col_start=2, col_end=3, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+16, col_start=2, col_end=3, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+17, col_start=2, col_end=3, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=center)
             set_cell(ws, row_start=start_row+18, col_start=2, col_end=3, text="«___» ____________ 20__ г.", merge_direction='horizontal')
             
             set_cell(ws, row_start=start_row+3, col_start=12, col_end=17, text="__________________________________", merge_direction='horizontal')
             set_cell(ws, row_start=start_row+4, col_start=12, col_end=16, text="(облисполком, горисполком)", merge_direction='horizontal', font=regular_font_9, alignment=center)
-            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text="Подписано ЭЦП", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
+            set_cell(ws, row_start=start_row+5, col_start=12, col_end=15, text="Документ подписан электронной цифровой подписью", merge_direction='horizontal', font=regular_font_9_italic, alignment=center)
             set_cell(ws, row_start=start_row+6, col_start=12, col_end=15, text="_______________________", merge_direction='horizontal', row_height=5, alignment=bottom_left)
             set_cell(ws, row_start=start_row+7, col_start=12, col_end=15, text="(подпись, инициалы и фамилия)", merge_direction='horizontal', font=regular_font_9, row_height=11, alignment=left)
             set_cell(ws, row_start=start_row+8, col_start=12, col_end=15, text="«___» ____________ 20__ г.", merge_direction='horizontal')

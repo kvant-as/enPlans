@@ -492,9 +492,8 @@ def create_plan():
             elif year == 2027:
                 return to_decimal_2('270.00')
             else:
-                return to_decimal_2('270.00')
-                # flash(f'На {year} год стоимость 1 т у.т. еще не утверждена. План не может быть создан', 'error')
-                # return None
+                flash(f'На {year} год стоимость 1 т у.т. ещё не утверждена. План не может быть создан', 'error')
+                return None
 
         usd_rate_value = get_usd_rate_for_new_plan()
         cost_per_toe_value = get_cost_per_toe_for_new_plan(year)

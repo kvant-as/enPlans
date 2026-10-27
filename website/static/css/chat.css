@@ -335,7 +335,7 @@
 .chat-footer {
   padding: 10px;
   background: var(--white);
-  border-top: 1px solid #dee2e6;
+  /* border-top: 1px solid #dee2e6; */
 }
 .chat-input {
   position: relative;
@@ -345,7 +345,7 @@
 }
 .chat-footer textarea {
   flex: 1;
-  border: 1px solid var(--border-color);
+  /* border: 1px solid var(--border-color); */
   border-radius: 8px;
   padding: 10px 100px 10px 15px;
   resize: none;
@@ -499,7 +499,7 @@
   color: var(--white);
 }
 
-/* Состояние отправки (см. plan_audit.html) — иконка прячется, вместо неё
+/* Состояние отправки (см. plan_actions.html) — иконка прячется, вместо неё
    крутится спиннер, пока AJAX-запрос не вернулся. */
 .chat-btn .btn-spinner {
   display: none;

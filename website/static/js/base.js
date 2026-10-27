@@ -1509,7 +1509,7 @@ function initConfirmModal(config) {
             if (modalElement._currentForm) {
                 // requestSubmit() (в отличие от submit()) реально диспатчит
                 // событие 'submit' — без этого любой addEventListener('submit', ...)
-                // на форме (например AJAX-перехват в plan_audit.html) никогда
+                // на форме (например AJAX-перехват в plan_actions.html) никогда
                 // не сработает, и форма просто отправляется нативно с
                 // перезагрузкой страницы.
                 if (typeof modalElement._currentForm.requestSubmit === 'function') {

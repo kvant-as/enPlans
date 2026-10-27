@@ -104,11 +104,57 @@
       </div>
     </div>
 
-    <!-- <hr />
-    <h1 class="name">{{ _('Путь согласования плана') }}</h1>
-    {{ component.plan_approval_table(plan, current_user) }} -->
+    <hr />
+    <h1 class="name">{{ _('Прочая информация') }}</h1>
 
+    <div class="dates-card">
+      <div class="dates-list">
+        <div class="date-item" data-type="created">
+          <div class="date-icon">{{ icons.icon_calendar() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Создан') }}</span>
+              {% if plan.begin_time %}
+                <span class="date-day">{{ plan.begin_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.begin_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
 
+        <div class="date-item" data-type="edited">
+          <div class="date-icon">{{ icons.icon_edit() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Редакция') }}</span>
+              {% if plan.change_time %}
+                <span class="date-day">{{ plan.change_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.change_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="date-item" data-type="sent">
+          <div class="date-icon">{{ icons.icon_send() }}</div>
+          <div class="date-content">
+            <div class="date-info">
+              <span class="date-label">{{ _('Отправлен') }}</span>
+              {% if plan.sent_time %}
+                <span class="date-day">{{ plan.sent_time.strftime('%d.%m.%Y') }}</span>
+                <span class="date-time">{{ plan.sent_time.strftime('%H:%M') }}</span>
+              {% else %}
+                <span class="date-empty">{{ _('Не отправлен') }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -159,6 +159,147 @@ def print_tickets(token):
         flash('Произошла ошибка при генерации PDF', 'error')
         return redirect(request.referrer)
 
+@audit_bp.route('/print-signatures/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+def print_signatures(token):
+    """PDF-версия вкладки "Подписи" — тот же формат документа, что и
+    print_tickets для сообщений, только для таблицы пути согласования
+    (build_signature_print_rows строит те же строки/статусы, что
+    components.html::plan_signatures_page)."""
+    try:
+        from website.utils.plans import build_signature_cycles, build_signature_print_rows
+
+        current_plan = Plan.query.filter_by(token=token).first()
+
+        if not current_plan:
+            flash('План не найден', 'error')
+            return redirect(request.referrer)
+
+        cycles = build_signature_cycles(current_plan)
+
+        if not cycles:
+            flash('План ещё не отправлялся — печатать нечего', 'error')
+            return redirect(request.referrer)
+
+        print_rows = build_signature_print_rows(current_plan, cycles)
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=20*mm, bottomMargin=20*mm,
+                                 leftMargin=12*mm, rightMargin=12*mm)
+        styles = getSampleStyleSheet()
+        elements = []
+
+        if platform.system() == 'Windows':
+            font_path = 'C:/Windows/Fonts/arial.ttf'
+        elif platform.system() == 'Linux':
+            font_path = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+        else:
+            font_path = '/System/Library/Fonts/Helvetica.ttc'
+
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont('CustomFont', font_path))
+            font_name = 'CustomFont'
+        else:
+            font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'static', 'fonts', 'Montserrat-Regular.ttf')
+            if os.path.exists(font_path):
+                pdfmetrics.registerFont(TTFont('CustomFont', font_path))
+                font_name = 'CustomFont'
+            else:
+                font_name = 'Helvetica'
+
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            alignment=TA_CENTER,
+            spaceAfter=20,
+            textColor=colors.HexColor('#00798f'),
+            fontName=font_name
+        )
+
+        header_style = ParagraphStyle(
+            'HeaderStyle',
+            parent=styles['Heading2'],
+            fontSize=14,
+            alignment=TA_CENTER,
+            spaceAfter=12,
+            fontName=font_name
+        )
+
+        cell_style = ParagraphStyle(
+            'CellStyle',
+            parent=styles['Normal'],
+            fontSize=8,
+            alignment=TA_CENTER,
+            fontName=font_name
+        )
+
+        dev_row_style = ParagraphStyle(
+            'DevRowStyle',
+            parent=styles['Normal'],
+            fontSize=8,
+            alignment=TA_CENTER,
+            fontName=font_name,
+            textColor=colors.HexColor('#555555'),
+        )
+
+        elements.append(Paragraph('ПОДПИСИ ПЛАНА №' + current_plan.token[:8].upper(), title_style))
+        elements.append(Paragraph('Год: ' + str(current_plan.year), header_style))
+        elements.append(Spacer(1, 10))
+
+        headers = ['Тип действия', 'Организация', 'Должность, ФИО, телефон', 'Статус', 'Дата', 'Замечания']
+        data = [headers]
+        span_rows = []  # индексы строк в data, которые нужно объединить на всю ширину
+
+        for kind, payload in print_rows:
+            if kind == 'header':
+                row_idx = len(data)
+                data.append([Paragraph(payload, dev_row_style), '', '', '', '', ''])
+                span_rows.append(row_idx)
+            else:
+                data.append([Paragraph(str(cell), cell_style) for cell in payload])
+
+        table = Table(data, colWidths=[28*mm, 40*mm, 48*mm, 24*mm, 18*mm, 28*mm], repeatRows=1)
+
+        table_style = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#00798f')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), font_name),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f5f9ff')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]
+        for row_idx in span_rows:
+            table_style.append(('SPAN', (0, row_idx), (-1, row_idx)))
+            table_style.append(('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#eef1f4')))
+
+        table.setStyle(TableStyle(table_style))
+
+        elements.append(table)
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=False,
+            download_name=f'podpisi_{current_plan.token[:8]}.pdf',
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error generating signatures PDF for plan {token}: {str(e)}")
+        flash('Произошла ошибка при генерации PDF', 'error')
+        return redirect(request.referrer)
+
+
 # Окно, в течение которого автор сообщения может удалить его сам (как
 # "удалить для всех" в мессенджерах) — после истечения кнопка в разметке
 # остаётся видимой (время по умолчанию при рендере не проверяем, см.
@@ -208,13 +349,14 @@ def delete_ticket(token):
         html = render_template_string(
             '''
             {% import 'macros/components.html' as components %}
-            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label) }}
+            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}
             ''',
             plan=current_plan,
             current_user=current_user,
             can_audit=ctx['can_audit'],
             has_remarks=ctx['has_remarks'],
             approve_label=ctx['approve_label'],
+            can_cancel=ctx['can_cancel'],
         )
         return jsonify({'success': True, 'html': html, 'has_remarks': ctx['has_remarks']})
 
@@ -304,13 +446,14 @@ def create_ticket(token):
         html = render_template_string(
             '''
             {% import 'macros/components.html' as components %}
-            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label) }}
+            {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}
             ''',
             plan=current_plan,
             current_user=current_user,
             can_audit=ctx['can_audit'],
             has_remarks=ctx['has_remarks'],
             approve_label=ctx['approve_label'],
+            can_cancel=ctx['can_cancel'],
         )
         return jsonify({'success': True, 'html': html, 'has_remarks': ctx['has_remarks']})
 

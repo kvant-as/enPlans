@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, abort, current_app, g, jsonify, render_template, request, flash, redirect, url_for, send_from_directory
+    Blueprint, abort, current_app, g, jsonify, render_template, render_template_string, request, flash, redirect, url_for, send_from_directory
 )
 
 from flask_login import (
@@ -59,13 +59,18 @@ def plan_review(token):
 @session_required
 @owner_only
 def plan_actions(token):
-    """Вкладка «Действия с планом» — те же действия, что раньше были в
+    """Вкладка «Действия с планом» — объединяет то, что раньше было в
     выпадающем меню на «Задания» (Пройти контроль / Отправить на
-    согласование / Отменить отправку / Редактировать / Удалить), плюс
-    информация о разработчике плана (данные берутся из профиля аккаунта,
-    создавшего план — отдельного переопределения нет)."""
+    согласование / Отменить отправку / Редактировать / Удалить), и
+    отдельную вкладку «Проверка» (чат с сообщениями по согласованию и
+    смена статуса). Отображение персонализировано через is_owner/can_audit
+    в самом шаблоне: разработчик плана видит плитки действий и историю
+    переписки только для чтения, проверяющий (текущий этап согласования) —
+    чат с возможностью писать и менять статус."""
+    from website.utils.plans import get_audit_context
     current_plan = g.current_plan
-    return render_template('plan_actions.html', plan=current_plan)
+    audit_ctx = get_audit_context(current_plan, current_user)
+    return render_template('plan_actions.html', plan=current_plan, **audit_ctx)
 
 
 @plan_bp.route('/signatures/<token>', methods=['GET'])
@@ -128,23 +133,6 @@ def api_verify_certificate(token):
     # website/ecp.py.
     ok, error = verify_certificate(cert_file, expected_unp=None)
     return jsonify({'valid': ok, 'error': error})
-
-@plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@session_required
-def plan_audit(token):
-    if request.method == 'POST':
-        pass
-
-    from website.utils.plans import get_audit_context
-    current_plan = g.current_plan
-    audit_ctx = get_audit_context(current_plan, current_user)
-    return render_template('plan_audit.html',
-                        plan=current_plan,
-                        hide_header=False,
-                        **audit_ctx)
 
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -1128,7 +1116,17 @@ def api_change_plan_status(token):
 
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
-        result = handler(plan, current_user)
+        # Отмена проверяющим своего подтверждения этапа — тоже требует
+        # письменного обоснования, по аналогии с отменой отправки
+        # разработчиком (status == 'draft' ниже); причина попадёт в
+        # сообщения по плану (см. handle_sent_without_check_status).
+        if not (reason and reason.strip()):
+            error_msg = 'Укажите причину отмены своего согласования'
+            if request.is_json:
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
+        result = handler(plan, current_user, reason)
     elif status == 'draft':
         # "Отменить отправку" (план уже был отправлен) обязательно требует
         # причину — она попадёт в "Подписи" отдельной строкой в конце
@@ -1149,7 +1147,45 @@ def api_change_plan_status(token):
     if request.is_json:
         if isinstance(result, dict) and "error" in result:
             return jsonify({'error': result['error']}), 400
-        return jsonify({'message': result if isinstance(result, str) else result.get('message'), 'status': status})
+
+        response_data = {'message': result if isinstance(result, str) else result.get('message'), 'status': status}
+
+        # Кнопки "Есть ошибки"/"Согласовать"/"Отменить изменения" в
+        # tickets-actions-bar (plan_actions.html) шлют сюда AJAX и сами
+        # перерисовывают себя без перезагрузки страницы — для этого нужен
+        # не только текст сообщения, но и свежий HTML бейджа статуса плана
+        # и панели чата (can_audit/can_cancel меняются сразу после смены
+        # статуса, см. get_audit_context).
+        if status in ('error', 'approved', 'sent_without_check'):
+            from website.utils.plans import get_audit_context
+            ctx = get_audit_context(plan, current_user)
+            status_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.status_plan(plan, current_user) }}''',
+                plan=plan, current_user=current_user,
+            )
+            tickets_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}''',
+                plan=plan, current_user=current_user,
+                can_audit=ctx['can_audit'], has_remarks=ctx['has_remarks'],
+                approve_label=ctx['approve_label'], can_cancel=ctx['can_cancel'],
+            )
+            footer_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}''',
+                plan=plan, current_user=current_user,
+                can_audit=ctx['can_audit'], has_remarks=ctx['has_remarks'],
+                approve_label=ctx['approve_label'],
+            )
+            response_data.update({
+                'status_html': status_html,
+                'tickets_html': tickets_html,
+                'footer_html': footer_html,
+                'has_remarks': ctx['has_remarks'],
+            })
+
+        return jsonify(response_data)
     else:
         if isinstance(result, dict) and "error" in result:
             flash(result['error'], 'error')

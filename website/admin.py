@@ -184,7 +184,7 @@ site.register(
         F("is_control", "Контроль", type="bool"),
         F("is_sent", "Отправлен", type="bool"),
         F("is_error", "Есть ошибки", type="bool"),
-        F("is_approved", "Одобрен", type="bool"),
+        F("is_approved", "Утвержден", type="bool"),
         F("sent_time", "Отправлен в", type="datetime"),
         F("audit_time", "Проверен в", type="datetime"),
     ],

@@ -1252,16 +1252,18 @@ class PlansLoader {
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchYnp = '';
+        this.currentSearchApproverOrg = '';
         this.currentPage = 1;
         this.totalPages = 1;
         this.isLoading = false;
         this.searchTimeout = null;
         this.perPage = options.perPage || 50;
         this.isAuditor = options.isAuditor || false;
-        
+
         this.containerId = options.containerId || 'plans-container';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchYnp = options.searchYnp || 'search-ynp';
+        this.searchApproverOrgId = options.searchApproverOrgId || 'search-approver-org';
         this.paginationAreaId = 'pagination-area';
         this.prevPageBtnId = 'prev-page-btn';
         this.nextPageBtnId = 'next-page-btn';
@@ -1289,26 +1291,29 @@ class PlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentSearchApproverOrg) {
+            params.set('search_approver_org', this.currentSearchApproverOrg);
+        }
         if (this.currentPage > 1) {
             params.set('page', this.currentPage);
         }
-        
+
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
         window.history.pushState({}, '', newUrl);
     }
-    
+
     async loadPlans() {
         if (this.isLoading) return;
-        
+
         this.isLoading = true;
         const container = document.getElementById(this.containerId);
-        
+
         if (container) {
             container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
         }
-        
+
         this.updateUrl();
-        
+
         try {
             let url = `/api/plans?page=${this.currentPage}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
             if (this.currentSearchName) {
@@ -1317,7 +1322,10 @@ class PlansLoader {
             if (this.currentSearchYnp) {
                 url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
-            
+            if (this.currentSearchApproverOrg) {
+                url += `&search_approver_org=${encodeURIComponent(this.currentSearchApproverOrg)}`;
+            }
+
             const response = await fetch(url);
             const data = await response.json();
             
@@ -1403,7 +1411,8 @@ class PlansLoader {
         const statError = document.querySelector('.stat-number-eror');
         const statApproved = document.querySelector('.stat-number-sub');
         const statSogl = document.querySelector('.stat-number-sogl');
-        
+        const statInTransit = document.querySelector('.stat-number-transit');
+
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
         if (statControl) statControl.textContent = counts.control || '-';
@@ -1411,6 +1420,7 @@ class PlansLoader {
         if (statError) statError.textContent = counts.error || '-';
         if (statApproved) statApproved.textContent = counts.approved || '-';
         if (statSogl) statSogl.textContent = counts.sogl || '-';
+        if (statInTransit) statInTransit.textContent = counts.in_transit || '-';
     }
     
     attachCheckboxListeners() {
@@ -1482,23 +1492,28 @@ class PlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentSearchApproverOrg = document.getElementById(this.searchApproverOrgId)?.value || '';
             this.currentPage = 1;
             this.updateUrl();
             this.loadPlans();
         }, 500);
     }
-    
+
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
         const searchOkpoInput = document.getElementById(this.searchYnp);
-        
+        const searchApproverOrgInput = document.getElementById(this.searchApproverOrgId);
+
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
         }
         if (searchOkpoInput) {
             searchOkpoInput.addEventListener('input', () => this.handleSearch());
         }
-        
+        if (searchApproverOrgInput) {
+            searchApproverOrgInput.addEventListener('input', () => this.handleSearch());
+        }
+
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
         const regionDropdown = document.querySelector('[data-filter-type="region"]');
@@ -1627,22 +1642,26 @@ class PlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newSearchApproverOrg = params.get('search_approver_org') || '';
             const newPage = parseInt(params.get('page')) || 1;
-            
+
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
                 newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newSearchApproverOrg !== this.currentSearchApproverOrg ||
                 newPage !== this.currentPage) {
-                
+
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentSearchApproverOrg = newSearchApproverOrg;
                 this.currentPage = newPage;
-                
+
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
-                
+                if (searchApproverOrgInput) searchApproverOrgInput.value = newSearchApproverOrg;
+
                 this.updateFilterDisplay();
                 this.loadPlans();
             }
@@ -1655,7 +1674,8 @@ class PlansLoader {
         if (this.isAuditor) {
             statusMap = {
                 'all': 'Статус',
-                'sent': 'Не просмотренные',
+                'sent': 'На рассмотрении',
+                'in_transit': 'Ожидание очереди',
                 'sogl': 'Согласованные',
                 'error': 'Есть ошибки',
                 'approved': 'Утвержденные'
@@ -1737,6 +1757,7 @@ class ExportPlansLoader {
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchYnp = '';
+        this.currentSearchApproverOrg = '';
         this.currentPage = 1;
         this.totalPages = 1;
         this.isLoading = false;
@@ -1757,6 +1778,7 @@ class ExportPlansLoader {
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchYnp = options.searchYnp || 'search-ynp';
+        this.searchApproverOrgId = options.searchApproverOrgId || 'search-approver-org';
         this.selectAllId = options.selectAllId || 'selectAllBtn';
         this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
@@ -1787,12 +1809,15 @@ class ExportPlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentSearchApproverOrg) {
+            params.set('search_approver_org', this.currentSearchApproverOrg);
+        }
         if (this.currentPage > 1) {
             params.set('page', this.currentPage);
         }
-        
+
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-        
+
         if (this.isInitialLoad) {
             window.history.replaceState({}, '', newUrl);
             this.isInitialLoad = false;
@@ -1821,10 +1846,13 @@ class ExportPlansLoader {
             if (this.currentSearchYnp) {
                 url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
-            
+            if (this.currentSearchApproverOrg) {
+                url += `&search_approver_org=${encodeURIComponent(this.currentSearchApproverOrg)}`;
+            }
+
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (data.success) {
                 if (container) {
                     container.innerHTML = `<div class="plans-area">${data.html}</div>`;
@@ -2008,12 +2036,13 @@ class ExportPlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentSearchApproverOrg = document.getElementById(this.searchApproverOrgId)?.value || '';
             this.currentPage = 1;
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
     }
-    
+
     initFormatSelection() {
         const formatItems = document.querySelectorAll('.export-choose');
         formatItems.forEach(item => {
@@ -2040,18 +2069,22 @@ class ExportPlansLoader {
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
         const searchOkpoInput = document.getElementById(this.searchYnp);
-        
+        const searchApproverOrgInput = document.getElementById(this.searchApproverOrgId);
+
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
         }
         if (searchOkpoInput) {
             searchOkpoInput.addEventListener('input', () => this.handleSearch());
         }
-        
+        if (searchApproverOrgInput) {
+            searchApproverOrgInput.addEventListener('input', () => this.handleSearch());
+        }
+
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
         const regionDropdown = document.querySelector('[data-filter-type="region"]');
-        
+
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
@@ -2180,22 +2213,26 @@ class ExportPlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newSearchApproverOrg = params.get('search_approver_org') || '';
             const newPage = parseInt(params.get('page')) || 1;
-            
+
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
                 newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newSearchApproverOrg !== this.currentSearchApproverOrg ||
                 newPage !== this.currentPage) {
-                
+
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentSearchApproverOrg = newSearchApproverOrg;
                 this.currentPage = newPage;
-                
+
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
-                
+                if (searchApproverOrgInput) searchApproverOrgInput.value = newSearchApproverOrg;
+
                 this.updateFilterDisplay();
                 this.loadPlans(true);
             }
@@ -2711,7 +2748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initDeletePlanConfirmModal();
 
     // Отправка сообщения больше не требует подтверждения — шлётся сразу по
-    // клику/Enter через AJAX (см. plan_audit.html), без промежуточного
+    // клику/Enter через AJAX (см. plan_actions.html), без промежуточного
     // "Вы действительно хотите отправить?".
 
     if (document.getElementById('to_deletePlanButton')) {
@@ -2766,7 +2803,7 @@ document.addEventListener('DOMContentLoaded', function() {
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 3-ех месяцев.'
+            modalTextSecond: 'План сменит статус обратно на "На рассмотрении". Отменить изменния можно только в течении 3-ех месяцев.'
         });
     }
 

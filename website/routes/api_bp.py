@@ -25,20 +25,22 @@ def api_get_plans():
         year_filter = request.args.get('year', 'all')
         search_name = request.args.get('search_name', '')
         search_ynp = request.args.get('search_ynp', '')
+        search_approver_org = request.args.get('search_approver_org', '')
         region = request.args.get('region', '')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
         show_checkboxes = request.args.get('show_checkboxes', 'false').lower() == 'true'
-        
+
         region_id = None
         if region and region != 'all':
             try:
                 region_id = int(region)
             except (ValueError, TypeError):
                 region_id = None
-        
+
         plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_ynp, region_id, page, per_page
+            current_user, status_filter, year_filter, search_name, search_ynp, region_id,
+            search_approver_org, page, per_page
         )
         
         # Единое отображение карточки плана для всех типов пользователей

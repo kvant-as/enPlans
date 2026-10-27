@@ -1,8 +1,20 @@
 {% import 'macros/svg_icons.html' as icons %} {% macro plan_menu(plan,
 current_user, section, increase_events=None, econom_events=None,
-indicators=None, show_control=False) %} {% set section_config = { 'indicators':
+indicators=None, show_control=False) %}
+{#  Кнопка "Добавить" на /plan/indicators мигает не просто пока таблица
+    пуста, а пока показатель 1101 ("Котельно-печное топливо (КПТ),
+    израсходовано всего, в том числе:") не заполнен ни в одном из трёх
+    годовых столбцов — это ключевой обязательный показатель, без него
+    план по сути не начат, даже если какие-то другие строки уже есть. #}
+{% set kpt_usage = plan.indicators_usage|selectattr('indicator.code', 'equalto', '1101')|first %}
+{% set kpt_filled = kpt_usage and (
+  (kpt_usage.QYearBeforePrev or 0) != 0 or
+  (kpt_usage.QYearPrev or 0) != 0 or
+  (kpt_usage.QYearCurrent or 0) != 0
+) %}
+{% set section_config = { 'indicators':
 { 'title':'Показатель', 'add_button_id': 'AddIndicatorModalButton', 'has_data':
-True, 'is_empty': False }, 'event-saving': { 'title': 'Мероприятие',
+plan.indicators_usage|length > 0, 'is_empty': not kpt_filled }, 'event-saving': { 'title': 'Мероприятие',
 'add_button_id': 'AddEventsModalBtn', 'has_data':
 plan.events|selectattr('direction.is_econom', 'equalto', True)|list|length > 0,
 'is_empty': not (plan.events|selectattr('direction.is_econom', 'equalto',
@@ -49,12 +61,13 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
   <div class="menu-conteiner">
     <div class="menu-conteiner-btns">
       <a
-        href="{% if current_user.is_auditor %}/plans/plan/audit/{{ plan.token }}{% else %}/plans/plan/tasks/{{ plan.token }}{% endif %}#tickets_link"
-        class="element"
+        href="{% if plan.sent_time %}{% if current_user.is_auditor %}/plans/plan/actions/{{ plan.token }}{% else %}/plans/plan/signatures/{{ plan.token }}{% endif %}#tickets_link{% endif %}"
+        class="element {% if not plan.sent_time %}non{% endif %}"
+        {% if not plan.sent_time %}title="{{ _('План ещё не отправлялся') }}"{% endif %}
         id=""
       >
         <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
-        <span class="element-text">Квитанции</span>
+        <span class="element-text">Подписи</span>
       </a>
       <a
         href="{{ url_for('views.export', plan_id=plan.id, format='xlsx') }}"
@@ -95,8 +108,23 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
   {% endif %}
 </div>
 {% endmacro %} {% macro status_plan(plan, current_user=None) %}
+{#  is_queued_for_viewer проставляется только в get_filtered_plans (см.
+    utils/plans.py::_is_queued_for_org) — это НЕ реальный статус плана в
+    БД, а то, как он выглядит именно для этого проверяющего: план уже
+    отправлен, но до его организации по цепочке согласования ещё не
+    дошла очередь (кто-то раньше должен согласовать первым). Поэтому
+    проверяем это ДО общих is_sent-веток — тем, до кого очередь дошла,
+    показываем обычный статус как раньше.
+
+    user_path ниже ОБЯЗАТЕЛЬНО берётся из ПОСЛЕДНЕГО цикла отправки
+    (plan.approval_paths больше не чистятся при пересылке — см. cycle) —
+    без этого |first мог вернуть брошенный непройденный этап из старого
+    цикла и план навсегда остался бы "На рассмотрении" для организации,
+    которая его уже согласовала в текущем цикле. #}
+  {% set latest_cycle = (plan.approval_paths|map(attribute='cycle')|max) if plan.approval_paths else none %}
+  {% set user_path = plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('cycle', 'equalto', latest_cycle)|first if (current_user and current_user.organization_id and plan.approval_paths) else none %}
 <a
-  class="status-plan {% if plan.is_draft %}status-draft {% elif plan.is_error %}status-error {% elif plan.is_control %}status-control {% elif plan.is_sent and current_user and current_user.is_auditor and plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', True)|list|length > 0 %}status-sogl {% elif plan.is_sent %}status-sent {% elif plan.is_approved %}status-approved {% endif %}"
+  class="status-plan {% if plan.is_draft %}status-draft {% elif plan.is_error %}status-error {% elif plan.is_control %}status-control {% elif plan.is_queued_for_viewer %}status-transit {% elif plan.is_sent and current_user and current_user.is_auditor and user_path and user_path.is_viewed %}status-sogl {% elif plan.is_sent %}status-sent {% elif plan.is_approved %}status-approved {% endif %}"
 >
   {% if plan.is_draft %} {{ icons.draft_icon() }}
   <span>{{ _('В редакции') }}</span>
@@ -104,17 +132,18 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
   <span>{{ _('Есть ошибки') }}</span>
   {% elif plan.is_control %} {{ icons.control_icon() }}
   <span>{{ _('Контроль пройден') }}</span>
-  {% elif plan.is_sent and current_user and current_user.is_auditor %} {% set
-  user_path = plan.approval_paths|selectattr('organization_id', 'equalto',
-  current_user.organization_id)|first %} {% if user_path and user_path.is_viewed
+  {% elif plan.is_queued_for_viewer %} {{ icons.icon_clock() }}
+  <span>{{ _('Ожидание очереди') }}</span>
+  {% elif plan.is_sent and current_user and current_user.is_auditor %}
+  {% if user_path and user_path.is_viewed
   %} {{ icons.approved_icon() }}
   <span>{{ _('Согласован') }}</span>
   {% else %} {{ icons.pending_icon() }}
-  <span>{{ _('Не просмотрен') }}</span>
+  <span>{{ _('На рассмотрении') }}</span>
   {% endif %} {% elif plan.is_sent %} {{ icons.pending_icon() }}
   <span>{{ _('На согласовании') }}</span>
   {% elif plan.is_approved %} {{ icons.approved_icon() }}
-  <span>{{ _('Одобрен') }}</span>
+  <span>{{ _('Утвержден') }}</span>
   {% endif %}
 </a>
 {% endmacro %} 
@@ -145,8 +174,9 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
       {% endif %}
     </a>
 
-    {% if show_plan_info and plan %} {{ status_plan(plan, current_user) }} {%
-    endif %}
+    {% if show_plan_info and plan %}
+    <span class="plan-back-header-status">{{ status_plan(plan, current_user) }}</span>
+    {% endif %}
   </div>
 </div>
 {% endmacro %} {% macro navigation_header(active_tab='plans',
@@ -234,21 +264,33 @@ current_user=None)%}
 plan=None, current_user=None) %}
 <div class="header-cont planed">
   <nav class="navigation-container">
-    {% if current_user.is_auditor == true or current_user.is_admin == true %}
     <div
-      class="nav-item {% if active_plan_tab == 'audit' %} active{% endif %}"
-      onclick="window.location.href='/plans/plan/audit/{{plan.token}}'"
-      data-tooltip="{{ _('Проверка') }}"
+      class="nav-item {% if active_plan_tab == 'actions' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/actions/{{plan.token}}'"
+      data-tooltip="{{ _('Действия с планом') }}"
     >
       <div class="nav-icon-wrapper">
-        {{ icons.icon_audit() }} {% if active_plan_tab == 'audit' %}
+        {{ icons.icon_main() }}{% if active_plan_tab == 'actions' %}
         <div class="active-indicator"></div>
         {% endif %}
       </div>
-      <span class="nav-text">{{ _('Проверка') }}</span>
-      <span class="nav-text-mobile">{{ _('Проверка') }}</span>
+      <span class="nav-text">{{ _('Действия с планом') }}</span>
+      <span class="nav-text-mobile">{{ _('Действия') }}</span>
     </div>
-    {% endif %}
+
+    <div
+      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not plan.sent_time %} disabled-tab{% endif %}"
+      onclick="{% if plan.sent_time %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
+      data-tooltip="{{ _('Подписи') }}{% if not plan.sent_time %} — {{ _('план ещё не отправлялся') }}{% endif %}"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Подписи') }}</span>
+      <span class="nav-text-mobile">{{ _('Подписи') }}</span>
+    </div>
 
     <div
       class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}"
@@ -256,7 +298,7 @@ plan=None, current_user=None) %}
       data-tooltip="{{ _('Задания') }}"
     >
       <div class="nav-icon-wrapper">
-        {{ icons.icon_main() }} {% if active_plan_tab == 'review' %}
+        {{ icons.icon_view() }} {% if active_plan_tab == 'review' %}
         <div class="active-indicator"></div>
         {% endif %}
       </div>
@@ -321,33 +363,6 @@ plan=None, current_user=None) %}
       <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
     </div>
 
-    <div
-      class="nav-item {% if active_plan_tab == 'actions' %} active{% endif %}"
-      onclick="window.location.href='/plans/plan/actions/{{plan.token}}'"
-      data-tooltip="{{ _('Действия с планом') }}"
-    >
-      <div class="nav-icon-wrapper">
-        {{ icons.icon_view() }} {% if active_plan_tab == 'actions' %}
-        <div class="active-indicator"></div>
-        {% endif %}
-      </div>
-      <span class="nav-text">{{ _('Действия с планом') }}</span>
-      <span class="nav-text-mobile">{{ _('Действия') }}</span>
-    </div>
-
-    <div
-      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not plan.sent_time %} disabled-tab{% endif %}"
-      onclick="{% if plan.sent_time %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
-      data-tooltip="{{ _('Подписи') }}{% if not plan.sent_time %} — {{ _('план ещё не отправлялся') }}{% endif %}"
-    >
-      <div class="nav-icon-wrapper">
-        {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
-        <div class="active-indicator"></div>
-        {% endif %}
-      </div>
-      <span class="nav-text">{{ _('Подписи') }}</span>
-      <span class="nav-text-mobile">{{ _('Подписи') }}</span>
-    </div>
   </nav>
 </div>
 {% endmacro %}
@@ -559,7 +574,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 {% set status_meta = {
   'draft':    {'label': _('В редакции'), 'cls': 'track-s-draft', 'icon': icons.draft_icon()},
   'review':   {'label': _('На рассмотрении'), 'cls': 'track-s-active', 'icon': icons.pending_icon()},
-  'rejected': {'label': _('Возвращено на доработку'), 'cls': 'track-s-rejected', 'icon': icons.error_icon()},
+  'rejected': {'label': _('Есть ошибки'), 'cls': 'track-s-rejected', 'icon': icons.error_icon()},
   'approved': {'label': _('Утверждён'), 'cls': 'track-s-done', 'icon': icons.approved_icon()},
 }[status_key] %}
 
@@ -575,16 +590,13 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 <div class="track-wrap">
   {% if cycles %}
   {% set col_count = 6 %}
-  {% set dev_name %}{% if plan.user %}{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }}{% endif %}{% endset %}
-  {% set dev_phone = plan.user.telephone if plan.user else none %}
-  {% set dev_email = plan.user.email if plan.user else none %}
   <div class="track-table-scroll">
     <table class="track-table">
       <thead>
         <tr>
           <th>{{ _('Тип действия') }}</th>
           <th>{{ _('Организация') }}</th>
-          <th>{{ _('Должность, ФИО') }}</th>
+          <th>{{ _('Должность, ФИО, Телефон') }}</th>
           <th>{{ _('Статус') }}</th>
           <th>{{ _('Дата') }}</th>
           <th>{{ _('Замечания') }}</th>
@@ -595,8 +607,8 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         <tr class="track-row-dev">
           <td colspan="{{ col_count }}">
             {{ _('Разработчик плана') }}:
-            {% if dev_name %}
-              {{ dev_name }}, {{ _('тел.') }}: {{ dev_phone or '—' }}, email: {{ dev_email or '—' }}
+            {% if cycle.dev_name %}
+              {{ cycle.dev_name }}, {{ _('тел.') }}: {{ cycle.dev_phone or '—' }}, email: {{ cycle.dev_email or '—' }}
             {% else %}—{% endif %}
           </td>
         </tr>
@@ -604,7 +616,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         <tr class="track-row track-row-done">
           <td class="track-row-type"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</td>
           <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
-          <td>{% if dev_name %}{{ plan.user.post or '—' if plan.user else '' }}, {{ dev_name }}{% else %}—{% endif %}</td>
+          <td>{% if cycle.dev_name %}{{ cycle.dev_post or '—' }}, {{ cycle.dev_name }}{% else %}—{% endif %}</td>
           <td><span class="track-chip track-chip-done">{{ _('Направлен') }}</span></td>
           <td>{{ cycle.sent_at.strftime('%d.%m.%Y') if cycle.sent_at else '—' }}</td>
           <td>—</td>
@@ -612,25 +624,54 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 
         {% for path in cycle.paths %}
         {% set is_active = cycle.is_latest and path == first_unviewed %}
-        {% set is_rejected_step = is_active and status_key == 'rejected' %}
-        {% set is_abandoned = (not cycle.is_latest) and not path.is_viewed %}
+        {#  is_rejected_step смотрит на то, что РЕАЛЬНО сохранено на самом
+            этапе (path.rejected_at, см. handle_error_status) — а не на
+            ТЕКУЩИЙ plan.is_error и не на то, последний ли это цикл.
+            Иначе отметка "Есть ошибки" вместе с замечанием/автором/датой
+            отклонения пропадала в двух случаях: (1) разработчик поправил
+            план без повторной отправки (план вернулся в "В редакции",
+            is_error сброшен, но сам этап так и остался непройден), и
+            (2) план отправили повторно — этап из ПРЕДЫДУЩЕГО цикла
+            становился просто "Не пройдено" (is_abandoned), хотя на самом
+            деле он был именно отклонён, а не просто не успел пройти,
+            как остальные этапы ПОСЛЕ него в том же старом цикле (вот им
+            "Не пройдено" — заслуженно, их очередь так и не настала). #}
+        {% set is_rejected_step = path.rejected_at and not path.is_viewed %}
+        {% set is_abandoned = (not cycle.is_latest) and not path.is_viewed and not is_rejected_step %}
         {% set action_label = _('Утверждение') if path.step_type == 'approver' else _('Согласование') %}
         {% set done_label = _('Утверждено') if (path.step_type == 'approver' and path.is_viewed) else _('Согласовано') %}
         {% set row_state = 'done' if path.is_viewed else ('abandoned' if is_abandoned else ('rejected' if is_rejected_step else ('active' if is_active else 'pending'))) %}
         <tr class="track-row track-row-{{ row_state }}">
           <td class="track-row-type">
             <span class="track-row-icon">
-              {% if path.is_viewed %}{{ icons.icon_check() }}{% elif is_rejected_step or is_abandoned %}{{ icons.error_icon() }}{% else %}{{ icons.pending_icon() }}{% endif %}
+              {% if path.is_viewed %}{{ icons.icon_check() }}
+              {% elif is_rejected_step %}
+              {#  "Есть ошибки" — отдельный крестик вместо общего
+                  предупреждающего треугольника (error_icon), чтобы
+                  явно отличаться от "Не пройдено" (is_abandoned) ниже;
+                  цвет берётся из .track-row-rejected .track-row-icon
+                  (currentColor), размер — из общего .track-row-icon svg. #}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" d="M18 6L6 18M6 6L18 18" />
+              </svg>
+              {% elif is_abandoned %}{{ icons.error_icon() }}
+              {% else %}{{ icons.pending_icon() }}{% endif %}
             </span>
             {{ action_label }}
           </td>
           <td>{{ path.organization.full_name if path.organization else '—' }}</td>
-          <td>—</td>
+          <td>
+            {% if path.is_viewed and path.viewed_by_snapshot %}
+              {{ path.viewed_by_snapshot }}
+            {% elif is_rejected_step and path.rejected_by_snapshot %}
+              {{ path.rejected_by_snapshot }}
+            {% else %}—{% endif %}
+          </td>
           <td>
             <span class="track-chip track-chip-{{ row_state }}">
               {% if path.is_viewed %}{{ done_label }}
               {% elif is_abandoned %}{{ _('Не пройдено') }}
-              {% elif is_rejected_step %}{{ _('Возвращено на доработку') }}
+              {% elif is_rejected_step %}{{ _('Есть ошибки') }}
               {% elif is_active %}{{ _('На рассмотрении') }}
               {% else %}{{ _('Ожидание очереди') }}
               {% endif %}
@@ -649,8 +690,14 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             </form>
             {% endif %}
           </td>
-          <td>{{ path.viewed_at.strftime('%d.%m.%Y') if path.viewed_at else '—' }}</td>
-          <td>—</td>
+          <td>
+            {% if path.is_viewed and path.viewed_at %}
+              {{ path.viewed_at.strftime('%d.%m.%Y') }}
+            {% elif is_rejected_step and path.rejected_at %}
+              {{ path.rejected_at.strftime('%d.%m.%Y') }}
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ path.remark_ticket.note if (is_rejected_step and path.remark_ticket) else '—' }}</td>
         </tr>
         {% endfor %}
 
@@ -715,9 +762,9 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
   </form>
 </div>
 {% endif %}
-{% endmacro %} {% macro tickets_container(plan, current_user, can_audit=False, has_remarks=False, approve_label='') %}
+{% endmacro %} {% macro tickets_container(plan, current_user, can_audit=False, has_remarks=False, approve_label='', can_cancel=False) %}
 <div class="tickets-container">
-  {% if plan.tickets or can_audit %}
+  {% if plan.tickets or can_audit or can_cancel %}
   <div class="tickets-header">
     <span class="tickets-title">{{ _('Сообщения') }}</span>
     <div class="tickets-divider"></div>
@@ -775,13 +822,28 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     {% endfor %}
   </div>
 
-  {% if can_audit %}
+  {% if can_audit or can_cancel %}
   {#  Кнопки смены статуса — не сообщение, а закреплённая панель внизу
       того же контейнера с чатом (как нижняя панель действий под
-      списком сообщений в Telegram), не часть прокручиваемого списка. #}
+      списком сообщений в Telegram), не часть прокручиваемого списка.
+      can_audit и can_cancel НЕ взаимоисключающие "или" — can_cancel
+      нарочно остаётся true и после того, как план уже согласован/
+      отклонён (plan.is_error/is_approved — см. get_audit_context), а
+      can_audit в этот момент уже false. Поэтому панель показывается по
+      ЛЮБОМУ из двух, а кнопки "Есть ошибки"/"Согласовать" и "Отменить
+      изменения" скрываются НЕЗАВИСИМО друг от друга — иначе сразу после
+      Утверждения/отклонения вся панель (вместе с кнопкой отмены) пропадала
+      бы целиком, хотя отменить своё решение как раз ещё можно.
+      "Отменить изменения" — не form-submit, а триггер модалки с причиной
+      (#cancelCheckModal в plan_actions.html); сама панель перерисовывается
+      AJAX'ом при отправке/удалении сообщения (create_ticket/delete_ticket
+      в audit_bp.py), поэтому открытие модалки навешено делегированием на
+      document (см. скрипт в plan_actions.html), а не прямой подпиской на
+      этот конкретный элемент — иначе после перерисовки обработчик терялся. #}
   <div class="tickets-actions-bar">
+    {% if can_audit %}
     {% if has_remarks %}
-    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="error" />
       <button type="submit" class="chat-inline-btn chat-inline-btn-danger">
@@ -790,7 +852,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       </button>
     </form>
     {% endif %}
-    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="approved" />
       <button type="submit" class="chat-inline-btn chat-inline-btn-success">
@@ -798,6 +860,13 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         <span>{{ approve_label }}</span>
       </button>
     </form>
+    {% endif %}
+    {% if can_cancel %}
+    <button type="button" id="cancelCheckBtn" class="chat-inline-btn chat-inline-btn-secondary">
+      {{ icons.icon_cancel() }}
+      <span>{{ _('Отменить изменения') }}</span>
+    </button>
+    {% endif %}
   </div>
   {% endif %}
   {% else %}
@@ -822,8 +891,13 @@ show_checkboxes %}
 >
   {% endif %}
 
+  {#  Та же логика cycle-scoping, что в status_plan выше — |first без
+      фильтра по последнему циклу мог вернуть брошенный непройденный этап
+      из старого цикла, и карточка навсегда оставалась "На рассмотрении". #}
+  {% set item_latest_cycle = (plan.approval_paths|map(attribute='cycle')|max) if plan.approval_paths else none %}
+  {% set item_user_path = plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('cycle', 'equalto', item_latest_cycle)|first if (current_user and current_user.organization_id and plan.approval_paths) else none %}
   <div
-    class="plan-cont {% if plan.is_draft %}plan-cont-redac {% elif plan.is_error %}plan-cont-eror {% elif plan.is_control %}plan-cont-control {% elif plan.is_sent and current_user and current_user.is_auditor and plan.approval_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('is_viewed', 'equalto', True)|list|length > 0 %}plan-cont-sogl {% elif plan.is_sent %}plan-cont-sent {% elif plan.is_approved %}plan-cont-sub {% endif %}"
+    class="plan-cont {% if plan.is_draft %}plan-cont-redac {% elif plan.is_error %}plan-cont-eror {% elif plan.is_control %}plan-cont-control {% elif plan.is_queued_for_viewer %}plan-cont-transit {% elif plan.is_sent and current_user and current_user.is_auditor and item_user_path and item_user_path.is_viewed %}plan-cont-sogl {% elif plan.is_sent %}plan-cont-sent {% elif plan.is_approved %}plan-cont-sub {% endif %}"
     data-plan="choose"
     data-name="{{ (plan.organization.full_name if plan.organization else '') | lower | e }}"
     data-okpo="{{ (plan.organization.okpo if plan.organization else '') | lower | e }}"
@@ -907,18 +981,24 @@ show_checkboxes %}
       />
       {% elif show_actions %}
       <div class="buttons-row">
-        {% set view_url = url_for('plan_bp.plan_audit', token=plan.token) if
+        {% set view_url = url_for('plan_bp.plan_actions', token=plan.token) if
         current_user.is_auditor else url_for('plan_bp.plan_review',
         token=plan.token) %}
+        {% set is_queued = plan.is_queued_for_viewer|default(false) %}
 
         <button
           type="button"
           class="svg-btn tooltip-btn"
+          {% if is_queued %}
+          disabled
+          title="{{ _('План ещё не дошёл до вашей организации по цепочке согласования') }}"
+          {% else %}
           onclick="window.location.href='{{ view_url }}'"
+          {% endif %}
         >
           {{ icons.icon_view() }}
-          <span class="tooltip-text">{{ _('Просмотр') }}</span>
-          <span class="btn-text">{{ _('Просмотр') }}</span>
+          <span class="tooltip-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
+          <span class="btn-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
         </button>
         {% if plan.user_id == current_user.id and not current_user.is_reader %} {% if not (plan.is_sent or
         plan.is_approved) %}
@@ -1009,9 +1089,10 @@ selected_status='all', selected_year='all') %}
         selected_status == 'draft' %} {{ _('В редакции') }} {% elif
         selected_status == 'control' %} {{ _('Контроль пройден') }} {% elif
         selected_status == 'sent' %} {% if current_user and
-        current_user.is_auditor %} {{ _('Не просмотренные') }} {% else %} {{
+        current_user.is_auditor %} {{ _('На рассмотрении') }} {% else %} {{
         _('На согласовании') }} {% endif %} {% elif selected_status == 'sogl' %}
-        {{ _('Согласованные') }} {% elif selected_status == 'error' %} {{
+        {{ _('Согласованные') }} {% elif selected_status == 'in_transit' %}
+        {{ _('Ожидание очереди') }} {% elif selected_status == 'error' %} {{
         _('Есть ошибки') }} {% elif selected_status == 'approved' %} {{
         _('Утвержденные') }} {% else %} {{ _('Статус') }} {% endif %}
       </span>
@@ -1022,7 +1103,10 @@ selected_status='all', selected_year='all') %}
 
       {% if current_user and current_user.is_auditor %}
       <div class="dropdown-item" data-value="sent">
-        {{ _('Не просмотренные') }}
+        {{ _('На рассмотрении') }}
+      </div>
+      <div class="dropdown-item" data-value="in_transit">
+        {{ _('Ожидание очереди') }}
       </div>
       <div class="dropdown-item" data-value="sogl">
         {{ _('Согласованные') }}
@@ -1084,6 +1168,17 @@ selected_status='all', selected_year='all') %}
       <div class="dropdown-item" data-value="7">Могилев</div>
     </div>
   </div>
+
+  <div class="input-with-icon">
+    {{ icons.icon_search() }}
+    <input
+      type="text"
+      placeholder="{{ _('Утверждающая организация') }}"
+      class="app-input"
+      id="search-approver-org"
+      value="{{ request.args.get('search_approver_org', '') }}"
+    />
+  </div>
 </div>
 {% endmacro %} {% macro plan_count(current_user) %}
 <div class="stats-container">
@@ -1098,7 +1193,14 @@ selected_status='all', selected_year='all') %}
     <div class="stat-and-dot" data-value="sent">
       <div class="stat">
         <a class="stat-number-sent" id="stat-sent">-</a>
-        <a class="word-numb">{{ _('Не просмотренные') }}</a>
+        <a class="word-numb">{{ _('На рассмотрении') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+    <div class="stat-and-dot" data-value="in_transit">
+      <div class="stat">
+        <a class="stat-number-transit" id="stat-in-transit">-</a>
+        <a class="word-numb">{{ _('Ожидание очереди') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
