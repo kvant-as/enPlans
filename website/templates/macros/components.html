@@ -102,7 +102,7 @@ is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
       </div>
     </div>
     <div class="menu-conteiner-title">
-      <span>Контроль</span>
+      <span>Данные из статистики</span>
     </div>
   </div>
   {% endif %}
@@ -288,7 +288,7 @@ plan=None, current_user=None) %}
         <div class="active-indicator"></div>
         {% endif %}
       </div>
-      <span class="nav-text">{{ _('Подписи') }}</span>
+      <span class="nav-text">{{ _('Подписи согласования') }}</span>
       <span class="nav-text-mobile">{{ _('Подписи') }}</span>
     </div>
 
@@ -302,7 +302,7 @@ plan=None, current_user=None) %}
         <div class="active-indicator"></div>
         {% endif %}
       </div>
-      <span class="nav-text">{{ _('Задания') }}</span>
+      <span class="nav-text">{{ _('Задания плана') }}</span>
       <span class="nav-text-mobile">{{ _('Задания') }}</span>
     </div>
 
@@ -614,7 +614,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         </tr>
 
         <tr class="track-row track-row-done">
-          <td class="track-row-type"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</td>
+          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</div></td>
           <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
           <td>{% if cycle.dev_name %}{{ cycle.dev_post or '—' }}, {{ cycle.dev_name }}{% else %}—{% endif %}</td>
           <td><span class="track-chip track-chip-done">{{ _('Направлен') }}</span></td>
@@ -643,21 +643,23 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         {% set row_state = 'done' if path.is_viewed else ('abandoned' if is_abandoned else ('rejected' if is_rejected_step else ('active' if is_active else 'pending'))) %}
         <tr class="track-row track-row-{{ row_state }}">
           <td class="track-row-type">
-            <span class="track-row-icon">
-              {% if path.is_viewed %}{{ icons.icon_check() }}
-              {% elif is_rejected_step %}
-              {#  "Есть ошибки" — отдельный крестик вместо общего
-                  предупреждающего треугольника (error_icon), чтобы
-                  явно отличаться от "Не пройдено" (is_abandoned) ниже;
-                  цвет берётся из .track-row-rejected .track-row-icon
-                  (currentColor), размер — из общего .track-row-icon svg. #}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" d="M18 6L6 18M6 6L18 18" />
-              </svg>
-              {% elif is_abandoned %}{{ icons.error_icon() }}
-              {% else %}{{ icons.pending_icon() }}{% endif %}
-            </span>
-            {{ action_label }}
+            <div class="track-row-type-inner">
+              <span class="track-row-icon">
+                {% if path.is_viewed %}{{ icons.icon_check() }}
+                {% elif is_rejected_step %}
+                {#  "Есть ошибки" — отдельный крестик вместо общего
+                    предупреждающего треугольника (error_icon), чтобы
+                    явно отличаться от "Не пройдено" (is_abandoned) ниже;
+                    цвет берётся из .track-row-rejected .track-row-icon
+                    (currentColor), размер — из общего .track-row-icon svg. #}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" d="M18 6L6 18M6 6L18 18" />
+                </svg>
+                {% elif is_abandoned %}{{ icons.error_icon() }}
+                {% else %}{{ icons.pending_icon() }}{% endif %}
+              </span>
+              {{ action_label }}
+            </div>
           </td>
           <td>{{ path.organization.full_name if path.organization else '—' }}</td>
           <td>
@@ -697,7 +699,23 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
               {{ path.rejected_at.strftime('%d.%m.%Y') }}
             {% else %}—{% endif %}
           </td>
-          <td>{{ path.remark_ticket.note if (is_rejected_step and path.remark_ticket) else '—' }}</td>
+          <td>
+            {% if is_rejected_step and path.remark_ticket %}
+              {{ path.remark_ticket.note }}
+              {% if path.remark_ticket.attachment_filename %}
+              <button
+                type="button"
+                class="ticket-attachment-chip"
+                data-ticket-attachment-url="{{ url_for('audit_bp.get_ticket_attachment', token=plan.token, ticket_id=path.remark_ticket.id) }}"
+                data-ticket-attachment-name="{{ path.remark_ticket.attachment_original_name or _('Файл') }}"
+                title="{{ path.remark_ticket.attachment_original_name or _('Файл') }}"
+              >
+                {{ icons.icon_paperclip() }}
+                <span class="ticket-attachment-name">{{ path.remark_ticket.attachment_original_name or _('Файл') }}</span>
+              </button>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
         </tr>
         {% endfor %}
 
@@ -739,9 +757,22 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     id="sent_mesPlanForm"
     class="main-form"
     action="{{ url_for('audit_bp.create_ticket', token=plan.token) }}"
+    data-edit-url="{{ url_for('audit_bp.edit_ticket', token=plan.token) }}"
     method="POST"
+    enctype="multipart/form-data"
   >
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="ticket_id" id="chatEditingTicketId" value="" />
+    <input type="hidden" name="remove_attachment" id="chatRemoveAttachmentFlag" value="0" />
+    <div class="chat-editing-banner" id="chatEditingBanner" style="display:none;">
+      <span>{{ _('Редактирование сообщения') }}</span>
+      <button type="button" class="chat-editing-cancel" id="chatEditingCancelBtn">{{ _('Отменить') }}</button>
+    </div>
+    <div class="chat-attach-preview" id="chatAttachPreview" style="display:none;">
+      <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
+      <span class="chat-attach-preview-name" id="chatAttachPreviewName"></span>
+      <button type="button" class="chat-attach-remove" id="chatAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
+    </div>
     <div class="bottom_tickets_arrea">
       <div class="textarea-wrapper">
         <textarea
@@ -753,6 +784,16 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         ></textarea>
         <span class="char-counter">0/500</span>
       </div>
+      <label class="chat-attach-btn" id="chatAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
+        {{ icons.icon_paperclip() }}
+        <input
+          type="file"
+          name="attachment"
+          id="chatAttachmentInput"
+          class="chat-attach-input"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+        />
+      </label>
       <button id="sent_mesPlanButton" type="submit" class="chat-btn">
         <span class="btn-spinner" aria-hidden="true"></span>
         {{ icons.icon_chatbtn() }}
@@ -770,6 +811,10 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
     <div class="tickets-divider"></div>
   </div>
   <div class="tickets-messages-list">
+    {% if not plan.tickets %}
+    <div class="tickets-empty-state">{{ _('Сообщений пока нет') }}</div>
+    {% endif %}
+    {% set last_ticket = (plan.tickets | sort(attribute='begin_time'))[-1] if plan.tickets else none %}
     {% for ticket in plan.tickets %}
     <div
       class="tickets-message {% if ticket.is_system %}tickets-message-left{% else %}tickets-message-right{% endif %}"
@@ -794,23 +839,44 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
           >
             {{ icons.icon_info() }}
           </button>
-          {% set is_own_recent_ticket = current_user and ticket.user_id == current_user.id
+          {# Редактировать можно только самое последнее сообщение в чате
+             (а не любое своё за последние 5 минут) — иначе правка задним
+             числом сообщения, на которое уже кто-то ответил, запутывала
+             бы историю переписки. #}
+          {% set is_own_editable_ticket = can_audit and not ticket.is_system
+             and current_user and ticket.user_id == current_user.id
+             and last_ticket and ticket.id == last_ticket.id
              and ticket.begin_time
              and (current_utc_time() - ticket.begin_time).total_seconds() < 300 %}
-          {% if is_own_recent_ticket %}
+          {% if is_own_editable_ticket %}
           <button
             type="button"
-            class="btn-sender-delete"
+            class="btn-sender-edit"
             data-ticket-id="{{ ticket.id }}"
-            title="{{ _('Удалить сообщение') }}"
+            data-ticket-note="{{ ticket.note }}"
+            data-ticket-attachment-name="{{ ticket.attachment_original_name or '' }}"
+            data-ticket-attachment-url="{% if ticket.attachment_filename %}{{ url_for('audit_bp.get_ticket_attachment', token=plan.token, ticket_id=ticket.id) }}{% endif %}"
+            title="{{ _('Редактировать сообщение') }}"
           >
-            {{ icons.icon_delete() }}
+            {{ icons.icon_edit() }}
           </button>
           {% endif %}
         </div>
 
         <div class="message-bubble">
           <p class="text-ticket">{{ ticket.note }}</p>
+          {% if ticket.attachment_filename %}
+          <button
+            type="button"
+            class="ticket-attachment-chip"
+            data-ticket-attachment-url="{{ url_for('audit_bp.get_ticket_attachment', token=plan.token, ticket_id=ticket.id) }}"
+            data-ticket-attachment-name="{{ ticket.attachment_original_name or _('Файл') }}"
+            title="{{ ticket.attachment_original_name or _('Файл') }}"
+          >
+            {{ icons.icon_paperclip() }}
+            <span class="ticket-attachment-name">{{ ticket.attachment_original_name or _('Файл') }}</span>
+          </button>
+          {% endif %}
           <div class="bubble-status">{{ icons.icon_sended() }}</div>
         </div>
 
@@ -836,14 +902,19 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       бы целиком, хотя отменить своё решение как раз ещё можно.
       "Отменить изменения" — не form-submit, а триггер модалки с причиной
       (#cancelCheckModal в plan_actions.html); сама панель перерисовывается
-      AJAX'ом при отправке/удалении сообщения (create_ticket/delete_ticket
+      AJAX'ом при отправке/редактировании сообщения (create_ticket/edit_ticket
       в audit_bp.py), поэтому открытие модалки навешено делегированием на
       document (см. скрипт в plan_actions.html), а не прямой подпиской на
-      этот конкретный элемент — иначе после перерисовки обработчик терялся. #}
+      этот конкретный элемент — иначе после перерисовки обработчик терялся.
+      data-requires-ecp-check="1" на формах "Есть ошибки"/"Согласовать" —
+      перед реальной отправкой статуса делегированный submit-обработчик в
+      plan_actions.html сначала открывает ту же демо-модалку проверки ЭЦП,
+      что и на шаге 4 отправки плана; статус меняется только если проверка
+      пройдена. #}
   <div class="tickets-actions-bar">
     {% if can_audit %}
     {% if has_remarks %}
-    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form>
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form data-requires-ecp-check="1">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="error" />
       <button type="submit" class="chat-inline-btn chat-inline-btn-danger">
@@ -852,7 +923,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       </button>
     </form>
     {% endif %}
-    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form>
+    <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" data-ajax-status-form data-requires-ecp-check="1">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="approved" />
       <button type="submit" class="chat-inline-btn chat-inline-btn-success">
@@ -982,7 +1053,7 @@ show_checkboxes %}
       {% elif show_actions %}
       <div class="buttons-row">
         {% set view_url = url_for('plan_bp.plan_actions', token=plan.token) if
-        current_user.is_auditor else url_for('plan_bp.plan_review',
+        current_user.is_auditor else url_for('plan_bp.plan_actions',
         token=plan.token) %}
         {% set is_queued = plan.is_queued_for_viewer|default(false) %}
 
@@ -1102,11 +1173,11 @@ selected_status='all', selected_year='all') %}
       <div class="dropdown-item" data-value="all">{{ _('Все') }}</div>
 
       {% if current_user and current_user.is_auditor %}
-      <div class="dropdown-item" data-value="sent">
-        {{ _('На рассмотрении') }}
-      </div>
       <div class="dropdown-item" data-value="in_transit">
         {{ _('Ожидание очереди') }}
+      </div>
+      <div class="dropdown-item" data-value="sent">
+        {{ _('На рассмотрении') }}
       </div>
       <div class="dropdown-item" data-value="sogl">
         {{ _('Согласованные') }}
@@ -1329,9 +1400,7 @@ selected_status='all', selected_year='all') %}
     <div class="org-code-chip">
       {{ icons.icon_org() }}
         {% if current_user %}
-          {% if current_user.is_admin %}
-            <span class="org-code-value">{{ _('Администратор') }}</span>
-          {% elif current_user.is_auditor %}
+          {% if current_user.is_auditor %}
             <span class="org-code-value">{{ _('Согласовывающая организация') }}</span>
           {% elif current_user.is_approver %}
             <span class="org-code-value">{{ _('Утверждающая организация') }}</span>
@@ -1369,6 +1438,128 @@ selected_status='all', selected_year='all') %}
       </div>
     </div>
   {% endif %}
+</div>
+{% endmacro %}
+
+{#  Модалка-макет "проверка ЭЦП" — пока не привязана ни к какой реальной
+    серверной проверке (убрана вместе со всей верификацией аккаунта),
+    чисто визуальный прототип будущего функционала: выбор способа
+    подписания (аппаратный ключ — демо-анимация, или файл сертификата —
+    демо-проверка), после чего модалка закрывается и вызывает callback
+    успеха (см. static/js/ecp-mock-modal.js :: EcpMockModal). Переиспользуемый
+    компонент — на одной странице может быть несколько таких модалок с
+    разными modal_id (на случай нескольких независимых точек вызова). #}
+{% macro ecp_mock_modal(modal_id='ecpMockModal') %}
+<div id="{{ modal_id }}" class="modal ecp-modal">
+  <div class="modal-content ecp-modal-content" style="width: 480px; max-width: 92vw;">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Проверка ЭЦП') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+
+    <div class="ecp-modal-slides">
+      <div class="ecp-modal-slide active" data-ecp-slide="choice">
+        <p class="ecp-modal-hint">{{ _('Выберите способ подписания') }}</p>
+        <div class="ecp-method-list">
+          <button type="button" class="ecp-method-card" data-ecp-method="key" disabled>
+            <span class="ecp-method-icon">{{ icons.icon_sign() }}</span>
+            <span class="ecp-method-body">
+              <span class="ecp-method-title">{{ _('Аппаратный ключ ЭЦП') }}</span>
+              <span class="ecp-method-desc">{{ _('Подпись с помощью USB-ключа') }}</span>
+            </span>
+            <span class="ecp-method-badge">{{ _('Скоро') }}</span>
+          </button>
+          <button type="button" class="ecp-method-card" data-ecp-method="cert">
+            <span class="ecp-method-icon">{{ icons.icon_file() }}</span>
+            <span class="ecp-method-body">
+              <span class="ecp-method-title">{{ _('Сертификат ЭЦП') }}</span>
+              <span class="ecp-method-desc">{{ _('Файл сертификата (.cer)') }}</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ecp-modal-slide" data-ecp-slide="key">
+        <div class="ecp-key-animation">
+          <div class="ecp-key-port"></div>
+          <div class="ecp-key-stick">
+            <span class="ecp-key-stick-light"></span>
+          </div>
+        </div>
+        <p class="ecp-key-status" data-ecp-key-status>{{ _('Подключите ключ ЭЦП к компьютеру…') }}</p>
+      </div>
+
+      <div class="ecp-modal-slide" data-ecp-slide="cert">
+        <p class="ecp-cert-privacy-note">
+          {{ icons.icon_password() }}
+          {{ _('Сертификат используется только для проверки и никак не сохраняется сайтом.') }}
+        </p>
+
+        <div class="drop-certificate-container" data-ecp-cert-drop-container>
+          <div class="drop-certificate-area" data-ecp-cert-drop>
+            <div class="drop-certificate-content">
+              <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
+              <p class="drop-certificate-text">
+                {{ _('Перетащите файл сертификата сюда или') }}
+                <label class="drop-certificate-label" data-ecp-cert-label>{{ _('нажмите для выбора') }}</label>
+              </p>
+              <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
+            </div>
+            <input type="file" accept=".cer" class="drop-certificate-input" data-ecp-cert-input />
+          </div>
+        </div>
+        {#  Статус — ВНЕ drop-certificate-container нарочно: контейнер
+            прячется целиком, пока показана анимация ключа (и во время
+            проверки, и в кадре ошибки), а статус-сообщение должно
+            оставаться видимым всё это время. #}
+        <div class="certificate-status" style="display:none;" data-ecp-cert-status></div>
+
+        {#  Пока сертификат проверяется — вместо drop-зоны показываем ту же
+            анимацию "ключ входит в компьютер", что и у способа "Аппаратный
+            ключ" (он сейчас заблокирован, но сама анимация переиспользуется
+            здесь как визуальное сопровождение проверки). При неудачной
+            проверке анимация не прячется, а застывает кадром ошибки
+            (is-error — см. ecp-mock-modal.js) — красная подсветка и крестик
+            поверх; "Попробовать ещё раз" сбрасывает её и возвращает drop-зону. #}
+        <div class="ecp-key-animation" data-ecp-cert-key-animation style="display:none;">
+          <div class="ecp-key-port"></div>
+          <div class="ecp-key-stick">
+            <span class="ecp-key-stick-light"></span>
+          </div>
+          <div class="ecp-key-error-badge" data-ecp-cert-error-badge>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="button-auth-area">
+          <button type="button" class="main-btn main-btn-primary" disabled data-ecp-cert-check-btn>
+            <span class="btn-spinner" aria-hidden="true"></span>
+            {{ icons.icon_confirm() }}
+            <span class="btn-text">{{ _('Проверить ЭЦП') }}</span>
+          </button>
+          <button type="button" class="svg-btn" style="display:none;" data-ecp-cert-retry-btn>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+              <polyline points="21 3 21 9 15 9"/>
+            </svg>
+            <span class="btn-text">{{ _('Попробовать ещё раз') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ecp-modal-slide" data-ecp-slide="success">
+        <div class="ecp-success-icon">{{ icons.icon_confirm() }}</div>
+        <p class="ecp-success-title">{{ _('Проверка ЭЦП пройдена') }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="svg-btn ecp-modal-back" style="display:none;" data-ecp-back-btn>
+      {{ icons.back_icon() }}
+      <span class="btn-text">{{ _('Назад') }}</span>
+    </button>
+  </div>
 </div>
 {% endmacro %}
 

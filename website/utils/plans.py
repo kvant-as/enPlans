@@ -891,16 +891,17 @@ def build_signature_cycles(plan):
 
         # Текст замечания, из-за которого план вернули на доработку, — это
         # обычное (не системное) сообщение, которое проверяющий написал ДО
-        # нажатия "Есть ошибки" (см. has_pending_review_message/create_ticket),
-        # а не системная запись "В плане нашли ошибки...". Подвешиваем его
-        # прямо на path (не персистится, только для рендера), чтобы шаблону
-        # не пришлось повторять этот подбор по org_id+временному окну.
+        # нажатия "Есть ошибки" (см. has_pending_review_message/create_ticket).
+        # Раньше "чьё это сообщение и к какому этапу относится" подбиралось
+        # эвристикой (org_id + временное окно между отправками), что могло
+        # ошибиться на организации с несколькими этапами в одном цикле —
+        # теперь сообщение жёстко привязано к этапу по id
+        # (PlanTicket.approval_path_id), однозначно. Подвешиваем найденное
+        # на path (не персистится, только для рендера).
         for path in cycle_paths:
             remark_tickets = [
                 t for t in plan.tickets
-                if not t.is_system and t.user and t.user.organization_id == path.organization_id
-                and t.begin_time and sent_at and t.begin_time >= sent_at
-                and (next_start is None or t.begin_time < next_start)
+                if not t.is_system and t.approval_path_id == path.id
             ]
             path.remark_ticket = remark_tickets[-1] if remark_tickets else None
 
@@ -1093,24 +1094,54 @@ def get_audit_context(plan, current_user):
 
     approve_label = 'Согласовать'
     if current_path:
-        cycle_paths = [p for p in plan.approval_paths if p.cycle == current_path.cycle]
-        max_step = max((p.step_order for p in cycle_paths), default=current_path.step_order)
+        current_cycle_paths = [p for p in plan.approval_paths if p.cycle == current_path.cycle]
+        max_step = max((p.step_order for p in current_cycle_paths), default=current_path.step_order)
         if current_path.step_order == max_step:
             approve_label = 'Одобрить'
 
-    user_has_viewed_current = any(
-        p.organization_id == current_user.organization_id and p.is_viewed
-        for p in plan.approval_paths
-        if (not current_path) or p.cycle == current_path.cycle
-    )
-    next_path = None
-    if current_path:
-        next_path = next(
-            (p for p in plan.approval_paths
-             if p.cycle == current_path.cycle and p.step_order == current_path.step_order + 1),
-            None,
+    # Раньше при current_path is None (обычный случай сразу после того, как
+    # организация подтвердила СВОЙ этап — "текущим" становится этап
+    # СЛЕДУЮЩЕЙ организации, не её) ограничение по циклу полностью
+    # пропадало — user_has_viewed_current сканировал approval_paths ВСЕХ
+    # циклов подряд. На планах с несколькими циклами (после отклонения и
+    # повторной отправки) это могло найти подтверждённый этап организации
+    # из СТАРОГО цикла и ошибочно разрешить/запретить отмену не по тому
+    # этапу. Цикл для сравнения берём последний всегда, а не только когда
+    # current_path есть.
+    latest_cycle = max((p.cycle for p in plan.approval_paths), default=None)
+    cycle_paths = [p for p in plan.approval_paths if latest_cycle is None or p.cycle == latest_cycle]
+
+    own_cycle_paths = [p for p in cycle_paths if p.organization_id == current_user.organization_id]
+    own_confirmed = [p for p in own_cycle_paths if p.is_viewed]
+    own_rejected = [p for p in own_cycle_paths if p.rejected_at]
+    user_has_viewed_current = bool(own_confirmed) or bool(own_rejected)
+
+    # Раньше "следующий этап уже подтверждён — отменить нельзя" проверялся
+    # через next_path, который считался ТОЛЬКО когда current_path есть —
+    # а current_path как раз всегда None сразу после того, как организация
+    # подтвердила/отклонила СВОЙ этап (см. выше), то есть ИМЕННО в тот
+    # момент, когда организация пытается отменить своё решение. Из-за
+    # этого проверка следующего этапа фактически никогда не срабатывала:
+    # первый проверяющий мог отменить своё "Согласовано" даже после того,
+    # как второй уже подтвердил свой этап поверх него — цепочка
+    # согласования теряла целостность (второй этап остаётся "подтверждён",
+    # хотя этап, от которого он зависел, снова не пройден).
+    #
+    # Правильная проверка — по шагам ПОСЛЕ последнего шага ЭТОЙ организации
+    # в текущем цикле: если там уже есть подтверждённый ИЛИ отклонённый
+    # этап, отменять свой — нельзя.
+    blocked_by_later_step = False
+    if user_has_viewed_current:
+        own_last_step_order = max(
+            (p.step_order for p in own_confirmed + own_rejected), default=None
         )
-    can_cancel = (user_has_viewed_current and (not next_path or not next_path.is_viewed)) or plan.is_error or plan.is_approved
+        if own_last_step_order is not None:
+            blocked_by_later_step = any(
+                p.step_order > own_last_step_order and (p.is_viewed or p.rejected_at)
+                for p in cycle_paths
+            )
+
+    can_cancel = user_has_viewed_current and not blocked_by_later_step
 
     has_remarks = has_pending_review_message(plan, current_user) if can_audit else False
 
@@ -1141,20 +1172,20 @@ def build_signer_snapshot(user):
 
 def has_pending_review_message(plan, current_user):
     """Заменяет флаг Plan.afch: вместо хранимого булева (который раньше
-    нужно было вручную сбрасывать, например при удалении сообщения — и
-    это легко забыть/разъехаться с реальностью) каждый раз живым запросом
-    проверяем, оставил ли ИМЕННО ТЕКУЩИЙ проверяющий (current_user) хотя бы
-    одно своё (не системное) сообщение по текущему этапу последнего цикла.
-    Удаление сообщения автоматически "сбрасывает" результат — отдельного
-    действия не требуется."""
+    нужно было вручную сбрасывать — и это легко забыть/разъехаться с
+    реальностью) каждый раз живым запросом проверяем, оставил ли ИМЕННО
+    ТЕКУЩИЙ проверяющий (current_user) хотя бы одно своё (не системное)
+    сообщение по ТЕКУЩЕМУ этапу последнего цикла. Раньше "своё" сообщение
+    по этапу определялось эвристикой (не системное + begin_time не раньше
+    created_at этапа) — теперь сообщение жёстко привязано к этапу по id
+    (PlanTicket.approval_path_id, см. audit_bp.create_ticket), так что
+    проверка — точное совпадение, без временных окон и догадок."""
     current_path = get_current_review_path(plan, current_user)
     if not current_path:
         return False
-    cutoff = current_path.created_at
     for ticket in plan.tickets:
         if ticket.is_system or ticket.user_id != current_user.id:
             continue
-        if cutoff and ticket.begin_time and ticket.begin_time < cutoff:
-            continue
-        return True
+        if ticket.approval_path_id == current_path.id:
+            return True
     return False

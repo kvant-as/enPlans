@@ -1033,10 +1033,18 @@ class TableContextMenu {
         const modal = document.getElementById('confirmModal');
         if (!modal) return;
 
-        const yesBtn = modal.querySelector('#confirmYesdelete');
-        const noBtn = modal.querySelector('#confirmNodelete');
+        const yesBtn = modal.querySelector('#confirmYes');
+        const noBtn = modal.querySelector('#confirmNo');
+        const textEl = modal.querySelector('#modal-text');
+        const textSecondEl = modal.querySelector('#modal-text-second');
+        const yesTextEl = yesBtn.querySelector('#confirm-yes-text');
+
+        if (textEl) textEl.textContent = 'Вы действительно хотите удалить данные?';
+        if (textSecondEl) textSecondEl.textContent = 'Это действие нельзя будет отменить.';
+        if (yesTextEl) yesTextEl.textContent = 'Да, удалить';
 
         modal.classList.add('active');
+        modal._currentForm = null;
 
         yesBtn.onclick = null;
         noBtn.onclick = null;
@@ -1234,13 +1242,14 @@ function initDeletePlanConfirmModal() {
     if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
+            modalText: 'Вы уверены, что хотите безвозвратно удалить этот план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, удалить'
         });
     }
 }
@@ -2692,13 +2701,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'editPlanButton',
             formId: 'editPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отредактировать данные плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, редактировать'
         });
     }
 
@@ -2722,26 +2732,28 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'controlPlanButton',
             formId: 'controlPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             textSecondId: 'modal-text-second',
             modalText: modalText,
-            modalTextSecond: modalTextSecond
+            modalTextSecond: modalTextSecond,
+            yesText: 'Да, пройти контроль'
         });
     }
 
     if (document.querySelector('[data-modal-trigger="deletePlan"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlan"]',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
+            modalText: 'Вы уверены, что хотите безвозвратно удалить этот план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, удалить'
         });
     }
 
@@ -2755,13 +2767,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'to_deletePlanButton',
             formId: 'to_deletePlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите сменить статус плана на "Есть ошибки"?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус для последующего исправления ошибок.'
+            modalTextSecond: 'План сменит статус для последующего исправления ошибок.',
+            yesText: 'Да, есть ошибки'
         });
     }
 
@@ -2769,13 +2782,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'confirmPlanButton',
             formId: 'confirmPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите одобрить план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус и не будет подлежать последующей редакции или удалению со всех сторон.'
+            modalTextSecond: 'План сменит статус и не будет подлежать последующей редакции или удалению со всех сторон.',
+            yesText: 'Да, одобрить'
         });
     }
 
@@ -2783,13 +2797,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'cancelSentPlanButton',
             formId: 'cancelsentPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить отправку плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План вернётся в статус "В редакции", путь согласования будет прерван.'
+            modalTextSecond: 'План вернётся в статус "В редакции", путь согласования будет прерван.',
+            yesText: 'Да, отменить отправку'
         });
     }
 
@@ -2797,13 +2812,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'cancel_auditPlanButton',
             formId: 'cancel_auditPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "На рассмотрении". Отменить изменния можно только в течении 3-ех месяцев.'
+            modalTextSecond: 'План сменит статус обратно на "На рассмотрении". Отменить изменния можно только в течении 3-ех месяцев.',
+            yesText: 'Да, отменить'
         });
     }
 
@@ -2811,13 +2827,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'logoutButton',
             formId: 'logout_form',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите выйти из системы EnPlans?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.'
+            modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.',
+            yesText: 'Да, выйти'
         });
     }
 
@@ -2825,13 +2842,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'editprofileButton',
             formId: 'editprofileForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отредактировать данные профиля?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, редактировать'
         });
 
         const editPhoneList = document.getElementById('edit-phone-group-list');

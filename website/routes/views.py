@@ -32,23 +32,9 @@ views = Blueprint('views', __name__)
 PLAN_YEAR_MIN = 2026
 PLAN_YEAR_MAX = 2040
 
-def block_unverified_auditor():
-    """Аудитору (в отличие от обычных пользователей) верификация ЭЦП
-    обязательна для просмотра и экспорта планов, а не только для
-    согласования/утверждения — без неё он не видит ни одного плана.
-    Возвращает redirect, если доступ нужно заблокировать, иначе None."""
-    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        flash('Для просмотра и экспорта планов согласовывающей организации необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.', 'error')
-        return redirect(url_for('views.profile'))
-    return None
-
 def owner_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        blocked = block_unverified_auditor()
-        if blocked:
-            return blocked
-
         token = kwargs.get('token')
 
         if not token:
@@ -272,8 +258,8 @@ def edit_plan_type(token):
         else:
             flash_message = 'Тип плана обновлен'
         flash(flash_message, 'success')
-        
-        return redirect(url_for('plan_bp.plan_review', token=current_plan.token))
+
+        return redirect(request.referrer or url_for('plan_bp.plan_review', token=current_plan.token))
     except Exception as e:
         flash(f'Произошла непредвиденная ошибка: {str(e)}', 'error')
         return redirect(request.referrer or url_for('views.profile'))
@@ -318,10 +304,6 @@ def plans():
 @login_required
 @session_required
 def export():
-    blocked = block_unverified_auditor()
-    if blocked:
-        return blocked
-
     status = request.args.get('status', 'all')
     year = request.args.get('year', 'all')
 
@@ -351,9 +333,6 @@ def export():
 @login_required
 @session_required
 def start_export():
-    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        return jsonify({'success': False, 'error': 'Для экспорта планов согласовывающей организации необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.'})
-
     try:
         export_format = request.form.get('format', '').lower()
         plan_ids = request.form.getlist('ids')

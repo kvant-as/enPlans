@@ -1465,17 +1465,26 @@ function initConfirmModal(config) {
     const noButton = config.noId ? document.getElementById(config.noId) : null;
     const textElement = config.textId ? document.getElementById(config.textId) : null;
     const textElementSecond = config.textSecondId ? document.getElementById(config.textSecondId) : null;
+    const yesTextElement = yesButton ? yesButton.querySelector('#confirm-yes-text') : null;
 
     if (triggerButtons.length === 0 || !modalElement || !yesButton || !noButton) {
         console.error('Modal initialization error: required elements not found', config);
         return;
     }
 
+    // Текст кнопки "Да" общий для всех операций через этот модал — у
+    // каждого триггера свой config.yesText, а без него используется
+    // дефолтный текст из разметки (запоминаем его один раз при первой
+    // инициализации, пока его не перезаписал предыдущий триггер).
+    if (yesTextElement && yesTextElement.dataset.defaultText === undefined) {
+        yesTextElement.dataset.defaultText = yesTextElement.textContent;
+    }
+
     triggerButtons.forEach(triggerButton => {
         triggerButton.addEventListener('click', function (e) {
             e.preventDefault();
             const planId = this.getAttribute('data-plan-id');
-            
+
             if (textElement && config.modalText) {
                 let text = config.modalText;
                 if (planId && text.includes('{id}')) {
@@ -1483,10 +1492,14 @@ function initConfirmModal(config) {
                 }
                 textElement.innerHTML = text;
             }
-            
+
             if (textElementSecond && config.modalTextSecond) {
                 textElementSecond.innerHTML = config.modalTextSecond;
-            }   
+            }
+
+            if (yesTextElement) {
+                yesTextElement.textContent = config.yesText || yesTextElement.dataset.defaultText;
+            }
             
             modalElement.classList.add('active');
             let currentForm = null;
@@ -3079,4 +3092,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+});
+
+// Файл, прикреплённый к сообщению (замечанию) в чате согласования плана —
+// клик по скрепке открывает тот же drawer-просмотрщик, что и у ТЭО (см.
+// static/js/teo-viewer.js), только с явным URL вместо id мероприятия.
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.ticket-attachment-chip');
+    if (!chip) return;
+
+    const url = chip.dataset.ticketAttachmentUrl;
+    const name = chip.dataset.ticketAttachmentName || '';
+    if (!url || !window.TeoViewer) return;
+
+    window.TeoViewer.open(url, name, url);
 });

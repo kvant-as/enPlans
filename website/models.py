@@ -1,5 +1,5 @@
 from common_models import (
-    User, UserVerification, Organization, Region, Ministry,
+    User, Organization, Region, Ministry,
     Notification, PlanApprovalPath, PlanColumnConfig, Plan,
     PlanTicket, Unit, Direction, News, Event, Indicator, IndicatorUsage,
     StatPlan, StatPlanValue, ChatMessage, Chat,
@@ -8,7 +8,7 @@ from common_models import (
 )
 
 __all__ = [
-    'User', 'UserVerification', 'Organization', 'Region', 'Ministry',
+    'User', 'Organization', 'Region', 'Ministry',
     'Notification', 'PlanApprovalPath', 'PlanColumnConfig', 'Plan',
     'PlanTicket', 'Unit', 'Direction', 'News', 'Event', 'Indicator',
     'IndicatorUsage', 'StatPlan', 'StatPlanValue', 'ChatMessage', 'Chat',

@@ -26,10 +26,11 @@
 
     <div class="plan-actions-grid">
       {% if is_owner %}
-      <form id="controlPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="status" value="control" />
         <button
+          id="controlPlanButton"
           type="submit"
           class="plan-action-tile"
           {% if not plan.is_draft or current_user.is_reader %}disabled{% endif %}
@@ -115,11 +116,6 @@
 
     {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}
 
-    <form id="deleteTicketForm" action="{{ url_for('audit_bp.delete_ticket', token=plan.token) }}" method="POST" style="display: none;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <input type="hidden" name="ticket_id" id="delete-ticket-id-input" value="" />
-    </form>
-
     <div id="planReviewFooterWrap">
       {{ component.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}
     </div>
@@ -149,14 +145,14 @@
           <label>{{ _('Фамилия') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_profile() }}
-            <input type="text" readonly value="{{ plan.user.last_name if plan.user else '' }}" class="app-input" />
+            <input type="text" value="{{ plan.user.last_name if plan.user else '' }}" class="app-input" />
           </div>
         </div>
         <div class="app-group">
           <label>{{ _('Имя') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_profile() }}
-            <input type="text" readonly value="{{ plan.user.first_name if plan.user else '' }}" class="app-input" />
+            <input type="text" value="{{ plan.user.first_name if plan.user else '' }}" class="app-input" />
           </div>
         </div>
       </div>
@@ -164,7 +160,7 @@
         <label>{{ _('Отчество') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
-          <input type="text" readonly value="{{ plan.user.patronymic_name if plan.user else '' }}" class="app-input" />
+          <input type="text" value="{{ plan.user.patronymic_name if plan.user else '' }}" class="app-input" />
         </div>
       </div>
       <div class="row-app-group">
@@ -172,14 +168,14 @@
           <label>{{ _('Email') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_email() }}
-            <input type="text" readonly value="{{ plan.user.email if plan.user else '' }}" class="app-input" />
+            <input type="text" value="{{ plan.user.email if plan.user else '' }}" class="app-input" />
           </div>
         </div>
         <div class="app-group">
           <label>{{ _('Должность') }}</label>
           <div class="input-with-icon">
             {{ icons.icon_profile() }}
-            <input type="text" readonly value="{{ plan.user.post or '' if plan.user else '' }}" class="app-input" />
+            <input type="text" value="{{ plan.user.post or '' if plan.user else '' }}" class="app-input" />
           </div>
         </div>
       </div>
@@ -256,8 +252,7 @@
         <textarea
           name="reason"
           id="cancelSendReason"
-          class="app-input"
-          style="width: 100%; box-sizing: border-box; resize: vertical;"
+          class="cancel-reason-textarea"
           rows="5"
           maxlength="500"
           required
@@ -268,6 +263,9 @@
         <button type="submit" id="cancelSendSubmit" class="no-submit-button blue" disabled>
           {{ icons.icon_confirm() }}
           <span class="btn-text">{{ _('Подтвердить отмену') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="cancelSendModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
         </button>
       </div>
     </form>
@@ -288,8 +286,7 @@
         <textarea
           name="reason"
           id="cancelCheckReason"
-          class="app-input"
-          style="width: 100%; box-sizing: border-box; resize: vertical;"
+          class="cancel-reason-textarea"
           rows="5"
           maxlength="500"
           required
@@ -301,12 +298,30 @@
           {{ icons.icon_confirm() }}
           <span class="btn-text">{{ _('Подтвердить отмену') }}</span>
         </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="cancelCheckModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
       </div>
     </form>
   </div>
 </div>
 
+{{ component.ecp_mock_modal('ecpApproveModal') }}
+
+<script src="{{ url_for('static', filename='js/teo-viewer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ecp-mock-modal.js') }}"></script>
 <script>
+  // Кнопка "Отмена" в модалках отмены отправки/согласования — просто
+  // закрывает модалку, без отправки формы (делегировано на document, т.к.
+  // #cancelCheckModal лежит в tickets_container, который перерисовывается
+  // AJAX'ом — см. комментарий про #cancelCheckBtn ниже).
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-close-modal-btn]");
+    if (!btn) return;
+    var modal = document.getElementById(btn.dataset.closeModalBtn);
+    if (modal) modal.classList.remove("active");
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
     var modal = document.getElementById("cancelSendModal");
     var btn = document.getElementById("cancelSendBtn");
@@ -361,12 +376,36 @@
   // (can_audit/can_cancel/has_remarks меняются сразу после смены статуса).
   // Делегируем submit на document, а не вешаем на конкретные формы —
   // формы внутри .tickets-actions-bar пересоздаются при каждой
-  // переотрисовке tickets_container (см. create_ticket/delete_ticket), и
+  // переотрисовке tickets_container (см. create_ticket/edit_ticket), и
   // прямая подписка терялась бы после первого же такого обновления.
   document.addEventListener("submit", async function (e) {
     const form = e.target.closest("[data-ajax-status-form]");
     if (!form) return;
     e.preventDefault();
+
+    // "Есть ошибки"/"Согласовать" (data-requires-ecp-check="1" — см.
+    // components.html :: tickets_container) сначала требуют пройти ту же
+    // демо-модалку проверки ЭЦП, что и на шаге 4 отправки плана. Флаг
+    // ecpVerified — одноразовый: ставится прямо перед повторной отправкой
+    // той же формы и сразу "съедается" здесь же, так что при реальной
+    // ошибке на сервере (не связанной с ЭЦП) следующая попытка снова
+    // потребует пройти проверку, а не проскочит её по старой отметке.
+    if (form.dataset.requiresEcpCheck === "1") {
+      if (form.dataset.ecpVerified === "true") {
+        delete form.dataset.ecpVerified;
+      } else if (window.EcpMockModal) {
+        const ecpModal = new EcpMockModal({
+          modalId: "ecpApproveModal",
+          certCheckUrl: "{{ url_for('plan_bp.api_verify_certificate', token=plan.token) }}",
+          onSuccess: () => {
+            form.dataset.ecpVerified = "true";
+            form.requestSubmit();
+          },
+        });
+        ecpModal.open();
+        return;
+      }
+    }
 
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
@@ -469,90 +508,6 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    const deleteForm = document.getElementById("deleteTicketForm");
-    const ticketIdInput = document.getElementById("delete-ticket-id-input");
-    if (!deleteForm || !ticketIdInput) return;
-
-    const csrfInput = deleteForm.querySelector('input[name="csrf_token"]');
-    const csrfToken = csrfInput ? csrfInput.value : "";
-
-    // Кнопки удаления создаются заново при каждой переотрисовке
-    // .tickets-container — делегируем клик на document, а не навешиваем
-    // обработчик на сами кнопки, иначе после отправки/удаления сообщения
-    // новые кнопки останутся без обработчика.
-    document.addEventListener("click", function (e) {
-      const delBtn = e.target.closest(".btn-sender-delete");
-      if (!delBtn) return;
-      e.preventDefault();
-
-      ticketIdInput.value = delBtn.dataset.ticketId;
-
-      const modal = document.getElementById("confirmModal2");
-      const textEl = document.getElementById("modal-text");
-      const textSecondEl = document.getElementById("modal-text-second");
-      if (textEl) textEl.textContent = "Удалить это сообщение?";
-      if (textSecondEl) textSecondEl.textContent = "Действие нельзя отменить.";
-      if (modal) {
-        modal.classList.add("active");
-        modal._currentForm = deleteForm;
-      }
-    });
-
-    deleteForm.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const ticketId = ticketIdInput.value;
-      if (!ticketId) return;
-
-      const formData = new FormData(deleteForm);
-
-      try {
-        const response = await fetch(deleteForm.action, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: {
-            "X-Requested-With": "XMLHttpRequest",
-            "X-CSRFToken": csrfToken,
-          },
-          body: formData,
-        });
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          const container = document.querySelector(".tickets-container");
-          if (container) {
-            const wrapper = document.createElement("div");
-            wrapper.innerHTML = data.html.trim();
-            const newContainer = wrapper.firstElementChild;
-            container.replaceWith(newContainer);
-
-            const messagesList = newContainer.querySelector(".tickets-messages-list");
-            if (messagesList) {
-              messagesList.scrollTop = messagesList.scrollHeight;
-            }
-          }
-          if ("has_remarks" in data) {
-            applyHasRemarks(data.has_remarks);
-          }
-          if (typeof messageFlash !== "undefined") {
-            messageFlash.addMessage("Сообщение удалено", "success");
-          }
-        } else {
-          if (typeof messageFlash !== "undefined") {
-            messageFlash.addMessage(data.error || "Не удалось удалить сообщение", "error");
-          }
-        }
-      } catch (error) {
-        console.error("[delete_ticket] error", error);
-        if (typeof messageFlash !== "undefined") {
-          messageFlash.addMessage("Не удалось удалить сообщение. Проверьте соединение.", "error");
-        }
-      } finally {
-        ticketIdInput.value = "";
-      }
-    });
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
     const textarea = document.querySelector(".sent-textarea");
     if (!textarea) return;
 
@@ -623,27 +578,160 @@
     autoResize();
     updateButtonState();
 
-    // Отправка сообщения через AJAX — без перезагрузки страницы. Контейнер
-    // сообщений (.tickets-container) целиком переотрисовывается на сервере
-    // (components.tickets_container) и просто подменяется в DOM, так что
-    // верстка карточек/системных сообщений остаётся в одном месте.
+    const attachmentInput = document.getElementById("chatAttachmentInput");
+    const attachPreview = document.getElementById("chatAttachPreview");
+    const attachPreviewName = document.getElementById("chatAttachPreviewName");
+    const attachRemoveBtn = document.getElementById("chatAttachRemoveBtn");
+    const removeAttachmentFlag = document.getElementById("chatRemoveAttachmentFlag");
+    const editingTicketIdInput = document.getElementById("chatEditingTicketId");
+    const editingBanner = document.getElementById("chatEditingBanner");
+    const editingCancelBtn = document.getElementById("chatEditingCancelBtn");
+    const sendButtonText = sendButton.querySelector(".btn-text");
+    const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+
+    // markRemoval=true помечает, что убранный файл — уже сохранённое на
+    // сервере вложение редактируемого сообщения (см. attachRemoveBtn ниже),
+    // а не просто снятый перед отправкой новый выбор — тогда сервер должен
+    // удалить старый файл (см. audit_bp.edit_ticket: remove_attachment).
+    function clearAttachment(markRemoval) {
+      if (attachmentInput) attachmentInput.value = "";
+      if (attachPreview) {
+        attachPreview.style.display = "none";
+        delete attachPreview.dataset.existing;
+      }
+      if (attachPreviewName) attachPreviewName.textContent = "";
+      if (removeAttachmentFlag) removeAttachmentFlag.value = markRemoval ? "1" : "0";
+    }
+
+    if (attachmentInput) {
+      attachmentInput.addEventListener("change", function () {
+        const file = attachmentInput.files[0];
+        if (!file) {
+          clearAttachment(false);
+          return;
+        }
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage("Файл слишком большой (максимум 20 МБ)", "error");
+          }
+          clearAttachment(false);
+          return;
+        }
+        if (attachPreviewName) attachPreviewName.textContent = file.name;
+        if (attachPreview) {
+          attachPreview.style.display = "flex";
+          delete attachPreview.dataset.existing;
+        }
+        if (removeAttachmentFlag) removeAttachmentFlag.value = "0";
+      });
+    }
+
+    if (attachRemoveBtn) {
+      attachRemoveBtn.addEventListener("click", function () {
+        const wasExisting = !!(attachPreview && attachPreview.dataset.existing === "1");
+        clearAttachment(wasExisting);
+      });
+    }
+
+    const chatFooterArea = document.getElementById("chatFooterArea");
+
+    function exitEditMode() {
+      if (editingTicketIdInput) editingTicketIdInput.value = "";
+      if (editingBanner) editingBanner.style.display = "none";
+      if (sendButtonText) sendButtonText.textContent = "Отправить";
+      textarea.value = "";
+      updateCounter();
+      autoResize();
+      clearAttachment(false);
+      updateButtonState();
+      // Если уже есть "подвешенное" замечание (has-remarks) — поле ввода
+      // в обычном режиме скрыто CSS'ом (.chat-footer.has-remarks
+      // #sent_mesPlanForm), т.к. тогда положено жать "Есть ошибки"/
+      // "Согласовать", а не писать ещё одно сообщение. На время
+      // редактирования (ниже) эта блокировка снималась принудительно —
+      // здесь возвращаем её обратно по факту реального состояния.
+      if (chatFooterArea) {
+        chatFooterArea.classList.toggle("has-remarks", chatFooterArea.dataset.hasRemarks === "true");
+      }
+    }
+
+    function enterEditMode(ticketId, note, attachmentName, attachmentUrl) {
+      if (!editingTicketIdInput) return;
+      editingTicketIdInput.value = ticketId;
+      if (editingBanner) editingBanner.style.display = "flex";
+      if (sendButtonText) sendButtonText.textContent = "Сохранить";
+      textarea.value = note || "";
+      updateCounter();
+      autoResize();
+      updateButtonState();
+      clearAttachment(false);
+      if (attachmentName && attachmentUrl) {
+        if (attachPreviewName) attachPreviewName.textContent = attachmentName;
+        if (attachPreview) {
+          attachPreview.style.display = "flex";
+          attachPreview.dataset.existing = "1";
+        }
+      }
+      // Редактирование должно быть доступно даже если поле ввода сейчас
+      // скрыто CSS'ом из-за has-remarks (см. exitEditMode выше) — иначе
+      // клик по "Редактировать" ничего не менял бы видимо на экране.
+      if (chatFooterArea) chatFooterArea.classList.remove("has-remarks");
+      textarea.focus();
+    }
+
+    if (editingCancelBtn) {
+      editingCancelBtn.addEventListener("click", exitEditMode);
+    }
+
+    // Кнопки редактирования создаются заново при каждой переотрисовке
+    // .tickets-container — делегируем клик на document, а не навешиваем
+    // обработчик на сами кнопки, иначе после отправки/редактирования
+    // сообщения новые кнопки останутся без обработчика.
+    document.addEventListener("click", function (e) {
+      const editBtn = e.target.closest(".btn-sender-edit");
+      if (!editBtn) return;
+      e.preventDefault();
+      enterEditMode(
+        editBtn.dataset.ticketId,
+        editBtn.dataset.ticketNote,
+        editBtn.dataset.ticketAttachmentName,
+        editBtn.dataset.ticketAttachmentUrl
+      );
+    });
+
+    // Отправка/редактирование сообщения через AJAX — без перезагрузки
+    // страницы. Контейнер сообщений (.tickets-container) целиком
+    // переотрисовывается на сервере (components.tickets_container) и
+    // просто подменяется в DOM, так что верстка карточек/системных
+    // сообщений остаётся в одном месте. Форма одна и та же что для новых
+    // сообщений, что для редактирования — различается только URL (см.
+    // enterEditMode/exitEditMode выше) и наличием ticket_id.
     const form = document.getElementById("sent_mesPlanForm");
     if (!form) return;
 
     const csrfInput = form.querySelector('input[name="csrf_token"]');
     const csrfToken = csrfInput ? csrfInput.value : "";
+    const createUrl = form.action;
+    const editUrl = form.dataset.editUrl;
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
       if (!textarea.value.trim()) return;
 
+      const isEditing = !!(editingTicketIdInput && editingTicketIdInput.value);
+      const targetUrl = isEditing ? editUrl : createUrl;
+
       sendButton.disabled = true;
       sendButton.classList.add("disabled", "is-checking");
 
       const formData = new FormData(form);
+      if (!isEditing) {
+        formData.delete("ticket_id");
+        formData.delete("remove_attachment");
+      }
 
       try {
-        const response = await fetch(form.action, {
+        const response = await fetch(targetUrl, {
           method: "POST",
           credentials: "same-origin",
           headers: {
@@ -665,7 +753,7 @@
             const messagesList = newContainer.querySelector(".tickets-messages-list");
             if (messagesList) {
               const lastMessage = messagesList.lastElementChild;
-              if (lastMessage) {
+              if (lastMessage && !isEditing) {
                 lastMessage.classList.add("tickets-message--just-sent");
               }
               messagesList.scrollTop = messagesList.scrollHeight;
@@ -676,12 +764,10 @@
             applyHasRemarks(data.has_remarks);
           }
 
-          textarea.value = "";
-          updateCounter();
-          autoResize();
+          exitEditMode();
 
           if (typeof messageFlash !== "undefined") {
-            messageFlash.addMessage("Сообщение отправлено", "success");
+            messageFlash.addMessage(isEditing ? "Сообщение изменено" : "Сообщение отправлено", "success");
           }
         } else {
           if (typeof messageFlash !== "undefined") {
@@ -689,7 +775,7 @@
           }
         }
       } catch (error) {
-        console.error("[create_ticket] error", error);
+        console.error("[sent_mesPlanForm] error", error);
         if (typeof messageFlash !== "undefined") {
           messageFlash.addMessage("Не удалось отправить сообщение. Проверьте соединение.", "error");
         }

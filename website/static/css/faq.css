@@ -2011,6 +2011,19 @@ h3 {
   }
 }
 
+.faq-inline-link {
+  color: var(--faq-green-back);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 121, 143, 0.35);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.faq-inline-link:hover {
+  text-decoration-color: var(--faq-green-back);
+}
+
 /* ============================================
    CONVERT FLOW — "input unit -> t.u.t." visual
    ============================================ */

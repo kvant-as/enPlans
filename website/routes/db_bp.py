@@ -827,12 +827,12 @@ def _slugify_ru(text):
     return slug or 'org'
 
 
-def _make_test_account(db, org, email_prefix, role_label, used_slugs, app_id, password_hash, now, verified_until):
-    """Создаёт тестовый аккаунт (is_auditor=True, верифицирован по ЭЦП на год)
-    для организации `org`, кладёт его и запись UserVerification в сессию.
-    `role_label` (например «Согласовывающая организация») сохраняется в
-    отчество — просто чтобы в списке пользователей было видно, зачем аккаунт."""
-    from website.models import User, UserVerification
+def _make_test_account(db, org, email_prefix, role_label, used_slugs, app_id, password_hash):
+    """Создаёт тестовый аккаунт (is_auditor=True) для организации `org`,
+    кладёт его в сессию. `role_label` (например «Согласовывающая
+    организация») сохраняется в отчество — просто чтобы в списке
+    пользователей было видно, зачем аккаунт."""
+    from website.models import User
 
     base_slug = _slugify_ru(org.full_name)
     slug = base_slug
@@ -853,15 +853,8 @@ def _make_test_account(db, org, email_prefix, role_label, used_slugs, app_id, pa
         is_auditor=True,
         organization_id=org.id,
         application_id=app_id,
-        ecp_verified_until=verified_until,
     )
     db.session.add(user)
-    db.session.add(UserVerification(
-        user=user,
-        verified_at=now,
-        expires_at=verified_until,
-        cert_subject='Тестовая учётная запись (создано автоматически, без сертификата)',
-    ))
     return user
 
 
@@ -873,11 +866,7 @@ def create_test_auditors_route():
     управление (Organization.is_region_management=True). Сначала удаляет
     ВСЕ ранее созданные этой кнопкой тестовые аккаунты (email вида
     test.auditor.*@test.local), затем создаёт заново — так в email попадает
-    актуальное, читаемое название управления. Пароль у всех — 12345678.
-    Аккаунтам сразу проставляется верификация по ЭЦП на год вперёд (как при
-    настоящей загрузке сертификата, см. website/ecp.py), чтобы согласование/
-    утверждение планов не требовало загрузки сертификата."""
-    from datetime import timedelta
+    актуальное, читаемое название управления. Пароль у всех — 12345678."""
     from flask_login import current_user
     from website import db
     from website.models import User, Organization
@@ -887,8 +876,6 @@ def create_test_auditors_route():
 
     app_id = get_current_application_id()
     password_hash = generate_password_hash('12345678')
-    now = current_utc_time()
-    verified_until = now + timedelta(days=365)
 
     deleted = User.query.filter(
         User.application_id == app_id,
@@ -904,7 +891,7 @@ def create_test_auditors_route():
     used_slugs = set()
     for org in region_orgs:
         region_name = org.region.name if org.region else org.full_name
-        _make_test_account(db, org, 'auditor', region_name, used_slugs, app_id, password_hash, now, verified_until)
+        _make_test_account(db, org, 'auditor', region_name, used_slugs, app_id, password_hash)
         created += 1
 
     db.session.commit()
@@ -913,8 +900,7 @@ def create_test_auditors_route():
     return jsonify({
         'success': True,
         'message': f'Готово: удалено старых {deleted}, создано новых {created} '
-                   f'тестовых аккаунтов проверяющих (верифицированы по ЭЦП на год). '
-                   f'Пароль у всех: 12345678',
+                   f'тестовых аккаунтов проверяющих. Пароль у всех: 12345678',
     }), 200
 
 
@@ -934,8 +920,7 @@ def create_test_approvers_route():
     """Кнопка в админке «Создать тестовых согласующих/утверждающих»:
     пересоздаёт ровно два тестовых аккаунта — по одному на согласовывающую и
     утверждающую организацию из TEST_APPROVAL_ORGS (по УНП). Пароль у всех —
-    12345678, верификация по ЭЦП выставлена на год вперёд."""
-    from datetime import timedelta
+    12345678."""
     from flask_login import current_user
     from website import db
     from website.models import User, Organization
@@ -945,8 +930,6 @@ def create_test_approvers_route():
 
     app_id = get_current_application_id()
     password_hash = generate_password_hash('12345678')
-    now = current_utc_time()
-    verified_until = now + timedelta(days=365)
 
     deleted = User.query.filter(
         User.application_id == app_id,
@@ -965,13 +948,13 @@ def create_test_approvers_route():
         if not org:
             missing.append(ynp)
             continue
-        _make_test_account(db, org, prefix, label, used_slugs, app_id, password_hash, now, verified_until)
+        _make_test_account(db, org, prefix, label, used_slugs, app_id, password_hash)
         created += 1
 
     db.session.commit()
     logger.info(f'Тестовые согласующие/утверждающие: удалено старых {deleted}, создано новых {created}')
 
-    message = f'Готово: удалено старых {deleted}, создано новых {created} тестовых аккаунтов (верифицированы по ЭЦП на год). Пароль у всех: 12345678'
+    message = f'Готово: удалено старых {deleted}, создано новых {created} тестовых аккаунтов. Пароль у всех: 12345678'
     if missing:
         message += f'. Не найдены организации с УНП: {", ".join(missing)}'
 

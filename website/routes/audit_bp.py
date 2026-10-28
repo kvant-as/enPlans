@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from flask import Blueprint, current_app, flash, redirect, request, g, jsonify, render_template_string
+from flask import Blueprint, current_app, flash, redirect, request, g, jsonify, render_template_string, abort, send_from_directory
 from flask_login import login_required, current_user
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -300,20 +300,22 @@ def print_signatures(token):
         return redirect(request.referrer)
 
 
-# Окно, в течение которого автор сообщения может удалить его сам (как
-# "удалить для всех" в мессенджерах) — после истечения кнопка в разметке
+# Окно, в течение которого автор сообщения может его отредактировать (как
+# "редактировать" в мессенджерах) — после истечения кнопка в разметке
 # остаётся видимой (время по умолчанию при рендере не проверяем, см.
-# macros/components.html), но сервер всё равно откажет.
-TICKET_DELETE_WINDOW_MINUTES = 5
+# macros/components.html), но сервер всё равно откажет. Удаление сообщений
+# убрано целиком — у истории замечаний по планам должна оставаться полная
+# цепочка, а не дыры; вместо него — редактирование (см. edit_ticket ниже).
+TICKET_EDIT_WINDOW_MINUTES = 5
 
 
-@audit_bp.route('/delete-ticket/<token>', methods=['POST'])
+@audit_bp.route('/edit-ticket/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
 @owner_only
 @session_required
 @reader_forbidden
-def delete_ticket(token):
+def edit_ticket(token):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     def _error(message, status_code=400):
@@ -331,20 +333,70 @@ def delete_ticket(token):
     if not ticket:
         return _error('Сообщение не найдено', 404)
 
+    if ticket.is_system:
+        return _error('Системные сообщения нельзя редактировать', 403)
+
     if ticket.user_id != current_user.id:
-        return _error('Можно удалять только свои сообщения', 403)
+        return _error('Можно редактировать только свои сообщения', 403)
 
-    if not ticket.begin_time or (current_utc_time() - ticket.begin_time) > timedelta(minutes=TICKET_DELETE_WINDOW_MINUTES):
-        return _error(f'Удаление доступно только в течение {TICKET_DELETE_WINDOW_MINUTES} минут после отправки')
+    # Редактировать можно только самое последнее сообщение в чате — иначе
+    # правка задним числом сообщения, на которое уже кто-то успел ответить,
+    # запутывала бы историю переписки (см. is_own_editable_ticket в
+    # macros/components.html, та же логика).
+    last_ticket = PlanTicket.query.filter_by(plan_id=current_plan.id).order_by(
+        PlanTicket.begin_time.desc(), PlanTicket.id.desc()
+    ).first()
+    if not last_ticket or last_ticket.id != ticket.id:
+        return _error('Редактировать можно только последнее сообщение')
 
-    db.session.delete(ticket)
+    if not ticket.begin_time or (current_utc_time() - ticket.begin_time) > timedelta(minutes=TICKET_EDIT_WINDOW_MINUTES):
+        return _error(f'Редактирование доступно только в течение {TICKET_EDIT_WINDOW_MINUTES} минут после отправки')
+
+    note = request.form.get('note')
+    if not note or not note.strip():
+        return _error('Сообщение не может быть пустым')
+
+    attachment_file = request.files.get('attachment')
+    remove_attachment = request.form.get('remove_attachment') == '1'
+
+    if attachment_file and attachment_file.filename:
+        from website.utils.ticket_attachment import validate_ticket_attachment
+        attachment_error = validate_ticket_attachment(attachment_file)
+        if attachment_error:
+            return _error(attachment_error)
+
+    ticket.note = note.strip()
+    # Время сообщения обновляется на момент редактирования — отображаемое
+    # время должно отражать правку, а окно в TICKET_EDIT_WINDOW_MINUTES
+    # отсчитывается заново от неё же (отредактированное только что
+    # сообщение остаётся редактируемым ещё 5 минут, а не "протухает"
+    # сразу же из-за старого begin_time).
+    ticket.begin_time = current_utc_time()
+
+    # Привязка к этапу (approval_path_id) — та же, что ставится при
+    # создании сообщения (см. create_ticket) — пересчитывается и здесь: на
+    # момент правки текущий этап отправителя должен быть именно тем же
+    # (сообщение можно редактировать только пока оно последнее и пока не
+    # истекли TICKET_EDIT_WINDOW_MINUTES), но если вдруг расходится —
+    # "Подписи" должны ориентироваться на актуальный этап, а не на
+    # устаревшую привязку с момента первой отправки.
+    from website.utils.plans import get_current_review_path
+    current_path = get_current_review_path(current_plan, current_user)
+    if current_path:
+        ticket.approval_path_id = current_path.id
+
+    if attachment_file and attachment_file.filename:
+        from website.utils.ticket_attachment import delete_ticket_attachment, save_ticket_attachment
+        delete_ticket_attachment(ticket)
+        save_ticket_attachment(ticket, attachment_file)
+    elif remove_attachment:
+        from website.utils.ticket_attachment import delete_ticket_attachment
+        delete_ticket_attachment(ticket)
+
     db.session.commit()
 
     if is_ajax:
         from website.utils.plans import get_audit_context
-        # Удалённое сообщение могло быть единственным, из-за которого была
-        # разблокирована кнопка "Есть ошибки" — пересчитываем весь контекст
-        # живьём (см. get_audit_context), а не полагаемся на сохранённый флаг.
         ctx = get_audit_context(current_plan, current_user)
         html = render_template_string(
             '''
@@ -360,9 +412,33 @@ def delete_ticket(token):
         )
         return jsonify({'success': True, 'html': html, 'has_remarks': ctx['has_remarks']})
 
-    flash('Сообщение удалено', 'success')
+    flash('Сообщение изменено', 'success')
     return redirect(request.referrer)
 
+
+@audit_bp.route('/ticket-attachment/<token>/<int:ticket_id>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@owner_only
+@session_required
+def get_ticket_attachment(token, ticket_id):
+    """Отдаёт файл, прикреплённый к сообщению (замечанию). ?download=1 —
+    принудительное скачивание, иначе — показ прямо в браузере (как ТЭО,
+    см. get_event_teo в plan_bp.py)."""
+    current_plan = g.current_plan
+    ticket = PlanTicket.query.filter_by(id=ticket_id, plan_id=current_plan.id).first()
+    if not ticket or not ticket.attachment_filename:
+        abort(404)
+
+    folder = current_app.config['TICKET_ATTACHMENT_UPLOAD_FOLDER']
+    as_attachment = request.args.get('download') == '1'
+
+    return send_from_directory(
+        folder,
+        ticket.attachment_filename,
+        as_attachment=as_attachment,
+        download_name=ticket.attachment_original_name or ticket.attachment_filename
+    )
 
 @audit_bp.route('/create-ticket/<token>', methods=['POST'])
 @user_with_all_params()
@@ -423,6 +499,13 @@ def create_ticket(token):
     if prev_path and not prev_path.is_viewed:
         return _error('Предыдущий этап еще не пройден')
 
+    attachment_file = request.files.get('attachment')
+    if attachment_file and attachment_file.filename:
+        from website.utils.ticket_attachment import validate_ticket_attachment
+        attachment_error = validate_ticket_attachment(attachment_file)
+        if attachment_error:
+            return _error(attachment_error)
+
     current_plan.afch = True
 
     new_ticket = PlanTicket(
@@ -431,10 +514,16 @@ def create_ticket(token):
         plan_id=current_plan.id,
         user_id=current_user.id,
         is_system=(current_user.id == current_plan.user_id),
-        begin_time=current_utc_time()
+        begin_time=current_utc_time(),
+        approval_path_id=current_path.id,
     )
 
     db.session.add(new_ticket)
+
+    if attachment_file and attachment_file.filename:
+        from website.utils.ticket_attachment import save_ticket_attachment
+        save_ticket_attachment(new_ticket, attachment_file)
+
     db.session.commit()
 
     if is_ajax:

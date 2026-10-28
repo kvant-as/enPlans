@@ -8,7 +8,7 @@ from flask_login import (
 
 from common_models import current_utc_time
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan, validate_period_values
-from website.routes.auth import user_with_all_params, record_account_verification
+from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
 from website.user import send_email
@@ -40,16 +40,8 @@ def plan_review(token):
     
     current_plan = g.current_plan
 
-    show_plan_type_modal = (
-        current_plan.is_draft and 
-        (current_plan.plan_type is None or current_plan.plan_type == '') and
-        hasattr(current_user, 'organization') and 
-        current_user.organization is not None
-    )
-
     return render_template('plan_review.html',
                         plan=current_plan,
-                        show_plan_type_modal=show_plan_type_modal,
                         )
 
 
@@ -115,24 +107,17 @@ def plan_send_page(token):
 @owner_only
 @reader_forbidden
 def api_verify_certificate(token):
-    """AJAX-проверка сертификата ЭЦП на лету, пока пользователь ещё на шаге
-    загрузки — тот же common_models.validators-стиль, что и у ОКПО/УНП:
-    сервер один раз решает валидность, клиент просто отражает вердикт.
-    Финальная отправка (change-status) перепроверяет сертификат заново —
-    этому эндпоинту доверять на слово нельзя, он только для быстрой
-    обратной связи в интерфейсе."""
-    plan = g.current_plan
+    """AJAX-проверка сертификата ЭЦП на лету — способ "Сертификат ЭЦП" в
+    демо-модалке проверки ЭЦП (см. static/js/ecp-mock-modal.js). Ничего не
+    сохраняет, только проверяет срок действия файла и логирует (DEBUG) всё,
+    что получилось из него достать — для отладки."""
     cert_file = request.files.get('certificate')
     if not cert_file or not cert_file.filename:
         return jsonify({'valid': False, 'error': 'Файл сертификата не передан'}), 400
 
-    # TODO: пока проверяем только срок действия — сверку УНП организации
-    # плана с УНП в сертификате временно отключили (expected_unp=None),
-    # включить обратно после того как разберёмся с форматом реальных
-    # сертификатов ЭЦП. verify_certificate уже умеет это делать — см.
-    # website/ecp.py.
-    ok, error = verify_certificate(cert_file, expected_unp=None)
+    ok, error = verify_certificate(cert_file)
     return jsonify({'valid': ok, 'error': error})
+
 
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -161,7 +146,6 @@ def plan_indicators(token):
                         plan=current_plan, 
                         indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
-                        confirmModal = True,
                         context_menu = True)
     
 
@@ -602,7 +586,6 @@ def plan_event(event_type, token):
                         event_type=event_type,
                         plan=current_plan, 
                         hide_header=False,
-                        confirmModal=True,
                         directions=directions,
                         # SendModal=current_plan.is_control,
                         context_menu=True,
@@ -1069,51 +1052,8 @@ def api_change_plan_status(token):
     handler = status_handlers[status]
 
     if status == 'sent':
-        # Если аккаунт уже прошёл периодическую верификацию ЭЦП (см.
-        # User.ecp_verified_until / auth.verify_account) — личность уже
-        # подтверждена, повторный сертификат на каждый план не нужен.
-        # Иначе — сертификат уже проверялся на лету на странице отправки
-        # (/verify-certificate), но той проверке доверять нельзя — сюда
-        # могут обратиться и напрямую, минуя интерфейс, поэтому сверяем
-        # срок действия заново. TODO: сверку УНП временно отключили
-        # (expected_unp=None) — см. тот же комментарий в api_verify_certificate.
-        if not current_user.is_ecp_verified():
-            cert_file = request.files.get('certificate')
-            if not cert_file or not cert_file.filename:
-                error_msg = 'Файл сертификата обязателен'
-                if request.is_json:
-                    return jsonify({'error': error_msg}), 400
-                flash(error_msg, 'error')
-                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
-
-            expected_unp = None
-            cert_ok, cert_error = verify_certificate(cert_file, expected_unp)
-            if not cert_ok:
-                if request.is_json:
-                    return jsonify({'error': cert_error}), 400
-                flash(cert_error, 'error')
-                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
-
-            # Раз сертификат только что подтвердил личность пользователя
-            # здесь, нет смысла заставлять его ещё раз отдельно проходить
-            # верификацию в профиле — засчитываем её автоматически на тот
-            # же период (см. record_account_verification).
-            record_account_verification(current_user, cert_file)
-
         result = handler(plan, coordinator_ids, approver_id)
     elif status == 'approved':
-        # Согласование/утверждение конкретного этапа плана — та самая
-        # "проверка, что за аккаунтом реальный человек", по аналогии с ЭЦП
-        # при отправке плана респондентом, только не на каждое действие, а
-        # периодически (см. User.ecp_verified_until / auth.verify_account).
-        if not current_user.is_ecp_verified():
-            error_msg = ('Для согласования и утверждения планов необходимо пройти верификацию '
-                         'аккаунта — раздел «Безопасность» в профиле.')
-            if request.is_json:
-                return jsonify({'error': error_msg, 'needs_verification': True}), 403
-            flash(error_msg, 'error')
-            return redirect(url_for('views.profile'))
-
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
         # Отмена проверяющим своего подтверждения этапа — тоже требует

@@ -21,18 +21,6 @@
 </svg>
 {% endmacro %}
 
-{% macro cross_icon() %}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-</svg>
-{% endmacro %}
-
-{% macro lock_icon() %}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-</svg>
-{% endmacro %}
-
 <div class="faq-modern">
   <div class="faq-content-wrapper">
     <div class="faq-layout">
@@ -105,14 +93,18 @@
 
           <div class="category-modern">
             <div class="category-header-modern">
-              <h3>Безопасность и подписи</h3>
+              <h3>ЭЦП</h3>
             </div>
             <div class="questions-list-modern">
-              <a href="#ecp-certificate" class="question-link-modern">
-                Верификация аккаунта
+              <a href="#ecp-obtain" class="question-link-modern">
+                Как получить сертификат ЭЦП?
+              </a>
+              <a href="#ecp-check" class="question-link-modern">
+                Проверка ЭЦП
               </a>
             </div>
           </div>
+
         </nav>
       </aside>
 
@@ -477,9 +469,7 @@
                 <div class="step-content">
                   <h4>Переход к созданию плана</h4>
                   <p>
-                    В главном меню выберите <strong>«Создать»</strong> или
-                    нажмите соответствующую кнопку на панели управления на
-                    странице <strong>Планы</strong>.
+                    Нажмите на кнопку <strong>«Создать»</strong> на странице <strong>Планы</strong>.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/create-plan-step1.png" alt="Переход к созданию плана" class="faq-image">
@@ -494,7 +484,7 @@
                   <p>
                     Укажите параметры: год, показатель
                     энергосбережения, задания по экономии ТЭР, долю местных ТЭР
-                    и ВИЭ.
+                    и ВИЭ. После чего нажмите на <strong>«Создать план»</strong>.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/create-plan-step2.png" alt="Заполнение титульной страницы" class="faq-image">
@@ -507,7 +497,7 @@
                 <div class="step-content">
                   <h4>Открытие плана</h4>
                   <p>
-                    После заполнения титульной страницы вы будете перенаправлены на страницу с планами. Нажмите <strong>«Просмотр»</strong> для открытия плана и перехода к заполнению данных.
+                    После заполнения титульной страницы вы будете перенаправлены на страницу с планами. Нажмите <strong>«Просмотр»</strong> для открытия плана.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/open-plan.png" alt="Открытие плана" class="faq-image">
@@ -540,9 +530,7 @@
                     </div>
                   </div>
 
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/create-plan-step4.png" style="max-height: 300px; width: auto;" alt="Выбор типа плана" class="faq-image">
-                  </div>
+             
                 </div>
               </div>
             </div>
@@ -649,8 +637,14 @@
                       </div>
                     </div>
                   </div>
+                  <p>
+                    При выборе <strong>«Есть ошибки»</strong> или <strong>«Одобрить»</strong> открывается окно подтверждения с проверкой ЭЦП — такое же, как при отправке плана. Решение вступает в силу только после успешного прохождения проверки; без неё статус плана не изменится.
+                  </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/plan-verdict.png" alt="Вынесение вердикта" class="faq-image faq-image-md">
+                  </div>
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/plan-signatures.png" alt="Вынесение вердикта" class="faq-image faq-image-md">
                   </div>
                 </div>
               </div>
@@ -739,7 +733,7 @@
                   <h4>Настройка параметров экспорта</h4>
                   <p>
                     Выберите формат файла <strong>xlsx</strong>, <strong>pdf</strong> или <strong>xml</strong>, используйте
-                    фильтры по статусу и году, отметьте нужные планы.
+                    фильтры по наименованию, УНП, статусу, году, региону и утверждающей организации, отметьте нужные планы.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/export-step2.png" alt="Настройка параметров экспорта" class="faq-image">
@@ -916,168 +910,10 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#ecp-certificate" class="nav-btn next">
+              <a href="#difference-calculation" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
-            </div>
-          </div>
-        </article>
-
-        <article class="answer-active-modern" id="ecp-certificate">
-          <div class="answer-header-modern">
-            <h1 class="answer-title-modern">
-              Как пройти верификацию
-            </h1>
-          </div>
-          <div class="answer-body-modern">
-            <div class="answer-text">
-              <p>
-                Верификация — это подтверждение личности владельца аккаунта сертификатом электронной цифровой подписи (ЭЦП). В отличие от подписи конкретного плана, верификация привязана к аккаунту целиком и действует <strong>30 дней</strong>, после чего её нужно пройти заново.
-              </p>
-            </div>
-
-            <div class="callout callout--warning">
-              <span class="icon-badge icon-badge--warning">{{ lock_icon() }}</span>
-              <div class="callout-body">
-                <p class="callout-title">Кому и зачем это нужно</p>
-                <ul class="detail-list">
-                  <li><strong>Согласовывающим организациям</strong> — обязательна, без неё недоступен просмотр и экспорт планов</li>
-                  <li><strong>Согласующим и утверждающим</strong> — обязательна, без неё недоступно согласование и утверждение планов</li>
-                  <li><strong>Остальным пользователям</strong> — по желанию; сертификат можно вместо этого приложить прямо при отправке плана на согласование</li>
-                </ul>
-              </div>
-            </div>
-
-            <h3>Виды сертификатов</h3>
-            <div class="features-grid">
-              <div class="feature-card">
-                <div class="feature-icon icon-badge--success">{{ icons.icon_confirm() }}</div>
-                <h4>Действительный сертификат</h4>
-                <p>Срок действия сертификата является удовлетворительным</p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon icon-badge--danger">{{ cross_icon() }}</div>
-                <h4>Недействительный сертификат</h4>
-                <p>Срок действия сертификата истек, требуется обновление</p>
-              </div>
-            </div>
-
-            <h3>Как пройти верификацию аккаунта</h3>
-            <div class="steps-container">
-              <div class="step-item">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                  <h4>Откройте раздел «Верификация»</h4>
-                  <p>
-                    В личном кабинете перейдите на вкладку <strong>«Верификация»</strong>.
-                  </p>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                  <h4>Загрузите файл сертификата</h4>
-                  <p>
-                    Перетащите файл сертификата (.cer) в область загрузки или нажмите «нажмите для выбора» и укажите его вручную. Система проверит сертификат — это займёт около 5 секунд.
-                  </p>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h4>Подтвердите верификацию</h4>
-                  <p>
-                    Если сертификат действителен, появится кнопка <strong>«Пройти верификацию»</strong> — нажмите её. Статус в заголовке раздела сменится на «Верифицировано до …» с датой окончания действия.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="callout">
-              <span class="icon-badge">{{ info_icon() }}</span>
-              <div class="callout-body">
-                <p class="callout-title">Верификация «заодно»</p>
-                <p>Если аккаунт ещё не верифицирован, а вы загружаете сертификат при <strong>отправке плана на согласование</strong> — аккаунт автоматически верифицируется на те же 30 дней, отдельно проходить верификацию в профиле не нужно.</p>
-              </div>
-            </div>
-
-            <h3>Где находится файл сертификата?</h3>
-            <div class="steps-container">
-              <div class="step-item">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                  <h4>Откройте ПО «Менеджер сертификатов»</h4>
-                  <p>Запустите программу «Менеджер сертификатов» от Авест.</p>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/ecp-step1.jpg" alt="ПО «Менеджер сертификатов»" class="faq-image faq-image-sm">
-                  </div>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                  <h4>Выберите действительный сертификат</h4>
-                  <p>Выберите «Действительный» сертификат из списка и нажмите «ОК».</p>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/ecp-step2.jpg" alt="Выбор сертификата" class="faq-image">
-                  </div>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h4>Экспортируйте сертификат в файл</h4>
-                  <p>
-                    Кликните правой кнопкой по сертификату и выберите «Экспорт
-                    сертификата в файл».
-                  </p>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/ecp-step3.jpg" alt="Экспорт сертификата в файл" class="faq-image">
-                  </div>
-                </div>
-              </div>
-              <div class="step-item">
-                <div class="step-number">4</div>
-                <div class="step-content">
-                  <h4>Используйте сертификат в системе</h4>
-                  <p>
-                    Выберите место для сохранения файла на своём компьютере. Полученный файл можно загрузить в разделе «Верификация» профиля или прямо при отправке плана на согласование — перетащите его в область загрузки или нажмите «нажмите для выбора» и укажите вручную.
-                  </p>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/ecp-step4.png" alt="Сохранённый файл сертификата" class="faq-image">
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="answer-text">
-              <div class="checklist-container">
-                <h4 class="checklist-header">Чеклист для верификации</h4>
-                <p class="checklist-subtitle">Выполните все пункты</p>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Убедитесь, что срок действия сертификата не истек</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>ПО «Менеджер сертификатов» корректно установлено</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Сохраните файл сертификата в надежном месте</span>
-                </label>
-                <label class="checklist-item">
-                  <input type="checkbox" />
-                  <span>Помните, что верификация действует 30 дней и её нужно будет пройти заново</span>
-                </label>
-              </div>
-            </div>
-            <div class="answer-navigation">
-              <a href="#plans" class="nav-btn prev">
-                {{ icons.back_icon() }}
-                <span>Предыдущий вопрос</span>
-              </a>
-              <div></div>
             </div>
           </div>
         </article>
@@ -1812,7 +1648,7 @@
                 <div class="control-flow-step-icon">{{ icons.icon_confirm() }}</div>
                 <div class="control-flow-step-text">
                   <strong>2. Нажмите «Пройти контроль»</strong>
-                  <span>Кнопка находится на странице с заданиями плана</span>
+                  <span>Кнопка находится на странице с «Действия с планом»</span>
                 </div>
               </div>
               <div class="faq-image-wrapper ogr">
@@ -1995,36 +1831,21 @@
                   <p>
                     Перед подписанием система показывает итоговый путь согласования — по каким организациям и в каком порядке пройдёт план. Проверьте выбранные организации и подтвердите отправку, нажав <strong>«Далее»</strong>.
                   </p>
+
+                  <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/send-step3.png" alt="Путь согласования" class="faq-image">
+                  </div>
                 </div>
               </div>
 
               <div class="step-item">
                 <div class="step-number">5</div>
                 <div class="step-content">
-                  <h4>Шаг «Подпись» — загрузка сертификата ЭЦП</h4>
+                  <h4>Шаг «Подпись»</h4>
                   <p>
-                    Перетащите файл сертификата электронной цифровой подписи (.cer) в область загрузки или нажмите «нажмите для выбора» и укажите файл вручную.
+                    Нажмите <strong>«Пройти проверку ЭЦП»</strong> — откроется окно выбора способа подписания: аппаратный ключ ЭЦП (отметка «Скоро», пока недоступен) или сертификат ЭЦП (.cer). Подробнее о том, как проходит проверка — см. <a href="#ecp-check" class="faq-inline-link">«Проверка ЭЦП»</a>.
                   </p>
-                  <div class="callout callout--neutral">
-                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
-                    <div class="callout-body">
-                      <p><strong>Автоматическая проверка:</strong> после загрузки файла система автоматически проверяет сертификат. Если сертификат действителен, кнопка <strong>«Отправить план»</strong> становится активной; если нет — выводится сообщение с причиной, и файл нужно загрузить заново.</p>
-                    </div>
-                  </div>
-                  <div class="faq-image-wrapper ogr">
-                    <img src="/static/img/faq/send-step4.png" alt="Загрузка сертификата" class="faq-image">
-                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div class="feature-card note-card">
-              <h4>Путь согласования</h4>
-              <p class="feature-description">
-                После отправки план проходит следующий путь в зависимости от того, какие организации были выбраны при отправке плана на проверку.
-              </p>
-              <div class="faq-image-wrapper">
-                <img src="/static/img/faq/send-step3.png" alt="Путь согласования" class="faq-image">
               </div>
             </div>
 
@@ -2032,7 +1853,10 @@
               <span class="icon-badge">{{ info_icon() }}</span>
               <div class="callout-body">
                 <p class="callout-title">Примечание</p>
-                <p>Ошибки при заполнении плана отображаются в интерфейсе с пояснением, что именно требуется исправить.</p>
+                <p>Ошибки при заполнении плана отображаются в интерфейсе с пояснением (раздел замечания), что именно требуется исправить.</p>
+                <div class="faq-image-wrapper">
+                    <img src="/static/img/faq/signatures.png" alt="signatures" class="faq-image">
+                  </div>
               </div>
             </div>
 
@@ -2041,10 +1865,167 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#audit-data" class="nav-btn next">
+              <a href="#ecp-obtain" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
+            </div>
+          </div>
+        </article>
+
+        <article class="answer-active-modern" id="ecp-obtain">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Как получить сертификат ЭЦП?</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                Для прохождения проверки ЭЦП в EnPlans нужен файл сертификата (.cer), выгруженный с вашего ключа ЭЦП. Если ключ уже выдан удостоверяющим центром, получить файл сертификата можно с помощью программы управления сертификатами (например, <strong>«Менеджер сертификатов» (MngCert)</strong>), которая устанавливается вместе с программным обеспечением ключа.
+              </p>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Запустите «Менеджер сертификатов»</h4>
+                  <p>
+                    На рабочем столе найдите и откройте ярлык программы <strong>Менеджер сертификатов</strong>, установленной вместе с ключом ЭЦП.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-step1.jpg" alt="Запуск программы MngCert" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Авторизуйтесь в программе</h4>
+                  <p>
+                    В окне «Менеджер сертификатов — авторизация пользователя» выберите свой сертификат из списка и нажмите <strong>«ОК»</strong>. Если авторизация не требуется, можно отметить <strong>«Войти в систему без авторизации»</strong>.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-step2.jpg" alt="Авторизация в Менеджере сертификатов" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Экспортируйте сертификат в файл</h4>
+                  <p>
+                    В разделе <strong>«Сертификаты» → «Личные»</strong> найдите нужный сертификат, нажмите на него правой кнопкой мыши и выберите <strong>«Экспорт сертификата в файл»</strong>.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-step3.jpg" alt="Экспорт сертификата в файл" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Сохраните файл сертификата</h4>
+                  <p>
+                    Укажите папку для сохранения — на компьютере появится файл сертификата (небольшого размера, обычно пару килобайт). Именно его нужно будет загрузить в EnPlans на шаге <a href="#ecp-check" class="faq-inline-link">«Проверка ЭЦП»</a>.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-step4.png" alt="Сохранённый файл сертификата" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout callout--neutral">
+              <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+              <div class="callout-body">
+                <p>Если ключ ЭЦП ещё не выдан, обратитесь в удостоверяющий центр, обслуживающий вашу организацию — именно он выпускает ключ и сертификат и устанавливает программное обеспечение для работы с ними.</p>
+              </div>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#plan-control-send" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#ecp-check" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        <article class="answer-active-modern" id="ecp-check">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Проверка ЭЦП</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                Проверка электронной цифровой подписи (ЭЦП) используется, чтобы подтвердить отправителя действия в двух местах системы: при <strong>отправке плана</strong> на согласование (шаг «Подпись», см. <a href="#plan-control-send" class="faq-inline-link">«Контроль и отправка плана»</a>) и при вынесении вердикта согласовывающей организацией — кнопки <strong>«Есть ошибки»</strong> и <strong>«Одобрить»</strong> (см. <a href="#audit-data" class="faq-inline-link">«Согласование планов»</a>). В обоих случаях открывается одно и то же окно проверки. Если у вас ещё нет файла сертификата — см. <a href="#ecp-obtain" class="faq-inline-link">«Как получить сертификат ЭЦП?»</a>.
+              </p>
+            </div>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Выбор способа подписания</h4>
+                  <p>
+                    В открывшемся окне доступны два способа:
+                  </p>
+                  <ul class="detail-list">
+                    <li><strong>Аппаратный ключ ЭЦП</strong> — отмечен как «Скоро», пока недоступен для выбора</li>
+                    <li><strong>Сертификат ЭЦП</strong> — загрузка файла сертификата (.cer)</li>
+                  </ul>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-check-step1.png" alt="Выбор способа подписания" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Загрузка сертификата</h4>
+                  <p>
+                    Перетащите файл сертификата в область загрузки или выберите его вручную. Система проверяет срок действия сертификата — если он ещё не истёк, проверка считается пройденной.
+                  </p>
+                  <div class="callout callout--neutral">
+                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                    <div class="callout-body">
+                      <p>Сертификат используется исключительно для проверки и никак не сохраняется сайтом.</p>
+                    </div>
+                  </div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-check-step2.png" alt="Загрузка сертификата" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Результат проверки</h4>
+                  <p>
+                    При успешной проверке окно закрывается, и действие (отправка плана или вынесение вердикта) становится доступным. Если сертификат не прошёл проверку — например, истёк срок его действия — отображается сообщение об ошибке с кнопкой <strong>«Попробовать ещё раз»</strong>, которая позволяет загрузить другой сертификат.
+                  </p>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/ecp-check-step3.png" alt="Результат проверки ЭЦП" class="faq-image">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#ecp-obtain" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <div></div>
             </div>
           </div>
         </article>

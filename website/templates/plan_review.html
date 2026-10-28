@@ -9,7 +9,7 @@
   <div class="personal-acc-conteiner planed">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
+        <a class="name" style="padding-bottom: 0">{{ _('Задания плана') }}</a>
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
@@ -155,42 +155,6 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
-  <div class="modal-content" style="width: fit-content">
-    <div class="modal-header">
-      <a id="modal-title">{{ _('Какое у вас потребление?') }}</a>
-    </div>
-    <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST" class="radio-org-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="radio-org-container two-col">
-        <label>
-          <input type="radio" name="entity_type" value="organization_org_small" class="radio-org-input" checked />
-          <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_half() }}
-            <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">До 25 тыс. т у. т. включительно</div>
-          </div>
-        </label>
-
-        <label>
-          <input type="radio" name="entity_type" value="organization_org_large" class="radio-org-input" />
-          <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_org() }}
-            <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">Более 25 тыс. т у. т.</div>
-          </div>
-        </label>
-      </div>
-      <div class="button-auth-area">
-        <button type="submit" class="no-submit-button blue">
-          {{ icons.icon_confirm() }}
-          <span class="btn-text">{{ _('Подтвердить') }}</span>
-        </button>
-      </div>
-    </form>
   </div>
 </div>
 

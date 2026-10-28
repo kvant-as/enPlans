@@ -136,13 +136,13 @@
         frame.style.display = 'block';
     }
 
-    function open(eventId, originalName) {
-        if (!eventId) return;
+    function open(eventId, originalName, explicitViewUrl) {
+        if (!eventId && !explicitViewUrl) return;
         const drawer = document.getElementById('teoViewerDrawer') || buildDrawer();
         const token = ++requestToken;
 
-        const viewUrl = `/plans/plan/event/${eventId}/teo`;
-        const downloadUrl = `${viewUrl}?download=1`;
+        const viewUrl = explicitViewUrl || `/plans/plan/event/${eventId}/teo`;
+        const downloadUrl = `${viewUrl}${viewUrl.includes('?') ? '&' : '?'}download=1`;
         const ext = (originalName || '').split('.').pop().toLowerCase();
 
         document.getElementById('teoViewerTitle').textContent = originalName || 'ТЭО';
