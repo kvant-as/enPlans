@@ -174,6 +174,69 @@ class PlanIndicators {
         });
 
         this.updateTutResults();
+
+        // Открытие модалки раньше никогда не сбрасывало её состояние —
+        // после добавления одного вида топлива/показателя повторное
+        // открытие "Добавление показателя" показывало шаг 2 с уже
+        // выбранным (прошлым) показателем вместо чистого шага 1 со
+        // списком. Теперь каждое открытие начинается с чистого листа.
+        const openButton = document.getElementById('AddIndicatorModalButton');
+        if (openButton) {
+            openButton.removeEventListener('click', this._resetAddIndicatorModalHandler);
+            this._resetAddIndicatorModalHandler = () => this.resetAddIndicatorModal();
+            openButton.addEventListener('click', this._resetAddIndicatorModalHandler);
+        }
+    }
+
+    resetAddIndicatorModal() {
+        const modal = document.getElementById('AddIndicatorModal');
+        if (!modal) return;
+
+        if (window.addIndicatorModalWizard && typeof window.addIndicatorModalWizard.resetForm === 'function') {
+            window.addIndicatorModalWizard.resetForm();
+        }
+
+        const table = modal.querySelector('[data-action="modal-table-main"]');
+        if (table) {
+            table.querySelectorAll('tbody tr').forEach(row => row.classList.remove('active-row', 'selected'));
+        }
+
+        const selectedDisplay = document.getElementById('selected-indicator-display');
+        const selectedName = document.getElementById('selected-indicator-name');
+        const selectedCode = document.getElementById('selected-indicator-code');
+        if (selectedDisplay) selectedDisplay.style.display = 'none';
+        if (selectedName) selectedName.textContent = '-';
+        if (selectedCode) selectedCode.textContent = '';
+
+        const searchInput = modal.querySelector('[data-action="search-directions"]');
+        if (searchInput && searchInput.value) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+        }
+
+        const idIndicatorInput = modal.querySelector('input[name="id_indicator"]');
+        if (idIndicatorInput) idIndicatorInput.value = '';
+
+        const nextButton = document.getElementById('step1-next-btn');
+        if (nextButton) nextButton.disabled = true;
+
+        const form = document.getElementById('addIndicatorForm');
+        if (form) form.reset();
+
+        ['before', 'prev', 'current'].forEach(year => {
+            const unitSpan = document.getElementById(`unit-name-${year}`);
+            if (unitSpan) unitSpan.textContent = 'ед. изм.';
+            const coeffInput = document.getElementById(`coeff-display-${year}`);
+            const coeffWrapper = coeffInput ? coeffInput.closest('.value-coeff') : null;
+            if (coeffWrapper) coeffWrapper.style.display = '';
+            if (coeffInput) coeffInput.readOnly = false;
+        });
+
+        if (typeof checkCategoryRequired === 'function') {
+            checkCategoryRequired();
+        }
+
+        this.updateTutResults();
     }
 
     initEditIndicatorModal() {
@@ -288,9 +351,9 @@ class PlanIndicators {
         inputs.forEach(input => {
             if (!input) return;
             
-            let decimalPlaces = 0;
-            let defaultValue = '0';
-            
+            let decimalPlaces = 1;
+            let defaultValue = '0,0';
+
             if (groupNumber === 5) {
                 decimalPlaces = 2;
                 defaultValue = '0,00';
@@ -298,41 +361,47 @@ class PlanIndicators {
                 decimalPlaces = 1;
                 defaultValue = '0,0';
             } else {
-                decimalPlaces = 0;
-                defaultValue = '0';
+                // Натуральные величины (группы 1-4, "Часть 1") — раньше
+                // здесь было decimalPlaces=0 (только целые), из-за чего
+                // ввод вроде "123,4" обрезался до "123" ещё до умножения
+                // на коэффициент перевода в т у.т., давая неточный
+                // результат. Один знак после запятой сохраняет точность,
+                // достаточную для корректного перевода.
+                decimalPlaces = 1;
+                defaultValue = '0,0';
             }
-            
+
             const settings = {
                 allowNegative: false,
                 decimalPlaces: decimalPlaces,
                 defaultValue: defaultValue
             };
-            
+
             input.removeEventListener('input', input._addInputHandler);
             input.removeEventListener('focus', input._addFocusHandler);
             input.removeEventListener('blur', input._addBlurHandler);
-            
-            const inputHandler = (e) => { 
+
+            const inputHandler = (e) => {
                 NumericInputHandler.handleInput(e, settings);
                 this.updateTutResults();
             };
-            const focusHandler = (e) => { 
+            const focusHandler = (e) => {
                 NumericInputHandler.handleFocus(e, settings);
             };
-            const blurHandler = (e) => { 
+            const blurHandler = (e) => {
                 NumericInputHandler.handleBlur(e, settings);
                 this.updateTutResults();
             };
-            
+
             input.addEventListener('input', inputHandler);
             input.addEventListener('focus', focusHandler);
             input.addEventListener('blur', blurHandler);
             input.addEventListener('click', (e) => { e.target.select(); });
-            
+
             input._addInputHandler = inputHandler;
             input._addFocusHandler = focusHandler;
             input._addBlurHandler = blurHandler;
-            
+
             if (decimalPlaces === 0) {
                 input.placeholder = '0';
             } else if (decimalPlaces === 1) {
@@ -362,10 +431,10 @@ class PlanIndicators {
             } else if (groupId === 6 || groupId === 7 || groupId === 8) {
                 return value.toFixed(1).replace('.', ',');
             } else {
-                return Math.round(value).toString().replace('.', ',');
+                return value.toFixed(1).replace('.', ',');
             }
         };
-        
+
         const years = ['before', 'prev', 'current'];
         years.forEach((year) => {
             const input = document.querySelector(`#AddIndicatorModal input[data-year="${year}"]`);
@@ -437,13 +506,13 @@ class PlanIndicators {
             
             const formatValue = (value, groupId) => {
                 if (value === null || value === undefined || isNaN(value)) return '';
-                
+
                 if (groupId === 5) {
                     return value.toFixed(2).replace('.', ',');
                 } else if (groupId === 6 || groupId === 7 || groupId === 8) {
                     return value.toFixed(1).replace('.', ',');
                 } else {
-                    return Math.round(value).toString().replace('.', ',');
+                    return value.toFixed(1).replace('.', ',');
                 }
             };
             
@@ -720,9 +789,9 @@ function Edit_indicator_modal() {
     const initNumericInput = (inputElement, groupId) => {
         if (!inputElement) return;
         
-        let decimalPlaces = 0;
-        let defaultValue = '0';
-        
+        let decimalPlaces = 1;
+        let defaultValue = '0,0';
+
         if (groupId === 5) {
             decimalPlaces = 2;
             defaultValue = '0,00';
@@ -730,17 +799,19 @@ function Edit_indicator_modal() {
             decimalPlaces = 1;
             defaultValue = '0,0';
         } else {
-            decimalPlaces = 0;
-            defaultValue = '0';
+            // Натуральные величины (группы 1-4) — один знак после запятой
+            // для точного перевода в т у.т. (см. ту же правку в Add-модалке).
+            decimalPlaces = 1;
+            defaultValue = '0,0';
         }
-        
+
         const settings = {
             allowNegative: false,
             decimalPlaces: decimalPlaces,
             defaultValue: defaultValue
         };
-        
-        const inputHandler = function(e) { 
+
+        const inputHandler = function(e) {
             NumericInputHandler.handleInput(e, settings);
             updateEditTutResults();
         };
@@ -774,7 +845,7 @@ function Edit_indicator_modal() {
         } else if (groupId === 6 || groupId === 7 || groupId === 8) {
             return value.toFixed(1).replace('.', ',');
         } else {
-            return Math.round(value).toString().replace('.', ',');
+            return value.toFixed(1).replace('.', ',');
         }
     };
     
@@ -1017,7 +1088,7 @@ function updateEditTutResults() {
         } else if (groupId === 6 || groupId === 7 || groupId === 8) {
             return value.toFixed(1).replace('.', ',');
         } else {
-            return Math.round(value).toString().replace('.', ',');
+            return value.toFixed(1).replace('.', ',');
         }
     };
     

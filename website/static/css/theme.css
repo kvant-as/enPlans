@@ -118,7 +118,7 @@ html[data-theme] .fixed-header {
   --primary-dark: #1a8293;       /* было #003b45 */
   --color-green-text-main: #67d6e9;        /* было #005867 — на тёмном фоне не читалось бы */
   --color-green-text-main-hover: #8be3f2;  /* было #007c92 */
-  --color-control: #5fe0a6;                /* было #006748 */
+  --color-control: #3fc98c;                /* было #5fe0a6 (ещё раньше #006748) */
 
   --green-hover: #16232a;
   --green-light-back: #12262a;
@@ -131,12 +131,36 @@ html[data-theme] .fixed-header {
  * ------------------------------------------------------------ */
 :root[data-theme="dark"] {
   --background-redaced: #8269ff;     /* было #E1DBFF */
-  --background-controled: #cefff1;   /* было #cefff1 */
+  --background-controled: #a6f5dc;   /* было #cefff1 */
   --background-sented: #CFE2FF;      /* было #CFE2FF */
   --background-sogl: #cffdff;        /* было #cffdff */
   --background-erorsed: #ffb2b3;     /* было #ffb2b3 */
   --background-submited: #123f17;    /* было #D8FFDC */
   --background-warning: #383f12;     /* было #f9ffd8 */
+}
+
+/* website/static/css/base.css :: .plan-cont-* статусные градиенты —
+   заданы напрямую (не через переменную, см. комментарий там же), поэтому
+   переопределение --background-*/-submited выше их не затрагивает.
+   Приглушённые тёмные версии вместо светлой пастели — яркие градиенты
+   на тёмном фоне резали бы глаз. */
+:root[data-theme="dark"] .plan-cont-redac {
+  background: linear-gradient(135deg, #241f3d 0%, #352c5c 100%);
+}
+:root[data-theme="dark"] .plan-cont-control {
+  background: linear-gradient(135deg, #0a1f1c 0%, #123832 100%);
+}
+:root[data-theme="dark"] .plan-cont-sent {
+  background: linear-gradient(135deg, #15233a 0%, #203e63 100%);
+}
+:root[data-theme="dark"] .plan-cont-sogl {
+  background: linear-gradient(135deg, #0f2a2d 0%, #1b474d 100%);
+}
+:root[data-theme="dark"] .plan-cont-eror {
+  background: linear-gradient(135deg, #341717 0%, #522323 100%);
+}
+:root[data-theme="dark"] .plan-cont-sub {
+  background: linear-gradient(135deg, #0f2613 0%, #1a4420 100%);
 }
 
 /* ------------------------------------------------------------ *
@@ -249,17 +273,8 @@ html[data-theme] .fixed-header {
   background: rgba(27, 32, 39, 0.85);
 }
 
-/* website/static/css/base.css :: .custom-alert */
-:root[data-theme="dark"] .custom-alert {
-  color: #eef1f5;
-  background: #1b2027;
-  border: 2px solid #2b313b;
-}
-
-/* website/static/css/base.css :: .alert-close:hover */
-:root[data-theme="dark"] .alert-close:hover {
-  color: #e87272;
-}
+/* Тёмная тема для flash-уведомлений (.custom-alert, .alert-close) теперь
+   в общем common_models/static_assets/css/message-flash.css. */
 
 /* website/static/css/base.css :: .user-profile-panel */
 :root[data-theme="dark"] .user-profile-panel {
@@ -633,6 +648,35 @@ html[data-theme] .fixed-header {
   color: #eef1f5;
 }
 
+/* website/static/css/base.css :: .menu-info-callout */
+:root[data-theme="dark"] .menu-info-callout {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+:root[data-theme="dark"] .menu-info-callout-icon {
+  background: rgba(96, 165, 250, 0.2);
+  color: #93c5fd;
+}
+:root[data-theme="dark"] .menu-info-callout-title {
+  color: #eef1f5;
+}
+:root[data-theme="dark"] .menu-info-callout-text {
+  color: #b7c0c9;
+}
+
+/* website/static/css/base.css :: .status-change-hint */
+:root[data-theme="dark"] .status-change-hint {
+  background: linear-gradient(135deg, #2b2410 0%, #352b0d 100%);
+  border-color: rgba(217, 158, 32, 0.3);
+}
+:root[data-theme="dark"] .status-change-hint-icon {
+  background: rgba(245, 180, 60, 0.18);
+  color: #f5b43c;
+}
+:root[data-theme="dark"] .status-change-hint-text {
+  color: #e8c477;
+}
+
 /* website/static/css/base.css :: .danger-zone */
 :root[data-theme="dark"] .danger-zone {
   border: 1px solid #2b313b;
@@ -712,21 +756,6 @@ html[data-theme] .fixed-header {
 /* website/static/css/base.css :: .session-role-badge */
 :root[data-theme="dark"] .session-role-badge {
   color: #eef1f5;
-}
-:root[data-theme="dark"] .session-role-badge.verified {
-  color: #6fec9d;
-}
-:root[data-theme="dark"] .session-role-badge.unverified {
-  color: #e77e7e;
-}
-
-/* website/static/css/base.css :: .verified-account-notice */
-:root[data-theme="dark"] .verified-account-notice svg {
-  color: #6fec9d;
-}
-:root[data-theme="dark"] .verified-account-notice-title,
-:root[data-theme="dark"] .verified-account-notice-text {
-  color: #6fec9d;
 }
 
 /* website/static/css/base.css :: .session-info-label */
@@ -820,6 +849,11 @@ html[data-theme] .fixed-header {
 /* website/static/css/base.css :: .dropdown-item:hover */
 :root[data-theme="dark"] .dropdown-item:hover {
   background-color: #1b2027;
+}
+
+/* website/static/css/base.css :: .status-draft */
+:root[data-theme="dark"] .status-draft {
+  color: #c3b8ff !important;
 }
 
 /* website/static/css/base.css :: .status-control */
@@ -2065,6 +2099,17 @@ html[data-theme] .fixed-header {
   background: #1b2027;
 }
 
+/* website/static/css/faq.css :: .control-flow-step */
+:root[data-theme="dark"] .control-flow-step {
+  background: #1b2027;
+  border-color: #2b313b;
+}
+
+/* website/static/css/faq.css :: .control-flow-outcome */
+:root[data-theme="dark"] .control-flow-outcome-title {
+  color: #eef1f5;
+}
+
 /* ------------------------------------------------------------ *
  * 8) FAQ — своя локальная палитра переменных, переопределяем целиком
  * ------------------------------------------------------------ */
@@ -2091,7 +2136,8 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
 
 :root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
-:root[data-theme="dark"] #flash-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+/* #flash-container::-webkit-scrollbar-thumb (тёмная тема) — теперь в
+   common_models/static_assets/css/message-flash.css. */
 
 /* ------------------------------------------------------------ *
  * 10) Переключатель темы — какая иконка видна
@@ -2187,6 +2233,34 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] .plan-org-name,
 :root[data-theme="dark"] .plan-org-param {
   border-color: rgba(255, 255, 255, 0.25);
+}
+/* Бейджи наследуют color: var(--black) из base.css — на новых тёмных
+   градиентах .plan-cont-* (см. правило 3 выше) это было бы чёрным по
+   тёмному. Меняем на светлый оттенок того же цвета, что уже используют
+   .status-* бейджи в шапке плана, для единообразия. */
+:root[data-theme="dark"] .plan-cont-redac .plan-org-name,
+:root[data-theme="dark"] .plan-cont-redac .plan-org-param {
+  color: #c3b8ff;
+}
+:root[data-theme="dark"] .plan-cont-control .plan-org-name,
+:root[data-theme="dark"] .plan-cont-control .plan-org-param {
+  color: #88ddce;
+}
+:root[data-theme="dark"] .plan-cont-sent .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sent .plan-org-param {
+  color: #a8c7f5;
+}
+:root[data-theme="dark"] .plan-cont-sogl .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sogl .plan-org-param {
+  color: #9fe8ec;
+}
+:root[data-theme="dark"] .plan-cont-eror .plan-org-name,
+:root[data-theme="dark"] .plan-cont-eror .plan-org-param {
+  color: #e77e7e;
+}
+:root[data-theme="dark"] .plan-cont-sub .plan-org-name,
+:root[data-theme="dark"] .plan-cont-sub .plan-org-param {
+  color: #6fec9d;
 }
 :root[data-theme="dark"] svg {
   color: var(--text-title);

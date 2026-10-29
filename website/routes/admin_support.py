@@ -29,6 +29,55 @@ def _truncate(text, limit=140):
     return text if len(text) <= limit else text[:limit - 1].rstrip() + '…'
 
 
+def _all_chats():
+    """Все обращения «Другое» (живая переписка с администратором, минуя
+    ИИ), свежие сверху. Используется и для превью на главной странице
+    админки (dashboard_rows), и для полного списка (list_view ниже)."""
+    return (
+        Chat.query.filter_by(chat_type=SUPPORT_CHAT_TYPE)
+        .order_by(Chat.updated_at.desc())
+        .all()
+    )
+
+
+def _row(chat):
+    last = (
+        ChatMessage.query.filter_by(chat_id=chat.id)
+        .order_by(ChatMessage.created_at.desc())
+        .first()
+    )
+    preview = (last.content or "") if last else ""
+    if len(preview) > 90:
+        preview = preview[:89].rstrip() + "…"
+    return {
+        "title": _author_name(chat.created_by) if chat.created_by else f"Чат №{chat.id}",
+        "subtitle": preview,
+        "meta": chat.updated_at.strftime("%d.%m %H:%M") if chat.updated_at else "",
+        "url": url_for("admin_support.thread", chat_id=chat.id),
+    }
+
+
+def dashboard_rows(limit=12):
+    """Превью обращений для панели на главной странице админки — те же
+    данные, что list_view, но укороченные."""
+    return [_row(c) for c in _all_chats()[:limit]]
+
+
+@admin_support_bp.route('/', methods=['GET'])
+@login_required
+def list_view():
+    """Полный список всех обращений «Другое» — раньше на главной странице
+    админки помещались только первые 12 (см. dashboard_rows)."""
+    rows = [_row(c) for c in _all_chats()]
+
+    from ..admin import site  # noqa: E402  (ленивый импорт — не тянуть admin.py на старте)
+    return render_template(
+        'admin/support_chats_list.html',
+        rows=rows,
+        **site.nav_context(),
+    )
+
+
 @admin_support_bp.route('/<int:chat_id>', methods=['GET', 'POST'])
 @login_required
 def thread(chat_id):
@@ -95,4 +144,4 @@ def _author_name(user):
     if not user:
         return 'Пользователь удалён'
     full = ' '.join(filter(None, [user.last_name, user.first_name])).strip()
-    return user.fio or full or user.email or f'Пользователь №{user.id}'
+    return full or user.email or f'Пользователь №{user.id}'

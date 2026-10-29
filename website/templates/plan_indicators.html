@@ -235,7 +235,7 @@
                         <div class="name-section-title">Данные</div>
                         <div class="values-grid">
                             <div class="value-card">
-                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <label class="value-label" id="add-value-label-before">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" value="0" name="QYearBeforePrev"
@@ -244,16 +244,16 @@
                                 <div class="value-unit" id="unit-name-before">{{ _('ед. изм.') }}</div>
                                 <div class="value-coeff">
                                     <span class="coeff-label">Коэфф:</span>
-                                    <input type="text" name="custom_coeff_before" 
-                                           class="coeff-input-display app-numeric-input-coeff" 
-                                           id="coeff-display-before" value="0,000" 
+                                    <input type="text" name="custom_coeff_before"
+                                           class="coeff-input-display app-numeric-input-coeff"
+                                           id="coeff-display-before" value="0,000"
                                            data-year="before">
                                 </div>
                                 <div class="result-tut" id="result-before">= 0 т у.т.</div>
                             </div>
-                            
+
                             <div class="value-card">
-                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <label class="value-label" id="add-value-label-prev">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" value="0" name="QYearPrev"
@@ -271,7 +271,7 @@
                             </div>
                             
                             <div class="value-card">
-                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
+                                <label class="value-label" id="add-value-label-current">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" value="0" name="QYearCurrent"
@@ -372,7 +372,7 @@
                         <div class="name-section-title">Данные</div>
                         <div class="values-grid">
                             <div class="value-card" id="QYearBeforePrev-edit-nodisplay">
-                                <label class="value-label">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
+                                <label class="value-label" id="edit-value-label-before">{{ configs[0].label}} {{ plan.year - 2 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearBeforePrev-edit" value="0" name="QYearBeforePrev"
@@ -390,7 +390,7 @@
                             </div>
                             
                             <div class="value-card" id="QYearCurr-edit-nodisplay">
-                                <label class="value-label">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
+                                <label class="value-label" id="edit-value-label-prev">{{ configs[1].label}} {{ plan.year - 1 }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearCurr-edit" value="0" name="QYearPrev"
@@ -408,7 +408,7 @@
                             </div>
                             
                             <div class="value-card" id="QYearCurrent-edit-nodisplay">
-                                <label class="value-label">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
+                                <label class="value-label" id="edit-value-label-current">{{ configs[2].label}} {{ plan.year }} {{ _('г.') }}</label>
                                 <div class="input-with-icon">
                                     {{ icons.icon_half() }}
                                     <input type="text" id="QYearCurrent-edit" value="0" name="QYearCurrent"

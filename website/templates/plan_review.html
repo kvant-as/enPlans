@@ -9,104 +9,19 @@
   <div class="personal-acc-conteiner planed">
     <div class="header-content">
       <div class="header-content-left">
-        <a class="name" style="padding-bottom: 0">{{ _('План мероприятий по энергосбережению') }}</a>
+        <a class="name" style="padding-bottom: 0">{{ _('Задания плана') }}</a>
         {{ component.status_plan(plan, current_user) }}
       </div>
       <div class="header-content-right">
-        <div class="dropdown-menu-container">
-          <button type="button" class="svg-btn dots-btn" id="menuDotsBtn" data-tooltip="Действия с планом">
-            {{ icons.icon_dots() }}
-          </button>
-
-          <div class="dropdown-menu" id="planActionsMenu" style="width: max-content">
-            <div class="nav-menu-list">
-              <button
-                type="button"
-                id="sentPlanButton"
-                class="nav-menu-item"
-                onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
-                {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}
-                  disabled
-                {% endif %}
-              >
-                {{ icons.icon_send() }}
-                <span>{{ _('Отправить на согласование') }}</span>
-              </button>
-
-              <form id="cancelsentPlanForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <input type="hidden" name="status" value="draft" />
-                <button
-                  id="cancelSentPlanButton"
-                  class="nav-menu-item"
-                  {% if not (plan.is_sent == true and plan.user_id == current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_cancel() }}
-                  <span>{{ _('Отменить отправку') }}</span>
-                </button>
-              </form>
-
-              <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <input type="hidden" name="status" value="control" />
-                <button
-                  id="controlPlanButton"
-                  class="nav-menu-item"
-                  {% if not plan.is_draft or (plan.user_id != current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.control_icon() }}
-                  <span>{{ _('Пройти контроль') }}</span>
-                </button>
-              </form>
-
-              <hr />
-
-              <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button
-                  type="submit"
-                  class="nav-menu-item {% if not plan.tickets %}disabled{% endif %}"
-                  {% if not plan.tickets %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_print() }}
-                  <span>{{ _('Распечатать сообщения') }}</span>
-                </button>
-              </form>
-
-              <button
-                class="nav-menu-item"
-                onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-                {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}
-                  disabled
-                {% endif %}
-              >
-                {{ icons.icon_edit() }}
-                <span>{{ _('Редактировать') }}</span>
-              </button>
-
-              <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button
-                  type="submit"
-                  data-modal-trigger="deletePlan"
-                  class="nav-menu-item delete-item"
-                  {% if plan.is_sent or plan.is_approved or (plan.user_id != current_user.id) or current_user.is_reader %}
-                    disabled
-                  {% endif %}
-                >
-                  {{ icons.icon_delete() }}
-                  <span>{{ _('Удалить') }}</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+        <button
+          type="button"
+          class="svg-btn dots-btn"
+          data-tooltip="Редактировать"
+          onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+          {% if plan.is_sent or plan.is_approved or plan.is_error or (plan.user_id != current_user.id) or current_user.is_reader %}disabled{% endif %}
+        >
+          {{ icons.icon_edit() }}
+        </button>
       </div>
     </div>
 
@@ -190,14 +105,6 @@
     </div>
 
     <hr />
-    <h1 class="name">{{ _('Результаты проверки') }}</h1>
-    {{ component.tickets_container(plan, current_user) }}
-
-    {% if (plan.is_sent or plan.is_approved) and current_user.is_auditor == false and current_user.is_admin == false %}
-      {{ component.plan_agree_slider(plan, current_user) }}
-    {% endif %}
-
-    <hr />
     <h1 class="name">{{ _('Прочая информация') }}</h1>
 
     <div class="dates-card">
@@ -248,42 +155,6 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<div id="planTypeModal" class="modal {% if show_plan_type_modal %}active-delay{% endif %}">
-  <div class="modal-content" style="width: fit-content">
-    <div class="modal-header">
-      <a id="modal-title">{{ _('Какое у вас потребление?') }}</a>
-    </div>
-    <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST" class="radio-org-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <div class="radio-org-container two-col">
-        <label>
-          <input type="radio" name="entity_type" value="organization_org_small" class="radio-org-input" checked />
-          <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_half() }}
-            <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">До 25 тыс. т у. т. включительно</div>
-          </div>
-        </label>
-
-        <label>
-          <input type="radio" name="entity_type" value="organization_org_large" class="radio-org-input" />
-          <div class="radio-org-card" data-type="organization">
-            {{ icons.icon_org() }}
-            <div class="radio-org-subtitle">Организация с потреблением</div>
-            <div class="radio-org-title">Более 25 тыс. т у. т.</div>
-          </div>
-        </label>
-      </div>
-      <div class="button-auth-area">
-        <button type="submit" class="no-submit-button blue">
-          {{ icons.icon_confirm() }}
-          <span class="btn-text">{{ _('Подтвердить') }}</span>
-        </button>
-      </div>
-    </form>
   </div>
 </div>
 

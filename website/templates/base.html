@@ -21,7 +21,12 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/logo-white.svg')}}">
 
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Regular.woff2') }}" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Medium.woff2') }}" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-SemiBold.woff2') }}" crossorigin>
+
     {% block extra_css %}
+        <link rel="stylesheet" href="{{ url_for('cm_assets.static', filename='css/message-flash.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/news.css') }}">
@@ -182,32 +187,7 @@
         </nav>
     </header>
 
-    {% if confirmModal %}
     <div id="confirmModal" class="modal">
-      <div class="modal-content"  style = "max-width: 450px;">
-            <div class="modal-header">
-                <h1 id = "modal-title">{{ _('Подтверждение') }}</h1>    
-            </div>
-            <div class="modal-body">
-                <div class = "modal-subtext">
-                    <p class = "first-child">{{ _('Вы действительно хотите удалить данные?') }}</p>
-                    <p>{{ _('Это действие нельзя будет отменить.') }}</p>
-                </div>
-            </div>
-            <div class="modal-buttons-area">
-                <button class="no-submit-button" id="confirmNodelete">
-                    <span class="btn-text">{{ _('Отмена') }}</span>
-                </button>
-                <button type="submit" class="no-submit-button red" id="confirmYesdelete">    
-                    {{ icons.icon_confirm() }}
-                    <span class="btn-text">{{ _('Да, удалить') }}</span>
-                </button>
-            </div> 
-      </div>
-    </div>    
-    {% endif %}
-
-    <div id="confirmModal2" class="modal">
       <div class="modal-content" style = "max-width: 450px;">
             <div class="modal-header">
                 
@@ -225,11 +205,49 @@
                 </button>
                 <button type="submit" class="no-submit-button red" id="confirmYes">
                     {{ icons.icon_confirm() }}
-                    <span class="btn-text">{{ _('Да, уверен') }}</span>
+                    <span class="btn-text" id="confirm-yes-text">{{ _('«Да» (безвозвратное удаление записи)') }}</span>
                 </button>
             </div> 
       </div>
-    </div>    
+    </div>
+
+    {% if plan and plan.is_draft and (plan.plan_type is none or plan.plan_type == '') and current_user.is_authenticated and current_user.organization %}
+    <div id="planTypeModal" class="modal active-delay">
+      <div class="modal-content" style="width: fit-content">
+        <div class="modal-header">
+          <a>{{ _('Какое у вас потребление?') }}</a>
+        </div>
+        <form action="{{ url_for('views.edit_plan_type', token=plan.token) }}" method="POST" class="radio-org-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="radio-org-container two-col">
+            <label>
+              <input type="radio" name="entity_type" value="organization_org_small" class="radio-org-input" checked />
+              <div class="radio-org-card" data-type="organization">
+                {{ icons.icon_half() }}
+                <div class="radio-org-subtitle">Организация с потреблением</div>
+                <div class="radio-org-title">До 25 тыс. т у. т. включительно</div>
+              </div>
+            </label>
+
+            <label>
+              <input type="radio" name="entity_type" value="organization_org_large" class="radio-org-input" />
+              <div class="radio-org-card" data-type="organization">
+                {{ icons.icon_org() }}
+                <div class="radio-org-subtitle">Организация с потреблением</div>
+                <div class="radio-org-title">Более 25 тыс. т у. т.</div>
+              </div>
+            </label>
+          </div>
+          <div class="button-auth-area">
+            <button type="submit" class="no-submit-button blue">
+              {{ icons.icon_confirm() }}
+              <span class="btn-text">{{ _('Подтвердить') }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
 
     {% if context_menu %}
         {% set is_disabled = plan.is_sent or plan.is_approved or (plan.user_id != current_user.id)%}
@@ -490,7 +508,8 @@
       {% block content %} 
       {% endblock %}
 
-      {% block javascript %} 
+      {% block javascript %}
+        <script src="{{ url_for('cm_assets.static', filename='js/message-flash.js') }}"></script>
         <script src="{{ url_for('static', filename='js/base.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
         <script src="{{ url_for('static', filename='js/cookie.js') }}"></script>
@@ -517,12 +536,12 @@
     <div id="cookie-consent-banner" class="cookie-banner" style="display: none;">
         <div class="cookie-banner-content">
             <div class="cookie-banner-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9c.83 0 1.5-.67 1.5-1.5S7.83 8 7 8s-1.5.67-1.5 1.5S6.17 11 7 11zm3-4c.83 0 1.5-.67 1.5-1.5S10.83 4 10 4s-1.5.67-1.5 1.5S9.17 7 10 7zm5 3c.83 0 1.5-.67 1.5-1.5S15.83 7 15 7s-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm-3 8c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z" fill="currentColor"/>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.45.9 1.17.9 1.95V16h5.4v-.25c0-.78.3-1.5.9-1.95A6 6 0 0 0 12 3z"/>
                 </svg>
             </div>
             <div class="cookie-banner-text">
-                <p>Мы используем файлы cookie для улучшения работы сайта. Продолжая использовать наш сайт, вы соглашаетесь с <a href="/privacy-policy">политикой конфиденциальности</a>.</p>
+                <p>Мы используем файлы cookie для улучшения работы сайта. Продолжая использовать наш сайт, вы соглашаетесь с <a href="{{ url_for('static', filename='docs/privacy-policy.docx') }}" target="_blank" rel="noopener">политикой конфиденциальности</a>.</p>
             </div>
             <div class="cookie-banner-buttons">
                 <button class="main-btn main-btn-primary" id="accept-cookies">

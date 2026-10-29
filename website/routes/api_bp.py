@@ -10,7 +10,7 @@ from website.sessions import session_required, set_session_cookie, build_session
 from common_models import current_utc_time
 from website.utils.plans import get_filtered_plans
 
-from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue
+from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue, User
 from .. import db
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
@@ -25,20 +25,22 @@ def api_get_plans():
         year_filter = request.args.get('year', 'all')
         search_name = request.args.get('search_name', '')
         search_ynp = request.args.get('search_ynp', '')
+        search_approver_org = request.args.get('search_approver_org', '')
         region = request.args.get('region', '')
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
         show_checkboxes = request.args.get('show_checkboxes', 'false').lower() == 'true'
-        
+
         region_id = None
         if region and region != 'all':
             try:
                 region_id = int(region)
             except (ValueError, TypeError):
                 region_id = None
-        
+
         plans, total_count, status_counts = get_filtered_plans(
-            current_user, status_filter, year_filter, search_name, search_ynp, region_id, page, per_page
+            current_user, status_filter, year_filter, search_name, search_ynp, region_id,
+            search_approver_org, page, per_page
         )
         
         # Единое отображение карточки плана для всех типов пользователей
@@ -163,8 +165,30 @@ def get_organizations_api():
         search_query = request.args.get("q", "", type=str).strip()
         org_type = request.args.get("type", "", type=str).strip()
         hide_region_management = request.args.get("hide_rm", "false", type=str).lower() == "true"
+        # Один УНП — один аккаунт: используется только при регистрации
+        # (поиск организации для привязки нового аккаунта), чтобы не
+        # предлагать организации, под которые аккаунт уже зарегистрирован.
+        # Для выбора согласующих/утверждающих организаций при отправке
+        # плана (plan_send.js) этот флаг не передаётся — там, наоборот,
+        # нужны именно организации с уже существующими аккаунтами.
+        exclude_registered = request.args.get("exclude_registered", "false", type=str).lower() == "true"
 
         query = Organization.query.filter_by(is_active=True)
+
+        if exclude_registered:
+            # Аккаунты теперь привязаны к конкретному приложению — та же
+            # организация вполне может иметь отдельный аккаунт в erespondentN,
+            # это не должно мешать регистрации в enPlans, поэтому дубль
+            # проверяется только среди аккаунтов ЭТОГО приложения.
+            from common_models import get_current_application_id
+            query = query.filter(
+                ~Organization.id.in_(
+                    db.session.query(User.organization_id).filter(
+                        User.organization_id.isnot(None),
+                        User.application_id == get_current_application_id()
+                    )
+                )
+            )
 
         # Показываем только организации с хотя бы одной ролью в цепочке
         # согласования — без этого в списке попадались "пустые" организации
@@ -515,7 +539,9 @@ def get_events_data(token):
             'MoneyOwn': float(event.MoneyOwn) if event.MoneyOwn else None,
             'MoneyLoan': float(event.MoneyLoan) if event.MoneyLoan else None,
             'MoneyOther': float(event.MoneyOther) if event.MoneyOther else None,
-            'is_corrected': event.is_corrected
+            'is_corrected': event.is_corrected,
+            'has_teo': bool(event.teo_filename),
+            'teo_original_name': event.teo_original_name
         }
     
     return jsonify({
