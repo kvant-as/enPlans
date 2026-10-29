@@ -23,161 +23,10 @@ const togglePassword = {
   }
 };
 
-const messageFlash = (function() {
-    const containerId = 'flash-container';
-    let container;
-    let messages = []; 
-    const DISPLAY_TIME = 30000; 
-    let autoRemoveTimers = {};
-
-    function init() {
-        container = document.getElementById(containerId);
-        if (!container) {
-            container = document.createElement('div');
-            container.id = containerId;
-            document.body.appendChild(container);
-        }
-
-        const storedMessages = JSON.parse(localStorage.getItem('flashMessages') || '[]');
-        const now = Date.now();
-        messages = storedMessages.filter(msg => now - msg.createdAt < DISPLAY_TIME);
-
-        localStorage.setItem('flashMessages', JSON.stringify(messages));
-        renderMessages();
-    }
-
-    function _showMessage(msgObj) {
-        const alertBox = document.createElement('div');
-        alertBox.className = `custom-alert ${msgObj.type === 'error' ? 'alert-danger' : 'alert-success'}`;
-        alertBox.dataset.msgId = msgObj.id;
-
-        const imgSrc = msgObj.type === 'error'
-            ? '/static/img/Error.svg'
-            : '/static/img/Checkmark.svg';
-
-        let messageText = msgObj.msg;
-        let isLong = messageText && messageText.length > 80;
-        let displayText = isLong ? messageText.substring(0, 80) + '...' : messageText;
-
-        alertBox.innerHTML = `
-            <img src="${imgSrc}" class="alert-icon" alt="">
-            <div class="p_message_cont">
-                <p>${displayText}</p>
-                ${isLong ? '<span class="expand-hint">нажмите для развертывания</span>' : ''}
-            </div>
-            <button class="alert-close">&times;</button>
-        `;
-
-        if (isLong) {
-            const fullText = messageText;
-            const pElement = alertBox.querySelector('.p_message_cont p');
-            const hintElement = alertBox.querySelector('.expand-hint');
-            
-            alertBox.addEventListener('click', (e) => {
-                if (e.target.classList.contains('alert-close')) return;
-                
-                if (alertBox.classList.contains('collapsed')) {
-                    pElement.textContent = fullText;
-                    hintElement.textContent = 'нажмите для сворачивания';
-                    alertBox.classList.remove('collapsed');
-                    alertBox.classList.add('expanded');
-                } else {
-                    pElement.textContent = displayText;
-                    hintElement.textContent = 'нажмите для развертывания';
-                    alertBox.classList.remove('expanded');
-                    alertBox.classList.add('collapsed');
-                }
-            });
-        }
-
-        alertBox.querySelector('.alert-close').addEventListener('click', e => {
-            e.stopPropagation();
-            removeMessage(alertBox, msgObj);
-        });
-
-        container.insertBefore(alertBox, container.firstChild);
-
-        const timerId = setTimeout(() => {
-            if (container.contains(alertBox)) {
-                removeMessage(alertBox, msgObj);
-            }
-        }, DISPLAY_TIME);
-        
-        autoRemoveTimers[msgObj.id] = timerId;
-
-        updateMessagesDisplay();
-    }
-
-    function removeMessage(alertBox, msgObj) {
-        if (autoRemoveTimers[msgObj.id]) {
-            clearTimeout(autoRemoveTimers[msgObj.id]);
-            delete autoRemoveTimers[msgObj.id];
-        }
-
-        alertBox.classList.add('removing');
-        setTimeout(() => {
-            if (container.contains(alertBox)) container.removeChild(alertBox);
-            messages = messages.filter(m => m.id !== msgObj.id);
-            localStorage.setItem('flashMessages', JSON.stringify(messages));
-            updateMessagesDisplay();
-        }, 300);
-    }
-
-    function addMessage(msg, type='success') {
-        const msgObj = { 
-            id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-            msg, 
-            type, 
-            createdAt: Date.now() 
-        };
-        messages.unshift(msgObj);
-        localStorage.setItem('flashMessages', JSON.stringify(messages));
-        _showMessage(msgObj);
-    }
-
-    function renderMessages() {
-        container.innerHTML = '';
-        Object.keys(autoRemoveTimers).forEach(key => {
-            clearTimeout(autoRemoveTimers[key]);
-            delete autoRemoveTimers[key];
-        });
-
-        messages.sort((a, b) => b.createdAt - a.createdAt);
-        messages.forEach(msg => _showMessage(msg));
-    }
-
-    function updateMessagesDisplay() {
-        const alerts = container.querySelectorAll('.custom-alert');
-        
-        alerts.forEach((alert, index) => {
-            const pElement = alert.querySelector('.p_message_cont p');
-            const hintElement = alert.querySelector('.expand-hint');
-            const msgObj = messages.find(m => m.id === alert.dataset.msgId);
-            
-            if (index === 0) {
-                alert.classList.remove('collapsed');
-                alert.classList.add('expanded');
-                if (msgObj && msgObj.msg.length > 80) {
-                    pElement.textContent = msgObj.msg;
-                    if (hintElement) {
-                        hintElement.textContent = 'нажмите для сворачивания';
-                    }
-                }
-            } else {
-                alert.classList.add('collapsed');
-                alert.classList.remove('expanded');
-                if (msgObj && msgObj.msg.length > 80) {
-                    pElement.textContent = msgObj.msg.substring(0, 80) + '...';
-                    if (hintElement) {
-                        hintElement.textContent = 'нажмите для развертывания';
-                    }
-                }
-            }
-        });
-    }
-
-    return { init, addMessage };
-})();
+// messageFlash теперь общий модуль из common-models (один источник для
+// enPlans и erespondentN, чтобы не расходиться) — см.
+// common_models/static_assets/js/message-flash.js, подключается в
+// base.html отдельным <script> перед этим файлом.
 
 // notif modal show
 const NotificationPopup = {
@@ -801,12 +650,6 @@ function handleModal(modalElement, openLink, closeLink) {
     closeLink.addEventListener('click', function() {
         modalElement.classList.remove('active');
     });
-
-    window.addEventListener('click', function(event) {
-        if (event.target === modalElement) {
-            modalElement.classList.remove('active');
-        }
-    });
 }
 
 var NumericInputHandler = {
@@ -887,19 +730,15 @@ var NumericInputHandler = {
         if (input.value === '' || input.value === '-') {
             input.value = settings.defaultValue;
         }
-        if (settings.allowNegative || settings.decimalPlaces === 0) {
-            // поле может начинаться со знака «минус» — проще и удобнее
-            // выделить всё значение целиком, чтобы первое же нажатие
-            // клавиши (в т.ч. «-») заменило его полностью
-            input.select();
-            return;
-        }
-        var commaIndex = input.value.indexOf(',');
-        if (commaIndex !== -1 && settings.decimalPlaces > 0) {
-            input.setSelectionRange(commaIndex, commaIndex);
-        }
+        // Всегда выделяем значение целиком: раньше для полей без
+        // allowNegative курсор просто ставился перед запятой, не трогая
+        // остальное — из-за этого печатание нового числа в поле со
+        // значением "0,0" вставляло цифры ПЕРЕД этим нулём вместо замены
+        // (например, набор "34,5" превращался в "345,0"). select() этого
+        // не делает: первое же нажатие клавиши заменяет всё значение.
+        input.select();
     },
-    
+
     handleBlur: function(e, settings) {
         var input = e.target;
         if (input.value === '' || input.value === '-' || input.value === null) {
@@ -909,8 +748,17 @@ var NumericInputHandler = {
             var num = parseFloat(valueWithDot);
             if (!isNaN(num)) {
                 // Только отрицательное число либо 0 — положительное вводить
-                // нельзя (см. "целевой показатель энергосбережения").
+                // нельзя (см. "целевой показатель энергосбережения"). Раньше
+                // такое значение молча обнулялось; теперь показываем ошибку,
+                // чтобы пользователь понимал, почему поле не сохранило то,
+                // что он ввёл.
                 if (settings.negativeOnly && num > 0) {
+                    if (typeof messageFlash !== 'undefined') {
+                        messageFlash.addMessage(
+                            settings.negativeOnlyMessage || 'Значение должно быть отрицательным числом или 0',
+                            'error'
+                        );
+                    }
                     num = 0;
                 }
                 var formatted = num.toFixed(settings.decimalPlaces);
@@ -955,7 +803,8 @@ NumericInputHandler.init('.app-numeric-input-negative-one-decimal', {
     allowNegative: true,
     negativeOnly: true,
     decimalPlaces: 1,
-    defaultValue: '0,0'
+    defaultValue: '0,0',
+    negativeOnlyMessage: 'Целевой показатель энергосбережения должен быть отрицательным числом или 0 — это цель снижения потребления'
 });
 
 NumericInputHandler.init('.app-numeric-input-integer', {
@@ -1616,17 +1465,26 @@ function initConfirmModal(config) {
     const noButton = config.noId ? document.getElementById(config.noId) : null;
     const textElement = config.textId ? document.getElementById(config.textId) : null;
     const textElementSecond = config.textSecondId ? document.getElementById(config.textSecondId) : null;
+    const yesTextElement = yesButton ? yesButton.querySelector('#confirm-yes-text') : null;
 
     if (triggerButtons.length === 0 || !modalElement || !yesButton || !noButton) {
         console.error('Modal initialization error: required elements not found', config);
         return;
     }
 
+    // Текст кнопки "Да" общий для всех операций через этот модал — у
+    // каждого триггера свой config.yesText, а без него используется
+    // дефолтный текст из разметки (запоминаем его один раз при первой
+    // инициализации, пока его не перезаписал предыдущий триггер).
+    if (yesTextElement && yesTextElement.dataset.defaultText === undefined) {
+        yesTextElement.dataset.defaultText = yesTextElement.textContent;
+    }
+
     triggerButtons.forEach(triggerButton => {
         triggerButton.addEventListener('click', function (e) {
             e.preventDefault();
             const planId = this.getAttribute('data-plan-id');
-            
+
             if (textElement && config.modalText) {
                 let text = config.modalText;
                 if (planId && text.includes('{id}')) {
@@ -1634,10 +1492,14 @@ function initConfirmModal(config) {
                 }
                 textElement.innerHTML = text;
             }
-            
+
             if (textElementSecond && config.modalTextSecond) {
                 textElementSecond.innerHTML = config.modalTextSecond;
-            }   
+            }
+
+            if (yesTextElement) {
+                yesTextElement.textContent = config.yesText || yesTextElement.dataset.defaultText;
+            }
             
             modalElement.classList.add('active');
             let currentForm = null;
@@ -1658,7 +1520,16 @@ function initConfirmModal(config) {
         yesButton.addEventListener('click', function () {
             modalElement.classList.remove('active');
             if (modalElement._currentForm) {
-                modalElement._currentForm.submit();
+                // requestSubmit() (в отличие от submit()) реально диспатчит
+                // событие 'submit' — без этого любой addEventListener('submit', ...)
+                // на форме (например AJAX-перехват в plan_actions.html) никогда
+                // не сработает, и форма просто отправляется нативно с
+                // перезагрузкой страницы.
+                if (typeof modalElement._currentForm.requestSubmit === 'function') {
+                    modalElement._currentForm.requestSubmit();
+                } else {
+                    modalElement._currentForm.submit();
+                }
             }
         });
     }
@@ -1672,18 +1543,307 @@ function initConfirmModal(config) {
 
     if (!modalElement.dataset.confirmModalBound) {
         modalElement.dataset.confirmModalBound = 'true';
+    }
+}
 
-        modalElement.addEventListener('click', function (event) {
-            if (event.target === modalElement) {
-                modalElement.classList.remove('active');
+class PhoneGroupInput {
+    static CODES = [
+        { code: '29', label: 'A1', group: 'Операторы' },
+        { code: '33', label: 'МТС', group: 'Операторы' },
+        { code: '44', label: 'life:)', group: 'Операторы' },
+        { code: '25', label: 'МТС', group: 'Операторы' },
+        { code: '17', label: 'Минск', group: 'Города' },
+        { code: '162', label: 'Брест', group: 'Города' },
+        { code: '212', label: 'Витебск', group: 'Города' },
+        { code: '232', label: 'Гомель', group: 'Города' },
+        { code: '152', label: 'Гродно', group: 'Города' },
+        { code: '222', label: 'Могилёв', group: 'Города' }
+    ];
+
+    constructor(listEl, hiddenInput, addButton, options = {}) {
+        this.listEl = listEl;
+        this.hiddenInput = hiddenInput;
+        this.addButton = addButton;
+        this.options = {
+            countryCode: '+375',
+            totalDigits: 12,
+            maxCount: 2,
+            inputClass: 'auth-input',
+            onChange: null,
+            ...options
+        };
+        this.countryDigits = this.options.countryCode.replace(/\D/g, '');
+
+        if (!this.listEl) return;
+
+        this.bindEvents();
+        this.init();
+    }
+
+    notifyChange() {
+        if (typeof this.options.onChange === 'function') {
+            this.options.onChange();
+        }
+    }
+
+    init() {
+        const existing = this.listEl.dataset.existingPhones;
+        if (existing !== undefined) {
+            this.listEl.innerHTML = '';
+            const numbers = existing.split(';').map(s => s.trim()).filter(Boolean);
+            if (numbers.length === 0) {
+                this.listEl.appendChild(this.createRow());
+            } else {
+                numbers.slice(0, this.options.maxCount).forEach(num => {
+                    this.listEl.appendChild(this.createRow(this.parseExistingNumber(num)));
+                });
+            }
+        }
+
+        this.listEl.querySelectorAll('.phone-row').forEach(row => this.updateRowConstraints(row));
+        this.refreshControls();
+        this.validate();
+    }
+
+    parseExistingNumber(num) {
+        const digitsOnly = num.replace(/\D/g, '');
+        let rest = digitsOnly;
+        if (rest.startsWith(this.countryDigits)) {
+            rest = rest.slice(this.countryDigits.length);
+        }
+        const sortedCodes = [...PhoneGroupInput.CODES].sort((a, b) => b.code.length - a.code.length);
+        const match = sortedCodes.find(c => rest.startsWith(c.code));
+        if (match) {
+            return { code: match.code, digits: rest.slice(match.code.length) };
+        }
+        return { code: PhoneGroupInput.CODES[0].code, digits: rest };
+    }
+
+    bindEvents() {
+        if (this.addButton) {
+            this.addButton.addEventListener('click', () => this.addRow());
+        }
+
+        this.listEl.addEventListener('input', (e) => {
+            if (e.target.classList.contains('phone-digits-input')) {
+                this.sanitizeDigitsInput(e.target);
+            }
+            this.validate();
+            this.notifyChange();
+        });
+
+        this.listEl.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.phone-row-remove');
+            if (removeBtn) {
+                this.removeRow(removeBtn.closest('.phone-row'));
+                return;
+            }
+
+            const option = e.target.closest('.phone-code-option');
+            if (option) {
+                this.selectCode(option);
+                return;
+            }
+
+            const trigger = e.target.closest('.phone-code-trigger');
+            if (trigger) {
+                this.toggleDropdown(trigger.closest('.phone-code-select'));
+                return;
+            }
+
+            this.closeAllDropdowns();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.phone-code-select')) {
+                this.closeAllDropdowns();
+            }
+        });
+    }
+
+    sanitizeDigitsInput(input) {
+        const cleaned = input.value.replace(/\D/g, '');
+        if (cleaned !== input.value) {
+            input.value = cleaned;
+        }
+    }
+
+    getRowCode(row) {
+        const select = row.querySelector('.phone-code-select');
+        if (!select) return '';
+        return select.dataset.code || '';
+    }
+
+    updateRowConstraints(row) {
+        if (!row) return;
+        const input = row.querySelector('.phone-digits-input');
+        if (!input) return;
+        const code = this.getRowCode(row);
+        const maxDigits = Math.max(0, this.options.totalDigits - this.countryDigits.length - code.length);
+        input.maxLength = maxDigits;
+    }
+
+    validate() {
+        const rows = Array.from(this.listEl.querySelectorAll('.phone-row'));
+        const validNumbers = [];
+        let allFilledValid = true;
+        let hasAtLeastOne = false;
+
+        rows.forEach(row => {
+            const input = row.querySelector('.phone-digits-input');
+            if (!input) return;
+
+            const digitsOnly = input.value.replace(/\D/g, '');
+            row.classList.remove('invalid');
+
+            if (!digitsOnly) {
+                return;
+            }
+
+            hasAtLeastOne = true;
+            const code = this.getRowCode(row);
+            const totalDigits = this.countryDigits.length + code.length + digitsOnly.length;
+
+            if (totalDigits === this.options.totalDigits) {
+                validNumbers.push(this.options.countryCode + code + digitsOnly);
+            } else {
+                row.classList.add('invalid');
+                allFilledValid = false;
             }
         });
 
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && modalElement.classList.contains('active')) {
-                modalElement.classList.remove('active');
+        const isValid = hasAtLeastOne && allFilledValid;
+        if (this.hiddenInput) {
+            this.hiddenInput.value = isValid ? validNumbers.join('; ') : '';
+        }
+        return isValid;
+    }
+
+    addRow() {
+        const currentCount = this.listEl.querySelectorAll('.phone-row').length;
+        if (currentCount >= this.options.maxCount) return;
+
+        const row = this.createRow();
+        this.listEl.appendChild(row);
+        this.updateRowConstraints(row);
+        this.refreshControls();
+        this.validate();
+        this.notifyChange();
+    }
+
+    removeRow(row) {
+        if (!row) return;
+        row.remove();
+        this.refreshControls();
+        this.validate();
+        this.notifyChange();
+    }
+
+    refreshControls() {
+        const rows = this.listEl.querySelectorAll('.phone-row');
+        rows.forEach(row => {
+            const removeBtn = row.querySelector('.phone-row-remove');
+            if (removeBtn) {
+                removeBtn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
             }
         });
+
+        if (this.addButton) {
+            const atMax = rows.length >= this.options.maxCount;
+            this.addButton.style.display = atMax ? 'none' : 'inline-flex';
+        }
+    }
+
+    toggleDropdown(select) {
+        if (!select) return;
+        const isOpen = select.classList.contains('open');
+        this.closeAllDropdowns();
+        if (!isOpen) {
+            select.classList.add('open');
+            const trigger = select.querySelector('.phone-code-trigger');
+            if (trigger) trigger.setAttribute('aria-expanded', 'true');
+        }
+    }
+
+    closeAllDropdowns() {
+        this.listEl.querySelectorAll('.phone-code-select.open').forEach(select => {
+            select.classList.remove('open');
+            const trigger = select.querySelector('.phone-code-trigger');
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    selectCode(optionEl) {
+        const select = optionEl.closest('.phone-code-select');
+        if (!select) return;
+
+        const code = optionEl.dataset.code;
+        select.dataset.code = code;
+
+        select.querySelectorAll('.phone-code-option').forEach(opt => {
+            opt.classList.toggle('selected', opt === optionEl);
+        });
+
+        const valueEl = select.querySelector('.phone-code-value');
+        if (valueEl) {
+            valueEl.textContent = `${this.options.countryCode} ${code}`;
+        }
+
+        this.closeAllDropdowns();
+
+        const row = select.closest('.phone-row');
+        this.updateRowConstraints(row);
+        this.validate();
+        this.notifyChange();
+    }
+
+    buildDropdownHtml(selectedCode) {
+        let html = '';
+        let currentGroup = null;
+        PhoneGroupInput.CODES.forEach(({ code, label, group }) => {
+            if (group !== currentGroup) {
+                html += `<div class="phone-code-group-label">${group}</div>`;
+                currentGroup = group;
+            }
+            const selectedClass = code === selectedCode ? ' selected' : '';
+            html += `
+                <button type="button" class="phone-code-option${selectedClass}" data-code="${code}" role="option">
+                    <span>${this.options.countryCode} ${code}</span><span class="phone-code-hint">${label}</span>
+                </button>
+            `;
+        });
+        return html;
+    }
+
+    createRow(prefill) {
+        const codeEntry = prefill
+            ? (PhoneGroupInput.CODES.find(c => c.code === prefill.code) || PhoneGroupInput.CODES[0])
+            : PhoneGroupInput.CODES[0];
+        const digitsValue = prefill ? prefill.digits : '';
+
+        const row = document.createElement('div');
+        row.className = 'phone-row';
+        row.setAttribute('data-phone-row', '');
+        row.innerHTML = `
+            <div class="phone-code-select" data-code="${codeEntry.code}">
+                <button type="button" class="phone-code-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="phone-code-value">${this.options.countryCode} ${codeEntry.code}</span>
+                    <svg class="phone-code-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" />
+                    </svg>
+                </button>
+                <div class="phone-code-dropdown" role="listbox">
+                    ${this.buildDropdownHtml(codeEntry.code)}
+                </div>
+            </div>
+            <input type="text" class="phone-digits-input ${this.options.inputClass}" inputmode="numeric" autocomplete="off" placeholder="Номер телефона" value="${digitsValue}" />
+            <button type="button" class="phone-row-remove" aria-label="Удалить номер">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+        `;
+        return row;
     }
 }
 
@@ -1721,6 +1881,10 @@ class MultiStepForm {
         this.elements = {};
         this.getElementReferences();
         this.bindEvents();
+        this.phoneInput = new PhoneGroupInput(this.elements.phoneList, this.elements.telephoneHidden, this.elements.addPhoneBtn, {
+            maxCount: 2,
+            onChange: () => this.updateNextButtonState()
+        });
         this.updateNextButtonState();
         this.updateSelectedRoleDisplay();
     }
@@ -1745,7 +1909,13 @@ class MultiStepForm {
         this.elements.dropdown = document.getElementById('organization-dropdown');
         this.elements.list = document.getElementById('organization-list');
         this.elements.loading = document.getElementById('organization-loading');
-        this.elements.moreButton = document.getElementById('organization-more');
+        this.elements.empty = document.getElementById('organization-empty');
+        this.elements.tableWrap = document.querySelector('.org-results-table-wrap');
+        this.elements.step3Container = document.querySelector('.auth-step-3');
+
+        this.elements.phoneList = document.getElementById('phone-group-list');
+        this.elements.addPhoneBtn = document.getElementById('add-phone-row');
+        this.elements.telephoneHidden = document.getElementById('telephone');
     }
 
     bindEvents() {
@@ -1778,13 +1948,10 @@ class MultiStepForm {
             this.elements.searchInput.addEventListener('keydown', (e) => this.handleSearchKeydown(e));
         }
         
-        if (this.elements.moreButton) {
-            const loadMoreBtn = this.elements.moreButton.querySelector('.load-more-btn');
-            if (loadMoreBtn) {
-                loadMoreBtn.addEventListener('click', () => this.handleLoadMore());
-            }
+        if (this.elements.tableWrap) {
+            this.elements.tableWrap.addEventListener('scroll', () => this.handleTableScroll());
         }
-        
+
         if (this.elements.form) {
             this.elements.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
         }
@@ -1820,16 +1987,16 @@ class MultiStepForm {
     updateSelectedRoleDisplay() {
         const roles = {
             'respondent': {
-                title: 'Респондент',
-                subtitle: 'Формирование и подача плана мероприятий по энергосбережению'
+                title: 'Организация-разработчик',
+                subtitle: 'Юридическое лицо, создающее, редактирующее и направляющее планы на согласование'
             },
             'auditor': {
-                title: 'Аудитор',
-                subtitle: 'Согласование отправленных планов мероприятий по энергосбережению'
+                title: 'Согласовывающая организация',
+                subtitle: 'Проверяющее юридическое лицо, по результатам рассмотрения которого документ согласовывается либо не согласовывается'
             },
             'approver': {
-                title: 'Утверждающий',
-                subtitle: 'Утверждение согласованных планов мероприятий по энергосбережению'
+                title: 'Утверждающая организация',
+                subtitle: 'Проверяющее юридическое лицо, по результатам рассмотрения которого документ утверждается'
             }
         };
         
@@ -1844,41 +2011,38 @@ class MultiStepForm {
 
     getPlaceholder() {
         const placeholders = {
-            'respondent': 'Наименование или ОКПО или УНП',
-            'auditor': 'Наименование или ОКПО или УНП',
-            'approver': 'Наименование или ОКПО или УНП'
+            'respondent': 'Введите наименование или УНП',
+            'auditor': 'Введите наименование или УНП',
+            'approver': 'Введите наименование или УНП'
         };
-        return placeholders[this.currentEntityType] || 'Наименование или ОКПО или УНП';
+        return placeholders[this.currentEntityType] || 'Введите наименование или УНП';
     }
 
     selectItem(item) {
-        document.querySelectorAll('.search-item').forEach(el => {
+        document.querySelectorAll('.org-result-row').forEach(el => {
             el.classList.remove('selected');
         });
-        
-        const clickedElement = document.querySelector(`.search-item[data-id="${item.id}"]`);
+
+        const clickedElement = document.querySelector(`.org-result-row[data-id="${item.id}"]`);
         if (clickedElement) {
             clickedElement.classList.add('selected');
         }
-        
-        if (this.elements.searchInput) {
-            this.elements.searchInput.value = item.name;
-        }
-        
+
+        // Строка результата просто подсвечивается — поле поиска не трогаем
+        // (раньше туда подставлялось полное наименование организации,
+        // перетирая то, что ввёл пользователь).
         if (this.elements.hiddenInput) {
             this.elements.hiddenInput.value = item.id;
         }
-        
+
         if (this.elements.entityTypeInput) {
             this.elements.entityTypeInput.value = this.currentEntityType;
         }
-        
-        this.hideDropdown();
-        
+
         if (this.elements.submitBtn) {
             this.elements.submitBtn.disabled = false;
         }
-        
+
         this.selectedItem = item;
     }
 
@@ -1943,7 +2107,7 @@ class MultiStepForm {
     }
 
     setupStep1Validation() {
-        const requiredFields = ['#name', '#secondname', '#telephone'];
+        const requiredFields = ['#name', '#secondname', '#patronymic'];
         requiredFields.forEach(selector => {
             const input = document.querySelector(selector);
             if (input) {
@@ -1967,12 +2131,14 @@ class MultiStepForm {
     }
 
     validateStep1() {
-        const requiredFields = ['secondname', 'name', 'telephone'];
-        return requiredFields.every(fieldId => {
+        const requiredFields = ['secondname', 'name', 'patronymic', 'post'];
+        const textFieldsValid = requiredFields.every(fieldId => {
             const input = document.getElementById(fieldId);
             return input && input.value.trim() !== '';
         });
+        return textFieldsValid && (this.phoneInput ? this.phoneInput.validate() : false);
     }
+
 
     goToStep(stepNumber) {
         if (this.elements.step1) this.elements.step1.style.display = 'none';
@@ -2044,9 +2210,18 @@ class MultiStepForm {
 
     handleSearchFocus() {
         const query = this.searchData.query;
-        if (query && query.length >= this.config.minSearchLength && 
+        if (query && query.length >= this.config.minSearchLength &&
             this.elements.dropdown && this.elements.list && this.elements.list.children.length > 0) {
-            this.elements.dropdown.style.display = 'block';
+            this.showDropdown();
+        }
+    }
+
+    showDropdown() {
+        if (this.elements.dropdown) {
+            this.elements.dropdown.classList.add('active');
+        }
+        if (this.elements.step3Container) {
+            this.elements.step3Container.classList.add('has-results');
         }
     }
 
@@ -2063,9 +2238,18 @@ class MultiStepForm {
         }
     }
 
+    handleTableScroll() {
+        const el = this.elements.tableWrap;
+        if (!el) return;
+        const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+        if (nearBottom) {
+            this.handleLoadMore();
+        }
+    }
+
     handleDocumentClick(e) {
-        if (this.elements.searchInput && this.elements.dropdown && 
-            !this.elements.searchInput.contains(e.target) && 
+        if (this.elements.searchInput && this.elements.dropdown &&
+            !this.elements.searchInput.contains(e.target) &&
             !this.elements.dropdown.contains(e.target)) {
             this.hideDropdown();
         }
@@ -2082,7 +2266,7 @@ class MultiStepForm {
         }
         
         try {
-            const url = `/api/organizations?q=${encodeURIComponent(query)}&page=${page}&type=${this.currentEntityType}`;
+            const url = `/api/organizations?q=${encodeURIComponent(query)}&page=${page}&type=${this.currentEntityType}&exclude_registered=true`;
             
             const response = await fetch(url);
             
@@ -2103,52 +2287,51 @@ class MultiStepForm {
 
     handleSearchResponse(data, append = false) {
         if (!this.elements.list || !this.elements.dropdown) return;
-        
+
         const items = data.organizations || [];
-        
+
         if (!append) {
             this.elements.list.innerHTML = '';
         }
-        
+
         if (items.length > 0) {
             items.forEach(item => {
                 const itemElement = this.createListItem(item);
                 this.elements.list.appendChild(itemElement);
             });
-            
+
             this.searchData.hasMore = data.has_next || false;
-            if (this.elements.moreButton) {
-                this.elements.moreButton.style.display = data.has_next ? 'block' : 'none';
+            if (this.elements.empty) {
+                this.elements.empty.style.display = 'none';
             }
-            
-            this.elements.dropdown.style.display = 'block';
+
+            this.showDropdown();
         } else if (!append) {
-            this.elements.list.innerHTML = '<div class="no-results">Ничего не найдено</div>';
-            this.elements.dropdown.style.display = 'block';
-            if (this.elements.moreButton) {
-                this.elements.moreButton.style.display = 'none';
+            this.searchData.hasMore = false;
+            if (this.elements.empty) {
+                this.elements.empty.textContent = 'Ничего не найдено';
+                this.elements.empty.style.display = 'block';
             }
+            this.showDropdown();
         }
     }
 
     createListItem(item) {
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.dataset.id = item.id;
-        
-        div.innerHTML = `
-            <div class="item-name">${this.escapeHtml(item.name)}</div>
-            <div class="item-details">
-                <span class="item-okpo">ОКПО: ${this.escapeHtml(item.okpo || '—')}</span>
-                <span class="item-ynp">УНП: ${this.escapeHtml(item.ynp || '—')}</span>
-            </div>
+        const tr = document.createElement('tr');
+        tr.className = 'org-result-row';
+        tr.dataset.id = item.id;
+
+        tr.innerHTML = `
+            <td class="item-name">${this.escapeHtml(item.name)}</td>
+            <td class="item-okpo">${this.escapeHtml(item.okpo || '—')}</td>
+            <td class="item-ynp">${this.escapeHtml(item.ynp || '—')}</td>
         `;
-        
-        div.addEventListener('click', () => {
+
+        tr.addEventListener('click', () => {
             this.selectItem(item);
         });
-        
-        return div;
+
+        return tr;
     }
 
     showLoading(show) {
@@ -2161,21 +2344,38 @@ class MultiStepForm {
         if (this.elements.list) {
             this.elements.list.innerHTML = '';
         }
-        if (this.elements.moreButton) {
-            this.elements.moreButton.style.display = 'none';
+        if (this.elements.empty) {
+            this.elements.empty.style.display = 'none';
         }
+        this.searchData.hasMore = false;
     }
 
     hideDropdown() {
+        // Пока организация выбрана (this.selectedItem), таблица результатов
+        // остаётся открытой — иначе клик по строке сам уводит фокус с
+        // инпута поиска, который через blur дёргает hideDropdown() и тут же
+        // схлопывает панель с результатами (.active убирает display:flex у
+        // самой панели, .has-results — сужает контейнер), из-за чего
+        // подсвеченную строку не видно. Сбрасывается в handleSearchInput()
+        // при новом вводе.
+        if (this.selectedItem) return;
+
         if (this.elements.dropdown) {
-            this.elements.dropdown.style.display = 'none';
+            this.elements.dropdown.classList.remove('active');
+        }
+        if (this.elements.step3Container) {
+            this.elements.step3Container.classList.remove('has-results');
         }
     }
 
     showError(message = 'Ошибка загрузки данных') {
         if (this.elements.list && this.elements.dropdown) {
-            this.elements.list.innerHTML = `<div class="error">${message}</div>`;
-            this.elements.dropdown.style.display = 'block';
+            this.elements.list.innerHTML = '';
+            if (this.elements.empty) {
+                this.elements.empty.textContent = message;
+                this.elements.empty.style.display = 'block';
+            }
+            this.showDropdown();
         }
         this.showLoading(false);
     }
@@ -2632,6 +2832,35 @@ document.addEventListener('DOMContentLoaded', function() {
 //     }
 // });
 
+// Вкладки в стиле личного кабинета (.profile-tabs/.profile-tab-panel) —
+// общий инициализатор для любой страницы, где они встречаются (профиль,
+// проверка плана и т.д.), поддерживает несколько независимых групп вкладок
+// на одной странице (панели ищутся среди соседей самого блока вкладок).
+function initProfileTabs() {
+    document.querySelectorAll('.profile-tabs').forEach((tabsEl) => {
+        const tabButtons = tabsEl.querySelectorAll('.profile-tab');
+        const container = tabsEl.parentElement;
+        if (!container) return;
+        const tabPanels = container.querySelectorAll(':scope > .profile-tab-panel');
+
+        function activateTab(tabName) {
+            tabButtons.forEach((btn) => {
+                const isActive = btn.dataset.tab === tabName;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            tabPanels.forEach((panel) => {
+                panel.classList.toggle('active', panel.dataset.tabPanel === tabName);
+            });
+        }
+
+        tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', initProfileTabs);
+
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');
 }
@@ -2863,4 +3092,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+});
+
+// Файл, прикреплённый к сообщению (замечанию) в чате согласования плана —
+// клик по скрепке открывает тот же drawer-просмотрщик, что и у ТЭО (см.
+// static/js/teo-viewer.js), только с явным URL вместо id мероприятия.
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.ticket-attachment-chip');
+    if (!chip) return;
+
+    const url = chip.dataset.ticketAttachmentUrl;
+    const name = chip.dataset.ticketAttachmentName || '';
+    if (!url || !window.TeoViewer) return;
+
+    window.TeoViewer.open(url, name, url);
 });

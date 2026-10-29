@@ -47,7 +47,45 @@
       </div>
     </div>
 
+    <div class="about-section">
+      
+      <h2 class="contact-title">Что такое Enplans?
+      </h2>
+      <div class="features-container">
+        <div class="about-feature-card">
+          <div class="about-feature-header">
+            <div class="about-feature-icon">{{ icons.icon_plans() }}</div>
+            <h3>Создание планов</h3>
+          </div>
+          <p>Пошаговое заполнение мероприятий и показателей энергосбережения.</p>
+        </div>
+        <div class="about-feature-card">
+          <div class="about-feature-header">
+            <div class="about-feature-icon">{{ icons.icon_confirm() }}</div>
+            <h3>Многоэтапное согласование</h3>
+          </div>
+          <p>План автоматически проходит по цепочке согласования — от областных управлений до согласовывающих организаций.</p>
+        </div>
+        <div class="about-feature-card">
+          <div class="about-feature-header">
+            <div class="about-feature-icon">{{ icons.icon_tickets() }}</div>
+            <h3>Проверка плана</h3>
+          </div>
+          <p>Согласовывающие организации изучают план и согласовывают его прямо в программе — без пересылки файлов и печати документов.</p>
+        </div>
+        <div class="about-feature-card">
+          <div class="about-feature-header">
+            <div class="about-feature-icon">{{ icons.icon_export() }}</div>
+            <h3>Отчётность и экспорт</h3>
+          </div>
+          <p>Выгрузка планов и статистики в удобном формате для анализа и отчётов.</p>
+        </div>
+      </div>
+    </div>
+
     {% if latest_news %}
+    <div>
+      <h2 class="contact-title">Последняя новость</h2>
       <div class="news-card-large">
         <div class="news-card-large-content">
           <h2>{{ latest_news.title }}</h2>
@@ -71,6 +109,7 @@
         {% endif %}
       </div>
     {% endif %}
+    </div>
 
     <div id="contacts-cont" class="contact-glass">
       <h2 class="contact-title">Контакты</h2>

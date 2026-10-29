@@ -19,9 +19,9 @@ def build_html(message_body, email_type):
             color = "#801616"
         elif status == "Контроль пройден":
             color = "#8b5cf6"
-        elif status == "На согласовании" or status == "Не просмотрен":
+        elif status == "На согласовании" or status == "На рассмотрении":
             color = "#3b82f6"
-        elif status == "Одобрен":
+        elif status == "Утвержден":
             color = "#10b981"
         else:
             color = "#00798f"

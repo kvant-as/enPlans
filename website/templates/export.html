@@ -8,21 +8,21 @@
     <a class="name">{{ _('Экспорт данных') }}</a>
     <div class="export-choose-area">
       <div class="export-choose" data-format="xlsx">
-        {{ icons.icon_file() }}
+        {{ icons.icon_xlsx_color() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xlsx)</a>
           <a class="export-choose-text-dis">Таблица с данными планов и мероприятий</a>
         </div>
       </div>
-      <div class="export-choose disabled" data-format="pdf">
-        {{ icons.icon_file() }}
+      <div class="export-choose" data-format="pdf">
+        {{ icons.icon_pdf_color() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.pdf)</a>
           <a class="export-choose-text-dis">Форматированный план для печати</a>
         </div>
       </div>
-      <div class="export-choose disabled" data-format="xml">
-        {{ icons.icon_file() }}
+      <div class="export-choose" data-format="xml">
+        {{ icons.icon_xml_color() }}
         <div class="export-choose-text">
           <a class="export-choose-text-title">Формат (.xml)</a>
           <a class="export-choose-text-dis">Структурированные данные для программ</a>
@@ -46,7 +46,7 @@
           <div class="check-box-area">
             <button type="button" id="selectAllBtn" class="select-all-btn">
                 {{ icons.icon_confirm() }}
-                <a>{{ _('Выбрать все') }}</a>
+                <a>{{ _('Все') }}</a>
             </button>
             <button type="button" id="clearAllBtn" class="clear-all-btn" style="display: none;">
                 <a>{{ _('Очистить все') }}</a>
@@ -97,6 +97,9 @@
   window.initialStatus = '{{ initial_status }}';
   window.initialYear = '{{ initial_year }}';
   window.isExportPage = true;
+  window.preselectPlanId = {{ preselect_plan_id | tojson }};
+  window.preselectFormat = {{ preselect_format | tojson }};
+  window.preselectYear = {{ preselect_year | tojson }};
 </script>
 
 {{ affects.bg_effect() }} 

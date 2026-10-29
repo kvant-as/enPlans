@@ -32,23 +32,9 @@ views = Blueprint('views', __name__)
 PLAN_YEAR_MIN = 2026
 PLAN_YEAR_MAX = 2040
 
-def block_unverified_auditor():
-    """Аудитору (в отличие от обычных пользователей) верификация ЭЦП
-    обязательна для просмотра и экспорта планов, а не только для
-    согласования/утверждения — без неё он не видит ни одного плана.
-    Возвращает redirect, если доступ нужно заблокировать, иначе None."""
-    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        flash('Для просмотра и экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.', 'error')
-        return redirect(url_for('views.profile'))
-    return None
-
 def owner_only(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        blocked = block_unverified_auditor()
-        if blocked:
-            return blocked
-
         token = kwargs.get('token')
 
         if not token:
@@ -272,8 +258,8 @@ def edit_plan_type(token):
         else:
             flash_message = 'Тип плана обновлен'
         flash(flash_message, 'success')
-        
-        return redirect(url_for('plan_bp.plan_review', token=current_plan.token))
+
+        return redirect(request.referrer or url_for('plan_bp.plan_review', token=current_plan.token))
     except Exception as e:
         flash(f'Произошла непредвиденная ошибка: {str(e)}', 'error')
         return redirect(request.referrer or url_for('views.profile'))
@@ -318,12 +304,17 @@ def plans():
 @login_required
 @session_required
 def export():
-    blocked = block_unverified_auditor()
-    if blocked:
-        return blocked
-
     status = request.args.get('status', 'all')
     year = request.args.get('year', 'all')
+
+    preselect_plan_id = request.args.get('plan_id', type=int)
+    preselect_format = request.args.get('format', '')
+    preselect_year = None
+    if preselect_plan_id:
+        preselect_plan = Plan.query.get(preselect_plan_id)
+        if preselect_plan:
+            preselect_year = preselect_plan.year
+            year = str(preselect_year)
 
     return render_template(
         'export.html',
@@ -331,7 +322,10 @@ def export():
         current_user=current_user,
         hide_header=False,
         selected_status=status,
-        selected_year=year
+        selected_year=year,
+        preselect_plan_id=preselect_plan_id,
+        preselect_format=preselect_format,
+        preselect_year=preselect_year
     )
     
 @views.route('/export/start', methods=['POST'])
@@ -339,9 +333,6 @@ def export():
 @login_required
 @session_required
 def start_export():
-    if current_user.is_auditor and not current_user.is_admin and not current_user.is_ecp_verified():
-        return jsonify({'success': False, 'error': 'Для экспорта планов аудитору необходимо пройти верификацию аккаунта — раздел «Безопасность» в профиле.'})
-
     try:
         export_format = request.form.get('format', '').lower()
         plan_ids = request.form.getlist('ids')
@@ -403,8 +394,8 @@ def download_export(task_id):
     return send_file(
         task['file_path'],
         as_attachment=True,
-        download_name=f'plans_export_{task_id[:8]}.zip',
-        mimetype='application/zip'
+        download_name=task.get('filename', f'plans_export_{task_id[:8]}.zip'),
+        mimetype=task.get('mime', 'application/zip')
     )
 
 @views.route('/news', methods=['GET'])
@@ -480,9 +471,8 @@ def create_plan():
             elif year == 2027:
                 return to_decimal_2('270.00')
             else:
-                return to_decimal_2('270.00')
-                # flash(f'На {year} год стоимость 1 т у.т. еще не утверждена. План не может быть создан', 'error')
-                # return None
+                flash(f'На {year} год стоимость 1 т у.т. ещё не утверждена. План не может быть создан', 'error')
+                return None
 
         usd_rate_value = get_usd_rate_for_new_plan()
         cost_per_toe_value = get_cost_per_toe_for_new_plan(year)

@@ -13,7 +13,7 @@ from flask_babel import format_date
 from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 
-from common_models import db
+from common_models import db, current_utc_time
 from common_models.logs import setup_logging
 
 load_dotenv()
@@ -90,7 +90,40 @@ def create_app():
         # в debug-режиме (см. common_models.sessions._enforcing), и пользователь
         # никогда не разлогинивается по истечении сессии.
         SESSION_ENFORCE_IN_DEBUG=True,
+        # Файлы ТЭО и вложения к сообщениям (замечаниям) в чате согласования
+        # плана лежат в одной общей папке (ATTACHMENTS_UPLOAD_FOLDER —
+        # переопределяется в .env, например на боевом сервере — на
+        # реальный постоянный диск/раздел), а внутри неё — отдельные
+        # подпапки по назначению файла (teo/tickets). НЕ называем её
+        # UPLOAD_FOLDER — этот ключ уже занят в export.py (временная папка
+        # архивов экспорта, другое назначение).
+        #
+        # По умолчанию папка лежит ЗА ПРЕДЕЛАМИ кода приложения — на
+        # уровень выше папки enPlans (а не в enPlans/instance), чтобы
+        # загруженные файлы переживали переразвёртывание/переустановку
+        # самого приложения и не терялись вместе с кодом.
+        ATTACHMENTS_UPLOAD_FOLDER=os.getenv(
+            'ATTACHMENTS_UPLOAD_FOLDER',
+            os.path.join(os.path.dirname(os.path.dirname(app.instance_path)), 'uploads')
+        ),
+        TEO_MAX_FILE_SIZE=int(os.getenv('TEO_MAX_FILE_SIZE', 20 * 1024 * 1024)),
+        # Если диск, на котором лежит ATTACHMENTS_UPLOAD_FOLDER, заполнен на
+        # этот процент и более — загрузка новых файлов ТЭО блокируется с
+        # понятным сообщением (см. website/utils/teo.py:check_disk_space).
+        TEO_DISK_USAGE_LIMIT_PERCENT=float(os.getenv('TEO_DISK_USAGE_LIMIT_PERCENT', 80)),
+        TICKET_ATTACHMENT_MAX_FILE_SIZE=int(os.getenv('TICKET_ATTACHMENT_MAX_FILE_SIZE', 20 * 1024 * 1024)),
     )
+    app.config['TEO_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'teo')
+    app.config['TICKET_ATTACHMENT_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'tickets')
+
+    os.makedirs(app.config['TEO_UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['TICKET_ATTACHMENT_UPLOAD_FOLDER'], exist_ok=True)
+
+    from website.utils.teo import register_teo_cleanup_listeners
+    register_teo_cleanup_listeners()
+
+    from website.utils.ticket_attachment import register_ticket_attachment_cleanup_listeners
+    register_ticket_attachment_cleanup_listeners()
 
     db.init_app(app)
     socketio.init_app(app)
@@ -144,12 +177,16 @@ def create_app():
     from .admin import init_admin
     init_admin(app)
 
+    from common_models.assets import init_assets
+    init_assets(app)
+
     from common_models.forms_ui import init_forms_ui
     init_forms_ui(app)
 
     # schema is managed by Alembic (common_models/migrations); run `flask db upgrade`
 
     app.jinja_env.globals['format_date'] = format_date
+    app.jinja_env.globals['current_utc_time'] = current_utc_time
     
     @app.context_processor
     def inject_get_locale():

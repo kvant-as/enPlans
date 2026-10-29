@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, abort, current_app, g, jsonify, render_template, request, flash, redirect, url_for
+    Blueprint, abort, current_app, g, jsonify, render_template, render_template_string, request, flash, redirect, url_for, send_from_directory
 )
 
 from flask_login import (
@@ -8,12 +8,13 @@ from flask_login import (
 
 from common_models import current_utc_time
 from website.utils.plans import check_and_create_period_directions, generate_unique_display_code, other_data_indicatorUpdate, to_decimal_1, to_decimal_2, to_decimal_3, update_ChangeTimePlan, validate_period_values
-from website.routes.auth import user_with_all_params, record_account_verification
+from website.routes.auth import user_with_all_params
 from website.routes.views import owner_only, reader_forbidden
 from website.sessions import session_required
 from website.user import send_email
 
 from website.utils.event import process_event_data, create_event_record, update_double_effect_payback
+from website.utils.teo import save_teo_file, delete_teo_file
 
 from ..ecp import verify_certificate
 
@@ -28,7 +29,7 @@ from sqlalchemy import func
 logger = logging.getLogger(__name__)
 plan_bp = Blueprint('plan_bp', __name__, url_prefix='/plans/plan')
 
-@plan_bp.route('/review/<token>', methods=['GET', 'POST'])
+@plan_bp.route('/tasks/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
 @login_required
 @session_required
@@ -39,17 +40,45 @@ def plan_review(token):
     
     current_plan = g.current_plan
 
-    show_plan_type_modal = (
-        current_plan.is_draft and 
-        (current_plan.plan_type is None or current_plan.plan_type == '') and
-        hasattr(current_user, 'organization') and 
-        current_user.organization is not None
-    )
-
     return render_template('plan_review.html',
                         plan=current_plan,
-                        show_plan_type_modal=show_plan_type_modal,
                         )
+
+
+@plan_bp.route('/actions/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+def plan_actions(token):
+    """Вкладка «Действия с планом» — объединяет то, что раньше было в
+    выпадающем меню на «Задания» (Пройти контроль / Отправить на
+    согласование / Отменить отправку / Редактировать / Удалить), и
+    отдельную вкладку «Проверка» (чат с сообщениями по согласованию и
+    смена статуса). Отображение персонализировано через is_owner/can_audit
+    в самом шаблоне: разработчик плана видит плитки действий и историю
+    переписки только для чтения, проверяющий (текущий этап согласования) —
+    чат с возможностью писать и менять статус."""
+    from website.utils.plans import get_audit_context
+    current_plan = g.current_plan
+    audit_ctx = get_audit_context(current_plan, current_user)
+    return render_template('plan_actions.html', plan=current_plan, **audit_ctx)
+
+
+@plan_bp.route('/signatures/<token>', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+def plan_signatures(token):
+    """Вкладка «Подписи» — путь согласования плана (кто направил, кто уже
+    согласовал/утвердил, кто на очереди) + текущий статус и прогресс сбоку.
+    Планы могли отправляться несколько раз (отмена/возврат на доработку) —
+    build_signature_cycles группирует историю по циклам отправки."""
+    from website.utils.plans import build_signature_cycles
+    current_plan = g.current_plan
+    cycles = build_signature_cycles(current_plan)
+    return render_template('plan_signatures.html', plan=current_plan, cycles=cycles)
 
 
 @plan_bp.route('/send/<token>', methods=['GET'])
@@ -78,38 +107,17 @@ def plan_send_page(token):
 @owner_only
 @reader_forbidden
 def api_verify_certificate(token):
-    """AJAX-проверка сертификата ЭЦП на лету, пока пользователь ещё на шаге
-    загрузки — тот же common_models.validators-стиль, что и у ОКПО/УНП:
-    сервер один раз решает валидность, клиент просто отражает вердикт.
-    Финальная отправка (change-status) перепроверяет сертификат заново —
-    этому эндпоинту доверять на слово нельзя, он только для быстрой
-    обратной связи в интерфейсе."""
-    plan = g.current_plan
+    """AJAX-проверка сертификата ЭЦП на лету — способ "Сертификат ЭЦП" в
+    демо-модалке проверки ЭЦП (см. static/js/ecp-mock-modal.js). Ничего не
+    сохраняет, только проверяет срок действия файла и логирует (DEBUG) всё,
+    что получилось из него достать — для отладки."""
     cert_file = request.files.get('certificate')
     if not cert_file or not cert_file.filename:
         return jsonify({'valid': False, 'error': 'Файл сертификата не передан'}), 400
 
-    # TODO: пока проверяем только срок действия — сверку УНП организации
-    # плана с УНП в сертификате временно отключили (expected_unp=None),
-    # включить обратно после того как разберёмся с форматом реальных
-    # сертификатов ЭЦП. verify_certificate уже умеет это делать — см.
-    # website/ecp.py.
-    ok, error = verify_certificate(cert_file, expected_unp=None)
+    ok, error = verify_certificate(cert_file)
     return jsonify({'valid': ok, 'error': error})
 
-@plan_bp.route('/audit/<token>', methods=['GET', 'POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@session_required
-def plan_audit(token):  
-    if request.method == 'POST':
-        pass
-    
-    current_plan = g.current_plan
-    return render_template('plan_audit.html', 
-                        plan=current_plan,     
-                        hide_header=False)
 
 @plan_bp.route('/indicators/<token>', methods=['GET', 'POST'])
 @user_with_all_params()
@@ -138,7 +146,6 @@ def plan_indicators(token):
                         plan=current_plan, 
                         indicators_non_madatory=indicators_non_mandatory,
                         hide_header=False,
-                        confirmModal = True,
                         context_menu = True)
     
 
@@ -447,8 +454,42 @@ def edit_indicator(token):
             return _indicator_action_response(token, error, 'error')
 
         is_codes_9911_9914 = indicator_code in ['9911', '9912', '9913', '9914']
-        
+
         if is_codes_9911_9914:
+            # 9911-9914 — экономия ТЭР от мероприятий предыдущего года
+            # внедрения нарастающим итогом (январь-март/июнь/сентябрь/декабрь).
+            # Каждый следующий период обязан быть >= предыдущего, иначе
+            # получится отрицательный вклад квартала, чего быть не может.
+            period_order = ['9911', '9912', '9913', '9914']
+            period_labels = {
+                '9911': 'январь-март',
+                '9912': 'январь-июнь',
+                '9913': 'январь-сентябрь',
+                '9914': 'январь-декабрь',
+            }
+
+            period_values = {}
+            for code in period_order:
+                if code == indicator_code:
+                    period_values[code] = data['QYearCurrent']
+                    continue
+                sibling_usage = next(
+                    (iu for iu in current_plan.indicators_usage if iu.indicator.code == code),
+                    None
+                )
+                period_values[code] = to_decimal_2(sibling_usage.QYearCurrent) if sibling_usage else to_decimal_2(0)
+
+            for i in range(1, len(period_order)):
+                prev_code = period_order[i - 1]
+                curr_code = period_order[i]
+                if period_values[curr_code] < period_values[prev_code]:
+                    return _indicator_action_response(
+                        token,
+                        f'Экономия ТЭР за {period_labels[curr_code]} ({period_values[curr_code]}) не может быть меньше, '
+                        f'чем за {period_labels[prev_code]} ({period_values[prev_code]}) — значения вводятся нарастающим итогом.',
+                        'error'
+                    )
+
             indicator_usage.QYearCurrent = data['QYearCurrent']
         else:
             indicator_usage.QYearBeforePrev = data['QYearBeforePrev']
@@ -545,7 +586,6 @@ def plan_event(event_type, token):
                         event_type=event_type,
                         plan=current_plan, 
                         hide_header=False,
-                        confirmModal=True,
                         directions=directions,
                         # SendModal=current_plan.is_control,
                         context_menu=True,
@@ -632,6 +672,12 @@ def create_event(token):
         new_event = create_event_record(current_plan, direction, event_data)
 
         db.session.add(new_event)
+        db.session.flush()
+
+        teo_file = request.files.get('teo_file')
+        if teo_file and teo_file.filename:
+            save_teo_file(new_event, teo_file)
+
         db.session.commit()
 
         if event_data['is_double_effect'] and event_type == 'increase':
@@ -703,7 +749,21 @@ def edit_event(id):
             ExpectedQuarter_value = request.form.get('ExpectedQuarter')
             EffTut = to_decimal_2(request.form.get('EffTut'))
             EffCurrYear = to_decimal_2(request.form.get('EffCurrYear'))
-            
+
+            # При объёме внедрения = 1 мероприятие не может внедряться "в
+            # течение" нескольких кварталов — только в одном конкретном.
+            if Volume_value and ExpectedQuarter_value and '-' in ExpectedQuarter_value:
+                try:
+                    volume_int = int(float(Volume_value))
+                except (TypeError, ValueError):
+                    volume_int = None
+                if volume_int == 1:
+                    return _event_action_response(
+                        'При объёме внедрения, равном 1, ожидаемый срок внедрения мероприятия должен '
+                        'быть одним конкретным кварталом (1, 2, 3 или 4), а не диапазоном.',
+                        'error', event_type, current_plan.token
+                    )
+
             event_category = request.form.get('event_category')
             current_app.logger.info(f'event_category from form: {event_category}')
             
@@ -734,22 +794,35 @@ def edit_event(id):
                 current_app.logger.info(f'Double effect saving event: financing blocked')
                 
             else:
-                ObchVolumeFin = to_decimal_2(request.form.get('ObchVolumeFin')) 
-                BudgetState = to_decimal_2(request.form.get('BudgetState')) 
-                BudgetRep = to_decimal_2(request.form.get('BudgetRep')) 
-                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc')) 
+                ObchVolumeFin = to_decimal_2(request.form.get('ObchVolumeFin'))
+                BudgetState = to_decimal_2(request.form.get('BudgetState'))
+                BudgetRep = to_decimal_2(request.form.get('BudgetRep'))
+                BudgetLoc = to_decimal_2(request.form.get('BudgetLoc'))
                 BudgetOther = to_decimal_2(request.form.get('BudgetOther'))
-                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn')) 
-                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan')) 
+                MoneyOwn = to_decimal_2(request.form.get('MoneyOwn'))
+                MoneyLoan = to_decimal_2(request.form.get('MoneyLoan'))
                 MoneyOther = to_decimal_2(request.form.get('MoneyOther'))
-                
+
                 VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
-                
-                USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
-                COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
-                EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
-                
-                if EffRub > 0:
+
+                # Код 1013 в Части 2 ("Замена неэкономичных котлов и печей...")
+                # — графы 7 (EffRub) и 10 (Payback) заполняются напрямую
+                # юрлицом, не по формуле.
+                direction_code = current_event.direction.code if current_event.direction else None
+                is_manual_eff_rub = current_event.is_econom and not current_event.is_increase and direction_code == '1013'
+
+                if is_manual_eff_rub:
+                    EffRub = int(to_decimal_2(request.form.get('EffRub')))
+                else:
+                    USD_RATE = float(current_plan.usd_rate) if current_plan.usd_rate else 2.75
+                    COST_PER_TOE_USD = float(current_plan.cost_per_toe_usd) if current_plan.cost_per_toe_usd else 260.0
+                    EffRub = int(float(EffTut) * COST_PER_TOE_USD * USD_RATE)
+
+                if is_manual_eff_rub or current_event.is_increase:
+                    # Графа 10 в Части 3 (для всех направлений) и в Части 2
+                    # по коду 1013 — тоже напрямую от юрлица, не по формуле.
+                    Payback = to_decimal_1(request.form.get('Payback'))
+                elif EffRub > 0:
                     payback_value = float(ObchVolumeFin) / float(EffRub)
                     if payback_value < 0.01:
                         Payback = to_decimal_1(0.1)
@@ -757,7 +830,7 @@ def edit_event(id):
                         Payback = to_decimal_1(payback_value)
                 else:
                     Payback = to_decimal_1(0)
-                
+
                 current_app.logger.info(f'Regular event calculation: EffRub={EffRub}, Payback={Payback}')
 
             Volume = int(float(Volume_value)) if Volume_value and Volume_value.strip() else None
@@ -781,7 +854,11 @@ def edit_event(id):
             current_event.MoneyOther = MoneyOther
             current_event.is_local = is_local
             current_event.is_corrected = is_corrected
-            
+
+            teo_file = request.files.get('teo_file')
+            if teo_file and teo_file.filename:
+                save_teo_file(current_event, teo_file)
+
             current_app.logger.info(f'Updated all fields for event {id}, is_local={is_local}, is_corrected={is_corrected}')
 
         db.session.commit()
@@ -850,7 +927,76 @@ def delete_eventes(id):
     update_period_eff_values(current_plan.id, event_type)
     other_data_indicatorUpdate(current_plan.id)
     return _event_action_response('Мероприятие успешно удалено', 'success', event_type, current_plan.token)
-        
+
+@plan_bp.route('/event/<int:id>/teo', methods=['GET'])
+@user_with_all_params()
+@login_required
+@session_required
+def get_event_teo(id):
+    """Отдаёт файл ТЭО мероприятия. ?download=1 — принудительное скачивание
+    (Content-Disposition: attachment), иначе — показ прямо в браузере (для
+    .pdf) там, где это возможно."""
+    current_event = Event.query.get_or_404(id)
+    if not current_event.teo_filename:
+        abort(404)
+
+    folder = current_app.config['TEO_UPLOAD_FOLDER']
+    as_attachment = request.args.get('download') == '1'
+
+    return send_from_directory(
+        folder,
+        current_event.teo_filename,
+        as_attachment=as_attachment,
+        download_name=current_event.teo_original_name or current_event.teo_filename
+    )
+
+@plan_bp.route('/event/<int:id>/teo', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+@reader_forbidden
+def upload_event_teo(id):
+    """Прикрепление/замена файла ТЭО прямо из графы 20 таблицы мероприятий,
+    без открытия модалки редактирования."""
+    current_event = Event.query.get_or_404(id)
+
+    teo_file = request.files.get('teo_file')
+    if not teo_file or not teo_file.filename:
+        return jsonify({'success': False, 'message': 'Файл не выбран'}), 400
+
+    try:
+        save_teo_file(current_event, teo_file)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Файл ТЭО прикреплён',
+            'teo_original_name': current_event.teo_original_name
+        })
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error uploading TEO file for event {id}: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'message': 'Ошибка при загрузке файла ТЭО'}), 400
+
+@plan_bp.route('/event/<int:id>/teo', methods=['DELETE'])
+@user_with_all_params()
+@login_required
+@session_required
+@reader_forbidden
+def delete_event_teo(id):
+    current_event = Event.query.get_or_404(id)
+
+    try:
+        delete_teo_file(current_event)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Файл ТЭО удалён'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error deleting TEO file for event {id}: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'message': 'Ошибка при удалении файла ТЭО'}), 400
+
 @plan_bp.route('/change-status/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -864,10 +1010,12 @@ def api_change_plan_status(token):
         status = data.get('status')
         coordinator_ids = data.get('coordinator_ids', '').split(',') if data.get('coordinator_ids') else []
         approver_id = data.get('approver_id')
+        reason = data.get('reason')
     else:
         status = request.form.get('status')
         coordinator_ids = request.form.get('coordinator_ids', '').split(',') if request.form.get('coordinator_ids') else []
         approver_id = request.form.get('approver_id')
+        reason = request.form.get('reason')
     
     if not status:
         if request.is_json:
@@ -904,53 +1052,34 @@ def api_change_plan_status(token):
     handler = status_handlers[status]
 
     if status == 'sent':
-        # Если аккаунт уже прошёл периодическую верификацию ЭЦП (см.
-        # User.ecp_verified_until / auth.verify_account) — личность уже
-        # подтверждена, повторный сертификат на каждый план не нужен.
-        # Иначе — сертификат уже проверялся на лету на странице отправки
-        # (/verify-certificate), но той проверке доверять нельзя — сюда
-        # могут обратиться и напрямую, минуя интерфейс, поэтому сверяем
-        # срок действия заново. TODO: сверку УНП временно отключили
-        # (expected_unp=None) — см. тот же комментарий в api_verify_certificate.
-        if not current_user.is_ecp_verified():
-            cert_file = request.files.get('certificate')
-            if not cert_file or not cert_file.filename:
-                error_msg = 'Файл сертификата обязателен'
-                if request.is_json:
-                    return jsonify({'error': error_msg}), 400
-                flash(error_msg, 'error')
-                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
-
-            expected_unp = None
-            cert_ok, cert_error = verify_certificate(cert_file, expected_unp)
-            if not cert_ok:
-                if request.is_json:
-                    return jsonify({'error': cert_error}), 400
-                flash(cert_error, 'error')
-                return redirect(request.referrer or url_for('plan_bp.plan_send_page', token=plan.token))
-
-            # Раз сертификат только что подтвердил личность пользователя
-            # здесь, нет смысла заставлять его ещё раз отдельно проходить
-            # верификацию в профиле — засчитываем её автоматически на тот
-            # же период (см. record_account_verification).
-            record_account_verification(current_user, cert_file)
-
         result = handler(plan, coordinator_ids, approver_id)
     elif status == 'approved':
-        # Согласование/утверждение конкретного этапа плана — та самая
-        # "проверка, что за аккаунтом реальный человек", по аналогии с ЭЦП
-        # при отправке плана респондентом, только не на каждое действие, а
-        # периодически (см. User.ecp_verified_until / auth.verify_account).
-        if not current_user.is_ecp_verified():
-            error_msg = ('Для согласования и утверждения планов необходимо пройти верификацию '
-                         'аккаунта — раздел «Безопасность» в профиле.')
-            if request.is_json:
-                return jsonify({'error': error_msg, 'needs_verification': True}), 403
-            flash(error_msg, 'error')
-            return redirect(url_for('views.profile'))
-
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
+        # Отмена проверяющим своего подтверждения этапа — тоже требует
+        # письменного обоснования, по аналогии с отменой отправки
+        # разработчиком (status == 'draft' ниже); причина попадёт в
+        # сообщения по плану (см. handle_sent_without_check_status).
+        if not (reason and reason.strip()):
+            error_msg = 'Укажите причину отмены своего согласования'
+            if request.is_json:
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
+        result = handler(plan, current_user, reason)
+    elif status == 'draft':
+        # "Отменить отправку" (план уже был отправлен) обязательно требует
+        # причину — она попадёт в "Подписи" отдельной строкой в конце
+        # списка. Сброс из любого другого статуса в "В редакции" причины
+        # не требует (reason тогда просто не используется обработчиком).
+        if plan.is_sent and not (reason and reason.strip()):
+            error_msg = 'Укажите причину отмены отправки'
+            if request.is_json:
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
+        result = handler(plan, reason)
+    elif status == 'error':
         result = handler(plan, current_user)
     else:
         result = handler(plan)
@@ -958,7 +1087,45 @@ def api_change_plan_status(token):
     if request.is_json:
         if isinstance(result, dict) and "error" in result:
             return jsonify({'error': result['error']}), 400
-        return jsonify({'message': result if isinstance(result, str) else result.get('message'), 'status': status})
+
+        response_data = {'message': result if isinstance(result, str) else result.get('message'), 'status': status}
+
+        # Кнопки "Есть ошибки"/"Согласовать"/"Отменить изменения" в
+        # tickets-actions-bar (plan_actions.html) шлют сюда AJAX и сами
+        # перерисовывают себя без перезагрузки страницы — для этого нужен
+        # не только текст сообщения, но и свежий HTML бейджа статуса плана
+        # и панели чата (can_audit/can_cancel меняются сразу после смены
+        # статуса, см. get_audit_context).
+        if status in ('error', 'approved', 'sent_without_check'):
+            from website.utils.plans import get_audit_context
+            ctx = get_audit_context(plan, current_user)
+            status_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.status_plan(plan, current_user) }}''',
+                plan=plan, current_user=current_user,
+            )
+            tickets_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}''',
+                plan=plan, current_user=current_user,
+                can_audit=ctx['can_audit'], has_remarks=ctx['has_remarks'],
+                approve_label=ctx['approve_label'], can_cancel=ctx['can_cancel'],
+            )
+            footer_html = render_template_string(
+                '''{% import 'macros/components.html' as components %}
+                {{ components.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}''',
+                plan=plan, current_user=current_user,
+                can_audit=ctx['can_audit'], has_remarks=ctx['has_remarks'],
+                approve_label=ctx['approve_label'],
+            )
+            response_data.update({
+                'status_html': status_html,
+                'tickets_html': tickets_html,
+                'footer_html': footer_html,
+                'has_remarks': ctx['has_remarks'],
+            })
+
+        return jsonify(response_data)
     else:
         if isinstance(result, dict) and "error" in result:
             flash(result['error'], 'error')
@@ -969,6 +1136,8 @@ def api_change_plan_status(token):
             return redirect(request.referrer or url_for('views.plans'))
         if status in ['sent_without_check']:
             return redirect(request.referrer)
+        if status == 'control':
+            return redirect(url_for('plan_bp.plan_actions', token=plan.token))
         else:
             return redirect(url_for('plan_bp.plan_review', token=plan.token))
 

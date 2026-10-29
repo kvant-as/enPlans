@@ -684,6 +684,164 @@ body.faq-lightbox-open {
   }
 }
 
+/* ============================================
+   CONTROL FLOW — наглядная схема "как пройти контроль"
+   ============================================ */
+.control-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 24px 0 28px;
+}
+
+.control-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid var(--faq-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.control-flow-step-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--faq-info-bg);
+  color: var(--faq-info);
+}
+.control-flow-step-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.control-flow-step--check .control-flow-step-icon {
+  background: var(--faq-purple-bg, rgba(111, 66, 193, 0.1));
+  color: var(--faq-purple, #6f42c1);
+}
+
+.control-flow-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.control-flow-step-text strong {
+  font-size: 15px;
+  color: var(--faq-text-primary);
+}
+
+.control-flow-step-text span {
+  font-size: 13px;
+  color: var(--faq-text-muted);
+  line-height: 1.4;
+}
+
+.control-flow-arrow {
+  display: flex;
+  justify-content: center;
+  color: var(--faq-text-muted);
+  opacity: 0.6;
+  margin: 2px 0;
+}
+.control-flow-arrow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.control-flow-branches {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.control-flow-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 22px 18px;
+  border: 2px solid var(--faq-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.control-flow-outcome:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--faq-shadow);
+}
+
+.control-flow-outcome--ok {
+  border-color: var(--faq-success-border);
+  background: var(--faq-success-bg);
+}
+.control-flow-outcome--error {
+  border-color: var(--faq-error-border, rgba(220, 53, 69, 0.2));
+  background: var(--faq-error-bg, rgba(220, 53, 69, 0.06));
+}
+
+.control-flow-outcome-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+.control-flow-outcome--ok .control-flow-outcome-icon {
+  background: rgba(40, 167, 69, 0.15);
+  color: var(--faq-success);
+}
+.control-flow-outcome--error .control-flow-outcome-icon {
+  background: rgba(220, 53, 69, 0.15);
+  color: var(--faq-error);
+}
+
+.control-flow-outcome-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--faq-text-primary);
+}
+
+.control-flow-outcome-desc {
+  font-size: 13px;
+  color: var(--faq-text-muted);
+  line-height: 1.5;
+}
+
+.control-flow-outcome-loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--faq-error);
+}
+.control-flow-outcome-loop svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 640px) {
+  .control-flow-branches {
+    grid-template-columns: 1fr;
+  }
+  .control-flow-step {
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 768px) {
   .faq-image {
     max-width: 100%;
@@ -1851,6 +2009,19 @@ h3 {
   .faq-toc {
     padding: 15px;
   }
+}
+
+.faq-inline-link {
+  color: var(--faq-green-back);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 121, 143, 0.35);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.faq-inline-link:hover {
+  text-decoration-color: var(--faq-green-back);
 }
 
 /* ============================================

@@ -190,6 +190,13 @@ class EventModalManager {
         return null;
     }
 
+    getSelectedDirectionCode() {
+        const selectedRow = document.querySelector('#AddEventModal .modal-table-main tbody tr.active-row');
+        if (!selectedRow) return null;
+        const codeCell = selectedRow.querySelector('td:nth-child(2)');
+        return codeCell ? codeCell.textContent.trim() : null;
+    }
+
     showEffCurrYearWarning(message) {
         let warningSpan = document.getElementById('eff-curr-year-warning');
         
@@ -299,12 +306,16 @@ class EventModalManager {
         }
     }
 
-    updateFinancingFieldsReadonly(isDouble, eventType) {
+    updateFinancingFieldsReadonly(isDouble, eventType, directionCode) {
         const budgetFields = ['BudgetState', 'BudgetRep', 'BudgetLoc', 'BudgetOther', 'MoneyOwn', 'MoneyLoan', 'MoneyOther'];
         const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
         const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
         const ObchVolumeFinInput = document.querySelector('#AddEventModal input[name="ObchVolumeFin"]');
         const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
+        // [3] Код 1013 в Части 2 — графы 7 (EffRub) и 10 (Payback) заполняются
+        // напрямую юрлицом, не по формуле. [4] В Части 3 графа 10 — тоже
+        // всегда вручную, для всех направлений.
+        const isManualEffRub = eventType === 'saving' && directionCode === '1013';
         
         if (isDouble && eventType === 'saving') {
             budgetFields.forEach(fieldName => {
@@ -363,37 +374,82 @@ class EventModalManager {
                 VolumeFinCurrentYearInput.readOnly = true;
             }
             if (paybackInput) {
-                paybackInput.readOnly = true;
+                paybackInput.readOnly = !(isManualEffRub || eventType === 'increase');
             }
             if (ObchVolumeFinInput) {
                 ObchVolumeFinInput.readOnly = false;
                 ObchVolumeFinInput.disabled = false;
             }
             if (effRubInput) {
-                if (eventType === 'increase') {
-                    effRubInput.readOnly = false;
-                } else {
-                    effRubInput.readOnly = true;
-                }
+                effRubInput.readOnly = !(eventType === 'increase' || isManualEffRub);
             }
         }
     }
 
     updateCalculations() {
-        if (!this.ratesLoaded) return;
-        if (this.planUsdRate === null || this.costPerToeUsd === null) return;
-
+        // readOnly-переключение и ветки Части 3 / кода 1013 ниже не зависят
+        // от курса валют (графы 7/10 там заполняются вручную) — раньше весь
+        // метод выходил сразу, если курсы ещё не загрузились (например, у
+        // совсем нового плана, когда добавляется самое первое мероприятие),
+        // и поле "срок окупаемости" так и оставалось readonly навсегда.
+        // Поэтому проверка курсов перенесена ниже, к тем веткам, которым
+        // они реально нужны (формулы графы 7/9 для обычной Части 2).
         this.validateEffCurrYear();
         this.validateObchVolumeFin();
 
         const eventTypeInput = document.querySelector('#AddEventModal input[name="event_type"]');
         const eventType = eventTypeInput ? eventTypeInput.value : null;
-        
+
         const directionType = this.getSelectedDirectionType();
         const isDouble = (directionType === 'double');
-        
-        this.updateFinancingFieldsReadonly(isDouble, eventType);
-        
+        const directionCode = this.getSelectedDirectionCode();
+        const isManualEffRub = eventType === 'saving' && directionCode === '1013';
+
+        this.updateFinancingFieldsReadonly(isDouble, eventType, directionCode);
+
+        if (eventType === 'increase') {
+            const budgetState = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetState"]')?.value);
+            const budgetRep = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetRep"]')?.value);
+            const budgetLoc = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetLoc"]')?.value);
+            const budgetOther = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetOther"]')?.value);
+            const moneyOwn = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOwn"]')?.value);
+            const moneyLoan = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyLoan"]')?.value);
+            const moneyOther = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOther"]')?.value);
+
+            const VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+
+            const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
+            if (VolumeFinCurrentYearInput) {
+                VolumeFinCurrentYearInput.value = this.formatNumber(VolumeFinCurrentYear, 0);
+            }
+
+            const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
+            if (effRubInput) {
+                effRubInput.readOnly = false;
+            }
+
+            // [4] Графа 10 (срок окупаемости) в Части 3 заполняется юрлицом
+            // напрямую для всех направлений — авторасчёт больше не
+            // перезаписывает значение (readOnly уже снят в
+            // updateFinancingFieldsReadonly выше), и ни эта ветка, ни она не
+            // зависят от курса валют, поэтому работают с самого первого
+            // мероприятия, даже пока курсы ещё не подгрузились.
+            return;
+        }
+
+        if (isManualEffRub) {
+            // [3] Код 1013 — графы 7 и 10 вводятся юрлицом напрямую,
+            // авторасчёт их не трогает, курсы валют тут не нужны.
+            const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
+            const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
+            if (effRubInput) effRubInput.readOnly = false;
+            if (paybackInput) paybackInput.readOnly = false;
+            return;
+        }
+
+        if (!this.ratesLoaded) return;
+        if (this.planUsdRate === null || this.costPerToeUsd === null) return;
+
         if (isDouble && eventType === 'saving') {
             const effTut = this.parseNumber(document.querySelector('#AddEventModal input[name="EffTut"]')?.value);
             const effRub = Math.round(effTut * this.costPerToeUsd * this.planUsdRate);
@@ -427,24 +483,26 @@ class EventModalManager {
             const moneyOwn = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOwn"]')?.value);
             const moneyLoan = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyLoan"]')?.value);
             const moneyOther = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOther"]')?.value);
-            
+
             const VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-            
+
             const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
             if (VolumeFinCurrentYearInput) {
                 VolumeFinCurrentYearInput.value = this.formatNumber(VolumeFinCurrentYear, 0);
             }
-            
+
+            const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
+            const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
+
             const effTut = this.parseNumber(document.querySelector('#AddEventModal input[name="EffTut"]')?.value);
             const effRub = Math.round(effTut * this.costPerToeUsd * this.planUsdRate);
-            const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
             if (effRubInput) {
                 effRubInput.value = this.formatNumber(effRub, 0);
                 effRubInput.readOnly = true;
             }
-            
+
             const ObchVolumeFin = this.parseNumber(document.querySelector('#AddEventModal input[name="ObchVolumeFin"]')?.value);
-            
+
             let payback = 0;
             if (effRub > 0) {
                 payback = ObchVolumeFin / effRub;
@@ -452,45 +510,6 @@ class EventModalManager {
                     payback = 0.1;
                 }
             }
-            const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
-            if (paybackInput) {
-                paybackInput.value = this.formatNumber(payback, 1);
-            }
-            return;
-        }
-        
-        if (eventType === 'increase') {
-            const budgetState = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetState"]')?.value);
-            const budgetRep = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetRep"]')?.value);
-            const budgetLoc = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetLoc"]')?.value);
-            const budgetOther = this.parseNumber(document.querySelector('#AddEventModal input[name="BudgetOther"]')?.value);
-            const moneyOwn = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOwn"]')?.value);
-            const moneyLoan = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyLoan"]')?.value);
-            const moneyOther = this.parseNumber(document.querySelector('#AddEventModal input[name="MoneyOther"]')?.value);
-            
-            const VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-            
-            const VolumeFinCurrentYearInput = document.querySelector('#AddEventModal input[name="VolumeFinCurrentYear"]');
-            if (VolumeFinCurrentYearInput) {
-                VolumeFinCurrentYearInput.value = this.formatNumber(VolumeFinCurrentYear, 0);
-            }
-            
-            const effRubInput = document.querySelector('#AddEventModal input[name="EffRub"]');
-            if (effRubInput) {
-                effRubInput.readOnly = false;
-            }
-            
-            const effRub = this.parseNumber(effRubInput?.value);
-            const ObchVolumeFin = this.parseNumber(document.querySelector('#AddEventModal input[name="ObchVolumeFin"]')?.value);
-            
-            let payback = 0;
-            if (effRub > 0) {
-                payback = ObchVolumeFin / effRub;
-                if (payback < 0.1 && payback > 0) {
-                    payback = 0.1;
-                }
-            }
-            const paybackInput = document.querySelector('#AddEventModal input[name="Payback"]');
             if (paybackInput) {
                 paybackInput.value = this.formatNumber(payback, 1);
             }
@@ -750,8 +769,9 @@ class EventModalManager {
 
             const isIncrease = eventData.is_increase === true;
             const isDoubleEffect = eventData.is_double_effect === true;
-            
+
             this._currentEventType = isIncrease ? 'increase' : 'saving';
+            this._currentDirectionCode = eventData.direction_code;
             this._isDoubleEffect = isDoubleEffect;
             
             console.log('editEventModal: _currentEventType =', this._currentEventType);
@@ -821,12 +841,15 @@ class EventModalManager {
                 }
                 
             } else {
-                
+                // [3] Код 1013 в Части 2 — графы 7 и 10 заполняются юрлицом
+                // напрямую, не по формуле.
+                const isManualEffRub = this._currentDirectionCode === '1013';
+
                 if (effRubInput) {
-                    effRubInput.readOnly = true;
+                    effRubInput.readOnly = !isManualEffRub;
                     effRubInput.disabled = false;
                 }
-                
+
                 budgetFields.forEach(fieldName => {
                     const input = document.getElementById(`change-${fieldName}-edit-model`);
                     if (input) {
@@ -834,19 +857,21 @@ class EventModalManager {
                         input.disabled = false;
                     }
                 });
-                
+
                 if (ObchVolumeFinInput) {
                     ObchVolumeFinInput.readOnly = false;
                     ObchVolumeFinInput.disabled = false;
                 }
             }
-            
+
             if (VolumeFinCurrentYearInput) {
                 VolumeFinCurrentYearInput.readOnly = true;
             }
 
+            // [3]/[4] Графа 10 — вручную для кода 1013 (Часть 2) и для всей
+            // Части 3; в остальных случаях Часть 2 считает её автоматически.
             if (paybackInput) {
-                paybackInput.readOnly = true;
+                paybackInput.readOnly = !(isIncrease || this._currentDirectionCode === '1013');
             }
             
             this.disableNextButton(false);
@@ -947,6 +972,13 @@ class EventModalManager {
                 localRadio.checked = true;
             }
         }
+
+        applyTeoEditState(data, data.id);
+
+        // setEventFields подставляет Volume программно — events input/change
+        // на поле при этом не срабатывают, поэтому ограничение квартала
+        // (см. initVolumeQuarterRestriction) нужно применить явно здесь же.
+        window.editQuarterSelector?.setSingleQuarterOnly(parseInt(data.Volume, 10) === 1);
     }
 
     setFormAction(idEvent) {
@@ -1084,47 +1116,76 @@ class EventModalManager {
                 return;
             }
             
+            // [3] Код 1013 в Части 2 — графы 7 (EffRub) и 10 (Payback)
+            // заполняются юрлицом напрямую, не по формуле.
+            const isManualEffRub = self._currentDirectionCode === '1013';
+
             if (eventType === 'increase') {
                 VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-                effRub = self.parseNumber(effRubInput?.value);
                 ObchVolumeFin = self.parseNumber(ObchVolumeFinInput?.value);
-                
+
                 if (VolumeFinCurrentYearInput) {
                     VolumeFinCurrentYearInput.value = self.formatNumber(VolumeFinCurrentYear, 0);
                     VolumeFinCurrentYearInput.readOnly = true;
                 }
-                
+
                 if (effRubInput) {
                     effRubInput.readOnly = false;
                     effRubInput.disabled = false;
                 }
-                
-            } else {
-                VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
-                
-                const effTut = self.parseNumber(effTutInput?.value);
-                effRub = Math.round(effTut * self.costPerToeUsd * self.planUsdRate);
-                ObchVolumeFin = self.parseNumber(ObchVolumeFinInput?.value);
-                
-                if (effRubInput) {
-                    effRubInput.value = self.formatNumber(effRub, 0);
-                    effRubInput.readOnly = true;
-                    effRubInput.disabled = false;
+
+                // [4] Графа 10 в Части 3 — тоже вручную, авторасчёт её не трогает.
+                if (paybackInput) {
+                    paybackInput.readOnly = false;
                 }
-                
+
+                validateEditFields();
+                return;
+            }
+
+            if (isManualEffRub) {
+                VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+
                 if (VolumeFinCurrentYearInput) {
                     VolumeFinCurrentYearInput.value = self.formatNumber(VolumeFinCurrentYear, 0);
                     VolumeFinCurrentYearInput.readOnly = true;
                 }
+                if (effRubInput) {
+                    effRubInput.readOnly = false;
+                    effRubInput.disabled = false;
+                }
+                if (paybackInput) {
+                    paybackInput.readOnly = false;
+                }
+
+                validateEditFields();
+                return;
             }
-            
+
+            VolumeFinCurrentYear = budgetState + budgetRep + budgetLoc + budgetOther + moneyOwn + moneyLoan + moneyOther;
+
+            const effTut = self.parseNumber(effTutInput?.value);
+            effRub = Math.round(effTut * self.costPerToeUsd * self.planUsdRate);
+            ObchVolumeFin = self.parseNumber(ObchVolumeFinInput?.value);
+
+            if (effRubInput) {
+                effRubInput.value = self.formatNumber(effRub, 0);
+                effRubInput.readOnly = true;
+                effRubInput.disabled = false;
+            }
+
+            if (VolumeFinCurrentYearInput) {
+                VolumeFinCurrentYearInput.value = self.formatNumber(VolumeFinCurrentYear, 0);
+                VolumeFinCurrentYearInput.readOnly = true;
+            }
+
             if (ObchVolumeFin < VolumeFinCurrentYear) {
                 ObchVolumeFin = VolumeFinCurrentYear;
                 if (ObchVolumeFinInput) {
                     ObchVolumeFinInput.value = self.formatNumber(ObchVolumeFin, 0);
                 }
             }
-            
+
             let payback = 0;
             if (effRub > 0) {
                 payback = ObchVolumeFin / effRub;
@@ -1132,7 +1193,7 @@ class EventModalManager {
                     payback = 0.1;
                 }
             }
-            
+
             if (paybackInput) {
                 paybackInput.value = self.formatNumber(payback, 1);
                 paybackInput.readOnly = true;
@@ -1258,9 +1319,35 @@ class QuarterSelector {
         this.input.value = value;
         this.highlightSelected(value);
     }
-    
+
     getValue() {
         return this.input.value;
+    }
+
+    // При объёме внедрения = 1 мероприятие не может внедряться "в течение"
+    // нескольких кварталов — варианты-диапазоны (1-2, 1-3 и т.д.)
+    // становятся недоступны, остаются только конкретные 1/2/3/4. Если на
+    // момент включения ограничения уже был выбран диапазон — сбрасываем
+    // выбор, чтобы не остался недопустимый вариант.
+    setSingleQuarterOnly(restrict) {
+        const buttons = this.popup.querySelectorAll('.quarter-btn');
+        let currentIsRange = this.input.value && this.input.value.includes('-');
+
+        buttons.forEach(btn => {
+            const isRange = btn.dataset.value.includes('-');
+            if (restrict && isRange) {
+                btn.disabled = true;
+                btn.classList.add('quarter-btn-disabled');
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('quarter-btn-disabled');
+            }
+        });
+
+        if (restrict && currentIsRange) {
+            this.input.value = '';
+            this.highlightSelected('');
+        }
     }
     
     destroy() {
@@ -1382,7 +1469,175 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.addEventListener('input', function(e) {
         if (e.target.matches('[name="name"], [name="Volume"], [name="ExpectedQuarter"]')) {
-            setInterval(validateAndEnableButton, 300);   
+            setInterval(validateAndEnableButton, 300);
         }
     });
+
+    initTeoFields();
+    initVolumeQuarterRestriction();
 });
+
+// [5] При объёме внедрения = 1 — варианты квартала-диапазона (1-2, 1-3...)
+// должны быть недоступны, только конкретный квартал. Следим за полем
+// "Объём внедрения" в обеих модалках и переключаем ограничение в
+// соответствующем QuarterSelector.
+function initVolumeQuarterRestriction() {
+    function bind(volumeInputId, getSelector) {
+        const input = document.getElementById(volumeInputId);
+        if (!input) return;
+
+        const apply = () => {
+            const selector = getSelector();
+            if (!selector) return;
+            selector.setSingleQuarterOnly(parseInt(input.value, 10) === 1);
+        };
+
+        input.addEventListener('input', apply);
+        input.addEventListener('change', apply);
+        apply();
+    }
+
+    bind('add-volume-input', () => window.addQuarterSelector);
+    bind('change-Volume-edit-model', () => window.editQuarterSelector);
+}
+
+// Поле "[20] ТЭО" в модалках добавления/редактирования мероприятия —
+// карточка-дропзона (пусто) переключается на карточку выбранного/
+// прикреплённого файла. В редактировании карточка также показывает уже
+// сохранённый на сервере файл (ссылка открывает TeoViewer) с кнопками
+// "заменить" и "удалить".
+function initTeoFields() {
+    const addInput = document.getElementById('add-teo-file-input');
+    if (addInput) {
+        addInput.addEventListener('change', () => {
+            const file = addInput.files[0];
+            if (file) {
+                showTeoSelectedFile('add', file.name);
+            } else {
+                showTeoEmpty('add');
+            }
+        });
+
+        const addForm = document.getElementById('addEventForm');
+        if (addForm) {
+            addForm.addEventListener('reset', () => showTeoEmpty('add'));
+        }
+    }
+
+    const addClearBtn = document.getElementById('add-teo-clear-btn');
+    if (addClearBtn) {
+        addClearBtn.addEventListener('click', () => {
+            if (addInput) addInput.value = '';
+            showTeoEmpty('add');
+        });
+    }
+
+    const editInput = document.getElementById('edit-teo-file-input');
+    if (editInput) {
+        editInput.addEventListener('change', () => {
+            const file = editInput.files[0];
+            if (file) showTeoSelectedFile('edit', file.name);
+        });
+    }
+
+    const removeBtn = document.getElementById('edit-teo-remove-btn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+            const eventId = removeBtn.dataset.eventId;
+            if (!eventId) return;
+            if (!confirm('Удалить прикреплённый файл ТЭО?')) return;
+
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const response = await fetch(`/plans/plan/event/${eventId}/teo`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfMeta ? csrfMeta.content : ''
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    applyTeoEditState({ has_teo: false }, null);
+                    if (window.planEvents) window.planEvents.refreshTable();
+                } else {
+                    alert(data.message || 'Не удалось удалить файл ТЭО');
+                }
+            } catch (e) {
+                console.error('[TEO] remove error', e);
+                alert('Не удалось удалить файл ТЭО');
+            }
+        });
+    }
+}
+
+// Показывает карточку "пусто" (дропзона) для поля ТЭО модалки prefix
+// ('add' | 'edit').
+function showTeoEmpty(prefix) {
+    const dropzone = document.getElementById(`${prefix}-teo-dropzone`);
+    const card = document.getElementById(`${prefix}-teo-file-card`);
+    if (dropzone) dropzone.style.display = 'flex';
+    if (card) card.style.display = 'none';
+}
+
+// Показывает карточку с именем файла, который пользователь только что
+// выбрал в системном диалоге (ещё не отправлен на сервер — это произойдёт
+// при сабмите формы).
+function showTeoSelectedFile(prefix, filename) {
+    const dropzone = document.getElementById(`${prefix}-teo-dropzone`);
+    const card = document.getElementById(`${prefix}-teo-file-card`);
+    const nameEl = document.getElementById(`${prefix}-teo-filename`) || card?.querySelector('.teo-file-card-name');
+    const statusEl = card?.querySelector('.teo-file-card-status');
+
+    if (dropzone) dropzone.style.display = 'none';
+    if (card) card.style.display = 'flex';
+    if (nameEl) {
+        nameEl.textContent = filename;
+        if (nameEl.tagName === 'A') {
+            nameEl.removeAttribute('href');
+            nameEl.onclick = (e) => e.preventDefault();
+            nameEl.style.cursor = 'default';
+        }
+    }
+    if (statusEl) statusEl.textContent = 'Будет загружен при сохранении';
+}
+
+// Применяет состояние ТЭО (прикреплён/нет) к блоку поля [20] в модалке
+// редактирования — вызывается при открытии модалки (см. setEventFields)
+// и после удаления файла через кнопку-корзину.
+function applyTeoEditState(data, eventId) {
+    const fileInput = document.getElementById('edit-teo-file-input');
+    if (fileInput) fileInput.value = '';
+
+    if (data && data.has_teo && eventId) {
+        const card = document.getElementById('edit-teo-file-card');
+        const dropzone = document.getElementById('edit-teo-dropzone');
+        const link = document.getElementById('edit-teo-current-link');
+        const statusEl = card?.querySelector('.teo-file-card-status');
+        const removeBtn = document.getElementById('edit-teo-remove-btn');
+
+        if (dropzone) dropzone.style.display = 'none';
+        if (card) card.style.display = 'flex';
+        if (statusEl) statusEl.textContent = 'Прикреплён';
+        if (link) {
+            link.textContent = data.teo_original_name || 'ТЭО';
+            link.href = '#';
+            link.style.cursor = 'pointer';
+            link.onclick = (e) => {
+                e.preventDefault();
+                window.TeoViewer?.open(eventId, data.teo_original_name);
+            };
+        }
+        if (removeBtn) {
+            removeBtn.style.display = 'inline-flex';
+            removeBtn.dataset.eventId = eventId;
+        }
+    } else {
+        showTeoEmpty('edit');
+        const removeBtn = document.getElementById('edit-teo-remove-btn');
+        if (removeBtn) {
+            removeBtn.style.display = 'none';
+            removeBtn.dataset.eventId = '';
+        }
+    }
+}

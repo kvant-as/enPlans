@@ -20,6 +20,77 @@ class PlanEvents {
         this.initCollapseSections();
         this.initColumnResize();
         this.initAjaxForms();
+        this.initTeoCellClicks();
+    }
+
+    initTeoCellClicks() {
+        const table = document.getElementById('eventTable');
+        if (!table) return;
+
+        // Каждая <tr> таблицы уже имеет свой click-листенер
+        // (TableContextMenu.onRowLeftClick — выбор строки + открытие модалки
+        // редактирования), который сам вызывает event.stopPropagation() и
+        // делает это раньше, чем событие дошло бы всплытием до делегированного
+        // листенера на #eventTable. Поэтому здесь используется фаза
+        // перехвата (capture) — она выполняется до того, как событие вообще
+        // достигнет строки, и stopPropagation() на этом этапе гарантированно
+        // не даёт клику по скрепке/загрузке открыть модалку редактирования.
+        table.addEventListener('click', (e) => {
+            const btn = e.target.closest('.teo-cell-icon');
+            const uploadLabel = e.target.closest('.teo-cell-upload');
+            if (!btn && !uploadLabel) return;
+
+            e.stopPropagation();
+
+            if (btn) {
+                e.preventDefault();
+                window.TeoViewer?.open(btn.dataset.teoId, btn.dataset.teoName);
+            }
+            // для uploadLabel preventDefault не вызывается — нужно, чтобы
+            // клик по <label> штатно открыл системный диалог выбора файла
+        }, true);
+
+        table.addEventListener('change', async (e) => {
+            const input = e.target.closest('.teo-cell-upload-input');
+            if (!input) return;
+
+            const label = input.closest('.teo-cell-upload');
+            const eventId = label?.dataset.teoUploadId;
+            const file = input.files[0];
+            if (!eventId || !file) return;
+
+            await this.uploadTeoFile(eventId, file);
+        });
+    }
+
+    async uploadTeoFile(eventId, file) {
+        await this.withScrollPreserved(async () => {
+            try {
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const formData = new FormData();
+                formData.append('teo_file', file);
+                if (csrfMeta) formData.append('csrf_token', csrfMeta.content);
+
+                const response = await fetch(`/plans/plan/event/${eventId}/teo`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfMeta ? csrfMeta.content : ''
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+
+                this.notify(data.message, data.success);
+
+                if (data.success) {
+                    await this.refreshTable();
+                }
+            } catch (e) {
+                console.error('[PlanEvents] teo upload error', e);
+                this.notify('Не удалось прикрепить файл ТЭО', false);
+            }
+        });
     }
 
     async loadEvents() {
@@ -60,7 +131,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving' 
                 ? 'Нет мероприятий по экономии ТЭР (первоначальная редакция)' 
                 : 'Нет мероприятий по увеличению использования местных ТЭР (первоначальная редакция)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="18">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="20">${emptyMessage}</tr>`;
             return;
         }
         
@@ -82,7 +153,7 @@ class PlanEvents {
             const emptyMessage = this.eventType === 'saving'
                 ? 'Отсутствуют мероприятия по экономии ТЭР (включенные в план при внесении в него изменений)'
                 : 'Отсутствуют мероприятия по увеличению использования местных ТЭР (включенные в перечень при внесении в него изменений)';
-            tbody.innerHTML = `<tr class="no-results-row"><td colspan="19">${emptyMessage}</tr>`;
+            tbody.innerHTML = `<tr class="no-results-row"><td colspan="20">${emptyMessage}</tr>`;
             return;
         }
         
@@ -119,9 +190,33 @@ class PlanEvents {
             <td style="text-align: end;">${(row.MoneyOwn || 0).toString()}</td>
             <td style="text-align: end;">${(row.MoneyLoan || 0).toString()}</td>
             <td style="text-align: end;">${(row.MoneyOther || 0).toString()}</td>
+            <td style="text-align: center;" class="teo-cell no-print-col">${this.renderTeoCell(row)}</td>
         `;
-        
+
         return tr;
+    }
+
+    teoPaperclipSvg() {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">`
+            + `<path d="M21.44 11.05l-9.19 9.19a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.49"/>`
+            + `</svg>`;
+    }
+
+    renderTeoCell(row) {
+        if (row.has_teo) {
+            const name = this.escapeHtml(row.teo_original_name || 'ТЭО');
+            return `<button type="button" class="teo-cell-icon" data-teo-id="${row.id}" data-teo-name="${name}" title="${name}">`
+                + this.teoPaperclipSvg()
+                + `</button>`;
+        }
+
+        // Файл не прикреплён — ячейка внешне пустая, но кликабельная зона
+        // (скрытый input[type=file]) позволяет прикрепить ТЭО прямо из
+        // таблицы, без открытия модалки редактирования.
+        return `<label class="teo-cell-upload" data-teo-upload-id="${row.id}" title="Прикрепить ТЭО">`
+            + `<input type="file" class="teo-cell-upload-input" accept=".doc,.docx,.pdf">`
+            + this.teoPaperclipSvg()
+            + `</label>`;
     }
 
     getSectionTitle(isCorrected) {
@@ -167,6 +262,7 @@ class PlanEvents {
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOwn') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyLoan') || 0).toString().replace('.', ',')}</td>
             <td style="text-align: end;">${(this.sumEvents(events, 'MoneyOther') || 0).toString().replace('.', ',')}</td>
+            <td></td>
         `;
         tbody.appendChild(totalRow);
     }
@@ -207,7 +303,8 @@ class PlanEvents {
             { text: (this.sumEvents(allEvents, 'BudgetOther') || 0).toString().replace('.', ',') },
             { text: (this.sumEvents(allEvents, 'MoneyOwn') || 0).toString().replace('.', ',') },
             { text: (this.sumEvents(allEvents, 'MoneyLoan') || 0).toString().replace('.', ',') },
-            { text: (this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',') }
+            { text: (this.sumEvents(allEvents, 'MoneyOther') || 0).toString().replace('.', ',') },
+            { text: '' }
         ];
 
         totalRow.innerHTML = cells.map((cell, index) => {
@@ -242,7 +339,7 @@ class PlanEvents {
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
                 <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
-                <td colspan="10"></td>
+                <td colspan="11"></td>
             `;
             
             otherContent.appendChild(row);
@@ -320,15 +417,18 @@ class PlanEvents {
         await this.withScrollPreserved(async () => {
             const submitBtn = form.querySelector('button[type="submit"]');
             const wasDisabled = submitBtn ? submitBtn.disabled : null;
+            const submitBtnText = submitBtn?.querySelector('.btn-text');
+            const originalBtnText = submitBtnText?.textContent;
             if (submitBtn) submitBtn.disabled = true;
 
             try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: new FormData(form)
+                const data = await this.submitFormWithProgress(form, (percent) => {
+                    if (submitBtnText) {
+                        submitBtnText.textContent = percent < 100
+                            ? `Загрузка... ${percent}%`
+                            : 'Сохранение...';
+                    }
                 });
-                const data = await response.json();
 
                 this.notify(data.message, data.success);
 
@@ -349,6 +449,16 @@ class PlanEvents {
                     } else if (modalId === 'EditEventModal') {
                         window.editEventModalWizard?.resetForm();
                     }
+
+                    if (!document.getElementById('eventTable')) {
+                        // Самое первое мероприятие плана этого типа — на
+                        // странице ещё нет самой таблицы (она рендерится
+                        // только когда есть хотя бы одно мероприятие), её
+                        // некуда AJAX-обновлять. Перезагружаем страницу —
+                        // сервер отрисует уже появившуюся таблицу.
+                        window.location.reload();
+                        return;
+                    }
                     await this.refreshTable();
                 }
             } catch (e) {
@@ -356,7 +466,37 @@ class PlanEvents {
                 this.notify('Не удалось сохранить мероприятие', false);
             } finally {
                 if (submitBtn) submitBtn.disabled = wasDisabled;
+                if (submitBtnText && originalBtnText !== undefined) submitBtnText.textContent = originalBtnText;
             }
+        });
+    }
+
+    // fetch() не даёт отследить прогресс именно ОТПРАВКИ (upload), только
+    // получения ответа — на медленном канале с файлом 20 МБ это выглядело
+    // бы как "зависшая" кнопка без обратной связи. XMLHttpRequest умеет
+    // upload.onprogress, поэтому POST с файлом идёт через него.
+    submitFormWithProgress(form, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && onProgress) {
+                    onProgress(Math.round((e.loaded / e.total) * 100));
+                }
+            });
+
+            xhr.onload = () => {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            xhr.onerror = () => reject(new Error('network error'));
+
+            xhr.send(new FormData(form));
         });
     }
 
@@ -498,7 +638,13 @@ class PlanEvents {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
-        return div.innerHTML;
+        // innerHTML экранирует <, > и & в тексте, но не кавычки — а
+        // результат этой функции местами подставляется и внутрь HTML-
+        // атрибутов (например data-teo-name="${name}"), где значение может
+        // быть неконтролируемым вводом пользователя (оригинальное имя
+        // загруженного файла) — без этого кавычка в имени файла сломала бы
+        // атрибут и позволила бы внедрить произвольный HTML/JS.
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     showError(message) {
@@ -887,10 +1033,18 @@ class TableContextMenu {
         const modal = document.getElementById('confirmModal');
         if (!modal) return;
 
-        const yesBtn = modal.querySelector('#confirmYesdelete');
-        const noBtn = modal.querySelector('#confirmNodelete');
+        const yesBtn = modal.querySelector('#confirmYes');
+        const noBtn = modal.querySelector('#confirmNo');
+        const textEl = modal.querySelector('#modal-text');
+        const textSecondEl = modal.querySelector('#modal-text-second');
+        const yesTextEl = yesBtn.querySelector('#confirm-yes-text');
+
+        if (textEl) textEl.textContent = 'Вы действительно хотите удалить данные?';
+        if (textSecondEl) textSecondEl.textContent = 'Это действие нельзя будет отменить.';
+        if (yesTextEl) yesTextEl.textContent = 'Да, удалить';
 
         modal.classList.add('active');
+        modal._currentForm = null;
 
         yesBtn.onclick = null;
         noBtn.onclick = null;
@@ -907,12 +1061,6 @@ class TableContextMenu {
 
         noBtn.onclick = () => {
             modal.classList.remove('active');
-        };
-
-        window.onclick = (event) => {
-            if (event.target === modal) {
-                modal.classList.remove('active');
-            }
         };
     }
 
@@ -1094,13 +1242,14 @@ function initDeletePlanConfirmModal() {
     if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlanconfirm"]',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
+            modalText: 'Вы уверены, что хотите безвозвратно удалить этот план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, удалить'
         });
     }
 }
@@ -1112,16 +1261,18 @@ class PlansLoader {
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchYnp = '';
+        this.currentSearchApproverOrg = '';
         this.currentPage = 1;
         this.totalPages = 1;
         this.isLoading = false;
         this.searchTimeout = null;
         this.perPage = options.perPage || 50;
         this.isAuditor = options.isAuditor || false;
-        
+
         this.containerId = options.containerId || 'plans-container';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchYnp = options.searchYnp || 'search-ynp';
+        this.searchApproverOrgId = options.searchApproverOrgId || 'search-approver-org';
         this.paginationAreaId = 'pagination-area';
         this.prevPageBtnId = 'prev-page-btn';
         this.nextPageBtnId = 'next-page-btn';
@@ -1149,26 +1300,29 @@ class PlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentSearchApproverOrg) {
+            params.set('search_approver_org', this.currentSearchApproverOrg);
+        }
         if (this.currentPage > 1) {
             params.set('page', this.currentPage);
         }
-        
+
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
         window.history.pushState({}, '', newUrl);
     }
-    
+
     async loadPlans() {
         if (this.isLoading) return;
-        
+
         this.isLoading = true;
         const container = document.getElementById(this.containerId);
-        
+
         if (container) {
             container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div></div>';
         }
-        
+
         this.updateUrl();
-        
+
         try {
             let url = `/api/plans?page=${this.currentPage}&per_page=${this.perPage}&status=${this.currentStatus}&year=${this.currentYear}&region=${this.currentRegion}&show_checkboxes=${this.showCheckboxes || false}`;
             if (this.currentSearchName) {
@@ -1177,7 +1331,10 @@ class PlansLoader {
             if (this.currentSearchYnp) {
                 url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
-            
+            if (this.currentSearchApproverOrg) {
+                url += `&search_approver_org=${encodeURIComponent(this.currentSearchApproverOrg)}`;
+            }
+
             const response = await fetch(url);
             const data = await response.json();
             
@@ -1263,7 +1420,8 @@ class PlansLoader {
         const statError = document.querySelector('.stat-number-eror');
         const statApproved = document.querySelector('.stat-number-sub');
         const statSogl = document.querySelector('.stat-number-sogl');
-        
+        const statInTransit = document.querySelector('.stat-number-transit');
+
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
         if (statControl) statControl.textContent = counts.control || '-';
@@ -1271,6 +1429,7 @@ class PlansLoader {
         if (statError) statError.textContent = counts.error || '-';
         if (statApproved) statApproved.textContent = counts.approved || '-';
         if (statSogl) statSogl.textContent = counts.sogl || '-';
+        if (statInTransit) statInTransit.textContent = counts.in_transit || '-';
     }
     
     attachCheckboxListeners() {
@@ -1342,23 +1501,28 @@ class PlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentSearchApproverOrg = document.getElementById(this.searchApproverOrgId)?.value || '';
             this.currentPage = 1;
             this.updateUrl();
             this.loadPlans();
         }, 500);
     }
-    
+
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
         const searchOkpoInput = document.getElementById(this.searchYnp);
-        
+        const searchApproverOrgInput = document.getElementById(this.searchApproverOrgId);
+
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
         }
         if (searchOkpoInput) {
             searchOkpoInput.addEventListener('input', () => this.handleSearch());
         }
-        
+        if (searchApproverOrgInput) {
+            searchApproverOrgInput.addEventListener('input', () => this.handleSearch());
+        }
+
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
         const regionDropdown = document.querySelector('[data-filter-type="region"]');
@@ -1366,8 +1530,7 @@ class PlansLoader {
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
-            const selectedSpan = document.getElementById('selected-status');
-            
+
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1377,20 +1540,22 @@ class PlansLoader {
                     statusDropdown.classList.toggle('active');
                 });
             }
-            
+
             items.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const value = item.dataset.value;
-                    this.currentStatus = value;
-                    this.currentPage = 1;
-                    if (selectedSpan) selectedSpan.textContent = item.textContent;
                     statusDropdown.classList.remove('active');
-                    this.updateUrl();
-                    this.loadPlans();
+                    this.applyStatusFilter(item.dataset.value);
                 });
             });
         }
+
+        const statTiles = document.querySelectorAll('.stat-and-dot[data-value]');
+        statTiles.forEach(tile => {
+            tile.addEventListener('click', () => {
+                this.applyStatusFilter(tile.dataset.value);
+            });
+        });
         
         if (yearDropdown) {
             const toggleBtn = yearDropdown.querySelector('.dropdown-toggle');
@@ -1486,22 +1651,26 @@ class PlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newSearchApproverOrg = params.get('search_approver_org') || '';
             const newPage = parseInt(params.get('page')) || 1;
-            
+
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
                 newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newSearchApproverOrg !== this.currentSearchApproverOrg ||
                 newPage !== this.currentPage) {
-                
+
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentSearchApproverOrg = newSearchApproverOrg;
                 this.currentPage = newPage;
-                
+
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
-                
+                if (searchApproverOrgInput) searchApproverOrgInput.value = newSearchApproverOrg;
+
                 this.updateFilterDisplay();
                 this.loadPlans();
             }
@@ -1514,7 +1683,8 @@ class PlansLoader {
         if (this.isAuditor) {
             statusMap = {
                 'all': 'Статус',
-                'sent': 'Не просмотренные',
+                'sent': 'На рассмотрении',
+                'in_transit': 'Ожидание очереди',
                 'sogl': 'Согласованные',
                 'error': 'Есть ошибки',
                 'approved': 'Утвержденные'
@@ -1559,23 +1729,44 @@ class PlansLoader {
         if (selectedRegionSpan && regionMap[this.currentRegion]) {
             selectedRegionSpan.textContent = regionMap[this.currentRegion];
         }
+
+        this.updateActiveStatTile();
     }
-    
+
+    updateActiveStatTile() {
+        document.querySelectorAll('.stat-and-dot[data-value]').forEach(tile => {
+            tile.classList.toggle('active', tile.dataset.value === this.currentStatus);
+        });
+    }
+
+    applyStatusFilter(value) {
+        this.currentStatus = value;
+        this.currentPage = 1;
+        this.updateFilterDisplay();
+        this.updateUrl();
+        this.loadPlans();
+    }
+
     init() {
         this.selectedPlans = new Set();
         this.selectedFormat = null;
         this.initFilters();
+        this.updateFilterDisplay();
         this.loadPlans();
     }
 }
 
 class ExportPlansLoader {
     constructor(options = {}) {
+        this.preselectPlanId = options.preselectPlanId ? String(options.preselectPlanId) : null;
+        this.preselectFormat = options.preselectFormat || null;
+
         this.currentStatus = options.initialStatus || 'all';
-        this.currentYear = options.initialYear || 'all';
+        this.currentYear = options.preselectYear ? String(options.preselectYear) : (options.initialYear || 'all');
         this.currentRegion = options.initialRegion || 'all';
         this.currentSearchName = '';
         this.currentSearchYnp = '';
+        this.currentSearchApproverOrg = '';
         this.currentPage = 1;
         this.totalPages = 1;
         this.isLoading = false;
@@ -1587,11 +1778,16 @@ class ExportPlansLoader {
         this.currentTaskId = null;
         this.progressInterval = null;
         this.isInitialLoad = true;
+
+        if (this.preselectPlanId) {
+            this.selectedPlans.add(this.preselectPlanId);
+        }
         
         this.containerId = options.containerId || 'plans-container';
         this.loadMoreBtnId = options.loadMoreBtnId || 'load-more-btn';
         this.searchNameId = options.searchNameId || 'search-name';
         this.searchYnp = options.searchYnp || 'search-ynp';
+        this.searchApproverOrgId = options.searchApproverOrgId || 'search-approver-org';
         this.selectAllId = options.selectAllId || 'selectAllBtn';
         this.clearAllId = 'clearAllBtn';
         this.exportFormId = options.exportFormId || 'exportForm';
@@ -1622,12 +1818,15 @@ class ExportPlansLoader {
         if (this.currentSearchYnp) {
             params.set('search_ynp', this.currentSearchYnp);
         }
+        if (this.currentSearchApproverOrg) {
+            params.set('search_approver_org', this.currentSearchApproverOrg);
+        }
         if (this.currentPage > 1) {
             params.set('page', this.currentPage);
         }
-        
+
         const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-        
+
         if (this.isInitialLoad) {
             window.history.replaceState({}, '', newUrl);
             this.isInitialLoad = false;
@@ -1656,10 +1855,13 @@ class ExportPlansLoader {
             if (this.currentSearchYnp) {
                 url += `&search_ynp=${encodeURIComponent(this.currentSearchYnp)}`;
             }
-            
+            if (this.currentSearchApproverOrg) {
+                url += `&search_approver_org=${encodeURIComponent(this.currentSearchApproverOrg)}`;
+            }
+
             const response = await fetch(url);
             const data = await response.json();
-            
+
             if (data.success) {
                 if (container) {
                     container.innerHTML = `<div class="plans-area">${data.html}</div>`;
@@ -1670,9 +1872,10 @@ class ExportPlansLoader {
                 
                 this.updatePagination();
                 this.attachCheckboxListeners();
+                this.applyPreselectPlanCheckbox();
                 this.updateButtons();
                 this.updateExportButton();
-                
+
                 if (typeof initStatusProgress === 'function') {
                     setTimeout(initStatusProgress, 100);
                 }
@@ -1741,7 +1944,18 @@ class ExportPlansLoader {
         this.updateButtons();
         this.updateExportButton();
     }
-    
+
+    applyPreselectPlanCheckbox() {
+        if (!this.preselectPlanId) return;
+        const checkbox = document.querySelector(`.plans-area input[type="checkbox"][value="${this.preselectPlanId}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+        // Плана может не быть на текущей странице/с текущими фильтрами —
+        // экспорт всё равно должен сработать, т.к. id уже в selectedPlans
+        // (добавлен в конструкторе), чекбокс здесь только для визуальной синхронизации.
+    }
+
     handleCheckboxChange(e) {
         const checkbox = e.target;
         const planId = checkbox.value;
@@ -1831,12 +2045,13 @@ class ExportPlansLoader {
         this.searchTimeout = setTimeout(() => {
             this.currentSearchName = document.getElementById(this.searchNameId)?.value || '';
             this.currentSearchYnp = document.getElementById(this.searchYnp)?.value || '';
+            this.currentSearchApproverOrg = document.getElementById(this.searchApproverOrgId)?.value || '';
             this.currentPage = 1;
             this.updateUrl();
             this.loadPlans(true);
         }, 500);
     }
-    
+
     initFormatSelection() {
         const formatItems = document.querySelectorAll('.export-choose');
         formatItems.forEach(item => {
@@ -1863,18 +2078,22 @@ class ExportPlansLoader {
     initFilters() {
         const searchNameInput = document.getElementById(this.searchNameId);
         const searchOkpoInput = document.getElementById(this.searchYnp);
-        
+        const searchApproverOrgInput = document.getElementById(this.searchApproverOrgId);
+
         if (searchNameInput) {
             searchNameInput.addEventListener('input', () => this.handleSearch());
         }
         if (searchOkpoInput) {
             searchOkpoInput.addEventListener('input', () => this.handleSearch());
         }
-        
+        if (searchApproverOrgInput) {
+            searchApproverOrgInput.addEventListener('input', () => this.handleSearch());
+        }
+
         const statusDropdown = document.querySelector('[data-filter-type="status"]');
         const yearDropdown = document.querySelector('[data-filter-type="year"]');
         const regionDropdown = document.querySelector('[data-filter-type="region"]');
-        
+
         if (statusDropdown) {
             const toggleBtn = statusDropdown.querySelector('.dropdown-toggle');
             const items = statusDropdown.querySelectorAll('.dropdown-item');
@@ -2003,22 +2222,26 @@ class ExportPlansLoader {
             const newRegion = params.get('region') || 'all';
             const newSearchName = params.get('search_name') || '';
             const newSearchOkpo = params.get('search_ynp') || '';
+            const newSearchApproverOrg = params.get('search_approver_org') || '';
             const newPage = parseInt(params.get('page')) || 1;
-            
+
             if (newStatus !== this.currentStatus || newYear !== this.currentYear || newRegion !== this.currentRegion ||
                 newSearchName !== this.currentSearchName || newSearchOkpo !== this.currentSearchYnp ||
+                newSearchApproverOrg !== this.currentSearchApproverOrg ||
                 newPage !== this.currentPage) {
-                
+
                 this.currentStatus = newStatus;
                 this.currentYear = newYear;
                 this.currentRegion = newRegion;
                 this.currentSearchName = newSearchName;
                 this.currentSearchYnp = newSearchOkpo;
+                this.currentSearchApproverOrg = newSearchApproverOrg;
                 this.currentPage = newPage;
-                
+
                 if (searchNameInput) searchNameInput.value = newSearchName;
                 if (searchOkpoInput) searchOkpoInput.value = newSearchOkpo;
-                
+                if (searchApproverOrgInput) searchApproverOrgInput.value = newSearchApproverOrg;
+
                 this.updateFilterDisplay();
                 this.loadPlans(true);
             }
@@ -2247,74 +2470,155 @@ class ExportPlansLoader {
         }
         
         this.initFormatSelection();
+        this.applyPreselectFormat();
         this.initFormSubmit();
         this.isInitialLoad = true;
         this.loadPlans(true);
     }
+
+    applyPreselectFormat() {
+        if (!this.preselectFormat) return;
+        const item = document.querySelector(`.export-choose[data-format="${this.preselectFormat}"]`);
+        if (item && !item.classList.contains('disabled')) {
+            item.click();
+        }
+    }
 }
 
 function initEditableHeaders() {
+    const LABEL_OPTIONS = ['отчет', 'оценка', 'прогноз'];
     const editIcons = document.querySelectorAll('.edit-header-icon');
-    
+    const planYearAttr = document.querySelector('#indicatorsTable')?.dataset?.planYear;
+    const planYear = planYearAttr ? parseInt(planYearAttr, 10) : null;
+
+    // Карточки "Добавление/Редактирование показателя" рисуют свои подписи
+    // года (value-label) один раз при загрузке страницы из plan.column_configs
+    // — без этой синхронизации они оставались бы со старым наименованием
+    // (отчет/оценка/прогноз) до перезагрузки страницы, даже если шапку
+    // таблицы только что переименовали через этот же дропдаун.
+    function syncModalValueLabels(yearNum, newLabel) {
+        if (planYear === null) return;
+        let slot = null;
+        if (yearNum === planYear - 2) slot = 'before';
+        else if (yearNum === planYear - 1) slot = 'prev';
+        else if (yearNum === planYear) slot = 'current';
+        if (!slot) return;
+
+        const labelText = `${newLabel} ${yearNum} г.`;
+        const addLabel = document.getElementById(`add-value-label-${slot}`);
+        const editLabel = document.getElementById(`edit-value-label-${slot}`);
+        if (addLabel) addLabel.textContent = labelText;
+        if (editLabel) editLabel.textContent = labelText;
+    }
+
+    // .table-container скроллится (overflow: auto), поэтому меню дропдауна,
+    // позиционированное как потомок ячейки заголовка, обрезалось бы рамкой
+    // контейнера. Вместо этого рендерим меню отдельным элементом в
+    // document.body с position:fixed и координатами, посчитанными от
+    // кнопки-триггера — тогда оно всегда поверх таблицы и никогда не режется.
+    let closeActiveDropdown = null;
+
     editIcons.forEach(icon => {
         icon.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+            if (closeActiveDropdown) closeActiveDropdown();
+
             const th = icon.closest('.colspan-header');
             const link = th.querySelector('a');
             const currentText = link.textContent;
             const configId = icon.dataset.configId;
             const currentYear = icon.dataset.year;
             const currentLabel = icon.dataset.label;
-            
-            const select = document.createElement('select');
-            select.className = 'header-edit-input';
-            select.innerHTML = `
-                <option value="отчет" ${currentLabel === 'отчет' ? 'selected' : ''}>отчет</option>
-                <option value="оценка" ${currentLabel === 'оценка' ? 'selected' : ''}>оценка</option>
-                <option value="прогноз" ${currentLabel === 'прогноз' ? 'selected' : ''}>прогноз</option>
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'dropdown-toggle header-label-toggle';
+            toggle.innerHTML = `
+                <span class="selected-option">${currentLabel}</span>
+                <svg class="dropdown-arrow" width="12" height="8" viewBox="0 0 12 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L6 6L11 1" stroke="#666" stroke-width="2" stroke-linecap="round"/></svg>
             `;
-            
+
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu-filter header-label-menu';
+            menu.innerHTML = LABEL_OPTIONS.map(opt => `<div class="dropdown-item" data-value="${opt}">${opt}</div>`).join('');
+
             link.textContent = '';
-            link.appendChild(select);
-            select.focus();
-            
-            const saveChanges = async () => {
-                const newLabel = select.value;
-                const newText = `${currentYear} г. ${newLabel}`;
-                
-                if (newLabel !== currentLabel) {
-                    try {
-                        const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                config_id: configId,
-                                label: newLabel
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        if (data.success) {
-                            link.textContent = newText;
-                            icon.dataset.label = newLabel;
-                        } else {
-                            link.textContent = currentText;
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        link.textContent = currentText;
+            link.appendChild(toggle);
+            document.body.appendChild(menu);
+            toggle.classList.add('active');
+
+            function positionMenu() {
+                const rect = toggle.getBoundingClientRect();
+                menu.style.top = `${rect.bottom + 4}px`;
+                menu.style.left = `${rect.left}px`;
+                menu.style.minWidth = `${rect.width}px`;
+            }
+            positionMenu();
+
+            function cleanup(restoreText) {
+                closeActiveDropdown = null;
+                document.removeEventListener('click', outsideClickHandler);
+                document.removeEventListener('scroll', scrollHandler, true);
+                window.removeEventListener('resize', positionMenu);
+                if (menu.parentNode) menu.parentNode.removeChild(menu);
+                link.textContent = restoreText;
+            }
+
+            const saveChanges = async (newLabel) => {
+                if (newLabel === currentLabel) {
+                    cleanup(currentText);
+                    return;
+                }
+                try {
+                    const response = await fetch(`/plans/plan/update-column-label/${window.planToken}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            config_id: configId,
+                            label: newLabel
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        cleanup(`${currentYear} г. ${newLabel}`);
+                        icon.dataset.label = newLabel;
+                        syncModalValueLabels(parseInt(currentYear, 10), newLabel);
+                    } else {
+                        cleanup(currentText);
                     }
-                } else {
-                    link.textContent = currentText;
+                } catch (error) {
+                    console.error('Error:', error);
+                    cleanup(currentText);
                 }
             };
-            
-            select.addEventListener('blur', saveChanges);
-            select.addEventListener('change', saveChanges);
+
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                item.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    saveChanges(item.dataset.value);
+                });
+            });
+
+            function outsideClickHandler(ev) {
+                if (!menu.contains(ev.target) && !toggle.contains(ev.target)) {
+                    cleanup(currentText);
+                }
+            }
+            function scrollHandler() {
+                cleanup(currentText);
+            }
+
+            closeActiveDropdown = () => cleanup(currentText);
+
+            setTimeout(() => {
+                document.addEventListener('click', outsideClickHandler);
+                document.addEventListener('scroll', scrollHandler, true);
+                window.addEventListener('resize', positionMenu);
+            }, 0);
         });
     });
 }
@@ -2333,6 +2637,9 @@ document.addEventListener('DOMContentLoaded', function() {
             window.exportPlansLoader = new ExportPlansLoader({
                 initialStatus: window.initialStatus || 'all',
                 initialYear: window.initialYear || 'all',
+                preselectPlanId: window.preselectPlanId || null,
+                preselectFormat: window.preselectFormat || null,
+                preselectYear: window.preselectYear || null,
                 perPage: 50,
                 containerId: 'plans-container',
                 loadMoreBtnId: 'load-more-btn',
@@ -2365,10 +2672,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    if (document.getElementById('eventTable')) {
-        const token = document.getElementById('eventTable')?.dataset?.token;
-        const eventType = document.getElementById('eventTable')?.dataset?.eventType || 
-                         (window.location.pathname.includes('saving') ? 'saving' : 'increase');
+    // #eventTable рендерится только когда в плане уже ЕСТЬ хотя бы одно
+    // мероприятие этого типа (has_events в plan_bp.py) — модалка же
+    // "Добавить мероприятие" существует всегда. Раньше PlanEvents (а вместе
+    // с ним и AJAX-перехват сабмита формы, см. initAjaxForms) создавался
+    // только при наличии таблицы — из-за этого самое первое мероприятие
+    // плана отправлялось обычной навигацией браузера, а не через fetch, и
+    // прикреплённый файл ТЭО до сервера не доходил (enctype у формы не был
+    // указан — см. тот же фикс в шаблоне). Методы рендера таблицы сами
+    // по себе no-op, если нужных элементов в DOM нет, поэтому PlanEvents
+    // безопасно создавать и без таблицы — только чтобы заработал AJAX-сабмит.
+    const addEventForm = document.getElementById('addEventForm');
+    if (document.getElementById('eventTable') || addEventForm) {
+        const token = document.getElementById('eventTable')?.dataset?.token
+            || document.getElementById('plan-token')?.value;
+        const eventType = document.getElementById('eventTable')?.dataset?.eventType
+            || addEventForm?.querySelector('[name="event_type"]')?.value
+            || (window.location.pathname.includes('saving') ? 'saving' : 'increase');
         if (token) {
             window.planEvents = new PlanEvents(token, eventType);
         }
@@ -2381,13 +2701,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'editPlanButton',
             formId: 'editPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отредактировать данные плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, редактировать'
         });
     }
 
@@ -2411,56 +2732,49 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'controlPlanButton',
             formId: 'controlPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             textSecondId: 'modal-text-second',
             modalText: modalText,
-            modalTextSecond: modalTextSecond
+            modalTextSecond: modalTextSecond,
+            yesText: 'Да, пройти контроль'
         });
     }
 
     if (document.querySelector('[data-modal-trigger="deletePlan"]')) {
         initConfirmModal({
             triggerButton: '[data-modal-trigger="deletePlan"]',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
-            modalText: 'Вы действительно хотите удалить план?',
+            modalText: 'Вы уверены, что хотите безвозвратно удалить этот план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, удалить'
         });
     }
 
     initDeletePlanConfirmModal();
 
-    if (document.getElementById('sent_mesPlanButton')) {
-        initConfirmModal({
-            triggerId: 'sent_mesPlanButton',
-            formId: 'sent_mesPlanForm',
-            modalId: 'confirmModal2',
-            yesId: 'confirmYes',
-            noId: 'confirmNo',
-            textId: 'modal-text',
-            modalText: 'Вы действительно хотите отправить сообщение пользователю?',
-            textSecondId: 'modal-text-second',
-            modalTextSecond: 'Если есть ошибки описывайте максимально подробно, для наилучшего восприятия со стороны пользователя.'
-        });
-    }
+    // Отправка сообщения больше не требует подтверждения — шлётся сразу по
+    // клику/Enter через AJAX (см. plan_actions.html), без промежуточного
+    // "Вы действительно хотите отправить?".
 
     if (document.getElementById('to_deletePlanButton')) {
         initConfirmModal({
             triggerId: 'to_deletePlanButton',
             formId: 'to_deletePlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите сменить статус плана на "Есть ошибки"?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус для последующего исправления ошибок.'
+            modalTextSecond: 'План сменит статус для последующего исправления ошибок.',
+            yesText: 'Да, есть ошибки'
         });
     }
 
@@ -2468,13 +2782,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'confirmPlanButton',
             formId: 'confirmPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите одобрить план?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус и не будет подлежать последующей редакции или удалению со всех сторон.'
+            modalTextSecond: 'План сменит статус и не будет подлежать последующей редакции или удалению со всех сторон.',
+            yesText: 'Да, одобрить'
         });
     }
 
@@ -2482,13 +2797,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'cancelSentPlanButton',
             formId: 'cancelsentPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить отправку плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План вернётся в статус "В редакции", путь согласования будет прерван.'
+            modalTextSecond: 'План вернётся в статус "В редакции", путь согласования будет прерван.',
+            yesText: 'Да, отменить отправку'
         });
     }
 
@@ -2496,13 +2812,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'cancel_auditPlanButton',
             formId: 'cancel_auditPlanForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отменить изменения в статусе плана?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'План сменит статус обратно на "Не просмотренный". Отменить изменния можно только в течении 3-ех месяцев.'
+            modalTextSecond: 'План сменит статус обратно на "На рассмотрении". Отменить изменния можно только в течении 3-ех месяцев.',
+            yesText: 'Да, отменить'
         });
     }
 
@@ -2510,13 +2827,14 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'logoutButton',
             formId: 'logout_form',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите выйти из системы EnPlans?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.'
+            modalTextSecond: 'Это действие нельзя будет отменить. Убедитесь, что вы сохранили свою работу.',
+            yesText: 'Да, выйти'
         });
     }
 
@@ -2524,14 +2842,36 @@ document.addEventListener('DOMContentLoaded', function() {
         initConfirmModal({
             triggerId: 'editprofileButton',
             formId: 'editprofileForm',
-            modalId: 'confirmModal2',
+            modalId: 'confirmModal',
             yesId: 'confirmYes',
             noId: 'confirmNo',
             textId: 'modal-text',
             modalText: 'Вы действительно хотите отредактировать данные профиля?',
             textSecondId: 'modal-text-second',
-            modalTextSecond: 'Это действие нельзя будет отменить.'
+            modalTextSecond: 'Это действие нельзя будет отменить.',
+            yesText: 'Да, редактировать'
         });
+
+        const editPhoneList = document.getElementById('edit-phone-group-list');
+        if (editPhoneList) {
+            const editPhoneHidden = document.getElementById('edit-telephone');
+            const editAddPhoneBtn = document.getElementById('edit-add-phone-row');
+            const editProfileButton = document.getElementById('editprofileButton');
+
+            const editPhoneInput = new PhoneGroupInput(editPhoneList, editPhoneHidden, editAddPhoneBtn, {
+                maxCount: 2,
+                inputClass: 'app-input',
+                onChange: () => {
+                    if (editProfileButton) {
+                        editProfileButton.disabled = !editPhoneInput.validate();
+                    }
+                }
+            });
+
+            if (editProfileButton) {
+                editProfileButton.disabled = !editPhoneInput.validate();
+            }
+        }
     }
 
     const ticketsContainer = document.querySelector('.tickets-container');
@@ -2593,6 +2933,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const addIndicatorModal = document.getElementById('AddIndicatorModal');
     const IndicatorModal = new EventModal('AddIndicatorModal');
+    window.addIndicatorModalWizard = IndicatorModal;
     if (addIndicatorModal && IndicatorModal) {
         handleModal(addIndicatorModal, document.getElementById('AddIndicatorModalButton'), addIndicatorModal.querySelector('.close'));
     }

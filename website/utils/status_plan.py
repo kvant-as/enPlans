@@ -6,28 +6,86 @@ from common_models.timeutils import current_utc_time
 from website import db
 
 
-def handle_draft_status(plan):
+CANCEL_SEND_NOTE_PREFIX = 'Отправка отменена'
+
+
+def _latest_cycle(plan_id):
+    """Номер последнего (текущего) цикла отправки плана — старые циклы
+    (отменённые/замещённые повторной отправкой) больше не удаляются из
+    PlanApprovalPath, поэтому любой запрос "текущего этапа" обязан
+    фильтроваться по этому циклу, иначе найдёт брошенный этап из
+    прошлого, отменённого цикла."""
+    cycle = db.session.query(db.func.max(PlanApprovalPath.cycle)).filter(
+        PlanApprovalPath.plan_id == plan_id
+    ).scalar()
+    return cycle or 1
+
+
+def _unlink_stale_remark_tickets(path):
+    """Отмена подтверждения этапа (is_viewed сбрасывается на ТОМ ЖЕ
+    path.id — в отличие от повторной отправки, новый цикл/новые строки
+    тут не создаются) не трогает PlanTicket.approval_path_id старых
+    сообщений, написанных ДО подтверждения — has_pending_review_message
+    видел бы их как "уже есть сообщение по этому этапу" и не давал бы
+    написать новое. Отвязываем все НЕ системные сообщения, привязанные к
+    этому этапу: они относятся к состоянию, которое только что отменили,
+    и теперь не должны считаться актуальным замечанием по новой попытке."""
+    PlanTicket.query.filter_by(approval_path_id=path.id, is_system=False).update(
+        {'approval_path_id': None}
+    )
+
+
+def handle_draft_status(plan, reason=None):
     try:
+        was_sent = plan.is_sent
+
         plan.is_draft = True
         plan.is_control = False
         plan.is_sent = False
         plan.is_error = False
         plan.is_approved = False
-        
+
         plan.change_time = current_utc_time()
-        
+
+        # "Отменить отправку" (was_sent=True) требует указать причину — она
+        # заносится в "Подписи" отдельной строкой в конце списка (см.
+        # plan_signatures_page, тот же стиль, что и "Разработчик плана").
+        # Простой возврат из "В редакции" в "В редакции" (was_sent=False)
+        # причины не требует и тикет не создаёт.
+        if was_sent and reason and reason.strip():
+            ticket = PlanTicket(
+                note=f'{CANCEL_SEND_NOTE_PREFIX}. Причина: {reason.strip()}',
+                luck=True,
+                is_system=True,
+                user_id=current_user.id if current_user.is_authenticated else None,
+                plan_id=plan.id,
+                begin_time=current_utc_time(),
+            )
+            db.session.add(ticket)
+
         db.session.commit()
-        
+
         return {'message': 'Статус изменен на "В редакции"'}
-        
+
     except Exception as e:
         db.session.rollback()
         return {'error': f'Ошибка при изменении статуса: {str(e)}'}
 
 def handle_control_status(plan):
     errors = []
-    
+
     try:
+        from website.utils.teo import find_directions_missing_teo
+
+        missing_teo = find_directions_missing_teo(plan)
+        if missing_teo:
+            code, _name = missing_teo[0]
+            errors.append(
+                f'План не может пройти контроль. Отсутствует обязательное ТЭО по направлению '
+                f'энергосбережению с кодом: {code}. Необходимо прикрепить файл ТЭО в графу 20 '
+                f'хотя бы к одному мероприятию с этим кодом.'
+            )
+
         indicator_9999 = next(
             (iu for iu in plan.indicators_usage if iu.indicator.code == '9999'), 
             None
@@ -100,14 +158,18 @@ def handle_control_status(plan):
                 current_app.logger.error(f"Ошибка при проверке индикатора 9915: {e}")
                 errors.append("Ошибка при проверке целевого показателя энергосбережения")
         
-        # Проверка 4: Ожидаемая экономия ТЭР
-        if indicator_9900 and plan.saving_fuel:
+        # Проверка 4: Целевой показатель по экономии ТЭР (задание на титульном
+        # листе, plan.saving_fuel) сравнивается с п.5 "Годовая экономия ТЭР
+        # от энергосберегающих мероприятий всего" (индикатор 9999), а не с
+        # 9900 "Ожидаемая экономия ТЭР от внедрения мероприятий в текущем
+        # году" — это разные показатели, сравнение с 9900 было ошибочным.
+        if indicator_9999 and plan.saving_fuel:
             try:
-                if indicator_9900.QYearCurrent < plan.saving_fuel:
-                    errors.append(f"Ожидаемая экономия ТЭР ({indicator_9900.QYearCurrent} т у.т.) должна быть больше или равна заданию ({plan.saving_fuel} т у.т.).")
+                if indicator_9999.QYearCurrent < plan.saving_fuel:
+                    errors.append(f"Годовая экономия ТЭР ({indicator_9999.QYearCurrent} т у.т.) должна быть больше или равна заданию по экономии ТЭР ({plan.saving_fuel} т у.т.).")
             except AttributeError as e:
-                current_app.logger.error(f"Ошибка при проверке индикатора 9900: {e}")
-                errors.append("Ошибка при проверке ожидаемой экономии ТЭР")
+                current_app.logger.error(f"Ошибка при проверке индикатора 9999: {e}")
+                errors.append("Ошибка при проверке годовой экономии ТЭР")
         
         # Проверка 5: Доля местных ТЭР
         if indicator_9916 and plan.share_fuel:
@@ -159,21 +221,45 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
 
         if not coordinator_ids and not approver_id:
             return {'error': 'Не выбраны организации для согласования и утверждения'}
-        
-        PlanApprovalPath.query.filter_by(plan_id=plan.id).delete()
-        
+
+        # Раньше старый маршрут полностью удалялся при каждой повторной
+        # отправке — история прошлых циклов (включая отменённые) терялась
+        # без следа. Теперь прежние строки остаются как есть (история),
+        # а новый цикл отправки получает следующий номер cycle.
+        last_cycle = db.session.query(db.func.max(PlanApprovalPath.cycle)).filter(
+            PlanApprovalPath.plan_id == plan.id
+        ).scalar()
+        new_cycle = (last_cycle or 0) + 1
+
+        # Снимок разработчика плана на МОМЕНТ именно этой отправки — иначе
+        # "Разработчик плана" в "Подписи" брался бы живым джойном через
+        # plan.user и у ВСЕХ прошлых отправок задним числом менялись бы
+        # ФИО/телефон, если в тот же аккаунт позже зашёл другой человек и
+        # поправил профиль. Отправляет план его владелец (plan.user),
+        # поэтому снимок берём именно с него.
+        sender = plan.user
+        sender_name = ' '.join(filter(None, [sender.last_name, sender.first_name, sender.patronymic_name])) if sender else None
+        sender_post = sender.post if sender else None
+        sender_phone = sender.telephone if sender else None
+        sender_email = sender.email if sender else None
+
         step_order = 1
-        
+
         region_path = PlanApprovalPath(
             plan_id=plan.id,
             step_order=step_order,
             organization_id=region_org.id,
             step_type='region',
-            created_at=current_utc_time()
+            created_at=current_utc_time(),
+            cycle=new_cycle,
+            sender_post=sender_post,
+            sender_name=sender_name,
+            sender_phone=sender_phone,
+            sender_email=sender_email,
         )
         db.session.add(region_path)
         step_order += 1
-        
+
         for coord_id in coordinator_ids:
             if coord_id and coord_id.strip():
                 coord_path = PlanApprovalPath(
@@ -181,18 +267,28 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
                     step_order=step_order,
                     organization_id=int(coord_id.strip()),
                     step_type='coordinator',
-                    created_at=current_utc_time()
+                    created_at=current_utc_time(),
+                    cycle=new_cycle,
+                    sender_post=sender_post,
+                    sender_name=sender_name,
+                    sender_phone=sender_phone,
+                    sender_email=sender_email,
                 )
                 db.session.add(coord_path)
                 step_order += 1
-        
+
         if approver_id:
             approver_path = PlanApprovalPath(
                 plan_id=plan.id,
                 step_order=step_order,
                 organization_id=int(approver_id),
                 step_type='approver',
-                created_at=current_utc_time()
+                created_at=current_utc_time(),
+                cycle=new_cycle,
+                sender_post=sender_post,
+                sender_name=sender_name,
+                sender_phone=sender_phone,
+                sender_email=sender_email,
             )
             db.session.add(approver_path)
         
@@ -212,51 +308,99 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         db.session.rollback()
         return {'error': f'Ошибка при отправке плана: {str(e)}'}
 
-def handle_sent_without_check_status(plan, current_user):
+def handle_sent_without_check_status(plan, current_user, reason=None):
     try:
-        current_path = PlanApprovalPath.query.filter_by(
-            plan_id=plan.id,
-            is_viewed=False
-        ).order_by(PlanApprovalPath.step_order).first()
-        
-        # if current_path and current_path.organization_id != current_user.organization_id:
-        #     return {'error': 'У вас нет прав для отмены изменений на этом этапе'}
-        
-        plan.is_sent = True
-        plan.is_draft = False
-        plan.is_control = False
-        plan.is_error = False
-        plan.is_approved = False
-        plan.afch = False
-        
+        cycle = _latest_cycle(plan.id)
+
         if current_user.is_auditor:
-            current_path = PlanApprovalPath.query.filter_by(
+            # Если одна и та же организация занимает НЕСКОЛЬКО ролей/этапов
+            # в цепочке согласования одного цикла (например, одновременно
+            # region и approver — на малых тестовых конфигурациях это
+            # обычное дело), filter_by(...).first() без сортировки мог
+            # взять ЛЮБОЙ из её подтверждённых этапов — не обязательно тот,
+            # который проверяющий только что подтвердил и теперь пытается
+            # отменить. Снаружи это выглядело как "ничего не поменялось":
+            # отменялся не тот (случайно выбранный более ранний) этап, а
+            # ожидаемый на странице "Подписи" оставался как был.
+            confirmed_path = PlanApprovalPath.query.filter_by(
                 plan_id=plan.id,
+                cycle=cycle,
                 organization_id=current_user.organization_id,
                 is_viewed=True
-            ).first()
-            
-            if current_path:
+            ).order_by(PlanApprovalPath.viewed_at.desc(), PlanApprovalPath.step_order.desc()).first()
+
+            # Если вы ничего не подтверждали, а, наоборот, отклонили план
+            # ("Есть ошибки") — can_cancel разрешает "Отменить изменения" и
+            # в этом случае (см. get_audit_context: can_cancel учитывает
+            # plan.is_error независимо от того, кто именно отклонил), но
+            # отклонение не ставит is_viewed=True — вместо этого у этапа
+            # проставлен rejected_at. Ищем такой этап отдельно, если
+            # подтверждённого не нашлось.
+            rejected_path = None
+            if not confirmed_path:
+                rejected_path = PlanApprovalPath.query.filter_by(
+                    plan_id=plan.id,
+                    cycle=cycle,
+                    organization_id=current_user.organization_id,
+                ).filter(PlanApprovalPath.rejected_at.isnot(None)).order_by(
+                    PlanApprovalPath.rejected_at.desc(), PlanApprovalPath.step_order.desc()
+                ).first()
+
+            current_path = confirmed_path or rejected_path
+            if not current_path:
+                return {'error': 'Не найден подтверждённый или отклонённый вами этап для отмены'}
+
+            plan.is_sent = True
+            plan.is_draft = False
+            plan.is_control = False
+            plan.is_error = False
+            plan.is_approved = False
+            plan.afch = False
+
+            if confirmed_path:
                 current_path.is_viewed = False
                 current_path.viewed_at = None
-                
-                ticket = PlanTicket(
-                    note="Проверка отменена. План возвращен на этап рассмотрения.",
-                    luck=True,
-                    is_system=True,
-                    plan_id=plan.id,
-                    begin_time=current_utc_time()
-                )
-                db.session.add(ticket)
-                
-                notification = Notification(
-                    user_id=plan.user_id,
-                    message=f"План {plan.year} возвращен на этап согласования",
-                    created_at=current_utc_time()
-                )
-                db.session.add(notification)
+                current_path.viewed_by_user_id = None
+                current_path.viewed_by_snapshot = None
+                note = "Проверка отменена. План возвращен на этап рассмотрения."
+            else:
+                current_path.rejected_at = None
+                current_path.rejected_by_snapshot = None
+                note = "Отклонение плана отменено. План возвращен на этап рассмотрения."
+
+            _unlink_stale_remark_tickets(current_path)
+
+            # Отмена своего согласования требует письменной причины
+            # (см. api_change_plan_status) — фиксируем её в сообщении
+            # по плану, как и причину отмены отправки разработчиком.
+            if reason:
+                note += f" Причина: {reason.strip()}"
+
+            ticket = PlanTicket(
+                note=note,
+                luck=True,
+                is_system=True,
+                user_id=current_user.id,
+                plan_id=plan.id,
+                begin_time=current_utc_time()
+            )
+            db.session.add(ticket)
+
+            notification = Notification(
+                user_id=plan.user_id,
+                message=f"План {plan.year} возвращен на этап согласования",
+                created_at=current_utc_time()
+            )
+            db.session.add(notification)
         else:
-            PlanApprovalPath.query.filter_by(plan_id=plan.id).update(
+            plan.is_sent = True
+            plan.is_draft = False
+            plan.is_control = False
+            plan.is_error = False
+            plan.is_approved = False
+            plan.afch = False
+
+            PlanApprovalPath.query.filter_by(plan_id=plan.id, cycle=cycle).update(
                 {'is_viewed': False, 'viewed_at': None}
             )
             
@@ -284,12 +428,25 @@ def handle_sent_without_check_status(plan, current_user):
         db.session.rollback()
         return {'error': f'Ошибка при возврате плана: {str(e)}'}
 
-def handle_error_status(plan):
+def handle_error_status(plan, current_user):
     try:
-        if not plan.afch:
+        from website.utils.plans import has_pending_review_message, get_current_review_path, build_signer_snapshot
+
+        if not has_pending_review_message(plan, current_user):
             return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
-        
-        plan.audit_time = current_utc_time()
+
+        now = current_utc_time()
+
+        # Этап, который проверяющий сейчас отклоняет — is_viewed/viewed_at
+        # для него так и останутся False/None (этап не пройден), поэтому
+        # сам факт и момент отклонения фиксируем отдельными полями, иначе
+        # "Подписи" не смогут показать, когда и кем план был возвращён.
+        current_path = get_current_review_path(plan, current_user)
+        if current_path:
+            current_path.rejected_at = now
+            current_path.rejected_by_snapshot = build_signer_snapshot(current_user)
+
+        plan.audit_time = now
         plan.is_error = True
         plan.is_draft = False
         plan.is_control = False
@@ -300,6 +457,7 @@ def handle_error_status(plan):
         ticket = PlanTicket(
             note="В плане нашли ошибки, статус изменен на Есть ошибки.",
             luck=True,
+            is_system=True,
             plan_id=plan.id,
             user_id=current_user.id,
             begin_time=current_utc_time(),
@@ -324,34 +482,43 @@ def handle_approved_status(plan, current_user):
     try:
         if not current_user.organization_id:
             return {'error': 'У пользователя не указана организация'}
-        
+
+        cycle = _latest_cycle(plan.id)
+
         current_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
+            cycle=cycle,
             is_viewed=False
         ).order_by(PlanApprovalPath.step_order).first()
-        
+
         if not current_path:
             return {'error': 'Все этапы уже пройдены'}
-        
+
         if current_path.organization_id != current_user.organization_id:
             return {'error': 'У вас нет прав на согласование этого этапа'}
-        
+
         prev_path = PlanApprovalPath.query.filter(
             PlanApprovalPath.plan_id == plan.id,
+            PlanApprovalPath.cycle == cycle,
             PlanApprovalPath.step_order == current_path.step_order - 1
         ).first()
-        
+
         if prev_path and not prev_path.is_viewed:
             return {'error': 'Предыдущий этап еще не пройден'}
-        
+
+        from website.utils.plans import build_signer_snapshot
+
         current_path.is_viewed = True
         current_path.viewed_at = current_utc_time()
-        
+        current_path.viewed_by_user_id = current_user.id
+        current_path.viewed_by_snapshot = build_signer_snapshot(current_user)
+
         plan.audit_time = current_utc_time()
         plan.afch = False
-        
+
         next_path = PlanApprovalPath.query.filter_by(
             plan_id=plan.id,
+            cycle=cycle,
             is_viewed=False
         ).order_by(PlanApprovalPath.step_order).first()
         
@@ -384,7 +551,8 @@ def handle_approved_status(plan, current_user):
             ticket = PlanTicket(
                 note="План был согласован и передан в следующую стадию проверки.",
                 luck=True,
-                user_id=current_user.id,
+                is_system=True,
+                # user_id=current_user.id,
                 plan_id=plan.id,
                 begin_time=current_utc_time()
             )
@@ -424,19 +592,25 @@ def handle_admin_confirm_step(plan, path_id, admin_user):
 
         paths_to_confirm = PlanApprovalPath.query.filter(
             PlanApprovalPath.plan_id == plan.id,
+            PlanApprovalPath.cycle == target_path.cycle,
             PlanApprovalPath.step_order <= target_path.step_order,
             PlanApprovalPath.is_viewed == False
         ).order_by(PlanApprovalPath.step_order).all()
 
+        from website.utils.plans import build_signer_snapshot
+
         now = current_utc_time()
+        admin_snapshot = build_signer_snapshot(admin_user)
         for path in paths_to_confirm:
             path.is_viewed = True
             path.viewed_at = now
+            path.viewed_by_user_id = admin_user.id
+            path.viewed_by_snapshot = admin_snapshot
 
         plan.audit_time = now
         plan.afch = False
 
-        last_path = PlanApprovalPath.query.filter_by(plan_id=plan.id).order_by(
+        last_path = PlanApprovalPath.query.filter_by(plan_id=plan.id, cycle=target_path.cycle).order_by(
             PlanApprovalPath.step_order.desc()
         ).first()
         is_final = bool(last_path and last_path.id == target_path.id)
@@ -506,6 +680,7 @@ def handle_admin_cancel_step(plan, path_id, admin_user):
 
         paths_to_cancel = PlanApprovalPath.query.filter(
             PlanApprovalPath.plan_id == plan.id,
+            PlanApprovalPath.cycle == target_path.cycle,
             PlanApprovalPath.step_order >= target_path.step_order,
             PlanApprovalPath.is_viewed == True
         ).order_by(PlanApprovalPath.step_order).all()
@@ -514,6 +689,9 @@ def handle_admin_cancel_step(plan, path_id, admin_user):
         for path in paths_to_cancel:
             path.is_viewed = False
             path.viewed_at = None
+            path.viewed_by_user_id = None
+            path.viewed_by_snapshot = None
+            _unlink_stale_remark_tickets(path)
 
         if plan.is_approved:
             plan.is_approved = False
@@ -540,9 +718,14 @@ def handle_admin_cancel_step(plan, path_id, admin_user):
         )
         db.session.add(ticket)
 
+        # Notification.message — varchar(140); название организации в
+        # пути согласования может быть сколь угодно длинным (как здесь —
+        # "Гродненское областное управление по надзору..."), поэтому в
+        # уведомление оно не включается (полная версия — в PlanTicket.note
+        # выше, у него такого ограничения нет).
         notification = Notification(
             user_id=plan.user_id,
-            message=f"Согласование плана на {plan.year} год было отменено администратором на этапе «{org_name}»",
+            message=f"Подтверждение этапа согласования плана на {plan.year} год было отменено администратором",
             created_at=now
         )
         db.session.add(notification)

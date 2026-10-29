@@ -44,6 +44,11 @@ def process_event_data(current_plan, direction, event_type, form_data):
     ExpectedQuarter = form_data.get('ExpectedQuarter') or None
     EffCurrYear = to_decimal_2(form_data.get('EffCurrYear'))
     name = form_data.get('name') or None
+
+    # При объёме внедрения = 1 мероприятие физически не может внедряться
+    # "в течение" нескольких кварталов — только в одном конкретном.
+    if Volume == 1 and ExpectedQuarter and '-' in ExpectedQuarter:
+        raise ValueError('При объёме внедрения, равном 1, ожидаемый срок внедрения мероприятия должен быть одним конкретным кварталом (1, 2, 3 или 4), а не диапазоном.')
     
     event_category = form_data.get('event_category')
     current_app.logger.info(f'event_category from form: {event_category}')
@@ -62,9 +67,14 @@ def process_event_data(current_plan, direction, event_type, form_data):
     
     is_double_effect = direction.is_econom and direction.is_increase
     
+    # Код 1013 ("Замена неэкономичных котлов и печей с низким коэффициентом
+    # полезного действия на более эффективные") в Части 2 — графы 7
+    # (EffRub) и 10 (Payback) заполняются напрямую юрлицом, не по формуле.
+    is_manual_eff_rub = event_type == 'saving' and direction.code == '1013'
+
     if event_type == 'saving':
-        EffRub = int(EffTut * COST_PER_TOE_USD * USD_RATE)
-        
+        EffRub = parse_number_with_comma(form_data.get('EffRub')) if is_manual_eff_rub else int(EffTut * COST_PER_TOE_USD * USD_RATE)
+
         if is_double_effect:
             return {
                 'name': name,
@@ -100,14 +110,17 @@ def process_event_data(current_plan, direction, event_type, form_data):
         MoneyOther = parse_number_with_comma(form_data.get('MoneyOther'))
         
         VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
-        
-        Payback = None
-        if EffRub > 0:
-            payback_value = ObchVolumeFin / EffRub
-            if payback_value < 0.1 and payback_value > 0:
-                payback_value = 0.1
-            Payback = to_decimal_1(payback_value)
-        
+
+        if is_manual_eff_rub:
+            Payback = to_decimal_1(form_data.get('Payback'))
+        else:
+            Payback = None
+            if EffRub > 0:
+                payback_value = ObchVolumeFin / EffRub
+                if payback_value < 0.1 and payback_value > 0:
+                    payback_value = 0.1
+                Payback = to_decimal_1(payback_value)
+
         return {
             'name': name,
             'Volume': Volume,
@@ -131,7 +144,7 @@ def process_event_data(current_plan, direction, event_type, form_data):
             'is_local': is_local,
             'is_corrected': is_corrected
         }
-    
+
     if event_type == 'increase':
         BudgetState = parse_number_with_comma(form_data.get('BudgetState'))
         BudgetRep = parse_number_with_comma(form_data.get('BudgetRep'))
@@ -144,14 +157,13 @@ def process_event_data(current_plan, direction, event_type, form_data):
         ObchVolumeFin = parse_number_with_comma(form_data.get('ObchVolumeFin'))
         VolumeFinCurrentYear = BudgetState + BudgetRep + BudgetLoc + BudgetOther + MoneyOwn + MoneyLoan + MoneyOther
         EffRub = parse_number_with_comma(form_data.get('EffRub'))
-        
-        Payback = None
-        if EffRub > 0:
-            payback_value = VolumeFinCurrentYear / EffRub
-            if payback_value < 0.1 and payback_value > 0:
-                payback_value = 0.1
-            Payback = to_decimal_1(payback_value)
-        
+
+        # Графа 10 (срок окупаемости) в Части 3 заполняется юрлицом напрямую,
+        # не по формуле ObchVolumeFin/EffRub. parse_number_with_comma() тут
+        # не подходит — она округляет до целого (int(float(...))), а
+        # Payback должен сохранять один знак после запятой.
+        Payback = to_decimal_1(form_data.get('Payback'))
+
         return {
             'name': name,
             'Volume': Volume,

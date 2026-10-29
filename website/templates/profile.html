@@ -11,9 +11,6 @@
       </div>
       <div class="employee-card">
         <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-        {#{% if current_user.post %}
-          <a class="employee-position">{{ current_user.post}}</a>
-        {% endif%}#}
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
@@ -37,10 +34,6 @@
       <button type="button" class="profile-tab" data-tab="security" role="tab" aria-selected="false">
         {{ icons.icon_password() }}
         <span>{{ _('Безопасность') }}</span>
-      </button>
-      <button type="button" class="profile-tab" data-tab="verification" role="tab" aria-selected="false">
-        {{ icons.icon_confirm() }}
-        <span>{{ _('Верификация') }}</span>
       </button>
     </div>
 
@@ -120,18 +113,7 @@
           />
         </div>
       </div>
-      <div class="app-group">
-        <label>{{ _('Телефон') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_contacts() }}
-          <input
-            type="text"
-            value="{{current_user.telephone}}"
-            placeholder="Номер телефона пользователя"
-            class="app-input"
-          />
-        </div>
-      </div>
+      {{ component.phone_display_group(current_user.telephone, label=_('Телефон'), placeholder=_('Номер телефона пользователя')) }}
       <div class="app-group">
         <label>{{ _('Должность') }}</label>
         <div class="input-with-icon">
@@ -174,13 +156,13 @@
                 {% if current_user.is_admin %}
                   <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_auditor %}
-                  <span class="date-label">{{ _('Аудитор') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Согласовывающая организация') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_approver %}
-                  <span class="date-label">{{ _('Утверждающий') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Утверждающая организация') }}: demo-{{ current_user.id }}</span>
                 {% elif current_user.is_reader %}
                   <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
                 {% else %}
-                  <span class="date-label">{{ _('Пользователь') }}: demo-{{ current_user.id }}</span>
+                  <span class="date-label">{{ _('Организация-разработчик') }}: demo-{{ current_user.id }}</span>
                 {% endif %}
               </div>
             </div>
@@ -222,8 +204,8 @@
             </div>
         </div>
       </div>
-      {{ component.organization_view_card(current_user.organization) }}
-            <hr/>
+      {{ component.organization_view_card(current_user.organization, current_user) }}
+      <hr/>
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">
         <div class="dates-list">
@@ -444,115 +426,6 @@
       </div>
     </div>
 
-    <div class="profile-tab-panel" data-tab-panel="verification">
-      <div class="header-content">
-        <div class="header-content-left">
-          <a class="name" style="padding-bottom: 0">{{ _('Верификация аккаунта') }}</a>
-          {% if current_user.is_ecp_verified() %}
-            <span class="session-role-badge verified" id="verificationStatusBadge">
-              {{ _('Верифицировано до') }} {{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}
-            </span>
-          {% else %}
-            <span class="session-role-badge unverified" id="verificationStatusBadge">
-              {{ _('Требуется верификация') }}
-            </span>
-          {% endif %}
-        </div>
-        <div class="header-content-right">
-          <div class="dropdown-menu-container">
-            <button type="button" class="svg-btn dots-btn" id="dots-profile-verification" data-tooltip="Действия с верификацией">
-                {{ icons.icon_dots() }}
-            </button>
-
-            <div class="dropdown-menu" id="menu-profile-verification">
-                <div class="nav-menu-list">
-                  <button class="nav-menu-item" disabled>
-                      {{ icons.icon_file() }}
-                      <span>{{ _('История верификаций') }}</span>
-                  </button>
-                </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p class="session-timer-hint" style="margin: -8px 0 16px;">
-        {{ _('Подтверждение личности сертификатом ЭЦП, раз в 30 дней. Аудиторам необходима, чтобы просматривать и экспортировать планы; согласующим и утверждающим — чтобы согласовывать и утверждать планы. Остальным пользователям доступна по желанию — альтернативно сертификат можно приложить прямо при отправке плана на согласование.') }}
-      </p>
-
-      {% if current_user.is_ecp_verified() %}
-        <div class="verified-account-notice">
-          {{ icons.icon_confirm() }}
-          <div class="verified-account-notice-body">
-            <p class="verified-account-notice-title">{{ _('Аккаунт верифицирован') }}</p>
-            <p class="verified-account-notice-text">{{ _('Верификация действует до') }} {{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}. {{ _('Новый сертификат можно будет загрузить после истечения срока.') }}</p>
-          </div>
-        </div>
-      {% else %}
-        <div class="drop-certificate-container">
-          <div id="verifyCertDropArea" class="drop-certificate-area">
-            <div class="drop-certificate-content">
-              <div class="drop-certificate-icon">{{ icons.icon_add() }}</div>
-              <p class="drop-certificate-text">
-                {{ _('Перетащите файл сертификата сюда или') }}
-                <label for="verifyCertInput" class="drop-certificate-label">
-                  {{ _('нажмите для выбора') }}
-                </label>
-              </p>
-              <p class="drop-certificate-hint">{{ _('Поддерживаются файлы .cer') }}</p>
-              <div id="verifyCertStatus" class="certificate-status" style="display: none"></div>
-              <div class="verify-submit-area" id="verifySubmitArea">
-                <button type="button" class="main-btn main-btn-primary" id="submitVerifyButton">
-                  <span class="btn-spinner" aria-hidden="true"></span>
-                  {{ icons.icon_confirm() }}
-                  <span class="btn-text">{{ _('Пройти верификацию') }}</span>
-                </button>
-              </div>
-            </div>
-            <input type="file" id="verifyCertInput" accept=".cer" class="drop-certificate-input" />
-          </div>
-        </div>
-      {% endif %}
-
-      <hr/>
-      <h1 class="name">{{ _('Прочая информация') }}</h1>
-      <div class="dates-card">
-        <div class="dates-list">
-          {% set last_verification = (current_user.verifications | sort(attribute='verified_at', reverse=true) | first) if current_user.verifications else None %}
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_calendar() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('Пройдена') }}</span>
-                {% if last_verification %}
-                  <span class="date-day">{{ last_verification.verified_at.strftime('%d.%m.%Y') }}</span>
-                  <span class="date-time">{{ last_verification.verified_at.strftime('%H:%M') }}</span>
-                {% else %}
-                  <span class="date-empty">{{ _('Нет данных') }}</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_clock() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('Действует до') }}</span>
-                {% if current_user.ecp_verified_until %}
-                  <span class="date-day">{{ current_user.ecp_verified_until.strftime('%d.%m.%Y') }}</span>
-                  <span class="date-time">{{ current_user.ecp_verified_until.strftime('%H:%M') }}</span>
-                {% else %}
-                  <span class="date-empty">{{ _('Нет данных') }}</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 {{ affects.bg_effect() }}

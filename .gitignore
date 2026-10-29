@@ -16,6 +16,8 @@ logs/
 database_export.xlsx
 website/__pycache__
 
+instance/
+
 website/static/video
 website/static/files/ministerstvo
 website/static/files/organizations

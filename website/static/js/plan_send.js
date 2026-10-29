@@ -1,10 +1,10 @@
 /* Страница «Отправка плана на рассмотрение» — перенесена сюда из модального
- * окна (раньше SendModalPreview/CertificateUploadHandler в plan.js). Логика
- * шагов 1-2 (выбор согласующих/утверждающего) и предпросмотра пути
- * согласования перенесена почти без изменений; добавлен отдельный шаг
- * предпросмотра (3) перед шагом с сертификатом (4), и сама проверка
- * сертификата теперь реальная — уходит на сервер (см. checkCertificate),
- * а не просто проверяет расширение файла на клиенте.
+ * окна (раньше SendModalPreview в plan.js). Логика шагов 1-2 (выбор
+ * согласующих/утверждающего) и предпросмотра пути согласования перенесена
+ * почти без изменений; добавлен отдельный шаг предпросмотра (3) перед
+ * шагом проверки ЭЦП (4) — сама проверка там сейчас чисто демонстрационная
+ * (см. EcpMockModal, static/js/ecp-mock-modal.js), реальной серверной
+ * валидации пока нет (функция в разработке).
  */
 class PlanSendWizard {
     constructor(rootId) {
@@ -481,33 +481,46 @@ class PlanSendWizard {
             this.prevStep();
         });
 
-        this.root.querySelector('#sentForm')?.addEventListener('submit', (e) => {
+        this.root.querySelector('#sentForm')?.addEventListener('submit', () => {
             if (this.coordinatorIdsInput) {
                 this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators.keys()).join(',');
             }
             if (this.approverIdInput) {
                 this.approverIdInput.value = this.selectedApprover;
             }
-
-            // Аккаунт уже верифицирован — сертификата на этом шаге нет
-            // (plan_send.html рендерит кнопку без drag-and-drop зоны), но
-            // перед реальной отправкой всё равно показываем ту же анимацию
-            // проверки на кнопке, что и при загрузке сертификата, — чтобы
-            // переход между обоими вариантами шага 4 выглядел одинаково.
-            const form = e.target;
-            const hasCertUpload = !!this.root.querySelector('#drop-certificate-area');
-            if (!hasCertUpload && !form.dataset.verifiedSubmitConfirmed) {
-                e.preventDefault();
-                if (this.submitButton) {
-                    this.submitButton.disabled = true;
-                    this.submitButton.classList.add('is-checking');
-                }
-                setTimeout(() => {
-                    form.dataset.verifiedSubmitConfirmed = 'true';
-                    form.submit();
-                }, 5000);
-            }
         });
+
+        // Шаг 4 — кнопка "Отправить план" выключена, пока не пройдена
+        // демонстрационная проверка ЭЦП в модалке (см. EcpMockModal,
+        // static/js/ecp-mock-modal.js). Сама проверка пока чисто
+        // визуальная — реального бэкенда у неё нет (функция в разработке).
+        const openEcpCheckBtn = this.root.querySelector('#openEcpCheckBtn');
+        const ecpCheckPromptTitle = this.root.querySelector('#ecpCheckPromptTitle');
+        const ecpCheckPromptText = this.root.querySelector('#ecpCheckPromptText');
+        const ecpKeyHero = this.root.querySelector('#ecpKeyHero');
+        if (openEcpCheckBtn && window.EcpMockModal) {
+            const ecpModal = new EcpMockModal({
+                modalId: 'ecpMockModal',
+                certCheckUrl: window.planToken ? `/plans/plan/verify-certificate/${window.planToken}` : null,
+                onSuccess: () => {
+                    // Модалка уже закрылась (EcpMockModal делает это сама перед
+                    // вызовом onSuccess) — ключ слева перестаёт парить,
+                    // опускается и слегка покачивается (ecpKeyDrop, ~0.6с —
+                    // см. base.css), кнопка рядом плавно гаснет. После этого
+                    // меняем текст рядом и разблокируем "Отправить план".
+                    if (ecpKeyHero) ecpKeyHero.classList.add('is-open');
+                    if (openEcpCheckBtn) openEcpCheckBtn.classList.add('is-done');
+                    setTimeout(() => {
+                        if (ecpCheckPromptTitle) ecpCheckPromptTitle.textContent = 'Проверка ЭЦП пройдена';
+                        if (ecpCheckPromptText) ecpCheckPromptText.textContent = 'Теперь план можно отправить на согласование.';
+                        const promptEl = this.root.querySelector('#ecpCheckPrompt');
+                        if (promptEl) promptEl.classList.add('is-verified');
+                        if (this.submitButton) this.submitButton.disabled = false;
+                    }, 650);
+                },
+            });
+            openEcpCheckBtn.addEventListener('click', () => ecpModal.open());
+        }
     }
 
     updateSelectedCoordinators() {
@@ -769,8 +782,8 @@ class PlanSendWizard {
         if (this.buttons.step2Next) {
             this.buttons.step2Next.disabled = !this.selectedApprover;
         }
-        // submitButton управляется отдельно из CertificateUploadHandler —
-        // включается только когда сервер подтвердил валидность сертификата.
+        // submitButton управляется отдельно — включается только когда
+        // пройдена проверка ЭЦП в модалке (см. EcpMockModal в bindEvents()).
     }
 
     validateStep1() {
@@ -789,201 +802,8 @@ class PlanSendWizard {
     }
 }
 
-/* Шаг 4 — перетаскивание сертификата с реальной проверкой на сервере
- * (срок действия + принадлежность организации плана по УНП, см.
- * website/ecp.py и /plans/plan/verify-certificate/<token>). Раньше кнопка
- * "Отправить план" включалась просто по расширению файла .cer — теперь
- * только когда сервер подтвердил, что сертификат валиден. */
-class CertificateUploadHandler {
-    constructor() {
-        this.dropArea = document.getElementById('drop-certificate-area');
-        this.fileInput = document.getElementById('certificate-to-check');
-        this.submitButton = document.getElementById('submit-sent-button');
-        this.statusEl = document.getElementById('certificate-status');
-        this.planToken = window.planToken;
-        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
-            || document.querySelector('#sentForm input[name="csrf_token"]')?.value
-            || '';
-
-        this.checkToken = 0;
-
-        this.init();
-    }
-
-    init() {
-        // Аккаунт уже верифицирован (см. profile.html/account/verify) —
-        // шаг 4 на plan_send.html рендерит сообщение и кнопку "Отправить"
-        // вместо drag-and-drop зоны, сертификат на этот раз не нужен.
-        if (!this.dropArea && !this.fileInput) return;
-
-        if (!this.dropArea || !this.fileInput || !this.submitButton) {
-            console.error('[CertificateUploadHandler] Required elements not found');
-            return;
-        }
-        this.bindEvents();
-        this.updateSubmitButtonState(false);
-    }
-
-    bindEvents() {
-        this.dropArea.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.dropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        this.dropArea.addEventListener('drop', this.handleDrop.bind(this));
-        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-
-        this.dropArea.addEventListener('click', (e) => {
-            if (e.target === this.dropArea || e.target.closest('.drop-certificate-content')) {
-                e.preventDefault();
-                this.fileInput.click();
-            }
-        });
-    }
-
-    handleDragOver(e) {
-        e.preventDefault();
-        this.dropArea.classList.add('drag-over');
-    }
-
-    handleDragLeave(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
-        this.dropArea.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.fileInput.files = files;
-            this.processFile(files[0]);
-        }
-    }
-
-    handleFileSelect(e) {
-        const files = e.target.files;
-        if (files.length > 0) this.processFile(files[0]);
-    }
-
-    processFile(file) {
-        if (!this.isValidFile(file)) {
-            this.showStatus('Неверный формат файла. Разрешены только файлы .cer', 'error');
-            this.resetFileInput();
-            this.resetFileDisplay();
-            this.updateSubmitButtonState(false);
-            return;
-        }
-
-        this.showFileDisplay(file.name);
-        this.checkCertificate(file);
-    }
-
-    isValidFile(file) {
-        return file.name.toLowerCase().endsWith('.cer');
-    }
-
-    async checkCertificate(file) {
-        this.updateSubmitButtonState(false);
-        this.setButtonChecking(true);
-        this.showStatus('Проверка сертификата…', 'pending');
-
-        const myToken = ++this.checkToken;
-        const formData = new FormData();
-        formData.append('certificate', file);
-        if (this.csrfToken) formData.append('csrf_token', this.csrfToken);
-
-        // Сама проверка на сервере — доли секунды, но нарочно растягиваем
-        // до ~5с: столько будет занимать реальная проверка ЭЦП-сертификата,
-        // и пользователь должен успеть увидеть, что что-то проверяется, а
-        // не решить, что кнопка просто не работает.
-        const minDuration = new Promise((resolve) => setTimeout(resolve, 5000));
-
-        try {
-            const [response] = await Promise.all([
-                fetch(`/plans/plan/verify-certificate/${this.planToken}`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: this.csrfToken ? { 'X-CSRFToken': this.csrfToken } : {},
-                    body: formData,
-                }),
-                minDuration,
-            ]);
-            const data = await response.json();
-
-            // Пока запрос летал, пользователь мог выбрать другой файл —
-            // применяем только самый свежий результат.
-            if (myToken !== this.checkToken) return;
-
-            this.setButtonChecking(false);
-
-            if (response.ok && data.valid) {
-                this.showStatus('Сертификат действителен.', 'ok');
-                this.updateSubmitButtonState(true);
-            } else {
-                this.showStatus(data.error || 'Сертификат не прошёл проверку.', 'error');
-                this.updateSubmitButtonState(false);
-            }
-        } catch (error) {
-            await minDuration;
-            if (myToken !== this.checkToken) return;
-            console.error('Error verifying certificate:', error);
-            this.setButtonChecking(false);
-            this.showStatus('Не удалось проверить сертификат. Проверьте соединение и попробуйте снова.', 'error');
-            this.updateSubmitButtonState(false);
-        }
-    }
-
-    // Пока идёт проверка — кнопка отправки показывает спиннер вместо
-    // иконки/текста (тот же .btn-spinner, что рисует CSS), сама кнопка
-    // остаётся выключенной до вердикта сервера.
-    setButtonChecking(isChecking) {
-        this.submitButton.classList.toggle('is-checking', isChecking);
-        this.submitButton.disabled = true;
-    }
-
-    showFileDisplay(fileName) {
-        const textElement = this.dropArea.querySelector('.drop-certificate-text');
-        if (textElement) textElement.innerHTML = `<strong>${this.escapeHtml(fileName)}</strong>`;
-        this.dropArea.classList.add('has-file');
-    }
-
-    resetFileDisplay() {
-        const textElement = this.dropArea.querySelector('.drop-certificate-text');
-        if (textElement) {
-            textElement.innerHTML = 'Перетащите файл сертификата сюда или \n                <label for="certificate-to-check" class="drop-certificate-label">нажмите для выбора</label>';
-        }
-        this.dropArea.classList.remove('has-file');
-    }
-
-    resetFileInput() {
-        this.fileInput.value = '';
-        this.fileInput.files = null;
-    }
-
-    updateSubmitButtonState(isEnabled) {
-        this.submitButton.classList.remove('is-checking');
-        this.submitButton.disabled = !isEnabled;
-        this.submitButton.classList.toggle('disabled', !isEnabled);
-    }
-
-    showStatus(message, kind) {
-        if (!this.statusEl) return;
-        this.statusEl.style.display = 'flex';
-        this.statusEl.className = `certificate-status certificate-status--${kind}`;
-        this.statusEl.textContent = message;
-    }
-
-    escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function () {
     if (document.getElementById('planSendRoot')) {
         window.planSendWizard = new PlanSendWizard('planSendRoot');
-        new CertificateUploadHandler();
     }
 });
