@@ -17,6 +17,7 @@ SUBJECTS = {
     "reset_link": "Сброс пароля EnPlans",
     "registration": "Добро пожаловать в EnPlans",
     "notification": "Уведомление от EnPlans",
+    "employee_invite": "Приглашение в организацию — EnPlans",
 }
 
 

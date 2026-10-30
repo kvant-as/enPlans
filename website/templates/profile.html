@@ -14,6 +14,11 @@
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
+        {% if current_user.org_role %}
+        <span class="employee-role">
+          {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+        </span>
+        {% endif %}
       </div>
     </div>
     <hr>
@@ -167,6 +172,21 @@
               </div>
             </div>
           </div>
+          {% if current_user.org_role %}
+          <div class="date-item">
+            <div class="date-icon">
+              {{ icons.icon_org() }}
+            </div>
+            <div class="date-content">
+              <div class="date-info">
+                <span class="date-label">{{ _('Роль в организации') }}</span>
+                <span class="date-day">
+                  {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+                </span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -205,6 +225,90 @@
         </div>
       </div>
       {{ component.organization_view_card(current_user.organization, current_user) }}
+
+      {% if current_user.org_role %}
+      {% set can_manage_employees = current_user.org_role == 'org_head' %}
+      {% set role_meta = {
+        'org_head':  {'label': _('Руководитель организации'), 'hint': _('Подписывает и утверждает планы')},
+        'dept_head': {'label': _('Руководитель структурного подразделения'), 'hint': _('Может подписывать или направлять выше')},
+        'executor':  {'label': _('Исполнитель'), 'hint': _('Заполняет и редактирует планы')},
+      } %}
+      {% set employees_by_role = {} %}
+      {% for employee in org_employees %}{% set _ignore = employees_by_role.update({employee.org_role: employee}) %}{% endfor %}
+      {% set _ignore = employees_by_role.update({current_user.org_role: current_user}) %}
+
+      <hr/>
+      <h1 class="name">{{ _('Сотрудники организации') }}</h1>
+      <div class="answer-text">
+        <p>
+          {% if can_manage_employees %}
+            {{ _('На каждую роль — один сотрудник. Отправить план с ЭЦП сможет только руководитель организации.') }}
+          {% else %}
+            {{ _('Кто за какую роль отвечает в вашей организации. Приглашать и удалять сотрудников может только руководитель организации.') }}
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="org-roles-grid">
+        {% for role_key in ['org_head', 'dept_head', 'executor'] %}
+        {% set meta = role_meta[role_key] %}
+        {% set occupant = employees_by_role.get(role_key) %}
+        <div class="org-role-card {% if occupant %}is-filled{% else %}is-vacant{% endif %}">
+          <div class="org-role-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="org-role-card-body">
+            <span class="org-role-card-title">{{ meta.label }}</span>
+            <span class="org-role-card-hint">{{ meta.hint }}</span>
+            {% if occupant %}
+              <span class="org-role-card-occupant">
+                {% if occupant.id == current_user.id %}
+                  {{ _('Это вы') }}
+                {% elif occupant.last_name or occupant.first_name %}
+                  {{ occupant.last_name }} {{ occupant.first_name }}
+                {% else %}
+                  <span class="org-role-card-pending">{{ _('Ждём регистрации') }}</span>
+                {% endif %}
+              </span>
+              <span class="org-role-card-email">{{ occupant.email }}</span>
+            {% endif %}
+          </div>
+          {% if not occupant and can_manage_employees %}
+          <button type="button" class="org-role-card-invite-btn" data-invite-role="{{ role_key }}">
+            {{ icons.icon_add() }}
+            <span>{{ _('Пригласить') }}</span>
+          </button>
+          <form action="{{ url_for('views.invite_employee') }}" method="POST" class="org-role-invite-form" id="inviteForm-{{ role_key }}" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="org_role" value="{{ role_key }}" />
+            <div class="input-with-icon">
+              {{ icons.icon_email() }}
+              <input type="email" name="email" class="app-input" placeholder="{{ _('Email сотрудника') }}" required />
+            </div>
+            <button type="submit" class="no-submit-button blue">
+              {{ icons.icon_confirm() }}
+              <span class="btn-text">{{ _('Отправить приглашение') }}</span>
+            </button>
+          </form>
+          {% elif not occupant %}
+          <span class="org-role-card-vacant-label">{{ _('Вакантно') }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <script>
+        document.querySelectorAll('[data-invite-role]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var form = document.getElementById('inviteForm-' + btn.dataset.inviteRole);
+            if (!form) return;
+            btn.style.display = 'none';
+            form.style.display = 'flex';
+            var input = form.querySelector('input[type="email"]');
+            if (input) input.focus();
+          });
+        });
+      </script>
+      {% endif %}
+
       <hr/>
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">

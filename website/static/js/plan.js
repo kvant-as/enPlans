@@ -1236,7 +1236,7 @@ const TableCollapseManager = (function() {
 // Логика отправки плана на рассмотрение (SendModalPreview / CertificateUploadHandler)
 // перенесена на отдельную страницу — см. website/static/js/plan_send.js и
 // website/templates/plan_send.html. Раньше это было модальное окно поверх
-// plan_review.html.
+// plan_tasks.html.
 
 function initDeletePlanConfirmModal() {
     if (document.querySelector('[data-modal-trigger="deletePlanconfirm"]')) {
@@ -2695,7 +2695,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // sentPlanButton теперь просто ссылка на /plans/plan/send/<token>
-    // (plan_review.html) — своей логики тут больше нет, см. plan_send.js.
+    // (plan_tasks.html) — своей логики тут больше нет, см. plan_send.js.
 
     if (document.getElementById('editPlanButton')) {
         initConfirmModal({

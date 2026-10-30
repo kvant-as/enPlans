@@ -149,9 +149,9 @@ def api_news_post(id):
             'id': post.id,
             'title': post.title,
             'content': post.text,
-            'image_url': post.image_url,
-            'published_at': post.published_at.isoformat() if post.published_at else post.created_at.isoformat(),
-            'created_at': post.created_at.isoformat(),
+            'image_url': post.img_name,
+            'published_at': post.published_at.isoformat() if post.published_at else post.created_time.isoformat(),
+            'created_at': post.created_time.isoformat(),
             'views_count': post.views_count or 0,
             'is_published': post.published_at is not None and post.published_at <= current_time
         }
@@ -180,15 +180,22 @@ def get_organizations_api():
             # организация вполне может иметь отдельный аккаунт в erespondentN,
             # это не должно мешать регистрации в enPlans, поэтому дубль
             # проверяется только среди аккаунтов ЭТОГО приложения.
+            #
+            # Исключение — сотрудник, приглашённый руководителем организации
+            # (views.invite_employee): у него organization_id уже проставлен
+            # заранее на ту же организацию, у которой уже есть аккаунт
+            # (самого руководителя) — иначе он не найдёт свою же организацию
+            # в этом поиске на шаге /param.
             from common_models import get_current_application_id
-            query = query.filter(
-                ~Organization.id.in_(
-                    db.session.query(User.organization_id).filter(
-                        User.organization_id.isnot(None),
-                        User.application_id == get_current_application_id()
-                    )
-                )
+            registered_orgs = db.session.query(User.organization_id).filter(
+                User.organization_id.isnot(None),
+                User.application_id == get_current_application_id()
             )
+            if current_user.organization_id:
+                registered_orgs = registered_orgs.filter(
+                    User.organization_id != current_user.organization_id
+                )
+            query = query.filter(~Organization.id.in_(registered_orgs))
 
         # Показываем только организации с хотя бы одной ролью в цепочке
         # согласования — без этого в списке попадались "пустые" организации

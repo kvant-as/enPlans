@@ -1222,6 +1222,129 @@ body {
   align-items: center;
 }
 
+/* ============================================
+   ORG ROLES (profile.html :: карточки ролей сотрудников)
+   ============================================ */
+.org-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.org-role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--white);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.org-role-card.is-filled {
+  border-color: var(--green-light, #009bb6);
+  background: var(--green-light-back, #e9fcff);
+}
+
+.org-role-card.is-vacant {
+  border-style: dashed;
+}
+
+.org-role-card-icon {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--background-grey);
+  color: var(--green-main, #00798f);
+}
+.org-role-card.is-filled .org-role-card-icon {
+  background: var(--white);
+}
+.org-role-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.org-role-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-role-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.org-role-card-hint {
+  font-size: 12px;
+  color: var(--text-subtitle, #7f8c8d);
+  margin-bottom: 4px;
+}
+
+.org-role-card-occupant {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+}
+
+.org-role-card-pending {
+  color: var(--text-subtitle, #7f8c8d);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.org-role-card-email {
+  font-size: 12px;
+  color: var(--text-subtitle, #7f8c8d);
+}
+
+.org-role-card-invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--green-main, #00798f);
+  background: transparent;
+  color: var(--green-main, #00798f);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.org-role-card-invite-btn:hover {
+  background: var(--green-light-back, #e9fcff);
+}
+.org-role-card-invite-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.org-role-invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.org-role-invite-form .input-with-icon {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.org-role-card-vacant-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-subtitle, #7f8c8d);
+  font-style: italic;
+}
+
 hr {
   height: 1px;
   background-color: var(--border-color);
@@ -5584,6 +5707,27 @@ input[type="checkbox"]:focus {
   --tr-rejected: #c0392b;
   --tr-rejected-back: rgba(192, 57, 43, 0.1);
   width: 100%;
+}
+
+.track-developer-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: var(--tr-active-back);
+  border: 1px solid var(--tr-active);
+  color: var(--text-title, #1f2937);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.track-developer-note svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--tr-active);
 }
 
 .track-table-scroll {

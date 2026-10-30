@@ -246,13 +246,16 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             # routes/views.py и одноимённый декоратор в plan_bp.py/audit_bp.py)
             base_query = Plan.query.order_by(
                 db.case(
-                    (Plan.user_id == user.id, 0),
+                    (Plan.org_id == user.organization_id, 0),
                     else_=1
                 ),
                 Plan.begin_time.desc()
             )
         else:
-            base_query = Plan.query.filter_by(user_id=user.id)
+            # План закреплён за организацией, а не за конкретным
+            # пользователем — все сотрудники организации (любой org_role)
+            # видят одни и те же планы в списке.
+            base_query = Plan.query.filter_by(org_id=user.organization_id)
 
         needs_join = bool(search_name or search_ynp or region_id)
         

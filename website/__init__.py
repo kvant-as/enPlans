@@ -245,6 +245,35 @@ def create_app():
         }
         return f"{date.day} {months[date.month]} {date.year}"
     
+    @app.template_filter('nl2br')
+    def nl2br(text):
+        """Текст новости (News.text) — обычная многострочная текстовая
+        область в админке (admin.py: F("text", ..., type="text")), не
+        HTML-редактор, поэтому переносы строк там — обычные \\n. Раньше
+        шаблон news_id.html выводил его через |safe как есть — браузер
+        схлопывает \\n в пробел, и вся новость превращалась в один сплошной
+        абзац без разбивки.
+
+        CSS для статьи (news.css :: .text_spectrum p / p:first-child)
+        рассчитан именно на отдельные <p> — без них пропадают отступы
+        между абзацами и увеличенный первый абзац-лид. Поэтому пустая
+        строка (два подряд \\n) трактуется как разделитель абзацев, а
+        одиночный \\n внутри абзаца — просто как <br>. Текст экранируется,
+        HTML-тегами он быть не должен.
+        """
+        from markupsafe import Markup, escape
+        import re
+        if not text:
+            return ''
+        paragraphs = re.split(r'\n\s*\n', str(text).strip())
+        html_parts = []
+        for para in paragraphs:
+            if not para.strip():
+                continue
+            escaped = '<br>\n'.join(str(escape(line)) for line in para.splitlines())
+            html_parts.append(f'<p>{escaped}</p>')
+        return Markup('\n'.join(html_parts))
+
     @app.template_filter('comma_decimal')
     def comma_decimal(value):
         if value is None:

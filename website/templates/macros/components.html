@@ -23,8 +23,8 @@ True)|list|length > 0) }, 'event-increase': { 'title': 'Мероприятие',
 plan.events|selectattr('direction.is_increase', 'equalto', True)|list|length >
 0, 'is_empty': not (plan.events|selectattr('direction.is_increase', 'equalto',
 True)|list|length > 0) } } %} {% set config = section_config[section] %} {% set
-is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.user_id
-== current_user.id %}
+is_disabled = plan.is_sent or plan.is_approved %} {% set is_owner = plan.org_id
+== current_user.organization_id %}
 
 <div class="plan-menu">
   <div class="menu-conteiner">
@@ -265,34 +265,6 @@ plan=None, current_user=None) %}
 <div class="header-cont planed">
   <nav class="navigation-container">
     <div
-      class="nav-item {% if active_plan_tab == 'actions' %} active{% endif %}"
-      onclick="window.location.href='/plans/plan/actions/{{plan.token}}'"
-      data-tooltip="{{ _('Действия с планом') }}"
-    >
-      <div class="nav-icon-wrapper">
-        {{ icons.icon_main() }}{% if active_plan_tab == 'actions' %}
-        <div class="active-indicator"></div>
-        {% endif %}
-      </div>
-      <span class="nav-text">{{ _('Действия с планом') }}</span>
-      <span class="nav-text-mobile">{{ _('Действия') }}</span>
-    </div>
-
-    <div
-      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not plan.sent_time %} disabled-tab{% endif %}"
-      onclick="{% if plan.sent_time %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
-      data-tooltip="{{ _('Подписи') }}{% if not plan.sent_time %} — {{ _('план ещё не отправлялся') }}{% endif %}"
-    >
-      <div class="nav-icon-wrapper">
-        {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
-        <div class="active-indicator"></div>
-        {% endif %}
-      </div>
-      <span class="nav-text">{{ _('Подписи согласования') }}</span>
-      <span class="nav-text-mobile">{{ _('Подписи') }}</span>
-    </div>
-
-    <div
       class="nav-item {% if active_plan_tab == 'review' %} active{% endif %}"
       onclick="window.location.href='/plans/plan/tasks/{{plan.token}}'"
       data-tooltip="{{ _('Задания') }}"
@@ -361,6 +333,34 @@ plan=None, current_user=None) %}
         }}</span
       >
       <span class="nav-text-mobile">{{ _('Часть') }} 3</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'actions' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/actions/{{plan.token}}'"
+      data-tooltip="{{ _('Действия с планом') }}"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_main() }}{% if active_plan_tab == 'actions' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Действия с планом') }}</span>
+      <span class="nav-text-mobile">{{ _('Действия') }}</span>
+    </div>
+
+    <div
+      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not plan.sent_time %} disabled-tab{% endif %}"
+      onclick="{% if plan.sent_time %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
+      data-tooltip="{{ _('Подписи') }}{% if not plan.sent_time %} — {{ _('план ещё не отправлялся') }}{% endif %}"
+    >
+      <div class="nav-icon-wrapper">
+        {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
+        <div class="active-indicator"></div>
+        {% endif %}
+      </div>
+      <span class="nav-text">{{ _('Подписи согласования') }}</span>
+      <span class="nav-text-mobile">{{ _('Подписи') }}</span>
     </div>
 
   </nav>
@@ -588,6 +588,14 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 {% endif %}
 
 <div class="track-wrap">
+  {% if plan.developer_name %}
+  <div class="track-developer-note">
+    {{ icons.icon_profile() }}
+    <span>
+      {{ _('Разработчик плана') }}: {{ plan.developer_name }}{% if plan.developer_phone %}, {{ _('тел') }}: {{ plan.developer_phone }}{% endif %}{% if plan.developer_email %}, email: {{ plan.developer_email }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
   {% if cycles %}
   {% set col_count = 6 %}
   <div class="track-table-scroll">
@@ -1052,9 +1060,7 @@ show_checkboxes %}
       />
       {% elif show_actions %}
       <div class="buttons-row">
-        {% set view_url = url_for('plan_bp.plan_actions', token=plan.token) if
-        current_user.is_auditor else url_for('plan_bp.plan_actions',
-        token=plan.token) %}
+        {% set view_url = url_for('plan_bp.plan_review', token=plan.token) %}
         {% set is_queued = plan.is_queued_for_viewer|default(false) %}
 
         <button
@@ -1071,7 +1077,7 @@ show_checkboxes %}
           <span class="tooltip-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
           <span class="btn-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
         </button>
-        {% if plan.user_id == current_user.id and not current_user.is_reader %} {% if not (plan.is_sent or
+        {% if plan.org_id == current_user.organization_id and not current_user.is_reader %} {% if not (plan.is_sent or
         plan.is_approved) %}
         <form
           data-modal-form="deletePlanconfirm"

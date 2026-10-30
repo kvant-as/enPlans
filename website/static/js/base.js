@@ -2843,7 +2843,15 @@ function initProfileTabs() {
         if (!container) return;
         const tabPanels = container.querySelectorAll(':scope > .profile-tab-panel');
 
-        function activateTab(tabName) {
+        // Вкладка отражается в URL query-параметром с именем самого блока
+        // вкладок (id) — так несколько независимых групп вкладок на одной
+        // странице (например, профиль и "Действия с планом") не конфликтуют
+        // друг с другом, а ссылку на конкретную вкладку можно сохранить/
+        // переслать. replaceState, а не pushState — переключение вкладок не
+        // должно засорять историю браузера (кнопка "назад").
+        const urlKey = tabsEl.id || null;
+
+        function activateTab(tabName, updateUrl) {
             tabButtons.forEach((btn) => {
                 const isActive = btn.dataset.tab === tabName;
                 btn.classList.toggle('active', isActive);
@@ -2852,11 +2860,23 @@ function initProfileTabs() {
             tabPanels.forEach((panel) => {
                 panel.classList.toggle('active', panel.dataset.tabPanel === tabName);
             });
+            if (updateUrl && urlKey) {
+                const url = new URL(window.location.href);
+                url.searchParams.set(urlKey, tabName);
+                window.history.replaceState(null, '', url);
+            }
         }
 
         tabButtons.forEach((btn) => {
-            btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+            btn.addEventListener('click', () => activateTab(btn.dataset.tab, true));
         });
+
+        if (urlKey) {
+            const requestedTab = new URLSearchParams(window.location.search).get(urlKey);
+            if (requestedTab && tabsEl.querySelector(`.profile-tab[data-tab="${requestedTab}"]`)) {
+                activateTab(requestedTab, false);
+            }
+        }
     });
 }
 document.addEventListener('DOMContentLoaded', initProfileTabs);

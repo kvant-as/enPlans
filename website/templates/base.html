@@ -250,7 +250,7 @@
     {% endif %}
 
     {% if context_menu %}
-        {% set is_disabled = plan.is_sent or plan.is_approved or (plan.user_id != current_user.id)%}
+        {% set is_disabled = plan.is_sent or plan.is_approved or (plan.org_id != current_user.organization_id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}

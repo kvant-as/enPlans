@@ -51,6 +51,21 @@ def build_html(message_body, email_type):
             <p style="margin: 16px 0 0 0; font-size: 13px; color: #94a3b8;">Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
         </div>
         """
+    elif email_type == "employee_invite":
+        content = f"""
+        <div style="padding: 24px 32px;">
+            <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Здравствуйте!</p>
+            <p style="margin: 0 0 12px 0; font-size: 15px; line-height: 1.5; color: #334155;">Руководитель вашей организации добавил вас как сотрудника в системе <strong style="color: #00798f;">EnPlans</strong>.</p>
+            <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.5; color: #334155;">Чтобы получить доступ к личному кабинету, задайте себе пароль по ссылке ниже:</p>
+            <div style="text-align: center; margin: 28px 0;">
+                <a href="{message_body}" style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #00798f 0%, #009bb6 100%); color: white; padding: 12px 32px; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 500;">Задать пароль</a>
+            </div>
+            <div style="background: #fef2f2; padding: 12px 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 13px; color: #dc2626;">Ссылка действительна в течение 1 часа.</p>
+            </div>
+            <p style="margin: 16px 0 0 0; font-size: 13px; color: #94a3b8;">Если вы не ожидали этого письма, проигнорируйте его.</p>
+        </div>
+        """
     elif email_type == "registration":
         content = f"""
         <div style="padding: 24px 32px;">

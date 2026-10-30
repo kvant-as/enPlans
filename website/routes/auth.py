@@ -66,6 +66,14 @@ def user_with_all_params():
             )
             
             if not all_required_filled:
+                # Сотрудник, приглашённый руководителем (views.invite_employee),
+                # приходит сюда уже с organization_id/org_role/ФИО/должностью —
+                # не хватает только телефона. Полный визард /param (повторный
+                # выбор роли в системе и организации) для него не нужен и
+                # вводит в заблуждение — просит то, что уже заполнено.
+                if current_user.organization_id:
+                    flash("Укажите номер телефона", "error")
+                    return redirect(url_for('auth.complete_profile'))
                 flash("Заполните обязательные данные: ФИО и телефон", "error")
                 return redirect(url_for('auth.param'))
             
@@ -110,7 +118,12 @@ def login():
                     not user.telephone
                 ):
                     flash("Необходимо заполнить обязательные параметры", "error")
-                    return set_session_cookie(redirect(url_for('auth.param')), token)
+                    # Сотрудник, приглашённый руководителем (у него уже есть
+                    # organization_id), идёт на лёгкий complete_profile —
+                    # не нужно повторно выбирать роль в системе и
+                    # организацию, см. ту же развилку в user_with_all_params().
+                    target = 'auth.complete_profile' if user.organization_id else 'auth.param'
+                    return set_session_cookie(redirect(url_for(target)), token)
                 flash('Авторизация прошла успешно', 'success')
                 return set_session_cookie(redirect(url_for('views.profile')), token)
             else:
@@ -181,7 +194,45 @@ def param():
         user_type = request.form.get('entity_type')
         from ..user import add_param
         return add_param(first_name, last_name, patronymic_name, telephone, organization_id, user_type, post)
-    
+
+@auth.route('/complete-profile', methods=['GET', 'POST'])
+@login_required
+def complete_profile():
+    """Лёгкий аналог /param для сотрудника, приглашённого руководителем
+    (views.invite_employee) — у него уже есть organization_id/org_role
+    (организатор указал только email и роль), а ФИО/должность/телефон
+    сотрудник вводит сам, здесь. Полный визард /param (с повторным выбором
+    роли в системе и поиском организации — она уже привязана) тут не нужен."""
+    if request.method == 'GET':
+        return render_template('complete_profile.html')
+
+    first_name = (request.form.get('first_name') or '').strip()
+    last_name = (request.form.get('last_name') or '').strip()
+    patronymic_name = (request.form.get('patronymic_name') or '').strip()
+    post = (request.form.get('post') or '').strip()
+    telephone = request.form.get('telephone')
+
+    required = {'Фамилия': last_name, 'Имя': first_name, 'Отчество': patronymic_name, 'Должность': post}
+    for label, value in required.items():
+        if not value:
+            flash(f'Поле "{label}" обязательно для заполнения!', 'error')
+            return redirect(url_for('auth.complete_profile'))
+
+    from ..user import parse_and_validate_phones
+    normalized_telephone, phone_error = parse_and_validate_phones(telephone)
+    if phone_error:
+        flash(phone_error, 'error')
+        return redirect(url_for('auth.complete_profile'))
+
+    current_user.first_name = first_name
+    current_user.last_name = last_name
+    current_user.patronymic_name = patronymic_name
+    current_user.post = post
+    current_user.telephone = normalized_telephone
+    db.session.commit()
+    flash('Данные успешно сохранены!', 'success')
+    return redirect(url_for('views.profile'))
+
 @auth.route('/edit-param', methods=['POST'])
 def edit_param():
     first_name = request.form.get('first_name')

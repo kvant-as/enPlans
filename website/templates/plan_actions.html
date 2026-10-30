@@ -10,7 +10,7 @@
    переписки только для чтения; у текущего проверяющего (can_audit) — чат
    с полем ввода и кнопками смены статуса; плитка «Отменить изменения»
    видна только проверяющему, уже подтвердившему свой этап (can_cancel). #}
-{% set is_owner = plan.user_id == current_user.id %}
+{% set is_owner = plan.org_id == current_user.organization_id %}
 
 <div class="pers-page">
   {{ component.back_header(plan, current_user) }}
@@ -43,9 +43,20 @@
 
       <button
         type="button"
+        id="developerInfoBtn"
+        class="plan-action-tile"
+        {% if not plan.is_draft or current_user.is_reader %}disabled{% endif %}
+      >
+        {{ icons.icon_profile() }}
+        <span class="plan-action-tile-title">{{ _('Разработчик плана') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Указать, кто фактически готовил план') }}</span>
+      </button>
+
+      <button
+        type="button"
         class="plan-action-tile"
         onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}disabled{% endif %}
+        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader or current_user.org_role == 'executor' %}disabled{% endif %}
       >
         {{ icons.icon_send() }}
         <span class="plan-action-tile-title">{{ _('Отправить на согласование') }}</span>
@@ -56,7 +67,7 @@
         type="button"
         id="cancelSendBtn"
         class="plan-action-tile"
-        {% if not plan.is_sent or current_user.is_reader %}disabled{% endif %}
+        {% if not plan.is_sent or current_user.is_reader or current_user.org_role == 'executor' %}disabled{% endif %}
       >
         {{ icons.icon_cancel() }}
         <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
@@ -238,6 +249,55 @@
 
 {{ affects.bg_effect() }}
 
+<div id="developerInfoModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Сведения об исполнителе, ответственном за разработку плана') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="developerInfoForm" action="{{ url_for('plan_bp.set_developer_info', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="app-group">
+        <label>{{ _('ФИО') }} <span class="required-star">*</span></label>
+        <input
+          type="text"
+          name="developer_name"
+          class="app-input"
+          required
+          value="{{ plan.developer_name or ((current_user.last_name or '') ~ ' ' ~ (current_user.first_name or '') ~ ' ' ~ (current_user.patronymic_name or '')) | trim }}"
+        />
+      </div>
+      <div class="app-group">
+        <label>{{ _('Телефон') }}</label>
+        <input
+          type="text"
+          name="developer_phone"
+          class="app-input"
+          value="{{ plan.developer_phone or current_user.telephone or '' }}"
+        />
+      </div>
+      <div class="app-group">
+        <label>{{ _('Email') }}</label>
+        <input
+          type="text"
+          name="developer_email"
+          class="app-input"
+          value="{{ plan.developer_email or current_user.email or '' }}"
+        />
+      </div>
+      <div class="button-auth-area">
+        <button type="submit" class="no-submit-button blue">
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Сохранить данные') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="developerInfoModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="cancelSendModal" class="modal">
   <div class="modal-content" style="width: 520px; max-width: 90vw">
     <div class="modal-header">
@@ -320,6 +380,14 @@
     if (!btn) return;
     var modal = document.getElementById(btn.dataset.closeModalBtn);
     if (modal) modal.classList.remove("active");
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var modal = document.getElementById("developerInfoModal");
+    var btn = document.getElementById("developerInfoBtn");
+    if (modal && btn) {
+      handleModal(modal, btn, modal.querySelector(".close"));
+    }
   });
 
   document.addEventListener("DOMContentLoaded", function () {

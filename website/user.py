@@ -167,18 +167,31 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     # Application.id). Фронт уже прячет такие организации из результатов
     # поиска (см. /api/organizations?exclude_registered=true), но это
     # единственная настоящая защита от дублей — обходится напрямую через форму.
-    existing_user = User.query.filter(
-        User.organization_id == org_id,
-        User.application_id == get_current_application_id(),
-        User.id != current_user.id
-    ).first()
-    if existing_user:
-        flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
-        return redirect(url_for('auth.param'))
+    #
+    # Исключение — сотрудник, приглашённый руководителем организации
+    # (views.invite_employee): у него organization_id уже проставлен ЗАРАНЕЕ
+    # и совпадает с org_id, который он сейчас "выбирает" на этой же форме —
+    # это не повторная привязка нового аккаунта к занятой организации, а
+    # просто то же самое значение, с которым его создали.
+    if current_user.organization_id != org_id:
+        existing_user = User.query.filter(
+            User.organization_id == org_id,
+            User.application_id == get_current_application_id(),
+            User.id != current_user.id
+        ).first()
+        if existing_user:
+            flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
+            return redirect(url_for('auth.param'))
 
     if user_type == 'respondent':
         current_user.is_auditor = False
         current_user.is_approver = False
+        # Тот, кто сам регистрирует организацию (а не приглашён руководителем
+        # через invite_employee — у таких org_role уже проставлен заранее),
+        # автоматически становится её руководителем и дальше сам добавляет
+        # сотрудников из профиля.
+        if not current_user.org_role:
+            current_user.org_role = 'org_head'
         current_app.logger.info(f'User {current_user.id} set as respondent')
     elif user_type == 'auditor':
         current_user.is_auditor = True

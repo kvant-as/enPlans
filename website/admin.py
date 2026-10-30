@@ -41,6 +41,22 @@ def _user_on_save(obj, creating):
     if creating:
         obj.application_id = get_current_application_id()
 
+    # Каждая роль (исполнитель/рук. подразделения/рук. организации) — максимум
+    # один сотрудник на организацию (та же проверка, что и в
+    # views.invite_employee, но нужна и тут — org_role редактируется в
+    # админке напрямую, в обход приглашения).
+    if obj.org_role and obj.organization_id:
+        conflict = User.query.filter(
+            User.organization_id == obj.organization_id,
+            User.application_id == obj.application_id,
+            User.org_role == obj.org_role,
+            User.id != obj.id,
+        ).first()
+        if conflict:
+            raise ValueError(
+                f'Роль "{obj.org_role}" уже занята сотрудником {conflict.email} в этой организации'
+            )
+
 
 def _user_application_display(obj):
     return obj.application.name if obj.application else "—"
@@ -79,7 +95,7 @@ def _support_chat_rows():
 
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
-    list_display=["id", "email", "organization", "begin_time"],
+    list_display=["id", "email", "organization", "org_role", "begin_time"],
     list_badges=["is_admin", "is_auditor", "is_approver", "is_reader"],
     search=["email", "last_name", "first_name", "telephone"],
     scope_query=_scope_to_this_app,
@@ -92,6 +108,11 @@ site.register(
         F("is_auditor", "Согласовывающая организация", type="bool"),
         F("is_approver", "Утверждающая организация", type="bool"),
         F("is_reader", "Читатель", type="bool"),
+        F("org_role", "Роль в организации", type="select", choices=[
+            ("executor", "Исполнитель"),
+            ("dept_head", "Руководитель структурного подразделения"),
+            ("org_head", "Руководитель организации"),
+        ], help="Кто этот сотрудник внутри своей организации (не путать с ролями выше — те про права в приложении)."),
         F("organization_id", "Организация", type="fk-search", target=Organization, target_label="full_name"),
         F("application_id", "Приложение", readonly=True, display=_user_application_display,
           help="Аккаунт создаётся только для текущего приложения (EnPlans) — не редактируется."),
@@ -447,6 +468,22 @@ site.dashboard(
                        "утверждающей организации и создать заново — по одной на "
                        "организацию с УНП 200100489 (согласовывающая) и "
                        "УНП 500022116 (утверждающая). Пароль у обеих: 12345678?",
+        },
+        {
+            "label": "Добавить остальные предприятия",
+            "endpoint": "db_bp.fill_remaining_organizations_route",
+            "method": "post",
+            "confirm": "Добавить из справочников (regulars/coordinators/approvers.xlsx) "
+                       "организации без ОКПО? У них не будет привязки к региону. "
+                       "Повторный запуск только обновит их роли, дублей не создаст.",
+        },
+        {
+            "label": "Сбросить роли организаций вне справочников",
+            "endpoint": "db_bp.reset_unlisted_organizations_roles_route",
+            "method": "post",
+            "confirm": "Снять «Разработчик/Согласующая/Утверждающая» со всех организаций, "
+                       "которых нет ни в одном из трёх справочников (по ОКПО, а для "
+                       "организаций без ОКПО — по УНП)? Региональное управление не затронет.",
         },
         # {
         #     "label": "Синхронизировать направления энергосбережения",

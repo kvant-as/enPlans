@@ -119,10 +119,13 @@ def fill_organizations(db):
         
         for org in organizations:
             if not org.okpo or org.okpo == '' or org.okpo == 'nan':
-                db.session.delete(org)
-                deleted_count += 1
+                # Организации без ОКПО теперь допустимы (см. кнопку
+                # «Добавить остальные предприятия» / fill_remaining_organizations)
+                # — у них никогда не будет региона, и удалять их за это не
+                # нужно, в отличие от организаций с нечитаемым/неполным ОКПО ниже.
+                skipped_count += 1
                 continue
-            
+
             okpo_str = str(org.okpo).strip()
             
             if len(okpo_str) < 4:
@@ -148,7 +151,8 @@ def fill_organizations(db):
         db.session.commit()
         logger.info(
             f'Регионы: назначено {assigned_count} организациям, '
-            f'удалено {deleted_count} организаций без региона'
+            f'удалено {deleted_count} организаций без региона, '
+            f'пропущено (без ОКПО) {skipped_count}'
         )
     
     def assign_region_management_to_organizations():
@@ -175,6 +179,161 @@ def fill_organizations(db):
     assign_regions_to_organizations()
     assign_region_management_to_organizations()
     logger.info('Загрузка организаций завершена')
+
+
+def fill_remaining_organizations(db):
+    """Кнопка «Добавить остальные предприятия» — добирает из тех же трёх
+    справочников (regulars/coordinators/approvers.xlsx), что и
+    fill_organizations(), строки БЕЗ ОКПО, которые та функция пропускает
+    (там ОКПО обязателен — без него не определить регион). Такие
+    организации создаются с okpo=None и region_id=None — привязать их к
+    региону невозможно и не предполагается, поэтому assign_regions_to_organizations
+    здесь намеренно не вызывается.
+
+    УНП не уникален на уровне БД, поэтому дедуп — вручную (как и в
+    load_organizations_from_excel выше): по УНП в рамках этого запуска и
+    поиском в БД для повторных запусков.
+    """
+    from ..models import Organization
+
+    base_path = os.path.join('website', 'static', 'files', 'spravochniki')
+    files = {
+        'regular': os.path.join(base_path, 'regulars.xlsx'),
+        'coordinator': os.path.join(base_path, 'coordinators.xlsx'),
+        'approver': os.path.join(base_path, 'approvers.xlsx')
+    }
+
+    existing_orgs = {}
+    created_count = 0
+    updated_count = 0
+
+    for org_type, file_path in files.items():
+        if not os.path.exists(file_path):
+            logger.warning(f'No file: {file_path}')
+            continue
+
+        try:
+            df = pd.read_excel(file_path, header=3)
+            df.columns = ['num', 'ynp', 'okpo', 'name']
+            df = df.dropna(subset=['ynp', 'name'])
+            df['ynp'] = df['ynp'].astype(str).str.strip()
+        except Exception as e:
+            logger.error(f'Error with file {file_path}: {str(e)}')
+            continue
+
+        for _, row in df.iterrows():
+            okpo = str(row['okpo']).strip() if pd.notna(row['okpo']) and str(row['okpo']).strip() != '' else ''
+            if okpo and okpo != 'nan':
+                # С ОКПО — уже обработано обычным fill_organizations().
+                continue
+
+            ynp = str(row['ynp']).strip()
+            name = str(row['name']).strip()
+            if not ynp or ynp == 'nan':
+                continue
+
+            org = existing_orgs.get(ynp) or Organization.query.filter_by(ynp=ynp, okpo=None).first()
+
+            if org:
+                updated_count += 1
+            else:
+                org = Organization(
+                    full_name=name,
+                    ynp=ynp,
+                    okpo=None,
+                    is_active=True,
+                    region_id=None,
+                    is_regular=False,
+                    is_coordinator=False,
+                    is_approver=False,
+                    is_region_management=False
+                )
+                db.session.add(org)
+                created_count += 1
+
+            if org_type == 'regular':
+                org.is_regular = True
+            elif org_type == 'coordinator':
+                org.is_coordinator = True
+            elif org_type == 'approver':
+                org.is_approver = True
+
+            existing_orgs[ynp] = org
+
+    db.session.commit()
+    logger.info(
+        f'Организации без ОКПО: создано {created_count}, обновлено {updated_count}'
+    )
+
+
+def reset_unlisted_organizations_roles(db):
+    """Кнопка «Сбросить роли организаций вне справочников» — у организаций,
+    которых нет НИ В ОДНОМ из трёх справочников (regulars/coordinators/
+    approvers.xlsx) — ни по ОКПО, ни (для организаций без ОКПО) по УНП —
+    снимает is_regular/is_coordinator/is_approver. Такие организации
+    могли получить эти флаги вручную через админку, хотя по факту не
+    входят ни в один справочник. is_region_management не трогается — он
+    выставляется отдельно, по названию, а не по этим файлам.
+    """
+    from ..models import Organization
+
+    base_path = os.path.join('website', 'static', 'files', 'spravochniki')
+    files = [
+        os.path.join(base_path, 'regulars.xlsx'),
+        os.path.join(base_path, 'coordinators.xlsx'),
+        os.path.join(base_path, 'approvers.xlsx'),
+    ]
+
+    listed_okpo = set()
+    listed_ynp = set()
+
+    for file_path in files:
+        if not os.path.exists(file_path):
+            logger.warning(f'No file: {file_path}')
+            continue
+
+        try:
+            df = pd.read_excel(file_path, header=3)
+            df.columns = ['num', 'ynp', 'okpo', 'name']
+            df = df.dropna(subset=['ynp', 'name'])
+        except Exception as e:
+            logger.error(f'Error with file {file_path}: {str(e)}')
+            continue
+
+        for _, row in df.iterrows():
+            okpo = str(row['okpo']).strip() if pd.notna(row['okpo']) and str(row['okpo']).strip() != '' else ''
+            if okpo and okpo != 'nan':
+                listed_okpo.add(str(int(float(okpo))) if okpo.replace('.', '', 1).isdigit() else okpo)
+            else:
+                ynp = str(row['ynp']).strip()
+                if ynp and ynp != 'nan':
+                    listed_ynp.add(ynp)
+
+    reset_count = 0
+    organizations = Organization.query.filter(
+        db.or_(
+            Organization.is_regular == True,
+            Organization.is_coordinator == True,
+            Organization.is_approver == True,
+        )
+    ).all()
+
+    for org in organizations:
+        okpo = str(org.okpo).strip() if org.okpo else ''
+        ynp = str(org.ynp).strip() if org.ynp else ''
+
+        in_files = (okpo and okpo in listed_okpo) or (not okpo and ynp and ynp in listed_ynp)
+        if in_files:
+            continue
+
+        org.is_regular = False
+        org.is_coordinator = False
+        org.is_approver = False
+        reset_count += 1
+
+    db.session.commit()
+    logger.info(f'Роли сброшены у {reset_count} организаций вне справочников')
+    return reset_count
 
 
 def fill_users(db):
@@ -706,6 +865,54 @@ def fill_database_route():
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при заполнении базы данных: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': f'Ошибка: {str(e)}'
+        }), 500
+
+
+@db_bp.route('/fill-remaining-organizations', methods=['POST'])
+@csrf.exempt
+def fill_remaining_organizations_route():
+    from flask_login import current_user
+    from website import db
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+        return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
+
+    try:
+        fill_remaining_organizations(db)
+        return jsonify({
+            'success': True,
+            'message': 'Остальные предприятия (без ОКПО) добавлены'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при добавлении остальных предприятий: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': f'Ошибка: {str(e)}'
+        }), 500
+
+
+@db_bp.route('/reset-unlisted-organizations-roles', methods=['POST'])
+@csrf.exempt
+def reset_unlisted_organizations_roles_route():
+    from flask_login import current_user
+    from website import db
+
+    if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+        return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
+
+    try:
+        reset_count = reset_unlisted_organizations_roles(db)
+        return jsonify({
+            'success': True,
+            'message': f'Роли сброшены у {reset_count} организаций вне справочников'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при сбросе ролей организаций: {str(e)}')
         return jsonify({
             'success': False,
             'message': f'Ошибка: {str(e)}'

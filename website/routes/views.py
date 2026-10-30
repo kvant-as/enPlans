@@ -8,18 +8,22 @@ import uuid
 import threading
 from datetime import timedelta, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from flask_login import (
     current_user, login_required
 )
 
-from common_models import current_utc_time, db, UserAppActivity
+from itsdangerous import URLSafeTimedSerializer
+from werkzeug.security import generate_password_hash
+
+from common_models import current_utc_time, db, UserAppActivity, get_current_application_id
 from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
+from website.email import send_email
 
-from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage
+from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage, User
 from website import db
 
 from functools import wraps
@@ -51,7 +55,14 @@ def owner_only(f):
             current_user.is_admin or
             current_user.is_auditor or
             current_user.is_reader or
-            plan.user_id == current_user.id
+            plan.user_id == current_user.id or
+            # Любой сотрудник той же организации-разработчика — не только
+            # тот, кто создал план (см. "внутренние роли сотрудников":
+            # исполнитель/рук. подразделения/рук. организации работают над
+            # одним и тем же планом из разных аккаунтов). Раздача прав по
+            # конкретным действиям внутри этой организации — отдельно, по
+            # org_role, в конкретных местах, не здесь.
+            (plan.org_id is not None and plan.org_id == current_user.organization_id)
         )
 
         if not has_access:
@@ -92,9 +103,10 @@ def change_language(lang_code):
 @login_required
 @session_required
 def profile():
-    can_change_modal = True
-    if Plan.query.filter(Plan.user_id == current_user.id).count() > 0:
-        can_change_modal = False
+    # Смена организации в профиле доступна только администратору — обычный
+    # пользователь организацию себе больше не меняет сам (раньше это было
+    # разрешено, пока у него не было ни одного плана).
+    can_change_modal = current_user.is_admin
 
     token, payload = get_or_refresh_session(current_user)
     session_info = build_session_info(current_user, payload)
@@ -104,14 +116,97 @@ def profile():
     session_info['created_at_dt'] = datetime.fromisoformat(session_info['created_at'])
     session_info['expires_at_dt'] = datetime.fromisoformat(session_info['expires_at'])
 
+    # Список коллег по организации видят все роли (исполнитель/рук.
+    # подразделения/рук. организации) — приглашать и удалять может только
+    # руководитель организации (см. can_change_modal и шаблон).
+    org_employees = []
+    if current_user.org_role and current_user.organization_id:
+        org_employees = User.query.filter(
+            User.organization_id == current_user.organization_id,
+            User.application_id == get_current_application_id(),
+            User.id != current_user.id
+        ).order_by(User.begin_time.desc()).all()
+
     response = make_response(render_template('profile.html',
                         can_change_modal=can_change_modal,
                         hide_header=False,
                         current_user=current_user,
                         change_orgUser_modal = True,
-                        session_info = session_info
+                        session_info = session_info,
+                        org_employees = org_employees
                            ))
     return set_session_cookie(response, token)
+
+ORG_ROLE_LABELS = {
+    'executor': 'Исполнитель',
+    'dept_head': 'Руководитель структурного подразделения',
+    'org_head': 'Руководитель организации',
+}
+
+@views.route('/invite-employee', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def invite_employee():
+    if current_user.org_role != 'org_head':
+        flash('Приглашать сотрудников может только руководитель организации', 'error')
+        return redirect(url_for('views.profile'))
+
+    email = (request.form.get('email') or '').strip()
+    org_role = request.form.get('org_role')
+
+    if not email:
+        flash('Укажите email сотрудника', 'error')
+        return redirect(url_for('views.profile'))
+
+    if org_role not in ORG_ROLE_LABELS:
+        flash('Выберите роль сотрудника', 'error')
+        return redirect(url_for('views.profile'))
+
+    # Каждая роль — максимум один сотрудник на организацию (в т.ч. "Руководитель
+    # организации": регистрирующий аккаунт её уже занимает, см. add_param).
+    role_taken = User.query.filter(
+        User.organization_id == current_user.organization_id,
+        User.application_id == get_current_application_id(),
+        User.org_role == org_role
+    ).first()
+    if role_taken:
+        flash(f'Роль «{ORG_ROLE_LABELS[org_role]}» уже занята сотрудником {role_taken.email}', 'error')
+        return redirect(url_for('views.profile'))
+
+    existing_user = User.query.filter(
+        func.lower(User.email) == func.lower(email),
+        User.application_id == get_current_application_id()
+    ).first()
+    if existing_user:
+        flash('Сотрудник с таким email уже зарегистрирован', 'error')
+        return redirect(url_for('views.profile'))
+
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    token = serializer.dumps(email, salt='password-reset-salt')
+
+    # ФИО/должность/телефон сотрудник вводит сам при первом входе (см.
+    # auth.complete_profile) — организатор задаёт только email и роль,
+    # организация уже привязана (organization_id), шаг её выбора пропускается.
+    employee = User(
+        email=email,
+        organization_id=current_user.organization_id,
+        org_role=org_role,
+        application_id=get_current_application_id(),
+        # Временный непригодный пароль — сотрудник обязательно задаст свой
+        # по ссылке из письма (тот же механизм, что и "забыли пароль").
+        password=generate_password_hash(uuid.uuid4().hex),
+        reset_password_token=token,
+        reset_password_expires=datetime.utcnow() + timedelta(hours=1),
+    )
+    db.session.add(employee)
+    db.session.commit()
+
+    invite_url = url_for('auth.reset_password', token=token, _external=True)
+    send_email(invite_url, email, 'employee_invite')
+
+    flash(f'Приглашение отправлено на {email}', 'success')
+    return redirect(url_for('views.profile'))
 
 @views.route('/profile/edit', methods = ['POST', 'GET'])
 @user_with_all_params()
@@ -131,16 +226,16 @@ def edit_profile():
 @login_required
 def edit_user_org():
     try:
+        if not current_user.is_admin:
+            flash('Сменить организацию может только администратор', 'error')
+            return redirect(url_for('views.profile'))
+
         item_id = request.form.get('id_org')
         item_type = request.form.get('item_type', 'organization')
-        
+
         if not item_id:
             flash('Элемент не выбран!', 'error')
             return redirect(request.referrer)
-        
-        if Plan.query.filter(Plan.user_id == current_user.id).count() > 0:
-            flash('У вас существуют планы энергосбережения, редактирование запрещено', 'error')
-            return redirect(url_for('views.profile'))
         
         if item_type == 'organization':
             current_user.plan_type = None
@@ -409,7 +504,7 @@ def news_post(id):
         abort(404)
     
     if post.published_at is None:
-        post.published_at = post.created_at
+        post.published_at = post.created_time
     
     post.views_count = (post.views_count or 0) + 1
     db.session.commit()
@@ -433,12 +528,12 @@ def create_plan():
             return redirect(url_for('views.create_plan'))
 
         existing_plan = Plan.query.filter_by(
-            user_id=current_user.id,
+            org_id=current_user.organization_id,
             year=year
         ).first()
 
         if existing_plan:
-            flash(f'У вас уже есть план на {year} год!', 'error')
+            flash(f'У вашей организации уже есть план на {year} год!', 'error')
             return redirect(url_for('views.create_plan'))
 
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
@@ -524,7 +619,7 @@ def create_plan():
     current_time = current_utc_time()
     next_year = current_time.year + 1
 
-    taken_years = [p.year for p in Plan.query.filter_by(user_id=current_user.id).all()]
+    taken_years = [p.year for p in Plan.query.filter_by(org_id=current_user.organization_id).all()]
 
     # если план на next_year уже есть — предложим первый свободный год после него,
     # чтобы в выпадающем списке по умолчанию не оказался отключённый вариант
@@ -563,13 +658,13 @@ def edit_plan(token):
             return redirect(url_for('views.edit_plan', token=token))
 
         existing_plan = Plan.query.filter(
-            Plan.user_id == current_user.id,
+            Plan.org_id == current_plan.org_id,
             Plan.year == new_year,
             Plan.token != token
         ).first()
 
         if existing_plan:
-            flash(f'У вас уже есть другой план на {new_year} год!', 'error')
+            flash(f'У вашей организации уже есть другой план на {new_year} год!', 'error')
             return redirect(url_for('views.plans'))
         
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
@@ -602,7 +697,7 @@ def edit_plan(token):
 
         taken_years = [
             p.year for p in Plan.query.filter(
-                Plan.user_id == current_user.id,
+                Plan.org_id == plan.org_id,
                 Plan.token != token
             ).all()
         ]
@@ -650,10 +745,10 @@ def check_plan_year():
         return jsonify({'exists': False})
     
     existing_plan = Plan.query.filter_by(
-        user_id=current_user.id,
+        org_id=current_user.organization_id,
         year=year
-    ).first()   
-        
+    ).first()
+
     return jsonify({'exists': existing_plan is not None})
 
 @views.route('/stats', methods=['GET', 'POST'])

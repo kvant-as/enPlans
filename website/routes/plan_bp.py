@@ -40,7 +40,7 @@ def plan_review(token):
     
     current_plan = g.current_plan
 
-    return render_template('plan_review.html',
+    return render_template('plan_tasks.html',
                         plan=current_plan,
                         )
 
@@ -63,6 +63,40 @@ def plan_actions(token):
     current_plan = g.current_plan
     audit_ctx = get_audit_context(current_plan, current_user)
     return render_template('plan_actions.html', plan=current_plan, **audit_ctx)
+
+
+@plan_bp.route('/set-developer-info/<token>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+@reader_forbidden
+def set_developer_info(token):
+    """Кнопка «Разработчик плана» — ФИО/телефон/email исполнителя,
+    фактически готовившего план (не обязательно совпадает с тем, кто его
+    в итоге отправит/подпишет — см. Plan.developer_* в common-models).
+    Отображается строкой над таблицей в «Подписи» (plan_signatures.html)."""
+    current_plan = g.current_plan
+
+    if not current_plan.is_draft:
+        flash('Этот план нельзя редактировать', 'error')
+        return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
+
+    name = (request.form.get('developer_name') or '').strip()
+    phone = (request.form.get('developer_phone') or '').strip()
+    email = (request.form.get('developer_email') or '').strip()
+
+    if not name:
+        flash('Укажите ФИО исполнителя', 'error')
+        return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
+
+    current_plan.developer_name = name
+    current_plan.developer_phone = phone or None
+    current_plan.developer_email = email or None
+    db.session.commit()
+
+    flash('Данные разработчика плана сохранены', 'success')
+    return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
 
 
 @plan_bp.route('/signatures/<token>', methods=['GET'])
@@ -89,7 +123,7 @@ def plan_signatures(token):
 @reader_forbidden
 def plan_send_page(token):
     """Отдельная страница отправки плана на согласование — раньше было
-    модальное окно поверх plan_review.html (SendModal/SendModalPreview в
+    модальное окно поверх plan_tasks.html (SendModal/SendModalPreview в
     plan.js), теперь свой URL со всеми этапами. Доступна только когда план
     прошёл контроль и ещё не отправлен/утверждён — те же условия, что раньше
     просто отключали кнопку "Отправить на согласование"."""
@@ -98,6 +132,12 @@ def plan_send_page(token):
     if not current_plan.is_control or current_plan.is_draft or current_plan.is_sent or current_plan.is_approved or current_plan.is_error:
         flash('План должен сначала пройти контроль, прежде чем его можно будет отправить на согласование', 'error')
         return redirect(url_for('plan_bp.plan_review', token=current_plan.token))
+
+    # Исполнитель готовит план, но официально отправляет его на согласование
+    # только руководитель структурного подразделения или организации.
+    if current_user.org_role == 'executor' and current_plan.org_id == current_user.organization_id:
+        flash('Исполнитель не может отправлять план на согласование', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
 
     return render_template('plan_send.html', plan=current_plan)
 
@@ -1049,6 +1089,19 @@ def api_change_plan_status(token):
             flash('Неверный статус', 'error')
             return redirect(request.referrer or url_for('views.plans'))
     
+    # «Отправить на согласование» и «Отменить отправку» — обе доступны
+    # всем ролям организации-разработчика, КРОМЕ Исполнителя (он готовит
+    # план, но официально отправляет/отзывает его только руководитель
+    # структурного подразделения или организации). status='draft' сюда
+    # приходит только из этой самой кнопки (plan_actions.html :: cancelSendForm),
+    # больше ниоткуда — см. grep по "status" value="draft" перед правкой.
+    if status in ('sent', 'draft') and current_user.org_role == 'executor' and plan.org_id == current_user.organization_id:
+        message = 'Исполнитель не может отправлять план на согласование или отменять отправку'
+        if request.is_json:
+            return jsonify({'error': message}), 403
+        flash(message, 'error')
+        return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
+
     handler = status_handlers[status]
 
     if status == 'sent':
