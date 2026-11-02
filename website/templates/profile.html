@@ -10,15 +10,17 @@
         {{ current_user.first_name[:1] | upper }}{{ current_user.last_name[:1] | upper }}
       </div>
       <div class="employee-card">
-        <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
+        <div class="employee-name-row">
+          <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
+          {% if current_user.org_role %}
+          <span class="employee-role">
+            {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+          </span>
+          {% endif %}
+        </div>
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
-        {% if current_user.org_role %}
-        <span class="employee-role">
-          {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
-        </span>
-        {% endif %}
       </div>
     </div>
     <hr>
@@ -30,7 +32,7 @@
       </button>
       <button type="button" class="profile-tab" data-tab="org" role="tab" aria-selected="false">
         {{ icons.icon_org() }}
-        <span>{{ _('Предприятие') }}</span>
+        <span>{{ _('Организация') }}</span>
       </button>
       <button type="button" class="profile-tab" data-tab="sessions" role="tab" aria-selected="false">
         {{ icons.icon_clock() }}
@@ -195,7 +197,7 @@
       <div class="header-content">
         <div class="header-content-left">
           <a class="name" style="padding-bottom: 0">
-            {{ _('Предприятие') }}
+            {{ _('Организация') }}
           </a>
         </div>
         <div class="header-content-right">
@@ -239,7 +241,7 @@
 
       <hr/>
       <h1 class="name">{{ _('Сотрудники организации') }}</h1>
-      <div class="answer-text">
+      <div class="org-roles-note">
         <p>
           {% if can_manage_employees %}
             {{ _('На каждую роль — один сотрудник. Отправить план с ЭЦП сможет только руководитель организации.') }}
@@ -259,16 +261,18 @@
             <span class="org-role-card-title">{{ meta.label }}</span>
             <span class="org-role-card-hint">{{ meta.hint }}</span>
             {% if occupant %}
-              <span class="org-role-card-occupant">
-                {% if occupant.id == current_user.id %}
-                  {{ _('Это вы') }}
-                {% elif occupant.last_name or occupant.first_name %}
-                  {{ occupant.last_name }} {{ occupant.first_name }}
-                {% else %}
-                  <span class="org-role-card-pending">{{ _('Ждём регистрации') }}</span>
-                {% endif %}
-              </span>
-              <span class="org-role-card-email">{{ occupant.email }}</span>
+              <div class="org-role-card-occupant-block">
+                <span class="org-role-card-occupant">
+                  {% if occupant.id == current_user.id %}
+                    {{ _('Это вы') }}
+                  {% elif occupant.last_name or occupant.first_name %}
+                    {{ occupant.last_name }} {{ occupant.first_name }}
+                  {% else %}
+                    <span class="org-role-card-pending">{{ _('Ждём регистрации') }}</span>
+                  {% endif %}
+                </span>
+                <span class="org-role-card-email">{{ occupant.email }}</span>
+              </div>
             {% endif %}
           </div>
           {% if not occupant and can_manage_employees %}

@@ -84,7 +84,7 @@ def user_with_all_params():
             filled_entities = [field for field in entity_fields if field is not None]
             
             if len(filled_entities) == 0:
-                flash("Необходимо выбрать предприятие", "error")
+                flash("Необходимо выбрать Организация", "error")
                 return redirect(url_for('auth.param'))
             
             if len(filled_entities) > 1:

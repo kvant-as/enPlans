@@ -1,6 +1,6 @@
 from flask import current_app
 from flask_login import current_user
-from ..models import PlanTicket, Notification, PlanApprovalPath, Organization
+from ..models import PlanTicket, Notification, PlanApprovalPath, Organization, User
 
 from common_models.timeutils import current_utc_time
 from website import db
@@ -210,7 +210,7 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
     try:
         if not plan.organization or not plan.organization.region_id:
             return {'error': 'У плана не указан регион'}
-        
+
         region_org = Organization.query.filter(
             Organization.is_region_management == True,
             Organization.region_id == plan.organization.region_id
@@ -218,6 +218,16 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
 
         if not region_org:
             return {'error': 'Региональное управление не найдено для этого региона'}
+
+        # Если маршрут не передан явно — берём сохранённый на шаге
+        # «Отправить на подпись» (внутренний цикл подписания, см.
+        # submit_for_signature/internal_sign в plan_bp.py): к моменту
+        # фактической внешней отправки клиентское состояние визарда
+        # plan_send.html давно недоступно (другой человек/сессия).
+        if not coordinator_ids and plan.pending_coordinator_ids:
+            coordinator_ids = plan.pending_coordinator_ids.split(',')
+        if not approver_id and plan.pending_approver_id:
+            approver_id = plan.pending_approver_id
 
         if not coordinator_ids and not approver_id:
             return {'error': 'Не выбраны организации для согласования и утверждения'}
@@ -231,13 +241,14 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         ).scalar()
         new_cycle = (last_cycle or 0) + 1
 
-        # Снимок разработчика плана на МОМЕНТ именно этой отправки — иначе
-        # "Разработчик плана" в "Подписи" брался бы живым джойном через
-        # plan.user и у ВСЕХ прошлых отправок задним числом менялись бы
-        # ФИО/телефон, если в тот же аккаунт позже зашёл другой человек и
-        # поправил профиль. Отправляет план его владелец (plan.user),
-        # поэтому снимок берём именно с него.
-        sender = plan.user
+        # Снимок отправителя на МОМЕНТ именно этой отправки — иначе строка
+        # в "Подписи" брался бы живым джойном и у ВСЕХ прошлых отправок
+        # задним числом менялись бы ФИО/телефон при правке профиля.
+        # Фактически план отправляет тот, кто его подписал внутренним
+        # ЭЦП-циклом (internal_signed_by_user_id) — а не обязательно
+        # создатель плана (plan.user); если цикл не использовался
+        # (старые планы/админ-override) — откатываемся на plan.user.
+        sender = User.query.get(plan.internal_signed_by_user_id) if plan.internal_signed_by_user_id else plan.user
         sender_name = ' '.join(filter(None, [sender.last_name, sender.first_name, sender.patronymic_name])) if sender else None
         sender_post = sender.post if sender else None
         sender_phone = sender.telephone if sender else None
@@ -299,9 +310,20 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         plan.is_error = False
         plan.is_approved = False
         plan.afch = False
-         
+
+        # Внутренний цикл подписания завершён — план ушёл во внешний
+        # маршрут (PlanApprovalPath выше), поля цикла больше не нужны.
+        plan.is_signed = False
+        plan.pending_signer_user_id = None
+        plan.submitted_by_user_id = None
+        plan.internal_signed_by_user_id = None
+        plan.internal_signed_at = None
+        plan.internal_signed_by_snapshot = None
+        plan.pending_coordinator_ids = None
+        plan.pending_approver_id = None
+
         db.session.commit()
-        
+
         return {'message': 'План успешно отправлен на согласование'}
         
     except Exception as e:
@@ -430,18 +452,30 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
 
 def handle_error_status(plan, current_user):
     try:
-        from website.utils.plans import has_pending_review_message, get_current_review_path, build_signer_snapshot
-
-        if not has_pending_review_message(plan, current_user):
-            return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
-
-        now = current_utc_time()
+        from website.utils.plans import get_current_review_path, build_signer_snapshot, create_plan_snapshot
 
         # Этап, который проверяющий сейчас отклоняет — is_viewed/viewed_at
         # для него так и останутся False/None (этап не пройден), поэтому
         # сам факт и момент отклонения фиксируем отдельными полями, иначе
         # "Подписи" не смогут показать, когда и кем план был возвращён.
         current_path = get_current_review_path(plan, current_user)
+
+        # Раньше проверялось has_pending_review_message(plan, current_user) —
+        # что СВОЁ сообщение оставил именно тот, кто сейчас жмёт кнопку. Эту
+        # функцию вызывает теперь не исполнитель (он решение принял раньше,
+        # на шаге "Не согласовать и направить на подпись" — см.
+        # plan_bp.py::step_submit_for_signature, там же и обязательное
+        # вложение уже проверено), а подписавший руководитель — проверяем,
+        # что сообщение с замечаниями на этом этапе вообще есть, от кого бы
+        # из организации оно ни было оставлено.
+        has_review_message = bool(current_path) and any(
+            not t.is_system and t.approval_path_id == current_path.id for t in plan.tickets
+        )
+        if not has_review_message:
+            return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
+
+        now = current_utc_time()
+
         if current_path:
             current_path.rejected_at = now
             current_path.rejected_by_snapshot = build_signer_snapshot(current_user)
@@ -453,6 +487,14 @@ def handle_error_status(plan, current_user):
         plan.is_sent = False
         plan.is_approved = False
         plan.afch = False
+
+        # Замораживаем план "как есть" ПРЯМО СЕЙЧАС — это единственный
+        # момент, когда его содержимое гарантированно совпадает с тем, что
+        # увидел и отклонил проверяющий; при первой же правке организации
+        # update_ChangeTimePlan сбросит is_error/is_draft на живой строке,
+        # и момент отклонения будет уже не восстановить (см.
+        # create_plan_snapshot в utils/plans.py).
+        create_plan_snapshot(plan)
 
         ticket = PlanTicket(
             note="В плане нашли ошибки, статус изменен на Есть ошибки.",

@@ -196,10 +196,17 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     elif user_type == 'auditor':
         current_user.is_auditor = True
         current_user.is_approver = False
+        # Внутренние роли (Исполнитель/Руководитель) теперь нужны и
+        # согласующим организациям — см. "Шаг 2" внутреннего подписания
+        # (подписывает решение организации не тот, кто его рассматривал).
+        if not current_user.org_role:
+            current_user.org_role = 'org_head'
         current_app.logger.info(f'User {current_user.id} set as auditor')
     elif user_type == 'approver':
         current_user.is_auditor = False
         current_user.is_approver = True
+        if not current_user.org_role:
+            current_user.org_role = 'org_head'
         current_app.logger.info(f'User {current_user.id} set as approver')
     else:
         current_app.logger.warning(f'Unknown user_type: {user_type} for user {current_user.id}')

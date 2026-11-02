@@ -22,11 +22,12 @@ function initStatusProgress() {
         };
     } else {
         statusConfig = {
-            'plan-cont-redac': { width: '20%', color: 'var(--color-redaced)', dotIndex: 0 },
-            'plan-cont-control': { width: '40%', color: 'var(--color-controled)', dotIndex: 1 },
-            'plan-cont-sent': { width: '60%', color: 'var(--color-sented)', dotIndex: 2 },
-            'plan-cont-eror': { width: '80%', color: 'var(--color-erorsed)', dotIndex: 3 },
-            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dotIndex: 4 }
+            'plan-cont-redac': { width: '16%', color: 'var(--color-redaced)', dotIndex: 0 },
+            'plan-cont-control': { width: '33%', color: 'var(--color-controled)', dotIndex: 1 },
+            'plan-cont-signing': { width: '50%', color: '#35a6d0', dotIndex: 2 },
+            'plan-cont-sent': { width: '66%', color: 'var(--color-sented)', dotIndex: 3 },
+            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dotIndex: 4 },
+            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dotIndex: 5 }
         };
     }
     
@@ -52,8 +53,21 @@ function initStatusProgress() {
     function updateProgress(className) {
         const config = statusConfig[className];
         if (!config) return;
-        
-        progressLine.style.width = config.width;
+
+        // Тайлы теперь разной ширины (размер по тексту), поэтому точки
+        // статусов больше не стоят на равных % от трека — процент из
+        // statusConfig.width тут был бы неверным. Меряем позицию
+        // реальной точки-цели в DOM и ставим ширину полосы в px.
+        const lineContainer = progressLine.parentElement;
+        const targetDot = statusDots[config.dotIndex];
+        if (lineContainer && targetDot) {
+            const containerRect = lineContainer.getBoundingClientRect();
+            const dotRect = targetDot.getBoundingClientRect();
+            const width = (dotRect.left + dotRect.width / 2) - containerRect.left;
+            progressLine.style.width = Math.max(0, width) + 'px';
+        } else {
+            progressLine.style.width = config.width;
+        }
         progressLine.style.background = config.color;
         
         statusDots.forEach((dot, index) => {

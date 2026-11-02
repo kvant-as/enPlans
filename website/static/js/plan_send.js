@@ -490,36 +490,58 @@ class PlanSendWizard {
             }
         });
 
-        // Шаг 4 — кнопка "Отправить план" выключена, пока не пройдена
-        // демонстрационная проверка ЭЦП в модалке (см. EcpMockModal,
-        // static/js/ecp-mock-modal.js). Сама проверка пока чисто
-        // визуальная — реального бэкенда у неё нет (функция в разработке).
-        const openEcpCheckBtn = this.root.querySelector('#openEcpCheckBtn');
-        const ecpCheckPromptTitle = this.root.querySelector('#ecpCheckPromptTitle');
-        const ecpCheckPromptText = this.root.querySelector('#ecpCheckPromptText');
-        const ecpKeyHero = this.root.querySelector('#ecpKeyHero');
-        if (openEcpCheckBtn && window.EcpMockModal) {
-            const ecpModal = new EcpMockModal({
-                modalId: 'ecpMockModal',
-                certCheckUrl: window.planToken ? `/plans/plan/verify-certificate/${window.planToken}` : null,
-                onSuccess: () => {
-                    // Модалка уже закрылась (EcpMockModal делает это сама перед
-                    // вызовом onSuccess) — ключ слева перестаёт парить,
-                    // опускается и слегка покачивается (ecpKeyDrop, ~0.6с —
-                    // см. base.css), кнопка рядом плавно гаснет. После этого
-                    // меняем текст рядом и разблокируем "Отправить план".
-                    if (ecpKeyHero) ecpKeyHero.classList.add('is-open');
-                    if (openEcpCheckBtn) openEcpCheckBtn.classList.add('is-done');
-                    setTimeout(() => {
-                        if (ecpCheckPromptTitle) ecpCheckPromptTitle.textContent = 'Проверка ЭЦП пройдена';
-                        if (ecpCheckPromptText) ecpCheckPromptText.textContent = 'Теперь план можно отправить на согласование.';
-                        const promptEl = this.root.querySelector('#ecpCheckPrompt');
-                        if (promptEl) promptEl.classList.add('is-verified');
-                        if (this.submitButton) this.submitButton.disabled = false;
-                    }, 650);
-                },
+        // Шаг 4 — кнопка "Отправить на подпись" выключена, пока не выбран
+        // руководитель (реальная подпись — ЭЦП, пока мок — происходит
+        // отдельно, позже, самим руководителем в «Действиях с планом»,
+        // когда план дойдёт до него во «Входящих на подпись»).
+        const signerSelect = this.root.querySelector('#signer-select');
+        if (signerSelect && this.submitButton) {
+            const updateSubmitState = () => {
+                this.submitButton.disabled = !signerSelect.value;
+            };
+            signerSelect.addEventListener('change', updateSubmitState);
+            updateSubmitState();
+        }
+
+        // Свой контейнер вместо <select> для выбора подписанта — тот же
+        // паттерн открытия/закрытия, что у .custom-dropdown в шапке
+        // списка планов, плюс клик по пункту пишет id в скрытый
+        // #signer-select и бьёт синтетический 'change', чтобы логика
+        // выше (блокировка кнопки отправки) не знала о подмене <select>.
+        const signerPicker = this.root.querySelector('#signer-picker');
+        const signerToggle = this.root.querySelector('#signer-picker-toggle');
+        const signerValue = this.root.querySelector('#signer-picker-value');
+        const signerMenu = this.root.querySelector('#signer-picker-menu');
+        if (signerPicker && signerToggle && signerValue && signerMenu && signerSelect) {
+            const placeholderText = signerValue.textContent;
+
+            signerToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (signerToggle.disabled) return;
+                signerPicker.classList.toggle('active');
             });
-            openEcpCheckBtn.addEventListener('click', () => ecpModal.open());
+
+            signerMenu.querySelectorAll('.signer-picker-item').forEach((item) => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    signerMenu.querySelectorAll('.signer-picker-item').forEach((i) => i.classList.remove('is-selected'));
+                    item.classList.add('is-selected');
+                    signerValue.textContent = item.dataset.name.trim();
+                    signerSelect.value = item.dataset.id;
+                    signerSelect.dispatchEvent(new Event('change'));
+                    signerPicker.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!signerPicker.contains(e.target)) {
+                    signerPicker.classList.remove('active');
+                }
+            });
+
+            if (!signerSelect.value) {
+                signerValue.textContent = placeholderText;
+            }
         }
     }
 

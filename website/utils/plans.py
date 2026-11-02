@@ -5,11 +5,11 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, PlanColumnConfig, PlanTicket, Indicator, Event, IndicatorUsage, Notification, PlanApprovalPath
+from ..models import Direction, Organization, Plan, PlanColumnConfig, PlanTicket, Indicator, Event, IndicatorUsage, Notification, PlanApprovalPath, User
 
 from common_models import current_utc_time
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 
 from flask import (
     current_app
@@ -219,7 +219,13 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
     try:
         # current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         
-        if user.is_auditor:
+        if user.is_auditor or user.is_approver:
+            # is_approver (утверждающая организация) — та же механика, что
+            # и у is_auditor (согласующая): список планов по собственным
+            # этапам в PlanApprovalPath, а не по org_id (который у
+            # организации-рецензента никогда не совпадёт с org_id плана).
+            # Раньше is_approver здесь не проверялся вовсе — такие аккаунты
+            # проваливались в ветку "else" ниже и не видели ни одного плана.
             auditor_org_ids = []
             if user.organization_id:
                 auditor_org_ids.append(user.organization_id)
@@ -257,6 +263,13 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             # видят одни и те же планы в списке.
             base_query = Plan.query.filter_by(org_id=user.organization_id)
 
+        # Замороженные снимки (см. Plan.is_historical/create_plan_snapshot в
+        # этом же файле) — история одного "живого" плана, а не отдельные
+        # планы организации; в списках не показываются вовсе, открываются
+        # только напрямую по собственному token со страницы плана (свитчер
+        # версий — component.plan_version_switcher).
+        base_query = base_query.filter(Plan.snapshot_of_plan_id.is_(None))
+
         needs_join = bool(search_name or search_ynp or region_id)
         
         if needs_join:
@@ -283,7 +296,12 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
 
         status_filters = {
             'draft': Plan.is_draft == True,
-            'control': Plan.is_control == True,
+            # "Контроль пройден" и "На подписании" — взаимоисключающие: план,
+            # отправленный на внутреннюю подпись (pending_signer_user_id),
+            # больше не считается "просто" control, иначе он попадал бы
+            # сразу в обе плитки статистики.
+            'control': and_(Plan.is_control == True, Plan.pending_signer_user_id.is_(None)),
+            'signing': Plan.pending_signer_user_id.isnot(None),
             'sent': Plan.is_sent == True,
             'sogl': Plan.is_sent == True,
             'error': Plan.is_error == True,
@@ -371,7 +389,11 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             status_counts['control'] = 0
         else:
             status_counts['draft'] = count_query.filter(Plan.is_draft == True).count()
-            status_counts['control'] = count_query.filter(Plan.is_control == True).count()
+            status_counts['control'] = count_query.filter(Plan.is_control == True, Plan.pending_signer_user_id.is_(None)).count()
+            # "На подписании" — внутренний цикл подписания (см. Plan.pending_signer_user_id
+            # в plan_bp.py :: submit_for_signature/internal_sign/internal_return) — план
+            # ещё черновик (is_draft/is_control не менялись), но уже направлен руководителю.
+            status_counts['signing'] = count_query.filter(Plan.pending_signer_user_id.isnot(None)).count()
             status_counts['sent'] = count_query.filter(Plan.is_sent == True).count()
             status_counts['error'] = count_query.filter(Plan.is_error == True).count()
             status_counts['approved'] = count_query.filter(Plan.is_approved == True).count()
@@ -990,7 +1012,7 @@ def build_signature_print_rows(plan, cycles):
             elif is_rejected_step:
                 status = 'Есть ошибки'
             elif is_active:
-                status = 'На рассмотрении'
+                status = 'На подписании' if path.pending_signer_user_id else 'На рассмотрении'
             else:
                 status = 'Ожидание очереди'
 
@@ -1008,7 +1030,12 @@ def build_signature_print_rows(plan, cycles):
             else:
                 date_str = '—'
 
-            remark = path.remark_ticket.note if (is_rejected_step and path.remark_ticket) else '—'
+            if path.remark:
+                remark = path.remark
+            elif is_rejected_step and path.remark_ticket:
+                remark = path.remark_ticket.note
+            else:
+                remark = '—'
 
             rows.append(('data', [
                 action_label,
@@ -1093,7 +1120,25 @@ def get_audit_context(plan, current_user):
     # approval_path с прошлой отправки остаётся в базе и без этой проверки
     # проверяющий продолжал бы видеть этап как "свой"/действующий прямо
     # сейчас — хотя план фактически снова у разработчика, а не у него.
-    can_audit = bool(current_path) and plan.is_sent and not plan.is_approved and not plan.is_error
+    #
+    # Дополнительное ограничение (внутренний цикл подписания РЕШЕНИЯ этапа,
+    # "Шаг 2"): пока решение уже направлено на подпись руководителю
+    # (current_path.pending_signer_user_id) — этап read-only для всех
+    # остальных сотрудников организации, как план read-only для организации-
+    # разработчика между "Отправить на подпись" и подписью ("Шаг 1").
+    #
+    # org_role НЕ ограничивает, кто может вынести решение (в отличие от
+    # create_plan, где org_head не создаёт планы) — у многих согласующих/
+    # утверждающих организаций исторически всего один аккаунт, бэкфилленный
+    # в org_head (см. миграцию f4a5b6c7d8e9); запрет оставил бы их без
+    # возможности вообще рассматривать планы. org_role важен только для
+    # того, КОМУ можно направить решение на подпись (get_signer_candidates —
+    # dept_head/org_head) и для Варианта Б (пересылка от dept_head к
+    # org_head) — см. plan_bp.py.
+    can_audit = (
+        bool(current_path) and plan.is_sent and not plan.is_approved and not plan.is_error
+        and not current_path.pending_signer_user_id
+    )
 
     approve_label = 'Согласовать'
     if current_path:
@@ -1154,7 +1199,149 @@ def get_audit_context(plan, current_user):
         'can_cancel': can_cancel,
         'has_remarks': has_remarks,
         'approve_label': approve_label,
+        'step_pending_signer_id': current_path.pending_signer_user_id if current_path else None,
+        'step_is_signed': current_path.is_signed if current_path else False,
+        'step_submitted_by_id': current_path.submitted_by_user_id if current_path else None,
+        'step_pending_decision': current_path.pending_decision if current_path else None,
     }
+
+
+def get_last_internal_return_ticket(plan):
+    """Причина последнего [Вернуть на внутреннюю доработку] ("Шаг 1" —
+    руководитель вернул план отправившему, не дойдя до реальной внешней
+    отправки) — обычное сообщение в чате (см. internal_return в
+    plan_bp.py), без approval_path_id (на этом этапе цикла ещё нет ни
+    одного PlanApprovalPath). "Свежее" — позже последней РЕАЛЬНОЙ отправки
+    (plan.sent_time обновляется только в handle_sent_status), иначе после
+    следующей успешной отправки старая причина продолжала бы висеть.
+    Используется и баннером на "Действиях с планом", и первой строкой
+    "Подписи" до момента реальной отправки (см. plan_signatures_page)."""
+    if plan.pending_signer_user_id:
+        return None
+    candidate_ticket = PlanTicket.query.filter_by(
+        plan_id=plan.id, is_system=False, approval_path_id=None
+    ).order_by(PlanTicket.begin_time.desc()).first()
+    if candidate_ticket and (not plan.sent_time or candidate_ticket.begin_time > plan.sent_time):
+        return candidate_ticket
+    return None
+
+
+def create_plan_snapshot(plan):
+    """Замораживает точную копию плана "как есть" отдельной строкой Plan —
+    вызывается из handle_error_status (status_plan.py) СРАЗУ после того,
+    как план помечен is_error, пока его содержимое ещё гарантированно
+    совпадает с тем, что увидел и отклонил проверяющий (следующая же
+    правка через update_ChangeTimePlan сбросит is_error на живой строке).
+
+    Снимок — полноценная независимая строка Plan со своим token (не
+    передаём — генерируется автоматически), связанная с живым планом
+    через snapshot_of_plan_id. Копируются только содержательные данные
+    (сам план + IndicatorUsage/Event/PlanColumnConfig, включая файлы ТЭО
+    на диске — см. copy_teo_file); PlanApprovalPath/PlanTicket/Notification
+    НЕ копируются — это история согласования/переписки конкретной
+    попытки отправки, она и так остаётся на живой строке (как cycle уже
+    хранит историю прошлых циклов отправки). Поля внутреннего цикла
+    подписания тоже не копируются — у снимка их не может быть, он
+    никуда больше не отправляется."""
+    from website.utils.teo import copy_teo_file
+
+    now = current_utc_time()
+
+    snapshot = Plan(
+        year=plan.year,
+        begin_time=plan.begin_time,
+        change_time=now,
+        energy_saving=plan.energy_saving,
+        share_fuel=plan.share_fuel,
+        saving_fuel=plan.saving_fuel,
+        share_energy=plan.share_energy,
+        usd_rate=plan.usd_rate,
+        cost_per_toe_usd=plan.cost_per_toe_usd,
+        is_draft=False,
+        is_control=False,
+        is_sent=False,
+        is_error=True,
+        is_approved=False,
+        plan_type=plan.plan_type,
+        user_id=plan.user_id,
+        developer_name=plan.developer_name,
+        developer_phone=plan.developer_phone,
+        developer_email=plan.developer_email,
+        org_id=plan.org_id,
+        snapshot_of_plan_id=plan.id,
+        snapshot_at=now,
+    )
+    db.session.add(snapshot)
+    db.session.flush()  # нужен snapshot.id для дочерних строк ниже
+
+    for usage in plan.indicators_usage:
+        db.session.add(IndicatorUsage(
+            id_indicator=usage.id_indicator,
+            note=usage.note,
+            id_plan=snapshot.id,
+            QYearBeforePrev=usage.QYearBeforePrev,
+            QYearPrev=usage.QYearPrev,
+            QYearCurrent=usage.QYearCurrent,
+            is_local=usage.is_local,
+            is_renewable=usage.is_renewable,
+            coeff_before_prev=usage.coeff_before_prev,
+            coeff_prev=usage.coeff_prev,
+            coeff_current=usage.coeff_current,
+        ))
+
+    for ev in plan.events:
+        copied_teo_filename = copy_teo_file(ev.teo_filename) if ev.teo_filename else None
+        db.session.add(Event(
+            id_direction=ev.id_direction,
+            id_plan=snapshot.id,
+            name=ev.name,
+            display_code=ev.display_code,
+            Volume=ev.Volume,
+            EffTut=ev.EffTut,
+            EffRub=ev.EffRub,
+            ExpectedQuarter=ev.ExpectedQuarter,
+            EffCurrYear=ev.EffCurrYear,
+            Payback=ev.Payback,
+            ObchVolumeFin=ev.ObchVolumeFin,
+            VolumeFinCurrentYear=ev.VolumeFinCurrentYear,
+            BudgetState=ev.BudgetState,
+            BudgetRep=ev.BudgetRep,
+            BudgetLoc=ev.BudgetLoc,
+            BudgetOther=ev.BudgetOther,
+            MoneyOwn=ev.MoneyOwn,
+            MoneyLoan=ev.MoneyLoan,
+            MoneyOther=ev.MoneyOther,
+            is_local=ev.is_local,
+            is_corrected=ev.is_corrected,
+            is_econom=ev.is_econom,
+            is_increase=ev.is_increase,
+            teo_filename=copied_teo_filename,
+            teo_original_name=ev.teo_original_name if copied_teo_filename else None,
+            teo_uploaded_at=ev.teo_uploaded_at if copied_teo_filename else None,
+            order=ev.order,
+        ))
+
+    for cfg in plan.column_configs:
+        db.session.add(PlanColumnConfig(
+            plan_id=snapshot.id,
+            year=cfg.year,
+            label=cfg.label,
+        ))
+
+    db.session.commit()
+    return snapshot
+
+
+def get_plan_versions(plan):
+    """Живой план + все его замороженные снимки (см. create_plan_snapshot
+    выше), живой всегда первым, снимки — от новых к старым. Работает и
+    когда переданный plan сам уже снимок (резолвит через snapshot_of).
+    Используется component.plan_version_switcher (macros/components.html,
+    зарегистрирован как Jinja global в website/__init__.py, поэтому
+    макросу не нужно получать этот список параметром из каждого роута)."""
+    live_plan = plan.snapshot_of if plan.is_historical else plan
+    snapshots = Plan.query.filter_by(snapshot_of_plan_id=live_plan.id).order_by(Plan.snapshot_at.desc()).all()
+    return [live_plan] + snapshots
 
 
 def build_signer_snapshot(user):
@@ -1171,6 +1358,42 @@ def build_signer_snapshot(user):
     if user.telephone:
         parts.append(f"тел.: {user.telephone}")
     return ', '.join(parts) if parts else None
+
+
+def get_signer_candidates(org_id, approver_only=False):
+    """Сотрудники организации — кандидаты на подпись: обычно «Руководитель
+    структурного подразделения»/«Руководитель организации» (используется и
+    при первичной отправке плана — plan_send_page, — и на "Шаге 2" при
+    направлении решения этапа согласования на подпись). approver_only=True
+    (этап step_type='approver' — организация выступает именно утверждающей,
+    см. PlanApprovalPath.STEP_TYPES) сужает список до одного org_head:
+    утверждать план может только руководитель организации, в отличие от
+    подписания/согласования/отправки, доступных и руководителю структурного
+    подразделения."""
+    roles = ['org_head'] if approver_only else ['dept_head', 'org_head']
+    return User.query.filter(
+        User.organization_id == org_id,
+        User.org_role.in_(roles)
+    ).order_by(User.org_role.desc()).all()
+
+
+def has_pending_review_attachment(plan, current_user):
+    """Как has_pending_review_message, но проверяет, что у ПОСЛЕДНЕГО
+    своего сообщения по текущему этапу есть вложение — "Не согласовать и
+    направить на подпись" требует приложенный файл с замечаниями (см.
+    "Шаг 2" внутреннего подписания), в отличие от обычного сообщения в
+    чате, где вложение было и остаётся необязательным."""
+    current_path = get_current_review_path(plan, current_user)
+    if not current_path:
+        return False
+    own_tickets = [
+        t for t in plan.tickets
+        if not t.is_system and t.user_id == current_user.id and t.approval_path_id == current_path.id
+    ]
+    if not own_tickets:
+        return False
+    last_ticket = max(own_tickets, key=lambda t: t.begin_time or current_utc_time())
+    return bool(last_ticket.attachment_filename)
 
 
 def has_pending_review_message(plan, current_user):

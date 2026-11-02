@@ -54,6 +54,12 @@ def owner_only(f):
         has_access = (
             current_user.is_admin or
             current_user.is_auditor or
+            # is_approver (утверждающая организация) исторически был
+            # пропущен здесь — её сотрудники не могли открыть ни один
+            # owner_only-роут (включая "Действия с планом"), хотя сами
+            # этапы step_type='approver' в маршруте для них создаются и
+            # предназначены именно им (см. "Шаг 2" внутреннего подписания).
+            current_user.is_approver or
             current_user.is_reader or
             plan.user_id == current_user.id or
             # Любой сотрудник той же организации-разработчика — не только
@@ -89,6 +95,48 @@ def reader_forbidden(f):
                 return jsonify({'success': False, 'error': message}), 403
             flash(message, 'error')
             return redirect(request.referrer or url_for('views.plans'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def historical_forbidden(f):
+    """Блокирует изменяющие действия на замороженном снимке плана
+    (Plan.is_historical — см. create_plan_snapshot в utils/plans.py).
+    Навешивается ПОСЛЕ owner_only (нужен g.current_plan). Снимок остаётся
+    полностью доступен для просмотра по своему собственному token — этот
+    декоратор закрывает только POST/мутирующие роуты."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_plan = getattr(g, 'current_plan', None)
+        if current_plan is not None and current_plan.is_historical:
+            message = 'Это архивная версия плана — только для просмотра'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def org_head_forbidden(f):
+    """Блокирует создание/редактирование содержимого плана (показатели,
+    мероприятия, метаданные плана) для руководителя организации — по
+    аналогии с запретом создавать планы (create_plan, views.py):
+    руководитель организации только просматривает, подписывает и
+    отправляет/утверждает, содержимым занимаются исполнитель и
+    руководитель структурного подразделения. Навешивается ПОСЛЕ owner_only
+    там, где он есть (нужен g.current_plan); для роутов без owner_only
+    (id-based — create-indicator/<id> и т.п.) используется не этот
+    декоратор, а инлайн-проверка в самом роуте."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.org_role == 'org_head':
+            message = 'Руководитель организации не редактирует содержимое плана'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            current_plan = getattr(g, 'current_plan', None)
+            if current_plan is not None:
+                return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
+            return redirect(url_for('views.plans'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -520,6 +568,13 @@ def news_post(id):
 @session_required
 @reader_forbidden
 def create_plan():
+    # Руководитель организации подписывает и отправляет планы, но не
+    # заводит их сам — это задача исполнителя/руководителя структурного
+    # подразделения (см. "внутренние роли сотрудников").
+    if current_user.org_role == 'org_head':
+        flash('Руководитель организации не создаёт планы — это делает исполнитель или руководитель структурного подразделения', 'error')
+        return redirect(url_for('views.plans'))
+
     if request.method == 'POST':
         year = int(request.form.get('year'))
 
@@ -575,6 +630,13 @@ def create_plan():
         if cost_per_toe_value is None:
             return redirect(url_for('views.create_plan'))
 
+        # "Разработчик плана" — по умолчанию тот, кто его создал (обычно
+        # исполнитель) — автозаполняется из профиля, а не остаётся пустым
+        # до ручного нажатия кнопки «Разработчик плана»; саму кнопку это
+        # не отменяет — если план в итоге готовил кто-то другой, данные
+        # можно поправить там же, пока план ещё в редакции.
+        developer_name = ' '.join(filter(None, [current_user.last_name, current_user.first_name, current_user.patronymic_name]))
+
         new_plan = Plan(
             org_id=org_id,
             year=year,
@@ -584,7 +646,10 @@ def create_plan():
             saving_fuel=saving_fuel,
             share_energy=share_energy,
             usd_rate=usd_rate_value,
-            cost_per_toe_usd=cost_per_toe_value
+            cost_per_toe_usd=cost_per_toe_value,
+            developer_name=developer_name or None,
+            developer_phone=current_user.telephone,
+            developer_email=current_user.email
         )
         
         db.session.add(new_plan)
@@ -619,7 +684,11 @@ def create_plan():
     current_time = current_utc_time()
     next_year = current_time.year + 1
 
-    taken_years = [p.year for p in Plan.query.filter_by(org_id=current_user.organization_id).all()]
+    taken_years = [
+        p.year for p in Plan.query.filter_by(
+            org_id=current_user.organization_id, snapshot_of_plan_id=None
+        ).all()
+    ]
 
     # если план на next_year уже есть — предложим первый свободный год после него,
     # чтобы в выпадающем списке по умолчанию не оказался отключённый вариант
@@ -641,6 +710,8 @@ def create_plan():
 @owner_only
 @login_required
 @session_required
+@historical_forbidden
+@org_head_forbidden
 @reader_forbidden
 def edit_plan(token):
     if request.method == 'POST':
@@ -649,7 +720,11 @@ def edit_plan(token):
         if not current_plan:
             flash('План не найден или у вас нет прав для его редактирования', 'error')
             return redirect(url_for('views.plans'))
-        
+
+        if current_plan.pending_signer_user_id:
+            flash('План направлен на подпись — редактирование недоступно', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
         new_year = int(request.form.get('year'))
         old_year = current_plan.year
 
@@ -660,7 +735,8 @@ def edit_plan(token):
         existing_plan = Plan.query.filter(
             Plan.org_id == current_plan.org_id,
             Plan.year == new_year,
-            Plan.token != token
+            Plan.token != token,
+            Plan.snapshot_of_plan_id.is_(None)
         ).first()
 
         if existing_plan:
@@ -698,7 +774,8 @@ def edit_plan(token):
         taken_years = [
             p.year for p in Plan.query.filter(
                 Plan.org_id == plan.org_id,
-                Plan.token != token
+                Plan.token != token,
+                Plan.snapshot_of_plan_id.is_(None)
             ).all()
         ]
 
@@ -720,6 +797,19 @@ def edit_plan(token):
 def delete_plan(token):
     try:
         current_plan = g.current_plan
+        if current_plan.pending_signer_user_id:
+            flash('План направлен на подпись — удаление недоступно', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
+        # Удаление "живого" плана удаляет и все его замороженные версии
+        # (snapshot_of_plan_id) — self-referential cascade на Plan не
+        # настроен (см. create_plan_snapshot в utils/plans.py), поэтому
+        # чистим явно; удаление самого снимка отдельно (без живого плана)
+        # этим не затронуто — это тоже допустимое действие (разбор архива).
+        if not current_plan.is_historical:
+            for snapshot in Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all():
+                db.session.delete(snapshot)
+
         db.session.delete(current_plan)
         db.session.commit()
         flash('План успешно удален', 'success')
@@ -854,7 +944,7 @@ def begin_page():
     organization_data = org_query.count()
     organization_growth = org_query.filter(Organization.created_at >= month_ago).count()
 
-    plan_query = Plan.query
+    plan_query = Plan.query.filter(Plan.snapshot_of_plan_id.is_(None))
     plan_data = plan_query.count()
     plan_growth = plan_query.filter(Plan.begin_time >= month_ago).count()
 

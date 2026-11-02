@@ -1181,6 +1181,13 @@ body {
   scrollbar-width: none;
 }
 
+.employee-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .employee-name {
   font-weight: 500;
   overflow-x: auto;
@@ -1191,13 +1198,12 @@ body {
 }
 
 .employee-role {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--green);
+  font-weight: 500;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-subtitle, #7f8c8d);
   width: fit-content;
   white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 .employee-company {
@@ -1225,71 +1231,100 @@ body {
 /* ============================================
    ORG ROLES (profile.html :: карточки ролей сотрудников)
    ============================================ */
+.org-roles-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-subtitle, #7f8c8d);
+  margin-top: 4px;
+}
+
 .org-roles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-  margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
 }
 
 .org-role-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px;
+  gap: 12px;
+  padding: 20px;
   border-radius: 16px;
   border: 1px solid var(--border-color);
   background: var(--white);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.org-role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
 }
 
 .org-role-card.is-filled {
   border-color: var(--green-light, #009bb6);
-  background: var(--green-light-back, #e9fcff);
+  background: linear-gradient(180deg, var(--green-light-back, #e9fcff) 0%, var(--white) 65%);
 }
 
 .org-role-card.is-vacant {
   border-style: dashed;
+  background: var(--background-grey, #fafbfc);
+}
+.org-role-card.is-vacant:hover {
+  border-color: var(--green-main, #00798f);
 }
 
 .org-role-card-icon {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: var(--background-grey);
-  color: var(--green-main, #00798f);
+  color: var(--text-subtitle, #7f8c8d);
+  flex-shrink: 0;
 }
 .org-role-card.is-filled .org-role-card-icon {
   background: var(--white);
+  color: var(--green-main, #00798f);
+  box-shadow: 0 2px 6px rgba(0, 121, 143, 0.18);
 }
 .org-role-card-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .org-role-card-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .org-role-card-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--black);
+  letter-spacing: -0.01em;
 }
 
 .org-role-card-hint {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-subtitle, #7f8c8d);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.org-role-card-occupant-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 121, 143, 0.14);
 }
 
 .org-role-card-occupant {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--black);
 }
@@ -1301,7 +1336,7 @@ body {
 }
 
 .org-role-card-email {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-subtitle, #7f8c8d);
 }
 
@@ -1310,7 +1345,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 9px 14px;
+  margin-top: 2px;
   border-radius: 10px;
   border: 1px dashed var(--green-main, #00798f);
   background: transparent;
@@ -1318,10 +1354,11 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, border-style 0.2s ease;
 }
 .org-role-card-invite-btn:hover {
   background: var(--green-light-back, #e9fcff);
+  border-style: solid;
 }
 .org-role-card-invite-btn svg {
   width: 16px;
@@ -1332,6 +1369,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 2px;
 }
 .org-role-invite-form .input-with-icon {
   width: 100%;
@@ -1339,10 +1377,16 @@ body {
 }
 
 .org-role-card-vacant-label {
-  font-size: 12px;
-  font-weight: 500;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--border-color);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--text-subtitle, #7f8c8d);
-  font-style: italic;
 }
 
 hr {
@@ -4737,15 +4781,15 @@ input[type="checkbox"]:focus {
   flex-direction: column;
   align-items: center;
   gap: 7px;
-  min-width: 0;
   position: relative;
-  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
   z-index: 1;
 }
 .stat {
   border-radius: 8px;
   border: 1px solid var(--border-color);
-  padding: 20px 55px;
+  padding: 20px 2px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -4756,7 +4800,7 @@ input[type="checkbox"]:focus {
   text-overflow: ellipsis;
   font-size: 16px;
   font-weight: 500;
-  width: calc(100% - 110px);
+  width: 100%;
   transition: all 0.2s ease;
 }
 
@@ -4814,6 +4858,7 @@ input[type="checkbox"]:focus {
 
 .word-numb {
   font-size: 14px;
+  text-align: center;
 }
 
 .stat-number,
@@ -4912,12 +4957,11 @@ input[type="checkbox"]:focus {
     display: none;
   }
   .stat-and-dot {
-    flex: 0 0 150px;
-    width: 150px;
+    flex: 0 0 auto;
   }
   .stat {
-    width: 100%;
-    padding: 14px 10px;
+    width: auto;
+    padding: 14px 18px;
     white-space: nowrap;
   }
 }
@@ -5055,6 +5099,10 @@ input[type="checkbox"]:focus {
 .plan-cont-control {
   background: linear-gradient(135deg, #e3fbf3 0%, #7ee9c6 100%);
 }
+.plan-cont-signing {
+  /* Плавный переход между .plan-cont-control (тил) и .plan-cont-sent (синий) */
+  background: linear-gradient(135deg, #e9f8f9 0%, #9de1e2 100%);
+}
 .plan-cont-sent {
   background: linear-gradient(135deg, #f0f6ff 0%, #bcd9ff 100%);
 }
@@ -5082,6 +5130,7 @@ input[type="checkbox"]:focus {
 
 .plan-cont-redac:hover,
 .plan-cont-control:hover,
+.plan-cont-signing:hover,
 .plan-cont-sent:hover,
 .plan-cont-transit:hover,
 .plan-cont-sogl:hover,
@@ -5095,6 +5144,7 @@ input[type="checkbox"]:focus {
 
 .plan-cont-redac:hover { animation-duration: 6s; }    /* В редакции — дальше всего от финала */
 .plan-cont-control:hover { animation-duration: 4.6s; } /* Контроль пройден */
+.plan-cont-signing:hover { animation-duration: 4s; }   /* На подписании — внутренний цикл */
 .plan-cont-sent:hover { animation-duration: 3.4s; }    /* Отправлен / на согласовании */
 .plan-cont-transit:hover { animation-duration: 5.2s; } /* Ожидание очереди — ещё не дошёл до вас */
 .plan-cont-sogl:hover { animation-duration: 2.4s; }    /* Согласован */
@@ -5104,6 +5154,7 @@ input[type="checkbox"]:focus {
 @media (prefers-reduced-motion: reduce) {
   .plan-cont-redac:hover,
   .plan-cont-control:hover,
+  .plan-cont-signing:hover,
   .plan-cont-sent:hover,
   .plan-cont-transit:hover,
   .plan-cont-sogl:hover,
@@ -5184,6 +5235,12 @@ input[type="checkbox"]:focus {
   color: var(--black);
   border: 1px solid rgba(34, 197, 94, 0.2);
 }
+.plan-cont-signing .plan-org-name,
+.plan-cont-signing .plan-org-param {
+  background: rgba(53, 166, 208, 0.15);
+  color: var(--black);
+  border: 1px solid rgba(53, 166, 208, 0.35);
+}
 .plan-cont-sub .plan-org-name,
 .plan-cont-sub .plan-org-param {
   background: rgba(34, 197, 94, 0.1);
@@ -5216,6 +5273,7 @@ input[type="checkbox"]:focus {
 }
 .plan-cont-redac .plan-org-param svg,
 .plan-cont-control .plan-org-param svg,
+.plan-cont-signing .plan-org-param svg,
 .plan-cont-sub .plan-org-param svg,
 .plan-cont-sent .plan-org-param svg,
 .plan-cont-transit .plan-org-param svg,
@@ -5256,6 +5314,14 @@ input[type="checkbox"]:focus {
   color: var(--black) !important;
   border: 1px solid rgba(72, 59, 246, 0.2) !important;
 }
+.status-historical {
+  /* Нейтральный серый — архивная версия плана (см. Plan.is_historical),
+     сознательно не красный/не зелёный: это не текущая оценка статуса,
+     а просто "вы смотрите в прошлое", перекрывает все остальные ветки. */
+  background: var(--background-grey-opa, rgba(148, 163, 184, 0.15)) !important;
+  color: var(--text-subtitle, #64748b) !important;
+  border: 1px solid rgba(100, 116, 139, 0.25) !important;
+}
 .status-control {
   background: rgba(46, 201, 170, 0.25) !important;
   color: rgb(18, 65, 56) !important;
@@ -5275,6 +5341,14 @@ input[type="checkbox"]:focus {
   background: rgba(255, 169, 64, 0.15) !important;
   color: #8a5a10 !important;
   border: 1px solid rgba(255, 169, 64, 0.35) !important;
+}
+.status-signing {
+  /* Промежуточный оттенок между .status-control (тёмный тил) и .status-sent
+     (синий) — "На подписании" читается как плавный шаг между ними, а не
+     отдельный скачок цвета (поэтому не фиолетовый, как "В редакции"). */
+  background: rgba(53, 166, 208, 0.15) !important;
+  color: #0c4a6e !important;
+  border: 1px solid rgba(53, 166, 208, 0.35) !important;
 }
 .status-sogl {
   background: rgba(59, 202, 246, 0.1) !important;
@@ -5324,6 +5398,18 @@ input[type="checkbox"]:focus {
 
 .plan-back-header button {
   margin: 0;
+}
+
+.plan-version-switcher {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-grey-input);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--black);
+  cursor: pointer;
 }
 
 /* ============================================
@@ -5952,6 +6038,20 @@ input[type="checkbox"]:focus {
 .plan-action-tile-danger:hover:not(:disabled) {
   border-color: #c0392b;
   box-shadow: 0 4px 14px rgba(192, 57, 43, 0.12);
+}
+
+.plan-action-tile-info {
+  cursor: default;
+  border-style: dashed;
+  border-color: var(--green-light, #009bb6);
+  background: var(--green-light-back, #e9fcff);
+}
+.plan-action-tile-info:hover {
+  transform: none;
+  box-shadow: none;
+}
+.plan-action-tile-info svg {
+  color: var(--green-main, #00798f);
 }
 
 /* ============================================
@@ -7786,6 +7886,137 @@ input[type="checkbox"]:focus {
   font-size: 12px;
   color: var(--text-subtitle, #6b7480);
   margin-top: -4px;
+}
+
+.plan-send-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: rgba(192, 57, 43, 0.08);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  color: var(--text-title, #1f2937);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.plan-send-warning svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: #c0392b;
+}
+.plan-send-warning-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Выбор руководителя-подписанта (plan_send.html, шаг 4) — свой
+   контейнер вместо <select>, чтобы пункт можно было оформить в два
+   ряда (ФИО + должность/роль), как в списке согласующих организаций
+   на предыдущих шагах того же визарда. */
+.signer-picker {
+  position: relative;
+}
+.signer-picker-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--background-grey-input);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.signer-picker-toggle:hover:not(:disabled) {
+  background-color: var(--background-grey);
+}
+.signer-picker-toggle:disabled {
+  background-color: var(--background-grey-opa);
+  color: var(--color-readonly);
+  cursor: not-allowed;
+}
+.signer-picker.active .signer-picker-toggle {
+  outline: none;
+  border: 1px solid var(--green-light);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+  background-color: var(--white);
+}
+.signer-picker-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signer-picker-toggle:disabled .signer-picker-value {
+  color: var(--color-readonly);
+}
+.signer-picker-toggle svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--text-subtitle, #7f8c8d);
+  transition: transform 0.2s ease;
+}
+.signer-picker.active .signer-picker-toggle svg {
+  transform: rotate(180deg);
+}
+
+.signer-picker-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.signer-picker.active .signer-picker-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.signer-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.signer-picker-item:hover,
+.signer-picker-item.is-selected {
+  background: var(--green-light-back, #e9fcff);
+}
+.signer-picker-item:not(:last-child) {
+  border-bottom: 1px solid var(--border-color);
+}
+.signer-picker-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+.signer-picker-item-role {
+  font-size: 12.5px;
+  color: var(--text-subtitle, #7f8c8d);
 }
 
 #period-step {
@@ -11355,8 +11586,7 @@ main {
      .stats-track under the 768px breakpoint above — here just a bit
      more compact for narrow phones. */
   .stat-and-dot {
-    flex-basis: 130px;
-    width: 130px;
+    flex: 0 0 auto;
   }
   .stat-number,
   .stat-number-redac,

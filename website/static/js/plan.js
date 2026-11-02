@@ -1416,6 +1416,7 @@ class PlansLoader {
         const statAll = document.querySelector('.stat-number');
         const statDraft = document.querySelector('.stat-number-redac');
         const statControl = document.querySelector('.stat-number-control');
+        const statSigning = document.querySelector('.stat-number-signing');
         const statSent = document.querySelector('.stat-number-sent');
         const statError = document.querySelector('.stat-number-eror');
         const statApproved = document.querySelector('.stat-number-sub');
@@ -1425,6 +1426,7 @@ class PlansLoader {
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
         if (statControl) statControl.textContent = counts.control || '-';
+        if (statSigning) statSigning.textContent = counts.signing || '-';
         if (statSent) statSent.textContent = counts.sent || '-';
         if (statError) statError.textContent = counts.error || '-';
         if (statApproved) statApproved.textContent = counts.approved || '-';
@@ -1694,6 +1696,7 @@ class PlansLoader {
                 'all': 'Статус',
                 'draft': 'В редакции',
                 'control': 'Контроль пройден',
+                'signing': 'На подписании',
                 'sent': 'На согласовании',
                 'error': 'Есть ошибки',
                 'approved': 'Согласованные'
@@ -1712,10 +1715,24 @@ class PlansLoader {
         };
         
         const selectedStatusSpan = document.getElementById('selected-status');
-        if (selectedStatusSpan && statusMap[this.currentStatus]) {
-            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        if (selectedStatusSpan) {
+            // Клик по тайлу в stats-track (в отличие от клика по пункту
+            // дропдауна) не несёт готовый текст метки — раньше брался из
+            // statusMap, который не знал про 'signing' (а подпись для
+            // signing ещё и зависит от роли — см. components.html), из-за
+            // чего подпись в filters-area не обновлялась. Берём текст из
+            // самого пункта дропдауна (он уже отрендерен сервером с нужной
+            // по роли подписью) и используем statusMap только как фолбэк.
+            const statusDropdownItem = document.querySelector(
+                `.custom-dropdown[data-filter-type="status"] .dropdown-item[data-value="${this.currentStatus}"]`
+            );
+            if (statusDropdownItem) {
+                selectedStatusSpan.textContent = statusDropdownItem.textContent.trim();
+            } else if (statusMap[this.currentStatus]) {
+                selectedStatusSpan.textContent = statusMap[this.currentStatus];
+            }
         }
-        
+
         const selectedYearSpan = document.getElementById('selected-year');
         if (selectedYearSpan) {
             if (this.currentYear === 'all') {
@@ -2261,6 +2278,7 @@ class ExportPlansLoader {
             'all': 'Статус',
             'draft': 'В редакции',
             'control': 'Контроль пройден',
+            'signing': 'На подписании',
             'sent': 'На согласовании',
             'error': 'Есть ошибки',
             'approved': 'Согласованные'
@@ -2278,10 +2296,24 @@ class ExportPlansLoader {
         };
         
         const selectedStatusSpan = document.getElementById('selected-status');
-        if (selectedStatusSpan && statusMap[this.currentStatus]) {
-            selectedStatusSpan.textContent = statusMap[this.currentStatus];
+        if (selectedStatusSpan) {
+            // Клик по тайлу в stats-track (в отличие от клика по пункту
+            // дропдауна) не несёт готовый текст метки — раньше брался из
+            // statusMap, который не знал про 'signing' (а подпись для
+            // signing ещё и зависит от роли — см. components.html), из-за
+            // чего подпись в filters-area не обновлялась. Берём текст из
+            // самого пункта дропдауна (он уже отрендерен сервером с нужной
+            // по роли подписью) и используем statusMap только как фолбэк.
+            const statusDropdownItem = document.querySelector(
+                `.custom-dropdown[data-filter-type="status"] .dropdown-item[data-value="${this.currentStatus}"]`
+            );
+            if (statusDropdownItem) {
+                selectedStatusSpan.textContent = statusDropdownItem.textContent.trim();
+            } else if (statusMap[this.currentStatus]) {
+                selectedStatusSpan.textContent = statusMap[this.currentStatus];
+            }
         }
-        
+
         const selectedYearSpan = document.getElementById('selected-year');
         if (selectedYearSpan) {
             if (this.currentYear === 'all') {

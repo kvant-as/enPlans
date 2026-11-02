@@ -12,7 +12,7 @@ from io import BytesIO
 from flask import send_file
 import os
 
-from website.routes.views import owner_only, reader_forbidden
+from website.routes.views import owner_only, reader_forbidden, historical_forbidden
 from website.sessions import session_required
 from common_models import current_utc_time
 from website.models import Plan, PlanTicket, PlanApprovalPath
@@ -314,6 +314,7 @@ TICKET_EDIT_WINDOW_MINUTES = 5
 @login_required
 @owner_only
 @session_required
+@historical_forbidden
 @reader_forbidden
 def edit_ticket(token):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -445,6 +446,7 @@ def get_ticket_attachment(token, ticket_id):
 @login_required
 @owner_only
 @session_required
+@historical_forbidden
 @reader_forbidden
 def create_ticket(token):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'

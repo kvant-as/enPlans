@@ -187,6 +187,9 @@ def create_app():
 
     app.jinja_env.globals['format_date'] = format_date
     app.jinja_env.globals['current_utc_time'] = current_utc_time
+
+    from website.utils.plans import get_plan_versions
+    app.jinja_env.globals['get_plan_versions'] = get_plan_versions
     
     @app.context_processor
     def inject_get_locale():
@@ -197,7 +200,7 @@ def create_app():
         def generate_plan_token(plan_id):
             return s.dumps(plan_id)
         return dict(generate_plan_token=generate_plan_token)
-    
+
     @app.route('/static/<path:filename>')
     def custom_static(filename):
         from flask import send_from_directory

@@ -85,7 +85,7 @@
                         </div>
                     </div>
                     <button type="button" class="svg-btn tooltip-btn helper" style="margin: 0;" onclick="ChatModule.toggleChat()">
-                        {{ icons.icon_helper() }} 
+                        {{ icons.icon_helper() }}
                         <span class="tooltip-text">{{ _('Консультант') }}</span>
                     </button>
                 {% endif %}
@@ -250,7 +250,7 @@
     {% endif %}
 
     {% if context_menu %}
-        {% set is_disabled = plan.is_sent or plan.is_approved or (plan.org_id != current_user.organization_id)%}
+        {% set is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or (plan.org_id != current_user.organization_id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}
@@ -269,7 +269,7 @@
         <div id="orgUserModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
+                    <h1 id="modal-title">{{ _('Выберите Организация') }}</h1>
                     {{ icons.icon_close() }}  
                 </div>
                 
