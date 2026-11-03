@@ -1,6 +1,6 @@
 from flask import current_app
 from flask_login import current_user
-from ..models import PlanTicket, Notification, PlanApprovalPath, Organization, User
+from ..models import PlanTicket, Notification, PlanApprovalPath, User
 
 from common_models.timeutils import current_utc_time
 from website import db
@@ -208,16 +208,10 @@ def handle_control_status(plan):
 
 def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
     try:
+        from website.utils.plans import build_approval_chain
+
         if not plan.organization or not plan.organization.region_id:
             return {'error': 'У плана не указан регион'}
-
-        region_org = Organization.query.filter(
-            Organization.is_region_management == True,
-            Organization.region_id == plan.organization.region_id
-        ).first()
-
-        if not region_org:
-            return {'error': 'Региональное управление не найдено для этого региона'}
 
         # Если маршрут не передан явно — берём сохранённый на шаге
         # «Отправить на подпись» (внутренний цикл подписания, см.
@@ -229,8 +223,17 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         if not approver_id and plan.pending_approver_id:
             approver_id = plan.pending_approver_id
 
+        # Проверяем ИМЕННО вручную выбранный маршрут — Департамент (если
+        # добавится по порогу потребления) не считается заменой выбору
+        # согласующих/утверждающего.
         if not coordinator_ids and not approver_id:
             return {'error': 'Не выбраны организации для согласования и утверждения'}
+
+        chain = build_approval_chain(plan, coordinator_ids=coordinator_ids, approver_id=approver_id)
+
+        region_org = next((org for step_type, org in chain if step_type == 'region'), None)
+        if not region_org:
+            return {'error': 'Региональное управление не найдено для этого региона'}
 
         # Раньше старый маршрут полностью удалялся при каждой повторной
         # отправке — история прошлых циклов (включая отменённые) терялась
@@ -254,55 +257,20 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         sender_phone = sender.telephone if sender else None
         sender_email = sender.email if sender else None
 
-        step_order = 1
-
-        region_path = PlanApprovalPath(
-            plan_id=plan.id,
-            step_order=step_order,
-            organization_id=region_org.id,
-            step_type='region',
-            created_at=current_utc_time(),
-            cycle=new_cycle,
-            sender_post=sender_post,
-            sender_name=sender_name,
-            sender_phone=sender_phone,
-            sender_email=sender_email,
-        )
-        db.session.add(region_path)
-        step_order += 1
-
-        for coord_id in coordinator_ids:
-            if coord_id and coord_id.strip():
-                coord_path = PlanApprovalPath(
-                    plan_id=plan.id,
-                    step_order=step_order,
-                    organization_id=int(coord_id.strip()),
-                    step_type='coordinator',
-                    created_at=current_utc_time(),
-                    cycle=new_cycle,
-                    sender_post=sender_post,
-                    sender_name=sender_name,
-                    sender_phone=sender_phone,
-                    sender_email=sender_email,
-                )
-                db.session.add(coord_path)
-                step_order += 1
-
-        if approver_id:
-            approver_path = PlanApprovalPath(
+        for step_order, (step_type, org) in enumerate(chain, start=1):
+            db.session.add(PlanApprovalPath(
                 plan_id=plan.id,
                 step_order=step_order,
-                organization_id=int(approver_id),
-                step_type='approver',
+                organization_id=org.id,
+                step_type=step_type,
                 created_at=current_utc_time(),
                 cycle=new_cycle,
                 sender_post=sender_post,
                 sender_name=sender_name,
                 sender_phone=sender_phone,
                 sender_email=sender_email,
-            )
-            db.session.add(approver_path)
-        
+            ))
+
         plan.sent_time = current_utc_time()
         plan.is_sent = True
         plan.is_draft = False

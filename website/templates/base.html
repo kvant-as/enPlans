@@ -131,9 +131,22 @@
                 <div class="user-profile-panel" id="user-profile-panel">
                     <div class="nav-menu-list">
                         {% if current_user.is_authenticated %}
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/profile'">
-                                {{ icons.icon_profile() }}
-                                <span>{{ _('Мой профиль') }}</span>
+                            {% set account_role_label = {
+                                'org_head': _('Руководитель организации'),
+                                'dept_head': _('Руководитель структурного подразделения'),
+                                'executor': _('Исполнитель'),
+                            }.get(current_user.org_role) %}
+                            <button type="button" class="nav-menu-item account-info-item" onclick="window.location.href='/profile'">
+                                <div class="account-info-avatar">
+                                    {{ current_user.first_name[:1] | upper if current_user.first_name else 'U' }}{{ current_user.last_name[:1] | upper if current_user.last_name else 'S' }}
+                                </div>
+                                <div class="account-info-body">
+                                   
+                                    <span class="account-info-meta">{{ account_role_label or _('Мой профиль') }}</span>
+                                    {% if current_user.organization %}
+                                    <span class="account-info-org">{{ current_user.organization.full_name }}</span>
+                                    {% endif %}
+                                </div>
                             </button>
                             <hr>
                         {% endif %}
@@ -249,7 +262,7 @@
     </div>
     {% endif %}
 
-    {% if context_menu %}
+    {% if context_menu and not (current_user and current_user.org_role == 'org_head') %}
         {% set is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or (plan.org_id != current_user.organization_id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
@@ -260,9 +273,9 @@
                 <button type="button" {% if is_disabled %}disabled{% endif %} id="contextDeleteButton">
                     {{ icons.icon_delete() }}
                     <span>{{ _('Удалить') }}</span>
-                </button> 
+                </button>
             </form>
-        </div>  
+        </div>
     {% endif %}
 
     {% if change_orgUser_modal %}

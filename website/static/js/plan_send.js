@@ -647,9 +647,9 @@ class PlanSendWizard {
         }
 
         const allSteps = [regionName, ...coordinators];
-        if (approverName) allSteps.push(approverName);
+        const hasManualSelection = allSteps.length > 1 || !!approverName;
 
-        if (allSteps.length === 1) {
+        if (!hasManualSelection) {
             container.innerHTML = `
                 <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
                     Выберите организацию/и для отображения пути согласования
@@ -657,6 +657,16 @@ class PlanSendWizard {
             `;
             return;
         }
+
+        // Департамент по энергоэффективности (если показатель 260 плана
+        // достиг порога 25000 т.у.т.) добавляется в маршрут автоматически,
+        // ПРЕДПОСЛЕДНИМ — перед утверждающим, если он выбран (иначе просто
+        // последним) — см. build_approval_chain/handle_sent_status. Он не
+        // заменяет выбор согласующих/утверждающего, поэтому добавляется
+        // только после того, как пользователь уже что-то выбрал сам
+        // (hasManualSelection проверено выше).
+        if (window.energyDepartmentName) allSteps.push(window.energyDepartmentName);
+        if (approverName) allSteps.push(approverName);
 
         const totalSteps = allSteps.length;
 

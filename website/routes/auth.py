@@ -229,9 +229,33 @@ def complete_profile():
     current_user.patronymic_name = patronymic_name
     current_user.post = post
     current_user.telephone = normalized_telephone
+    # Приглашённый руководителем сотрудник сам никогда не проходит ЭЦП
+    # (см. auth.param/param.html — полный визард с проверкой сертификата
+    # тут не нужен, organization_id уже проставлен views.invite_employee),
+    # но доверие к нему наследуется от организации: она уже занята
+    # верифицированным аккаунтом (самим руководителем), иначе этого
+    # приглашения не могло бы случиться. Поэтому верифицируем и его сразу
+    # по заполнении персональных данных.
+    current_user.is_verified = True
     db.session.commit()
     flash('Данные успешно сохранены!', 'success')
     return redirect(url_for('views.profile'))
+
+@auth.route('/verify-certificate', methods=['POST'])
+@login_required
+def verify_certificate_route():
+    """Проверка сертификата ЭЦП на финальном шаге регистрации (param.html,
+    шаг 4) — та же демо-модалка EcpMockModal, что и на отправке плана, но
+    без привязки к конкретному плану (см. plan_bp.api_verify_certificate
+    и website.ecp.verify_certificate — сама проверка сертификата уже не
+    завязана на план)."""
+    from ..ecp import verify_certificate
+    cert_file = request.files.get('certificate')
+    if not cert_file or not cert_file.filename:
+        return jsonify({'valid': False, 'error': 'Файл сертификата не передан'}), 400
+
+    ok, error = verify_certificate(cert_file)
+    return jsonify({'valid': ok, 'error': error})
 
 @auth.route('/edit-param', methods=['POST'])
 def edit_param():

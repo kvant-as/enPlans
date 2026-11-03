@@ -23,7 +23,7 @@ from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_de
 from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
 from website.email import send_email
 
-from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage, User
+from ..models import News, PlanColumnConfig, Organization, Plan, PlanExecutor, PlanTicket, Indicator, IndicatorUsage, User
 from website import db
 
 from functools import wraps
@@ -655,6 +655,18 @@ def create_plan():
         db.session.add(new_plan)
         db.session.commit()
 
+        # Создатель плана — первая запись в списке "Ответственных
+        # исполнителей" (см. PlanExecutor, common-models) — список можно
+        # дополнить ещё одним сотрудником организации позже, со страницы
+        # "Действия с планом" (add_plan_executor/remove_plan_executor в
+        # plan_bp.py).
+        db.session.add(PlanExecutor(
+            plan_id=new_plan.id,
+            user_id=current_user.id,
+            added_at=current_utc_time(),
+        ))
+        db.session.commit()
+
         existing_indicators = select(IndicatorUsage.id_indicator).where(
             IndicatorUsage.id_plan == new_plan.id
         )
@@ -793,10 +805,18 @@ def edit_plan(token):
 @owner_only
 @login_required
 @session_required
+@org_head_forbidden
 @reader_forbidden
 def delete_plan(token):
     try:
         current_plan = g.current_plan
+
+        # Архивную версию нельзя удалить отдельно — только вместе с
+        # "живым" планом, которому она принадлежит (см. ветку ниже).
+        if current_plan.is_historical:
+            flash('Архивную версию нельзя удалить отдельно — она удаляется вместе с оригиналом плана', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
         if current_plan.pending_signer_user_id:
             flash('План направлен на подпись — удаление недоступно', 'error')
             return redirect(url_for('plan_bp.plan_actions', token=token))
@@ -804,11 +824,9 @@ def delete_plan(token):
         # Удаление "живого" плана удаляет и все его замороженные версии
         # (snapshot_of_plan_id) — self-referential cascade на Plan не
         # настроен (см. create_plan_snapshot в utils/plans.py), поэтому
-        # чистим явно; удаление самого снимка отдельно (без живого плана)
-        # этим не затронуто — это тоже допустимое действие (разбор архива).
-        if not current_plan.is_historical:
-            for snapshot in Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all():
-                db.session.delete(snapshot)
+        # чистим явно.
+        for snapshot in Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all():
+            db.session.delete(snapshot)
 
         db.session.delete(current_plan)
         db.session.commit()

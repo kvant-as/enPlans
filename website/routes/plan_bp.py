@@ -19,7 +19,7 @@ from website.utils.teo import save_teo_file, delete_teo_file
 from ..ecp import verify_certificate
 
 from .. import db
-from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanApprovalPath, PlanColumnConfig, PlanTicket, Event, Organization, User
+from ..models import Direction, Indicator, IndicatorUsage, Notification, Plan, PlanApprovalPath, PlanColumnConfig, PlanExecutor, PlanTicket, Event, Organization, User
 
 import logging
 from sqlalchemy.exc import SQLAlchemyError
@@ -82,11 +82,14 @@ def plan_actions(token):
     from website.utils.plans import get_last_internal_return_ticket
     last_internal_return_ticket = get_last_internal_return_ticket(current_plan)
 
+    plan_executor_candidates = _plan_executor_candidates(current_plan)
+
     return render_template(
         'plan_actions.html', plan=current_plan,
         step_signer_candidates=step_signer_candidates,
         step_org_head_candidates=step_org_head_candidates,
         last_internal_return_ticket=last_internal_return_ticket,
+        plan_executor_candidates=plan_executor_candidates,
         **audit_ctx
     )
 
@@ -126,6 +129,111 @@ def set_developer_info(token):
     return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
 
 
+def _plan_executor_candidates(plan):
+    """Сотрудники организации плана, которых ещё можно добавить в список
+    «Ответственных исполнителей» — org_role in (executor, dept_head), не
+    руководитель организации (он не занимается заполнением) и не уже
+    в списке. На планах без единой записи PlanExecutor (старые, до этой
+    таблицы) единственный "уже в списке" — сам создатель (plan.user_id),
+    как и в отображении (см. plan_actions.html)."""
+    already_ids = {e.user_id for e in plan.executors} or {plan.user_id}
+    return User.query.filter(
+        User.organization_id == plan.org_id,
+        User.org_role.in_(['executor', 'dept_head']),
+        ~User.id.in_(already_ids) if already_ids else True
+    ).order_by(User.org_role.desc()).all()
+
+
+@plan_bp.route('/add-executor/<token>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+@historical_forbidden
+@reader_forbidden
+def add_plan_executor(token):
+    """Добавляет сотрудника организации (исполнителя или руководителя
+    структурного подразделения) в список «Ответственных исполнителей»
+    плана — см. PlanExecutor. На план без ни одной записи (старый план)
+    сначала подставляется сам создатель (plan.user_id), чтобы список не
+    "терял" его при первом добавлении — дальше это обычная запись, как
+    и любая другая. Список может менять любой сотрудник организации, но
+    только до отправки плана на внешнее согласование."""
+    current_plan = g.current_plan
+
+    if current_plan.is_sent:
+        flash('Список ответственных исполнителей можно менять только до отправки плана на согласование', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    user_id = request.form.get('user_id')
+    candidate = User.query.filter(
+        User.id == user_id,
+        User.organization_id == current_plan.org_id,
+        User.org_role.in_(['executor', 'dept_head'])
+    ).first() if user_id else None
+
+    if not candidate:
+        flash('Выберите сотрудника организации', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    if not current_plan.executors and current_plan.user_id and current_plan.user_id != candidate.id:
+        db.session.add(PlanExecutor(plan_id=current_plan.id, user_id=current_plan.user_id, added_at=current_utc_time()))
+
+    already_ids = {e.user_id for e in current_plan.executors} or {current_plan.user_id}
+    if candidate.id in already_ids:
+        flash('Этот сотрудник уже в списке', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    db.session.add(PlanExecutor(plan_id=current_plan.id, user_id=candidate.id, added_at=current_utc_time()))
+    db.session.commit()
+
+    flash('Сотрудник добавлен в список ответственных исполнителей', 'success')
+    return redirect(url_for('plan_bp.plan_actions', token=token))
+
+
+@plan_bp.route('/remove-executor/<token>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+@owner_only
+@historical_forbidden
+@reader_forbidden
+def remove_plan_executor(token):
+    """Убирает сотрудника из списка «Ответственных исполнителей» — нельзя
+    опустошить список полностью (план должен указывать хотя бы одного
+    ответственного). Доступно любому сотруднику организации, но только
+    до отправки плана на внешнее согласование."""
+    current_plan = g.current_plan
+
+    if current_plan.is_sent:
+        flash('Список ответственных исполнителей можно менять только до отправки плана на согласование', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    user_id = request.form.get('user_id')
+    executors = current_plan.executors
+
+    if not executors:
+        # Старый план без записей PlanExecutor — "список" это один
+        # plan.user, его убрать нельзя (и так единственный).
+        flash('Нельзя убрать единственного ответственного исполнителя', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    if len(executors) <= 1:
+        flash('Нельзя убрать единственного ответственного исполнителя', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    entry = next((e for e in executors if str(e.user_id) == user_id), None)
+    if not entry:
+        flash('Сотрудник не найден в списке', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    db.session.delete(entry)
+    db.session.commit()
+
+    flash('Сотрудник убран из списка ответственных исполнителей', 'success')
+    return redirect(url_for('plan_bp.plan_actions', token=token))
+
+
 @plan_bp.route('/signatures/<token>', methods=['GET'])
 @user_with_all_params()
 @login_required
@@ -136,13 +244,25 @@ def plan_signatures(token):
     согласовал/утвердил, кто на очереди) + текущий статус и прогресс сбоку.
     Планы могли отправляться несколько раз (отмена/возврат на доработку) —
     build_signature_cycles группирует историю по циклам отправки."""
-    from website.utils.plans import build_signature_cycles, get_last_internal_return_ticket
+    from website.utils.plans import build_signature_cycles, get_last_internal_return_ticket, build_approval_chain
     current_plan = g.current_plan
     cycles = build_signature_cycles(current_plan)
     last_internal_return_ticket = get_last_internal_return_ticket(current_plan)
+
+    # До реальной внешней отправки (handle_sent_status, когда появляется
+    # первый настоящий цикл — см. cycles выше) ни одного PlanApprovalPath
+    # ещё нет, но маршрут уже выбран и сохранён (submit_for_signature) —
+    # показываем его здесь же как предпросмотр, чтобы пользователь видел
+    # весь путь согласования сразу после выбора, не дожидаясь подписи и
+    # отправки руководителем. Сами согласующие/утверждающие организации
+    # при этом ничего не видят — реальные PlanApprovalPath создаются
+    # только в handle_sent_status.
+    pending_chain = build_approval_chain(current_plan) if not cycles and current_plan.pending_signer_user_id else []
+
     return render_template(
         'plan_signatures.html', plan=current_plan, cycles=cycles,
         last_internal_return_ticket=last_internal_return_ticket,
+        pending_chain=pending_chain,
     )
 
 
@@ -151,6 +271,7 @@ def plan_signatures(token):
 @login_required
 @session_required
 @owner_only
+@org_head_forbidden
 @reader_forbidden
 def plan_send_page(token):
     """Отдельная страница отправки плана на согласование — раньше было
@@ -172,7 +293,22 @@ def plan_send_page(token):
     from website.utils.plans import get_signer_candidates
     signer_candidates = get_signer_candidates(current_plan.org_id)
 
-    return render_template('plan_send.html', plan=current_plan, signer_candidates=signer_candidates)
+    # Департамент по энергоэффективности добавляется в маршрут
+    # автоматически (см. build_approval_chain/handle_sent_status) при
+    # суммарном потреблении ТЭР от 25000 т.у.т. включительно — на шаге
+    # «Проверка» (step3, см. plan_send.js::updateApprovalPath) его тоже
+    # нужно показать в предпросмотре пути согласования, хотя пользователь
+    # его не выбирал.
+    from website.utils.plans import build_approval_chain
+    energy_dept_entry = next(
+        (org for step_type, org in build_approval_chain(current_plan, coordinator_ids=[], approver_id=None) if step_type == 'approver'),
+        None,
+    )
+
+    return render_template(
+        'plan_send.html', plan=current_plan, signer_candidates=signer_candidates,
+        energy_department_org=energy_dept_entry,
+    )
 
 
 @plan_bp.route('/submit-for-signature/<token>', methods=['POST'])
@@ -180,6 +316,7 @@ def plan_send_page(token):
 @login_required
 @owner_only
 @historical_forbidden
+@org_head_forbidden
 @reader_forbidden
 def submit_for_signature(token):
     """Шаг 4 отправки (plan_send.html) — вместо прямой отправки план
@@ -1565,6 +1702,14 @@ def api_change_plan_status(token):
         else:
             flash('Статус не указан', 'error')
             return redirect(request.referrer or url_for('views.plans'))
+
+    if status == 'control' and current_user.org_role == 'org_head':
+        message = 'Руководитель организации не редактирует содержимое плана'
+        if request.is_json:
+            return jsonify({'error': message}), 403
+        else:
+            flash(message, 'error')
+            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=token))
     
     from website.utils.status_plan import (
         handle_sent_status,

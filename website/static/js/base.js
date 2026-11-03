@@ -1853,12 +1853,15 @@ class MultiStepForm {
             step1Selector: '.auth-step-1',
             step2Selector: '.auth-step-2',
             step3Selector: '.auth-step-3',
+            step4Selector: '.auth-step-4',
             formSelector: '#registration-form',
             nextBtn1Id: 'next-btn-1',
             nextBtn2Id: 'next-btn-2',
             prevBtn2Id: 'prev-btn-2',
             prevBtn3Id: 'prev-btn-3',
+            prevBtn4Id: 'prev-btn-4',
             submitBtnId: 'submit-btn',
+            ecpVerifyBtnId: 'ecp-verify-btn',
             minSearchLength: 2,
             debounceDelay: 300,
             perPage: 10,
@@ -1867,6 +1870,8 @@ class MultiStepForm {
 
         this.currentEntityType = 'respondent';
         this.selectedItem = null;
+        this.currentStep = 1;
+        this.totalSteps = 4;
         this.searchData = {
             page: 1,
             query: '',
@@ -1878,6 +1883,13 @@ class MultiStepForm {
     }
 
     init() {
+        // MultiStepForm инстанцируется безусловно на КАЖДОЙ странице (см.
+        // низ файла) — без этой проверки document.getElementById('submit-btn')
+        // в getElementReferences() подхватывал чужую кнопку с тем же id на
+        // не связанных страницах (например "Создать план" в create_plan.html)
+        // и вешал на неё обработчик визарда регистрации.
+        if (!document.getElementById(this.config.formSelector.replace('#', ''))) return;
+
         this.elements = {};
         this.getElementReferences();
         this.bindEvents();
@@ -1893,14 +1905,19 @@ class MultiStepForm {
         this.elements.step1 = document.querySelector(this.config.step1Selector);
         this.elements.step2 = document.querySelector(this.config.step2Selector);
         this.elements.step3 = document.querySelector(this.config.step3Selector);
+        this.elements.step4 = document.querySelector(this.config.step4Selector);
         this.elements.form = document.querySelector(this.config.formSelector);
-        
+
         this.elements.nextBtn1 = document.getElementById(this.config.nextBtn1Id);
         this.elements.nextBtn2 = document.getElementById(this.config.nextBtn2Id);
         this.elements.prevBtn2 = document.getElementById(this.config.prevBtn2Id);
         this.elements.prevBtn3 = document.getElementById(this.config.prevBtn3Id);
+        this.elements.prevBtn4 = document.getElementById(this.config.prevBtn4Id);
         this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
+        this.elements.ecpVerifyBtn = document.getElementById(this.config.ecpVerifyBtnId);
         this.elements.entityTypeInput = document.getElementById('entity_type');
+
+        this.stepperDots = Array.from(document.querySelectorAll('#registrationStepper .plan-send-step-dot'));
 
         this.elements.entityTypeRadioInputs = document.querySelectorAll('input[name="entity_type"]');
         
@@ -1934,7 +1951,33 @@ class MultiStepForm {
         if (this.elements.prevBtn3) {
             this.elements.prevBtn3.addEventListener('click', () => this.goToStep(2));
         }
-        
+
+        if (this.elements.prevBtn4) {
+            this.elements.prevBtn4.addEventListener('click', () => this.goToStep(3));
+        }
+
+        if (this.elements.submitBtn) {
+            this.elements.submitBtn.addEventListener('click', () => {
+                if (!this.validateForm()) {
+                    alert('Пожалуйста, заполните все обязательные поля и выберите организацию');
+                    return;
+                }
+                this.goToStep(4);
+            });
+        }
+
+        if (this.elements.ecpVerifyBtn) {
+            this.elements.ecpVerifyBtn.addEventListener('click', () => {
+                if (typeof EcpMockModal === 'undefined') return;
+                const ecpModal = new EcpMockModal({
+                    modalId: 'ecpRegisterModal',
+                    certCheckUrl: '/verify-certificate',
+                    onSuccess: () => this.submitRegistrationForm(),
+                });
+                ecpModal.open();
+            });
+        }
+
         if (this.elements.entityTypeRadioInputs) {
             this.elements.entityTypeRadioInputs.forEach(input => {
                 input.addEventListener('change', (e) => this.handleEntityTypeChange(e));
@@ -1953,9 +1996,13 @@ class MultiStepForm {
         }
 
         if (this.elements.form) {
-            this.elements.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+            // Единственный текстовый инпут в форме (поиск организации) мог
+            // бы неявно отправить форму по Enter — реальная отправка
+            // разрешена только после успешной проверки ЭЦП (шаг 4), см.
+            // submitRegistrationForm().
+            this.elements.form.addEventListener('submit', (e) => e.preventDefault());
         }
-        
+
         document.addEventListener('click', (e) => this.handleDocumentClick(e));
         
         this.setupStep1Validation();
@@ -2046,20 +2093,19 @@ class MultiStepForm {
         this.selectedItem = item;
     }
 
-    handleFormSubmit(e) {
-        e.preventDefault();
-        
-        if (!this.validateForm()) {
-            alert('Пожалуйста, заполните все обязательные поля и выберите организацию');
-            return;
+    submitRegistrationForm() {
+        // Вызывается только из onSuccess ЭЦП-модалки (шаг 4) — к этому
+        // моменту validateForm() уже гарантированно true (submit-btn на
+        // шаге 3 пускает на шаг 4 только после проверки, см. bindEvents).
+        const btn = this.elements.ecpVerifyBtn;
+        const originalText = btn ? btn.querySelector('.btn-text').textContent : null;
+        if (btn) {
+            btn.querySelector('.btn-text').textContent = 'Отправка...';
+            btn.disabled = true;
         }
-        
-        const originalText = this.elements.submitBtn.querySelector('.btn-text').textContent;
-        this.elements.submitBtn.querySelector('.btn-text').textContent = 'Отправка...';
-        this.elements.submitBtn.disabled = true;
-        
+
         const formData = new FormData(this.elements.form);
-        
+
         fetch(this.elements.form.action, {
             method: 'POST',
             body: formData,
@@ -2092,8 +2138,10 @@ class MultiStepForm {
             alert(`Ошибка при отправке формы: ${error.message}`);
         })
         .finally(() => {
-            this.elements.submitBtn.querySelector('.btn-text').textContent = originalText;
-            this.elements.submitBtn.disabled = false;
+            if (btn) {
+                btn.querySelector('.btn-text').textContent = originalText;
+                btn.disabled = false;
+            }
         });
     }
 
@@ -2107,7 +2155,10 @@ class MultiStepForm {
     }
 
     setupStep1Validation() {
-        const requiredFields = ['#name', '#secondname', '#patronymic'];
+        // Баг: поле "Должность" (#post) не слушалось — если заполнить его
+        // последним, updateNextButtonState() никогда не перевызывался и
+        // кнопка "Далее" оставалась disabled, хотя все поля уже заполнены.
+        const requiredFields = ['#name', '#secondname', '#patronymic', '#post'];
         requiredFields.forEach(selector => {
             const input = document.querySelector(selector);
             if (input) {
@@ -2144,23 +2195,27 @@ class MultiStepForm {
         if (this.elements.step1) this.elements.step1.style.display = 'none';
         if (this.elements.step2) this.elements.step2.style.display = 'none';
         if (this.elements.step3) this.elements.step3.style.display = 'none';
-        
+        if (this.elements.step4) this.elements.step4.style.display = 'none';
+
+        const allSteps = [this.elements.step1, this.elements.step2, this.elements.step3, this.elements.step4];
+        const clearActive = () => allSteps.forEach((el) => el && el.classList.remove('active'));
+
         switch(stepNumber) {
             case 1:
                 if (this.elements.step1) {
                     this.elements.step1.style.display = 'block';
+                    clearActive();
                     this.elements.step1.classList.add('active');
-                    if (this.elements.step2) this.elements.step2.classList.remove('active');
-                    if (this.elements.step3) this.elements.step3.classList.remove('active');
+                    this.currentStep = 1;
                 }
                 break;
             case 2:
                 if (this.validateStep1()) {
                     if (this.elements.step2) {
                         this.elements.step2.style.display = 'block';
-                        if (this.elements.step1) this.elements.step1.classList.remove('active');
+                        clearActive();
                         this.elements.step2.classList.add('active');
-                        if (this.elements.step3) this.elements.step3.classList.remove('active');
+                        this.currentStep = 2;
                     }
                 } else {
                     alert('Пожалуйста, заполните все обязательные поля');
@@ -2172,12 +2227,31 @@ class MultiStepForm {
             case 3:
                 if (this.elements.step3) {
                     this.elements.step3.style.display = 'block';
-                    if (this.elements.step1) this.elements.step1.classList.remove('active');
-                    if (this.elements.step2) this.elements.step2.classList.remove('active');
+                    clearActive();
                     this.elements.step3.classList.add('active');
+                    this.currentStep = 3;
+                }
+                break;
+            case 4:
+                if (this.elements.step4) {
+                    this.elements.step4.style.display = 'block';
+                    clearActive();
+                    this.elements.step4.classList.add('active');
+                    this.currentStep = 4;
                 }
                 break;
         }
+
+        this.updateStepper();
+    }
+
+    updateStepper() {
+        this.stepperDots.forEach((dot) => {
+            const step = parseInt(dot.dataset.step, 10);
+            dot.classList.remove('active', 'completed');
+            if (step < this.currentStep) dot.classList.add('completed');
+            else if (step === this.currentStep) dot.classList.add('active');
+        });
     }
 
     handleSearchInput(e) {
@@ -2880,6 +2954,30 @@ function initProfileTabs() {
     });
 }
 document.addEventListener('DOMContentLoaded', initProfileTabs);
+
+// Переключатель версий плана (component.plan_version_switcher,
+// macros/components.html) — тот же .signer-picker, что и выбор
+// подписанта (plan_send.html/plan_actions.html), но рендерится в
+// plan_header_bar почти на каждой странице плана, поэтому обработчик
+// здесь, делегированием на document, а не точечной инициализацией на
+// конкретной странице (как у сигнер-пикеров форм, которых там всего
+// один-два на страницу). Пункты — обычные <a href>, открытие/закрытие —
+// просто класс .active (та же видимость через CSS, что у .signer-picker).
+document.addEventListener('click', function (e) {
+    const toggle = e.target.closest('.plan-version-switcher .signer-picker-toggle');
+    if (toggle) {
+        e.stopPropagation();
+        const dropdown = toggle.closest('.plan-version-switcher');
+        document.querySelectorAll('.plan-version-switcher.active').forEach(function (d) {
+            if (d !== dropdown) d.classList.remove('active');
+        });
+        dropdown.classList.toggle('active');
+        return;
+    }
+    document.querySelectorAll('.plan-version-switcher.active').forEach(function (d) {
+        if (!d.contains(e.target)) d.classList.remove('active');
+    });
+});
 
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');

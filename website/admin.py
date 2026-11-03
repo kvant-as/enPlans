@@ -96,7 +96,7 @@ def _support_chat_rows():
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
     list_display=["id", "email", "organization", "org_role", "begin_time"],
-    list_badges=["is_admin", "is_auditor", "is_approver", "is_reader"],
+    list_badges=["is_admin", "is_auditor", "is_approver", "is_reader", "is_verified"],
     search=["email", "last_name", "first_name", "telephone"],
     scope_query=_scope_to_this_app,
     on_save=_user_on_save,
@@ -108,6 +108,8 @@ site.register(
         F("is_auditor", "Согласовывающая организация", type="bool"),
         F("is_approver", "Утверждающая организация", type="bool"),
         F("is_reader", "Читатель", type="bool"),
+        F("is_verified", "Верифицирован (ЭЦП)", type="bool",
+          help="Прошёл проверку ЭЦП на регистрации (или приглашён уже верифицированным руководителем). Блокирует регистрацию новых аккаунтов на его организацию."),
         F("org_role", "Роль в организации", type="select", choices=[
             ("executor", "Исполнитель"),
             ("dept_head", "Руководитель структурного подразделения"),
@@ -124,7 +126,7 @@ site.register(
 site.register(
     Organization, name="Организации", group="Основные", stat_label="Организаций",
     list_display=["id", "full_name", "okpo", "region", "ministry", ("accounts", "Email аккаунта")],
-    list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management"],
+    list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management", "is_energy_department"],
     list_format={"accounts": _org_account_emails},
     search=["full_name", "okpo", "ynp"],
     fields=[
@@ -137,6 +139,7 @@ site.register(
         F("is_coordinator", "Координатор", type="bool"),
         F("is_approver", "Утверждающая", type="bool"),
         F("is_region_management", "Региональное управление", type="bool"),
+        F("is_energy_department", "Департамент по энергоэффективности", type="bool"),
     ],
 )
 

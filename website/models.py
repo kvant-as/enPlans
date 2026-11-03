@@ -1,6 +1,6 @@
 from common_models import (
     User, Organization, Region, Ministry,
-    Notification, PlanApprovalPath, PlanColumnConfig, Plan,
+    Notification, PlanApprovalPath, PlanColumnConfig, PlanExecutor, Plan,
     PlanTicket, Unit, Direction, News, Event, Indicator, IndicatorUsage,
     StatPlan, StatPlanValue, ChatMessage, Chat,
 
@@ -9,7 +9,7 @@ from common_models import (
 
 __all__ = [
     'User', 'Organization', 'Region', 'Ministry',
-    'Notification', 'PlanApprovalPath', 'PlanColumnConfig', 'Plan',
+    'Notification', 'PlanApprovalPath', 'PlanColumnConfig', 'PlanExecutor', 'Plan',
     'PlanTicket', 'Unit', 'Direction', 'News', 'Event', 'Indicator',
     'IndicatorUsage', 'StatPlan', 'StatPlanValue', 'ChatMessage', 'Chat',
 

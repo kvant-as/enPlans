@@ -36,7 +36,7 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
         <img src="{{ url_for('static', filename='img/icon-add.svg') }}" />
         <span class="element-text">Добавить</span>
       </div>
-      {% if config.has_data %}
+      {% if config.has_data and not (current_user and current_user.org_role == 'org_head') %}
       <div
         class="element del {% if is_disabled or not is_owner %}non{% endif %}"
         id="tableDeleteButton"
@@ -135,7 +135,7 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
   class="status-plan {% if plan.is_historical %}status-historical {% elif plan.is_draft %}status-draft {% elif plan.is_error %}status-error {% elif plan.pending_signer_user_id %}status-signing {% elif plan.is_control %}status-control {% elif plan.is_queued_for_viewer %}status-transit {% elif plan.is_sent and current_user and current_user.is_auditor and user_path and user_path.is_viewed %}status-sogl {% elif plan.is_sent %}status-sent {% elif plan.is_approved %}status-approved {% endif %}"
 >
   {% if plan.is_historical %} {{ icons.icon_calendar() }}
-  <span>{{ _('Архивная версия') }}{% if plan.snapshot_at %} — {{ plan.snapshot_at.strftime('%d.%m.%Y') }}{% endif %}</span>
+  <span>{{ _('Архивная версия') }}{% if plan.snapshot_at %} — {{ plan.snapshot_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}</span>
   {% elif plan.is_draft %} {{ icons.draft_icon() }}
   <span>{{ _('В редакции') }}</span>
   {% elif plan.is_error %} {{ icons.error_icon() }}
@@ -162,25 +162,68 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
 
 {% macro plan_version_switcher(plan, current_user=None) %}
 {#  Переключение между "живой" (редактируемой) строкой плана и её
-    замороженными снимками (Plan.snapshot_of_plan_id, see
-    utils/plans.py::create_plan_snapshot) —get_plan_versions
+    замороженными снимками (Plan.snapshot_of_plan_id, см.
+    utils/plans.py::create_plan_snapshot) — get_plan_versions
     зарегистрирован Jinja-глобалом в website/__init__.py, поэтому не
     требует отдельного параметра от каждого роута, рендерящего
-    back_header. Обычный <select>, а не кастомный дропдаун — переключение
-    версии это просто навигация по другому token того же эндпоинта
-    (request.view_args), без состояния, которое стоило бы городить JS ради. #}
+    plan_header_bar. Тот же компонент .signer-picker, что и выбор
+    подписанта (plan_send.html/plan_actions.html) — просто компактный
+    (CSS-переопределение ширины под .plan-version-switcher) и без
+    hidden-инпута: пункты обычные <a href>, открытие/закрытие
+    делегировано в base.js (рендерится почти на каждой странице плана,
+    а не на одной, как сигнер-пикеры). #}
   {% set versions = get_plan_versions(plan) %}
   {% if versions|length > 1 %}
   {% set view_args = request.view_args.copy() %}
-  <select class="plan-version-switcher" onchange="if(this.value) window.location.href=this.value;">
-    {% for v in versions %}
-    {% set _ignore = view_args.update({'token': v.token}) %}
-    <option value="{{ url_for(request.endpoint, **view_args) }}" {% if v.token == plan.token %}selected{% endif %}>
-      {% if v.is_historical %}{{ _('Версия от') }} {{ v.snapshot_at.strftime('%d.%m.%Y') if v.snapshot_at else '' }}{% else %}{{ _('Текущая версия') }}{% endif %}
-    </option>
-    {% endfor %}
-  </select>
+  <div class="signer-picker plan-version-switcher">
+    <button type="button" class="signer-picker-toggle">
+      <span class="signer-picker-value">
+        {% if plan.is_historical %}{{ _('Версия от') }} {{ plan.snapshot_at.strftime('%d.%m.%Y %H:%M') if plan.snapshot_at else '' }}{% else %}{{ _('Текущая версия') }}{% endif %}
+      </span>
+      {{ icons.dropdown_arrow() }}
+    </button>
+    <div class="signer-picker-menu plan-version-switcher-menu">
+      {% for v in versions %}
+      {% set _ignore = view_args.update({'token': v.token}) %}
+      <a class="signer-picker-item plan-version-switcher-item {% if v.token == plan.token %}is-selected{% endif %}" href="{{ url_for(request.endpoint, **view_args) }}">
+        {% if v.is_historical %}{{ _('Версия от') }} {{ v.snapshot_at.strftime('%d.%m.%Y %H:%M') if v.snapshot_at else '' }}{% else %}{{ _('Текущая версия') }}{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
   {% endif %}
+{% endmacro %}
+
+{% macro plan_header_bar(plan, current_user=None, back_url='/plans', back_text=none) %}
+{#  Перекастомизированная под страницы плана версия back_header (та
+    осталась как есть — используется и вне планов, create_plan.html/
+    edit_profile.html, см. show_plan_info=False там). Вместо текста "План
+    мероприятий по энергосбережению на <год>" — отдельная пилюля года (в
+    стиле status-plan) с иконкой календаря, затем статус-бейдж как и
+    был, затем свитчер версий (сам скрывается, если версия одна). #}
+<div class="plan-header-bar-wrap">
+  <div class="plan-header-bar">
+    <button
+      type="button"
+      class="svg-btn tooltip-btn"
+      onclick="window.location.href='{{ back_url }}'"
+    >
+      {{ icons.back_icon() }}
+      {% set computed_back_text = back_text if back_text is not none else _('Назад') %}
+      {% if computed_back_text %}
+      <span class="btn-text">{{ computed_back_text }}</span>
+      {% endif %}
+    </button>
+
+    <span class="plan-year-chip">
+      {{ icons.icon_calendar() }}
+      <span>{{ plan.year }} {{ _('год') }}</span>
+    </span>
+
+    <span class="plan-back-header-status">{{ status_plan(plan, current_user) }}</span>
+  </div>
+  {{ plan_version_switcher(plan, current_user) }}
+</div>
 {% endmacro %}
 
 {% macro back_header(plan=None, current_user=None,
@@ -211,9 +254,11 @@ show_plan_info=True, back_url='/plans', back_text=None, plan_text=None) %}
 
     {% if show_plan_info and plan %}
     <span class="plan-back-header-status">{{ status_plan(plan, current_user) }}</span>
-    {{ plan_version_switcher(plan, current_user) }}
     {% endif %}
   </div>
+  {% if show_plan_info and plan %}
+  {{ plan_version_switcher(plan, current_user) }}
+  {% endif %}
 </div>
 {% endmacro %} {% macro navigation_header(active_tab='plans',
 current_user=None)%}
@@ -594,7 +639,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 </div>
 {% endmacro %} -->
 
-{% macro plan_signatures_page(plan, current_user, cycles=[], last_internal_return_ticket=none) %}
+{% macro plan_signatures_page(plan, current_user, cycles=[], last_internal_return_ticket=none, pending_chain=[]) %}
 {% set latest = cycles[-1] if cycles else none %}
 {% set latest_paths = latest.paths if latest else [] %}
 {% set first_unviewed = latest_paths|selectattr('is_viewed', 'equalto', False)|first %}
@@ -701,13 +746,33 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
           <td>
             <span class="track-chip {% if plan.pending_signer_user_id %}track-chip-active{% else %}track-chip-rejected{% endif %}">
               {% if plan.pending_signer_user_id %}
-                {{ _('Подписан, ожидает отправки') if plan.is_signed else _('Ожидание данных руководителя') }}
+                {{ _('Подписан, ожидает отправки') if plan.is_signed else _('Ожидание') }}
               {% else %}{{ _('Есть ошибки') }}{% endif %}
             </span>
           </td>
           <td>{{ last_internal_return_ticket.begin_time.strftime('%d.%m.%Y') if (not plan.pending_signer_user_id and last_internal_return_ticket and last_internal_return_ticket.begin_time) else '—' }}</td>
           <td>{{ last_internal_return_ticket.note if (not plan.pending_signer_user_id and last_internal_return_ticket) else '—' }}</td>
         </tr>
+        {#  Маршрут уже выбран (submit_for_signature), но план ещё не
+            отправлен реально (нет ни одного PlanApprovalPath) — показываем
+            выбранные организации как предпросмотр, со статусом "Ожидание
+            отправки". Сами организации доступ к плану получат только
+            после handle_sent_status (подпись + реальная отправка). #}
+        {% for step_type, org in pending_chain %}
+        <tr class="track-row track-row-pending">
+          <td class="track-row-type">
+            <div class="track-row-type-inner">
+              <span class="track-row-icon">{{ icons.pending_icon() }}</span>
+              {{ _('Утверждение') if step_type == 'approver' else _('Согласование') }}
+            </div>
+          </td>
+          <td>{{ org.full_name }}</td>
+          <td>—</td>
+          <td><span class="track-chip track-chip-pending">{{ _('Ожидание отправки') }}</span></td>
+          <td>—</td>
+          <td>—</td>
+        </tr>
+        {% endfor %}
         {% endif %}
         {% for cycle in cycles %}
         <tr class="track-row-dev">
@@ -1494,9 +1559,12 @@ selected_status='all', selected_year='all') %}
 <div class="org-card">
   <div class="org-card-header">
     <div class="org-card-heading">
+      <div class="app-group" style="margin: 0;">
+      <label>Наименование</label>
       <div class="input-with-icon">
         {{ icons.icon_org() }}
         <input type="text" value="{{ organization.full_name }}" placeholder="Наименование организации" class="app-input">
+      </div>
       </div>
     </div>
   </div>

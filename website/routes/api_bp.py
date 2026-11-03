@@ -181,6 +181,12 @@ def get_organizations_api():
             # это не должно мешать регистрации в enPlans, поэтому дубль
             # проверяется только среди аккаунтов ЭТОГО приложения.
             #
+            # Организация считается занятой только если на ней есть
+            # ВЕРИФИЦИРОВАННЫЙ (прошедший проверку ЭЦП на последнем шаге
+            # регистрации, см. website.user.add_param) аккаунт — организация
+            # с только неверифицированными "самозванцами" снова появляется
+            # в поиске, чтобы её можно было легитимно забрать через ЭЦП.
+            #
             # Исключение — сотрудник, приглашённый руководителем организации
             # (views.invite_employee): у него organization_id уже проставлен
             # заранее на ту же организацию, у которой уже есть аккаунт
@@ -189,7 +195,8 @@ def get_organizations_api():
             from common_models import get_current_application_id
             registered_orgs = db.session.query(User.organization_id).filter(
                 User.organization_id.isnot(None),
-                User.application_id == get_current_application_id()
+                User.application_id == get_current_application_id(),
+                User.is_verified == True
             )
             if current_user.organization_id:
                 registered_orgs = registered_orgs.filter(
@@ -209,7 +216,10 @@ def get_organizations_api():
         )
 
         if hide_region_management:
-            query = query.filter(Organization.is_region_management == False)
+            query = query.filter(
+                Organization.is_region_management == False,
+                Organization.is_energy_department == False,
+            )
 
         if org_type == 'respondent':
             query = query.filter(Organization.is_regular == True)

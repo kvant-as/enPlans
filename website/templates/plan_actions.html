@@ -13,7 +13,7 @@
 {% set is_owner = plan.org_id == current_user.organization_id %}
 
 <div class="pers-page">
-  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_header_bar(plan, current_user) }}
   {{ component.plan_navigation_header('actions', plan, current_user) }}
 
   <div class="personal-acc-conteiner planed">
@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    {% if is_owner and last_internal_return_ticket %}
+    <!-- {% if is_owner and last_internal_return_ticket %}
     <div class="plan-send-warning" style="margin-bottom: 16px;">
       {{ icons.error_icon() }}
       <div>
@@ -32,25 +32,10 @@
         <p>{{ last_internal_return_ticket.note }}</p>
       </div>
     </div>
-    {% endif %}
+    {% endif %} -->
 
     <div class="plan-actions-grid">
       {% if is_owner %}
-      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <input type="hidden" name="status" value="control" />
-        <button
-          id="controlPlanButton"
-          type="submit"
-          class="plan-action-tile"
-          {% if not plan.is_draft or plan.pending_signer_user_id or plan.is_historical or current_user.is_reader %}disabled{% endif %}
-        >
-          {{ icons.control_icon() }}
-          <span class="plan-action-tile-title">{{ _('Пройти контроль') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Проверить план на ошибки перед отправкой') }}</span>
-        </button>
-      </form>
-
       <button
         type="button"
         id="developerInfoBtn"
@@ -62,27 +47,47 @@
         <span class="plan-action-tile-sub">{{ _('Кто фактически готовил план') }}</span>
       </button>
 
+
+      {% if not current_user.is_reader and current_user.org_role != 'org_head' %}
+      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="status" value="control" />
+        <button
+          id="controlPlanButton"
+          type="submit"
+          class="plan-action-tile"
+          {% if not plan.is_draft or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+        >
+          {{ icons.control_icon() }}
+          <span class="plan-action-tile-title">{{ _('Пройти контроль') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Проверить план на ошибки перед отправкой') }}</span>
+        </button>
+      </form>
+
       <button
         type="button"
         class="plan-action-tile"
         onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or plan.pending_signer_user_id or plan.is_historical or current_user.is_reader %}disabled{% endif %}
+        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
       >
         {{ icons.icon_send() }}
-        <span class="plan-action-tile-title">{{ _('Выбор согласующих/утверждающей') }}</span>
+        <span class="plan-action-tile-title">{{ _('Путь согласования') }}</span>
         <span class="plan-action-tile-sub">{{ _('Выбрать маршрут и направить план на подпись руководителю') }}</span>
       </button>
+      {% endif %}
 
+      {% if not current_user.is_reader and current_user.org_role != 'executor' %}
       <button
         type="button"
         id="cancelSendBtn"
         class="plan-action-tile"
-        {% if not plan.is_sent or current_user.is_reader or current_user.org_role == 'executor' or plan.is_historical %}disabled{% endif %}
+        {% if not plan.is_sent or plan.is_historical %}disabled{% endif %}
       >
         {{ icons.icon_cancel() }}
         <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
         <span class="plan-action-tile-sub">{{ _('Вернуть план в статус «В редакции»') }}</span>
       </button>
+      {% endif %}
 
       {% if plan.pending_signer_user_id and plan.pending_signer_user_id != current_user.id and plan.internal_signed_by_user_id != current_user.id %}
       <div class="plan-action-tile plan-action-tile-info">
@@ -103,8 +108,8 @@
       {% if not plan.is_signed and plan.pending_signer_user_id == current_user.id %}
       <button type="button" id="internalSignBtn" class="plan-action-tile">
         {{ icons.icon_confirm() }}
-        <span class="plan-action-tile-title">{{ _('Подписать') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Подписать план электронной цифровой подписью') }}</span>
+        <span class="plan-action-tile-title">{{ _('Подписать и отправить') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Подписать план ЭЦП и отправить по выбранному маршруту') }}</span>
       </button>
 
       <button type="button" id="internalReturnBtn" class="plan-action-tile plan-action-tile-danger">
@@ -114,23 +119,12 @@
       </button>
       {% endif %}
 
-      {% if plan.is_signed and plan.internal_signed_by_user_id == current_user.id %}
-      <form action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <input type="hidden" name="status" value="sent" />
-        <button type="submit" class="plan-action-tile">
-          {{ icons.icon_send() }}
-          <span class="plan-action-tile-title">{{ _('Отправить на согласование') }}</span>
-          <span class="plan-action-tile-sub">{{ _('План подписан — отправить по выбранному маршруту') }}</span>
-        </button>
-      </form>
-      {% endif %}
-
+      {% if not current_user.is_reader and current_user.org_role != 'org_head' %}
       <button
         type="button"
         class="plan-action-tile"
         onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical or current_user.is_reader %}disabled{% endif %}
+        {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
       >
         {{ icons.icon_edit() }}
         <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
@@ -143,13 +137,14 @@
           type="submit"
           data-modal-trigger="deletePlan"
           class="plan-action-tile plan-action-tile-danger"
-          {% if plan.is_sent or plan.is_approved or plan.pending_signer_user_id or current_user.is_reader %}disabled{% endif %}
+          {% if plan.is_sent or plan.is_approved or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
         >
           {{ icons.icon_delete() }}
           <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
           <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
         </button>
       </form>
+      {% endif %}
       {% endif %}
 
       {% if not is_owner %}
@@ -259,46 +254,63 @@
     </div>
 
     <div class="profile-tab-panel" data-tab-panel="respondent">
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Фамилия') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.last_name if plan.user else '' }}" class="app-input" />
+      <div class="org-roles-note">
+        <p>{{ _('Изменить данные сотрудника (должность, телефон, email) можно в личном кабинете, в разделе «Профиль».') }}</p>
+      </div>
+      {% set plan_executors_list = plan.executors %}
+      <div class="plan-executors-list">
+        {% if not plan_executors_list and plan.user %}
+        <div class="plan-executor-card">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }}</span>
+            <span class="plan-executor-card-meta">
+              {{ plan.user.post or '—' }}{% if plan.user.telephone %}, {{ _('тел.') }}: {{ plan.user.telephone }}{% endif %}{% if plan.user.email %}, {{ plan.user.email }}{% endif %}
+            </span>
           </div>
         </div>
-        <div class="app-group">
-          <label>{{ _('Имя') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.first_name if plan.user else '' }}" class="app-input" />
+        {% else %}
+        {% for ex in plan_executors_list %}
+        <div class="plan-executor-card">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">{{ ex.user.last_name }} {{ ex.user.first_name }} {{ ex.user.patronymic_name or '' }}</span>
+            <span class="plan-executor-card-meta">
+              {{ ex.user.post or '—' }}{% if ex.user.telephone %}, {{ _('тел.') }}: {{ ex.user.telephone }}{% endif %}{% if ex.user.email %}, {{ ex.user.email }}{% endif %}
+            </span>
           </div>
+          {% if is_owner and not plan.is_historical and not plan.is_sent and plan_executors_list|length > 1 %}
+          <form action="{{ url_for('plan_bp.remove_plan_executor', token=plan.token) }}" method="POST" class="plan-executor-card-remove-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="user_id" value="{{ ex.user_id }}" />
+            <button type="submit" class="plan-executor-card-remove" title="{{ _('Убрать из списка') }}">&times;</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if is_owner and not plan.is_historical and not plan.is_sent and plan_executor_candidates %}
+      <div class="signer-picker plan-executor-picker" id="executorPicker">
+        <button type="button" class="signer-picker-toggle" id="executorPickerToggle">
+          <span class="signer-picker-value">{{ _('Добавить сотрудника') }}</span>
+          {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="signer-picker-menu" id="executorPickerMenu">
+          {% for c in plan_executor_candidates %}
+          <div class="signer-picker-item" data-user-id="{{ c.id }}">
+            <span class="signer-picker-item-name">{{ c.last_name }} {{ c.first_name }} {{ c.patronymic_name or '' }}</span>
+            <span class="signer-picker-item-role">{{ c.post or (_('Руководитель структурного подразделения') if c.org_role == 'dept_head' else _('Исполнитель')) }}</span>
+          </div>
+          {% endfor %}
         </div>
       </div>
-      <div class="app-group">
-        <label>{{ _('Отчество') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_profile() }}
-          <input type="text" value="{{ plan.user.patronymic_name if plan.user else '' }}" class="app-input" />
-        </div>
-      </div>
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Email') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_email() }}
-            <input type="text" value="{{ plan.user.email if plan.user else '' }}" class="app-input" />
-          </div>
-        </div>
-        <div class="app-group">
-          <label>{{ _('Должность') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.post or '' if plan.user else '' }}" class="app-input" />
-          </div>
-        </div>
-      </div>
-      {{ component.phone_display_group(plan.user.telephone if plan.user else '') }}
+      <form id="addExecutorForm" action="{{ url_for('plan_bp.add_plan_executor', token=plan.token) }}" method="POST" style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="user_id" id="addExecutorUserId" />
+      </form>
+      {% endif %}
     </div>
 
     <hr />
@@ -654,14 +666,18 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
-    // Кнопка [Подписать] (внутренняя подпись перед реальной внешней
-    // отправкой) — та же мок-ЭЦП модалка, что и на согласовании/отправке,
-    // просто отдельный экземпляр (ecpInternalSignModal), чтобы не
-    // конфликтовать с ecpApproveModal на той же странице. После успеха —
-    // AJAX на internal_sign и перезагрузка страницы (появятся новые кнопки).
+    // Кнопка [Подписать и отправить] (внутренняя подпись + реальная внешняя
+    // отправка объединены в одно действие) — та же мок-ЭЦП модалка, что и
+    // на согласовании/отправке, просто отдельный экземпляр
+    // (ecpInternalSignModal), чтобы не конфликтовать с ecpApproveModal на
+    // той же странице. После успеха ЭЦП — подряд internal_sign (подпись)
+    // и change-status status=sent (реальная отправка по сохранённому на
+    // шаге 4 маршруту, см. submit_for_signature/handle_sent_status), затем
+    // перезагрузка страницы.
     var signBtn = document.getElementById("internalSignBtn");
     if (signBtn && window.EcpMockModal) {
       signBtn.addEventListener("click", function () {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
         var ecpModal = new EcpMockModal({
           modalId: "ecpInternalSignModal",
           certCheckUrl: "{{ url_for('plan_bp.api_verify_certificate', token=plan.token) }}",
@@ -670,10 +686,34 @@
               method: "POST",
               headers: {
                 "X-Requested-With": "XMLHttpRequest",
-                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || "",
+                "X-CSRFToken": csrfToken,
               },
-            }).then(function () {
-              window.location.reload();
+            }).then(function (signResp) {
+              return signResp.json().then(function (signData) {
+                if (!signResp.ok || signData.success === false) {
+                  throw new Error(signData.error || "Не удалось подписать план");
+                }
+                return fetch("{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}", {
+                  method: "POST",
+                  headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": csrfToken,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ status: "sent" }),
+                });
+              });
+            }).then(function (sendResp) {
+              return sendResp.json().then(function (sendData) {
+                if (!sendResp.ok || sendData.error) {
+                  throw new Error(sendData.error || "Не удалось отправить план на согласование");
+                }
+                window.location.reload();
+              });
+            }).catch(function (error) {
+              if (typeof messageFlash !== "undefined") {
+                messageFlash.addMessage(error.message || "Не удалось подписать и отправить план", "error");
+              }
             });
           },
         });
@@ -725,6 +765,32 @@
   document.addEventListener("DOMContentLoaded", function () {
     initSignerPicker("stepSignerPicker", "stepSignerPickerToggle", "stepSignerPickerValue", "stepSignerPickerMenu", "stepSignerValue", "stepSignerSubmit");
     initSignerPicker("forwardSignerPicker", "forwardSignerPickerToggle", "forwardSignerPickerValue", "forwardSignerPickerMenu", "forwardSignerValue", "forwardSignerSubmit");
+
+    // Добавление сотрудника в список "Ответственных исполнителей"
+    // (вкладка "Ответственный исполнитель") — клик по пункту сразу
+    // добавляет (без отдельной кнопки "Подтвердить", как у сигнер-
+    // пикеров выше — тут нечего уточнять, просто выбор одного из
+    // оставшихся кандидатов организации).
+    var executorPicker = document.getElementById("executorPicker");
+    var executorPickerToggle = document.getElementById("executorPickerToggle");
+    var executorPickerMenu = document.getElementById("executorPickerMenu");
+    var addExecutorUserId = document.getElementById("addExecutorUserId");
+    var addExecutorForm = document.getElementById("addExecutorForm");
+    if (executorPicker && executorPickerToggle && executorPickerMenu && addExecutorUserId && addExecutorForm) {
+      executorPickerToggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        executorPicker.classList.toggle("active");
+      });
+      executorPickerMenu.querySelectorAll(".signer-picker-item").forEach(function (item) {
+        item.addEventListener("click", function () {
+          addExecutorUserId.value = item.dataset.userId;
+          addExecutorForm.submit();
+        });
+      });
+      document.addEventListener("click", function (e) {
+        if (!executorPicker.contains(e.target)) executorPicker.classList.remove("active");
+      });
+    }
 
     // Кнопки "Есть ошибки"/"Согласовать" теперь внутри .tickets-actions-bar
     // (переотрисовывается AJAX'ом) просто открывают stepSignerModal с

@@ -4,7 +4,7 @@ from flask import current_app, flash, redirect, request, session, url_for
 from sqlalchemy import func
 from website import db
 from website.email import send_email
-from website.models import User
+from website.models import User, Organization
 from common_models import get_current_application_id
 from flask import request, flash, redirect, session, url_for
 import logging
@@ -162,11 +162,22 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
 
-    # Один УНП — один аккаунт (в рамках ЭТОГО приложения — та же организация
-    # вполне может иметь отдельный аккаунт в другом приложении, это другой
-    # Application.id). Фронт уже прячет такие организации из результатов
-    # поиска (см. /api/organizations?exclude_registered=true), но это
-    # единственная настоящая защита от дублей — обходится напрямую через форму.
+    # Поиск организации (auth.param, /api/organizations) уже показывает
+    # только is_active=True — эта проверка на то, если id организации
+    # пришёл напрямую через форму в обход поиска.
+    org = Organization.query.filter_by(id=org_id, is_active=True).first()
+    if not org:
+        flash('Организация не найдена или недоступна для регистрации', 'error')
+        return redirect(url_for('auth.param'))
+
+    # Организация считается занятой только если на ней уже есть
+    # ВЕРИФИЦИРОВАННЫЙ аккаунт (прошедший проверку ЭЦП — финальный шаг
+    # регистрации, см. auth.param/param.html). Если организация занята
+    # только неверифицированными "самозванцами" — регистрация разрешена, а
+    # при успешном прохождении ЭЦП (ниже, после коммита) все их аккаунты
+    # удаляются. Фронт прячет уже верифицированные организации из поиска
+    # (см. /api/organizations?exclude_registered=true), но это единственная
+    # настоящая защита от дублей — обходится напрямую через форму.
     #
     # Исключение — сотрудник, приглашённый руководителем организации
     # (views.invite_employee): у него organization_id уже проставлен ЗАРАНЕЕ
@@ -174,12 +185,13 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     # это не повторная привязка нового аккаунта к занятой организации, а
     # просто то же самое значение, с которым его создали.
     if current_user.organization_id != org_id:
-        existing_user = User.query.filter(
+        verified_existing_user = User.query.filter(
             User.organization_id == org_id,
             User.application_id == get_current_application_id(),
+            User.is_verified == True,
             User.id != current_user.id
         ).first()
-        if existing_user:
+        if verified_existing_user:
             flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
             return redirect(url_for('auth.param'))
 
@@ -224,7 +236,25 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
 
     try:
         db.session.commit()
-        flash('Данные успешно сохранены!', 'success')
+
+        # Эта точка достигается только после успешной проверки ЭЦП на
+        # клиенте (см. param.html/base.js::MultiStepForm — шаг 4 вызывает
+        # реальную отправку формы лишь в onSuccess ЭЦП-модалки), поэтому
+        # сохранение данных = подтверждение личности. Аккаунт становится
+        # верифицированным, а все прежние (неверифицированные) аккаунты
+        # этой же организации удаляются вместе со всеми их данными —
+        # каскад User.plans удалит и все их планы.
+        current_user.is_verified = True
+        old_accounts = User.query.filter(
+            User.organization_id == org_id,
+            User.application_id == get_current_application_id(),
+            User.id != current_user.id,
+        ).all()
+        for old_user in old_accounts:
+            db.session.delete(old_user)
+        db.session.commit()
+
+        flash('Добро пожаловать в EnPlans!', 'success')
         # send_email(
         #     recipient_email=current_user.email,
         #     message=current_user.first_name or "Пользователь",

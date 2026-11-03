@@ -12,6 +12,28 @@ endblock %} {% block content %}
     </p>
   </div>
 
+  <div class="plan-send-stepper" id="registrationStepper">
+    <div class="plan-send-step-dot" data-step="1">
+      <span class="plan-send-step-circle">1</span>
+      <span class="plan-send-step-label">{{ _('Личные данные') }}</span>
+    </div>
+    <div class="plan-send-step-line"></div>
+    <div class="plan-send-step-dot" data-step="2">
+      <span class="plan-send-step-circle">2</span>
+      <span class="plan-send-step-label">{{ _('Роль') }}</span>
+    </div>
+    <div class="plan-send-step-line"></div>
+    <div class="plan-send-step-dot" data-step="3">
+      <span class="plan-send-step-circle">3</span>
+      <span class="plan-send-step-label">{{ _('Организация') }}</span>
+    </div>
+    <div class="plan-send-step-line"></div>
+    <div class="plan-send-step-dot" data-step="4">
+      <span class="plan-send-step-circle">4</span>
+      <span class="plan-send-step-label">{{ _('Проверка ЭЦП') }}</span>
+    </div>
+  </div>
+
   <form
     class="steps-wrapper"
     method="POST"
@@ -277,9 +299,9 @@ endblock %} {% block content %}
           </div>
           <hr>
           <div class="button-auth-area">
-            <button type="submit" class="main-btn main-btn-primary" id="submit-btn" disabled>
-              {{ icons.icon_login() }}
-              <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
+            <button type="button" class="main-btn main-btn-primary" id="submit-btn" disabled>
+              {{ icons.next_icon() }}
+              <span class="btn-text">{{ _('Далее') }}</span>
             </button>
             <button type="button" class="svg-btn" id="prev-btn-3">
               {{ icons.back_icon() }}
@@ -318,10 +340,40 @@ endblock %} {% block content %}
       </div>
     </div>
 
+    <div class="step auth-step-4 auth-container" style="display: none">
+      <div class="auth-choose" style="justify-content: center" role="tablist">
+        <a
+          class="auth-tab active wave-effect"
+          role="tab"
+          style="width: 100%"
+          aria-selected="true"
+        >
+          {{ _('Проверка ЭЦП') }}
+        </a>
+      </div>
+
+      <div class="step-description">
+        <p>{{ _('Для завершения регистрации подтвердите личность сертификатом электронной цифровой подписи.') }}</p>
+      </div>
+
+      <div class="button-auth-area">
+        <button type="button" class="main-btn main-btn-primary" id="ecp-verify-btn">
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Пройти проверку ЭЦП') }}</span>
+        </button>
+        <button type="button" class="svg-btn" id="prev-btn-4">
+          {{ icons.back_icon() }}
+          <span class="btn-text">{{ _('Назад') }}</span>
+        </button>
+      </div>
+    </div>
+
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <input type="hidden" name="entity_type" id="entity_type" value="respondent" readonly/>
   </form>
 </div>
+
+{{ component.ecp_mock_modal('ecpRegisterModal') }}
 
 {{ affects.blurback() }}
 

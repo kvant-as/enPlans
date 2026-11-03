@@ -154,7 +154,7 @@
               </div>
             </div>
           </div>
-          <div class="date-item">
+          <!-- <div class="date-item">
             <div class="date-icon">
               {{ icons.icon_profile() }}
             </div>
@@ -188,7 +188,7 @@
               </div>
             </div>
           </div>
-          {% endif %}
+          {% endif %} -->
         </div>
       </div>
     </div>
@@ -231,9 +231,9 @@
       {% if current_user.org_role %}
       {% set can_manage_employees = current_user.org_role == 'org_head' %}
       {% set role_meta = {
-        'org_head':  {'label': _('Руководитель организации'), 'hint': _('Подписывает и утверждает планы')},
-        'dept_head': {'label': _('Руководитель структурного подразделения'), 'hint': _('Может подписывать или направлять выше')},
-        'executor':  {'label': _('Исполнитель'), 'hint': _('Заполняет и редактирует планы')},
+        'org_head':  {'label': _('Руководитель организации'), 'hint': _('Подписывает и утверждает план')},
+        'dept_head': {'label': _('Руководитель структурного подразделения'), 'hint': _('Создаёт, заполняет план, отправляет на подпись и подписывает')},
+        'executor':  {'label': _('Исполнитель'), 'hint': _('Создаёт, заполняет план и отправляет его на подпись')},
       } %}
       {% set employees_by_role = {} %}
       {% for employee in org_employees %}{% set _ignore = employees_by_role.update({employee.org_role: employee}) %}{% endfor %}
@@ -244,58 +244,58 @@
       <div class="org-roles-note">
         <p>
           {% if can_manage_employees %}
-            {{ _('На каждую роль — один сотрудник. Отправить план с ЭЦП сможет только руководитель организации.') }}
+            {{ _('На каждую роль — один сотрудник. Отправить план с ЭЦП сможет только руководитель организации и руководитель структурного подразделения.') }}
           {% else %}
             {{ _('Кто за какую роль отвечает в вашей организации. Приглашать и удалять сотрудников может только руководитель организации.') }}
           {% endif %}
         </p>
       </div>
 
-      <div class="org-roles-grid">
+      <div class="plan-executors-list">
         {% for role_key in ['org_head', 'dept_head', 'executor'] %}
         {% set meta = role_meta[role_key] %}
         {% set occupant = employees_by_role.get(role_key) %}
-        <div class="org-role-card {% if occupant %}is-filled{% else %}is-vacant{% endif %}">
-          <div class="org-role-card-icon">{{ icons.icon_profile() }}</div>
-          <div class="org-role-card-body">
-            <span class="org-role-card-title">{{ meta.label }}</span>
-            <span class="org-role-card-hint">{{ meta.hint }}</span>
+        <div class="plan-executor-card{% if not occupant %} plan-executor-card-vacant{% endif %}{% if occupant and occupant.id == current_user.id %} plan-executor-card-self{% endif %}">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
             {% if occupant %}
-              <div class="org-role-card-occupant-block">
-                <span class="org-role-card-occupant">
-                  {% if occupant.id == current_user.id %}
-                    {{ _('Это вы') }}
-                  {% elif occupant.last_name or occupant.first_name %}
-                    {{ occupant.last_name }} {{ occupant.first_name }}
-                  {% else %}
-                    <span class="org-role-card-pending">{{ _('Ждём регистрации') }}</span>
-                  {% endif %}
-                </span>
-                <span class="org-role-card-email">{{ occupant.email }}</span>
-              </div>
+            <span class="plan-executor-card-name">
+              {% if occupant.last_name or occupant.first_name or occupant.patronymic_name %}
+                {{ occupant.last_name }} {{ occupant.first_name }} {{ occupant.patronymic_name }}
+              {% else %}
+                {{ _('Ждём регистрации') }}
+              {% endif %}
+            </span>
+            <span class="plan-executor-card-meta">{{ meta.label }}{% if occupant.email %} · {{ occupant.email }}{% endif %}</span>
+            <span class="plan-executor-card-hint">{{ meta.hint }}</span>
+            {% else %}
+            <span class="plan-executor-card-name">{{ meta.label }}</span>
+            <span class="plan-executor-card-meta">{{ meta.hint }}</span>
             {% endif %}
           </div>
           {% if not occupant and can_manage_employees %}
-          <button type="button" class="org-role-card-invite-btn" data-invite-role="{{ role_key }}">
+          <button type="button" class="plan-executor-card-invite-btn" data-invite-role="{{ role_key }}">
             {{ icons.icon_add() }}
             <span>{{ _('Пригласить') }}</span>
           </button>
-          <form action="{{ url_for('views.invite_employee') }}" method="POST" class="org-role-invite-form" id="inviteForm-{{ role_key }}" style="display: none;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <input type="hidden" name="org_role" value="{{ role_key }}" />
-            <div class="input-with-icon">
-              {{ icons.icon_email() }}
-              <input type="email" name="email" class="app-input" placeholder="{{ _('Email сотрудника') }}" required />
-            </div>
-            <button type="submit" class="no-submit-button blue">
-              {{ icons.icon_confirm() }}
-              <span class="btn-text">{{ _('Отправить приглашение') }}</span>
-            </button>
-          </form>
           {% elif not occupant %}
-          <span class="org-role-card-vacant-label">{{ _('Вакантно') }}</span>
+          <span class="plan-executor-card-vacant-label">{{ _('Вакантно') }}</span>
           {% endif %}
         </div>
+        {% if not occupant and can_manage_employees %}
+        <form action="{{ url_for('views.invite_employee') }}" method="POST" class="org-role-invite-form" id="inviteForm-{{ role_key }}" style="display: none;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <input type="hidden" name="org_role" value="{{ role_key }}" />
+          <div class="input-with-icon">
+            {{ icons.icon_email() }}
+            <input type="email" name="email" class="app-input" placeholder="{{ _('Email сотрудника') }}" required />
+          </div>
+          <button type="submit" class="no-submit-button blue">
+            {{ icons.icon_confirm() }}
+            <span class="btn-text">{{ _('Отправить приглашение') }}</span>
+          </button>
+        </form>
+        {% endif %}
         {% endfor %}
       </div>
 
@@ -330,16 +330,6 @@
                 {% else %}
                   <span class="date-empty">Нет данных</span>
                 {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_org() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('ID') }}: {{ current_user.organization.id }}</span>
               </div>
             </div>
           </div>
@@ -510,16 +500,6 @@
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">
         <div class="dates-list">
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_email() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('Email для входа') }}: {{ current_user.email }}</span>
-              </div>
-            </div>
-          </div>
           <div class="date-item">
             <div class="date-icon">
               {{ icons.icon_profile() }}

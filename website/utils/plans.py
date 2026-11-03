@@ -1226,6 +1226,63 @@ def get_last_internal_return_ticket(plan):
     return None
 
 
+def build_approval_chain(plan, coordinator_ids=None, approver_id=None):
+    """Строит упорядоченный список (step_type, organization) для маршрута
+    внешнего согласования плана: региональное управление (всегда первым) +
+    выбранные согласующие + Департамент по энергоэффективности (если
+    суммарное потребление ТЭР — показатель 260, колонка за год плана — от
+    25000 т.у.т. включительно) + выбранный утверждающий. Департамент
+    вставляется ПРЕДПОСЛЕДНИМ — непосредственно перед утверждающим, если
+    он выбран, иначе (при отсутствии утверждающего) оказывается просто
+    последним шагом маршрута. Используется и для реального создания
+    PlanApprovalPath (handle_sent_status), и для предварительного показа
+    маршрута до отправки (вкладка "Подписи" сразу после
+    submit_for_signature) — поэтому не создаёт никаких записей в БД сам,
+    только читает справочники.
+
+    Если coordinator_ids/approver_id не переданы явно — берутся из
+    plan.pending_coordinator_ids/plan.pending_approver_id (маршрут,
+    сохранённый на шаге внутренней отправки на подпись)."""
+    chain = []
+
+    if not plan.organization or not plan.organization.region_id:
+        return chain
+
+    region_org = Organization.query.filter(
+        Organization.is_region_management == True,
+        Organization.region_id == plan.organization.region_id
+    ).first()
+    if region_org:
+        chain.append(('region', region_org))
+
+    if not coordinator_ids and plan.pending_coordinator_ids:
+        coordinator_ids = plan.pending_coordinator_ids.split(',')
+    if not approver_id and plan.pending_approver_id:
+        approver_id = plan.pending_approver_id
+
+    for coord_id in (coordinator_ids or []):
+        if coord_id and str(coord_id).strip():
+            coord_org = Organization.query.get(int(str(coord_id).strip()))
+            if coord_org:
+                chain.append(('coordinator', coord_org))
+
+    indicator_260_usage = next(
+        (u for u in plan.indicators_usage if u.indicator.code == '260'), None
+    )
+    total_consumption = indicator_260_usage.QYearCurrent if indicator_260_usage and indicator_260_usage.QYearCurrent is not None else 0
+    if total_consumption >= 25000:
+        energy_dept_org = Organization.query.filter_by(is_energy_department=True).first()
+        if energy_dept_org:
+            chain.append(('approver', energy_dept_org))
+
+    if approver_id:
+        approver_org = Organization.query.get(int(approver_id))
+        if approver_org:
+            chain.append(('approver', approver_org))
+
+    return chain
+
+
 def create_plan_snapshot(plan):
     """Замораживает точную копию плана "как есть" отдельной строкой Plan —
     вызывается из handle_error_status (status_plan.py) СРАЗУ после того,

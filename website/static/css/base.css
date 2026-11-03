@@ -201,6 +201,7 @@
 
   /* ----- Gray Scale ----- */
   --border-color: #D9D9D9;
+  --border-color-tin: #e4e4e4;
   --border-color-th: #eff4f8;
   --button-grey-hover: #ebebeb;
   --text-title: #2c3e50;
@@ -802,6 +803,7 @@ body {
   top: calc(100% + 8px);
   right: 0;
   min-width: 220px;
+  max-width: 240px;
   isolation: isolate;
   overflow: hidden;
   background: rgba(255, 255, 255, 1);
@@ -945,7 +947,7 @@ body {
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   position: relative;
   overflow: hidden;
 }
@@ -979,6 +981,55 @@ body {
 
 .nav-menu-item:active {
   transform: scale(0.98);
+}
+
+.account-info-item {
+  align-items: flex-start;
+  padding: 10px 12px;
+}
+.account-info-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--background-grey);
+  color: var(--green-main, #00798f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.account-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+.account-info-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-info-meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green-main, #00798f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-info-org {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-menu-item.red {
@@ -1379,6 +1430,162 @@ body {
 .org-role-card-vacant-label {
   align-self: flex-start;
   margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--border-color);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-subtitle, #7f8c8d);
+}
+
+/* "Ответственный исполнитель" (plan_actions.html) — список сотрудников,
+   фактически заполнявших план (PlanExecutor), с возможностью добавить
+   ещё одного (исполнителя/рук. структурного подразделения своей
+   организации) через .signer-picker (переиспользуем тот же компонент,
+   что и выбор подписанта/переключатель версий, просто компактный). */
+.plan-executors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.plan-executor-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color-tin);
+  background: var(--white);
+}
+.plan-executor-card-self {
+  border: 2px solid var(--green-main, #00798f);
+}
+.plan-executor-card-self .plan-executor-card-icon {
+  background: var(--green-light-back);
+
+}
+.plan-executor-card-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--background-grey);
+  color: var(--green-main, #00798f);
+}
+.plan-executor-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.plan-executor-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+.plan-executor-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+}
+.plan-executor-card-meta {
+  font-size: 12.5px;
+  color: var(--text-subtitle, #7f8c8d);
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-executor-card-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-subtitle, #7f8c8d);
+  opacity: 0.8;
+  margin-top: 5px;
+}
+.plan-executor-card-remove-form {
+  flex-shrink: 0;
+}
+.plan-executor-card-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-subtitle, #7f8c8d);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.plan-executor-card-remove:hover {
+  background: rgba(192, 57, 43, 0.1);
+  color: #c0392b;
+}
+
+.plan-executor-picker.signer-picker {
+  width: auto;
+  margin-top: 10px;
+}
+.plan-executor-picker .signer-picker-toggle {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.plan-executor-picker .signer-picker-menu {
+  left: 0;
+  right: auto;
+  width: max-content;
+  min-width: 240px;
+}
+
+/* Тот же .plan-executor-card ещё раз — "Сотрудники организации" в
+   профиле (profile.html), роль пустует: пунктирная рамка + кнопка
+   "Пригласить" (или просто бейдж "Вакантно", если приглашать не может
+   текущий пользователь) на месте кнопки "Убрать" у заполненной карточки. */
+.plan-executor-card-vacant {
+  border-style: dashed;
+  background: var(--background-grey, #fafbfc);
+}
+.plan-executor-card-vacant .plan-executor-card-icon {
+  background: transparent;
+  color: var(--text-subtitle, #7f8c8d);
+}
+.plan-executor-card-invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px dashed var(--green-main, #00798f);
+  background: transparent;
+  color: var(--green-main, #00798f);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-style 0.2s ease;
+}
+.plan-executor-card-invite-btn:hover {
+  background: var(--green-light-back, #e9fcff);
+  border-style: solid;
+}
+.plan-executor-card-invite-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.plan-executor-card-vacant-label {
+  flex-shrink: 0;
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--border-color);
@@ -2685,7 +2892,7 @@ input::placeholder {
   width: 100%;
   height: 55.20px;
   box-sizing: border-box;
-  z-index: 100;
+  z-index: 80;
 }
 
 .nav-item {
@@ -5400,16 +5607,120 @@ input[type="checkbox"]:focus {
   margin: 0;
 }
 
-.plan-version-switcher {
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background-color: var(--background-grey-input);
-  font-family: inherit;
+.plan-header-bar-wrap {
+  /* Копия .header-cont-for-back (та осталась как есть — используется и
+     вне планов) — перекастомизированная под страницы плана версия, см.
+     component.plan_header_bar в macros/components.html. */
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: auto;
+  width: 100%;
+  top: 72px;
+  /* .header-cont (навигация плана, component.plan_navigation_header)
+     тоже fixed с z-index: 90 и рендерится ПОСЛЕ этого блока в разметке
+     (см. plan_tasks.html и др.) — при РАВНОМ z-index более поздний по
+     DOM элемент выигрывает прорисовку целиком как стековый контекст, и
+     z-index: 100 у вложенного .signer-picker-menu тут не спасает: он
+     сравнивается только с соседями ВНУТРИ этой обёртки, а не с
+     .header-cont снаружи. Нужно, чтобы выше был именно сам
+     .plan-header-bar-wrap. */
+  z-index: 96;
+  max-width: 1250px;
+  text-align: center;
+}
+
+.plan-header-bar {
+  /* Копия .plan-back-header, без .plan-info/.plan-text (их место занял
+     .plan-year-chip — см. ниже). */
+  backdrop-filter: blur(10px);
+  padding: 5px;
+  width: fit-content;
+  border-radius: 13px;
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+.plan-header-bar button {
+  margin: 0;
+}
+
+.plan-year-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  background: rgba(255, 255, 255);
+  color: black;
+  border: 1px solid rgba(0, 121, 143, 0.2);
+}
+.plan-year-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+.plan-version-switcher.signer-picker {
+  /* .header-cont-for-back / .plan-header-bar-wrap — оба position: fixed
+     (сама задаёт containing block) — свитчер позиционируется
+     относительно НЕЁ, поверх .plan-back-header/.plan-header-bar, а не
+     внутри их flex-строки (там и так тесно на узких экранах, плюс сама
+     строка — width: fit-content, так что свитчер внутри сдвигал бы её
+     границу вместе с собой). Две склеенные со своим классы (а не просто
+     .plan-version-switcher) — иначе это правило того же веса, что и
+     базовое ".signer-picker { position: relative }" ниже по файлу, и
+     порядок в каскаде решает в пользу последнего объявления, а не
+     нужного здесь. */
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 95;
+}
+/* .signer-picker/.signer-picker-toggle/.signer-picker-menu по умолчанию
+   рассчитаны на полноширинное поле формы в модалке (выбор подписанта,
+   plan_send.html/plan_actions.html) — здесь тот же компонент, но
+   компактный, в шапке плана рядом со статус-бейджем. */
+.plan-version-switcher.signer-picker {
+  width: auto;
+}
+.plan-version-switcher .signer-picker-toggle {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.plan-version-switcher .signer-picker-menu {
+  left: auto;
+  right: 0;
+  width: max-content;
+  min-width: 200px;
+}
+/* Минималистичные пункты — одна строка (без второй строки-подписи
+   "Редактируется"/"Архив", она и так ясна из текста "Текущая версия"/
+   "Версия от …"), без разделителей между пунктами. */
+.plan-version-switcher-item {
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
   color: var(--black);
-  cursor: pointer;
+  white-space: nowrap;
+}
+.plan-version-switcher-item:not(:last-child) {
+  border-bottom: none;
+}
+.plan-version-switcher-item.is-selected {
+  color: var(--green-main, #00798f);
+  font-weight: 600;
+  background: transparent;
 }
 
 /* ============================================
@@ -5840,7 +6151,7 @@ input[type="checkbox"]:focus {
   padding: 18px 14px;
   border-bottom: 1px solid var(--tr-border);
   color: var(--black);
-  vertical-align: top;
+  /* vertical-align: top; */
 }
 .track-row:last-child td {
   border-bottom: none;
@@ -7962,8 +8273,8 @@ input[type="checkbox"]:focus {
 }
 .signer-picker-toggle svg {
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   color: var(--text-subtitle, #7f8c8d);
   transition: transform 0.2s ease;
 }
@@ -7984,7 +8295,7 @@ input[type="checkbox"]:focus {
   visibility: hidden;
   transform: translateY(-6px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 20;
+  z-index: 100;
   max-height: 260px;
   overflow-y: auto;
 }
@@ -11426,6 +11737,10 @@ main {
   }
   .plan-text {
     display: none;
+  }
+  .plan-header-bar {
+    margin-left: 5px;
+    margin-right: 5px;
   }
   .notif-popup {
     right: 10px;

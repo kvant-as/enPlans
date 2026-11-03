@@ -402,21 +402,12 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     line-height: 1.2;
-    margin: 0 0 40px 0;
+    margin: 0 0 20px 0;
     padding-bottom: 24px;
     position: relative;
 }
 
-.headline_aurora h1::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(90deg, var(--green-main), var(--green-light));
-    border-radius: 2px;
-}
+
 
 .article_crystal {
     padding: 48px;
@@ -479,6 +470,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    border: 1px solid var(--border-color);
     color: var(--text-subtitle2);
     font-size: 14px;
     font-weight: 500;
@@ -493,7 +485,7 @@
     gap: 6px;
     padding: 8px 20px;
     background: var(--background-grey);
-    color: var(--text-subtitle);
+    color: var(--text-subtitle2);
     font-size: 14px;
     font-weight: 500;
     border-radius: 50px;

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Отправка плана на рассмотрение') }} - EnPlans{% endblock %}
+{% block title %}{{ _('Путь согласования') }} - EnPlans{% endblock %}
 {% block content %}
 
 <div class="pers-page">
-  {{ component.back_header(plan, current_user, back_url='/plans/plan/tasks/' + plan.token, back_text=_('К плану')) }}
+  {{ component.plan_header_bar(plan, current_user, back_url='/plans/plan/tasks/' + plan.token, back_text=_('К плану')) }}
 
   <div class="personal-acc-conteiner edit-page">
-    <a class="name">{{ _('Отправка плана на рассмотрение') }}</a>
+    <a class="name">{{ _('Путь согласования') }}</a>
 
     <div class="plan-send-stepper" id="planSendStepper">
       <div class="plan-send-step-dot" data-step="1">
@@ -37,8 +37,8 @@
 
       <div id="step1" class="modal-step">
         <div class="step-description">
+          <p>{{ _('Список всегда открывает региональное управление по надзору за рациональным использованием ТЭР — оно добавляется автоматически. Если организация потребляет 25 тыс. т.у.т. и более, в конец списка автоматически добавляется Департамент по энергоэффективности в качестве последней согласующей организации. ') }}</p>
           <p>{{ _('Выберите организации, через которые план пройдёт согласование — последовательно и автоматически, этап за этапом.') }}</p>
-          <p class="step-note">{{ _('Первой в списке всегда будет региональное управление по надзору за рациональным использованием ТЭР — оно добавляется автоматически. Если организация даст положительную оценку, план сам перейдёт к следующему этапу; если оценка отрицательная — вы получите результаты проверки, а план перейдёт в статус «Есть ошибки».') }}</p>
         </div>
 
         <div class="input-with-icon">
@@ -153,7 +153,7 @@
 
       <div id="step3" class="modal-step" style="display: none">
         <div class="step-description">
-          <p>{{ _('Проверьте путь согласования перед отправкой — на следующем шаге потребуется сертификат ЭЦП.') }}</p>
+          <p>{{ _('Проверьте путь согласования перед отправкой.') }}</p>
           <p>{{ _('Если всё верно, нажмите кнопку «Далее».') }}</p>
         </div>
 
@@ -197,7 +197,7 @@
           <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
           <input type="hidden" name="approver_id" id="approver-id-input" value="" />
 
-          <div class="app-group">
+          <div class="app-group" style="margin-bottom: 130px;">
             <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
             <div class="signer-picker" id="signer-picker">
               <button
@@ -243,6 +243,7 @@
 <script>
   window.planToken = '{{ plan.token }}';
   window.regionNumber = '{{ plan.organization.region.number if plan.organization and plan.organization.region else "" }}';
+  window.energyDepartmentName = {{ (energy_department_org.full_name if energy_department_org else none) | tojson }};
   window.icons = {
     icon_region: `{{ icons.icon_region() }}`,
     icon_municipal: `{{ icons.icon_municipal() }}`,
