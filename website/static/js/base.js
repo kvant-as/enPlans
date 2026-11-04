@@ -1241,7 +1241,7 @@ class MultiTypeSearchManager {
         switch(this.selectedItemType) {
             case 'organization':
                 headersHTML += `
-                    <th>Наименование предприятия</th>
+                    <th>Наименование организации</th>
                     <th style="text-align: center;">УНП</th>
                     <th style="text-align: center;">ОКПО</th>
                 `;

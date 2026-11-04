@@ -299,7 +299,7 @@ endblock %} {% block content %}
           </div>
           <hr>
           <div class="button-auth-area">
-            <button type="button" class="main-btn main-btn-primary" id="submit-btn" disabled>
+            <button type="button" class="svg-btn" id="submit-btn" disabled>
               {{ icons.next_icon() }}
               <span class="btn-text">{{ _('Далее') }}</span>
             </button>
@@ -309,7 +309,7 @@ endblock %} {% block content %}
             </button>
           </div>
           <div class="auth-footer">
-            <a href="/no-org" class="forgot-password">Нет организации?</a>
+            <a href="/no-org" target="_blank" class="forgot-password">Нет организации?</a>
           </div>
         </div>
 
@@ -353,14 +353,34 @@ endblock %} {% block content %}
       </div>
 
       <div class="step-description">
-        <p>{{ _('Для завершения регистрации подтвердите личность сертификатом электронной цифровой подписи.') }}</p>
+        <p>{{ _('Для завершения регистрации подтвердите личность электронной цифровой подписью.') }}</p>
       </div>
 
-      <div class="button-auth-area">
-        <button type="button" class="main-btn main-btn-primary" id="ecp-verify-btn">
+      <div class="ecp-step-illustration">
+        <div class="ecp-verify-card" aria-hidden="true">
+          <div class="ecp-verify-card-top">
+            <span class="ecp-verify-card-avatar">{{ icons.icon_profile() }}</span>
+            <div class="ecp-verify-card-lines">
+              <span class="ecp-verify-card-line ecp-verify-card-line-lg"></span>
+              <span class="ecp-verify-card-line ecp-verify-card-line-sm"></span>
+            </div>
+          </div>
+          <span class="ecp-verify-card-line ecp-verify-card-line-full"></span>
+          <span class="ecp-verify-card-line ecp-verify-card-line-full"></span>
+          <span class="ecp-verify-card-line ecp-verify-card-line-mid"></span>
+          <div class="ecp-verify-scan"></div>
+          <div class="ecp-verify-seal">
+            {{ icons.icon_confirm() }}
+          </div>
+        </div>
+        <button type="button" class="ecp-illustration-cta" id="ecp-verify-btn">
           {{ icons.icon_confirm() }}
           <span class="btn-text">{{ _('Пройти проверку ЭЦП') }}</span>
         </button>
+      </div>
+
+      <div class="button-auth-area">
+        <div></div>
         <button type="button" class="svg-btn" id="prev-btn-4">
           {{ icons.back_icon() }}
           <span class="btn-text">{{ _('Назад') }}</span>
@@ -376,5 +396,7 @@ endblock %} {% block content %}
 {{ component.ecp_mock_modal('ecpRegisterModal') }}
 
 {{ affects.blurback() }}
+
+<script src="{{ url_for('static', filename='js/ecp-mock-modal.js') }}"></script>
 
 {% endblock %}

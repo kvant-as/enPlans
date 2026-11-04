@@ -229,30 +229,37 @@
       {{ component.organization_view_card(current_user.organization, current_user) }}
 
       {% if current_user.org_role %}
+      {# Приглашать/удалять сотрудников может только сам (оригинальный)
+         руководитель организации — не заместитель (у него те же права
+         везде в приложении, кроме управления составом организации). #}
       {% set can_manage_employees = current_user.org_role == 'org_head' %}
       {% set role_meta = {
-        'org_head':  {'label': _('Руководитель организации'), 'hint': _('Подписывает и утверждает план')},
-        'dept_head': {'label': _('Руководитель структурного подразделения'), 'hint': _('Создаёт, заполняет план, отправляет на подпись и подписывает')},
-        'executor':  {'label': _('Исполнитель'), 'hint': _('Создаёт, заполняет план и отправляет его на подпись')},
+        'org_head':        {'label': _('Руководитель организации'), 'hint': _('Подписывает и утверждает план')},
+        'org_head_deputy': {'label': _('Заместитель руководителя организации'), 'hint': _('Те же права, что и у руководителя организации')},
+        'dept_head':       {'label': _('Руководитель структурного подразделения'), 'hint': _('Создаёт, заполняет план, отправляет на подпись и подписывает')},
+        'executor':        {'label': _('Исполнитель'), 'hint': _('Создаёт, заполняет план и отправляет его на подпись')},
       } %}
+      {% set all_employees = [current_user] + org_employees %}
+      {% set employees_count = all_employees | length %}
       {% set employees_by_role = {} %}
-      {% for employee in org_employees %}{% set _ignore = employees_by_role.update({employee.org_role: employee}) %}{% endfor %}
-      {% set _ignore = employees_by_role.update({current_user.org_role: current_user}) %}
+      {% for employee in all_employees %}{% set _ignore = employees_by_role.update({employee.org_role: employee}) %}{% endfor %}
+      {% set flat_employees = all_employees | selectattr('org_role', 'in', ['dept_head', 'executor']) | list %}
 
       <hr/>
       <h1 class="name">{{ _('Сотрудники организации') }}</h1>
       <div class="org-roles-note">
         <p>
           {% if can_manage_employees %}
-            {{ _('На каждую роль — один сотрудник. Отправить план с ЭЦП сможет только руководитель организации и руководитель структурного подразделения.') }}
+            {{ _('Руководитель организации и его заместитель — по одному. Остальные места (руководители структурных подразделений и исполнители) без ограничения по роли.') }}
           {% else %}
             {{ _('Кто за какую роль отвечает в вашей организации. Приглашать и удалять сотрудников может только руководитель организации.') }}
           {% endif %}
+          {{ _('Сотрудников') }}: {{ employees_count }} {{ _('из') }} 7.
         </p>
       </div>
 
       <div class="plan-executors-list">
-        {% for role_key in ['org_head', 'dept_head', 'executor'] %}
+        {% for role_key in ['org_head', 'org_head_deputy'] %}
         {% set meta = role_meta[role_key] %}
         {% set occupant = employees_by_role.get(role_key) %}
         <div class="plan-executor-card{% if not occupant %} plan-executor-card-vacant{% endif %}{% if occupant and occupant.id == current_user.id %} plan-executor-card-self{% endif %}">
@@ -273,13 +280,18 @@
             <span class="plan-executor-card-meta">{{ meta.hint }}</span>
             {% endif %}
           </div>
-          {% if not occupant and can_manage_employees %}
+          {% if not occupant and can_manage_employees and employees_count < 7 %}
           <button type="button" class="plan-executor-card-invite-btn" data-invite-role="{{ role_key }}">
             {{ icons.icon_add() }}
             <span>{{ _('Пригласить') }}</span>
           </button>
           {% elif not occupant %}
           <span class="plan-executor-card-vacant-label">{{ _('Вакантно') }}</span>
+          {% endif %}
+          {% if occupant and role_key != 'org_head' and occupant.id != current_user.id and can_manage_employees %}
+          <button type="button" class="plan-executor-card-remove" title="{{ _('Удалить из организации') }}"
+                  data-remove-employee-id="{{ occupant.id }}"
+                  data-remove-employee-name="{{ occupant.last_name }} {{ occupant.first_name }}">&times;</button>
           {% endif %}
         </div>
         {% if not occupant and can_manage_employees %}
@@ -297,7 +309,51 @@
         </form>
         {% endif %}
         {% endfor %}
+
+        {% for employee in flat_employees %}
+        <div class="plan-executor-card{% if employee.id == current_user.id %} plan-executor-card-self{% endif %}">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">
+              {% if employee.last_name or employee.first_name or employee.patronymic_name %}
+                {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic_name }}
+              {% else %}
+                {{ _('Ждём регистрации') }}
+              {% endif %}
+            </span>
+            <span class="plan-executor-card-meta">{{ role_meta[employee.org_role].label }}{% if employee.email %} · {{ employee.email }}{% endif %}</span>
+            <span class="plan-executor-card-hint">{{ role_meta[employee.org_role].hint }}</span>
+          </div>
+          {% if employee.id != current_user.id and can_manage_employees %}
+          <button type="button" class="plan-executor-card-remove" title="{{ _('Удалить из организации') }}"
+                  data-remove-employee-id="{{ employee.id }}"
+                  data-remove-employee-name="{{ employee.last_name }} {{ employee.first_name }}">&times;</button>
+          {% endif %}
+        </div>
+        {% endfor %}
       </div>
+
+      {% if can_manage_employees and employees_count < 7 %}
+      <button type="button" class="plan-executor-card-invite-btn" id="inviteEmployeeBtn" style="margin-top: 12px;">
+        {{ icons.icon_add() }}
+        <span>{{ _('Пригласить сотрудника') }}</span>
+      </button>
+      <form action="{{ url_for('views.invite_employee') }}" method="POST" class="org-role-invite-form" id="inviteForm-employee" style="display: none; margin-top: 12px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <div class="input-with-icon">
+          {{ icons.icon_email() }}
+          <input type="email" name="email" class="app-input" placeholder="{{ _('Email сотрудника') }}" required />
+        </div>
+        <div class="org-role-radio-group">
+          <label><input type="radio" name="org_role" value="dept_head" checked /> {{ _('Руководитель структурного подразделения') }}</label>
+          <label><input type="radio" name="org_role" value="executor" /> {{ _('Исполнитель') }}</label>
+        </div>
+        <button type="submit" class="no-submit-button blue">
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Отправить приглашение') }}</span>
+        </button>
+      </form>
+      {% endif %}
 
       <script>
         document.querySelectorAll('[data-invite-role]').forEach(function (btn) {
@@ -310,6 +366,77 @@
             if (input) input.focus();
           });
         });
+        (function () {
+          var btn = document.getElementById('inviteEmployeeBtn');
+          var form = document.getElementById('inviteForm-employee');
+          if (!btn || !form) return;
+          btn.addEventListener('click', function () {
+            btn.style.display = 'none';
+            form.style.display = 'flex';
+            var input = form.querySelector('input[type="email"]');
+            if (input) input.focus();
+          });
+        })();
+        (function () {
+          // Удаление сотрудника — AJAX, через общий #confirmModal (см.
+          // base.html). Он уже используется формой удаления аккаунта
+          // (profile.js/deleteProfileBtn) — чтобы случайный клик "Да" тут
+          // не отправил ту форму заодно, явно сбрасываем modal._currentForm.
+          var modal = document.getElementById('confirmModal');
+          var yesBtn = document.getElementById('confirmYes');
+          var noBtn = document.getElementById('confirmNo');
+          var textEl = document.getElementById('modal-text');
+          var textSecondEl = document.getElementById('modal-text-second');
+          if (!modal || !yesBtn || !noBtn) return;
+
+          var pendingRemoveId = null;
+          var csrfToken = "{{ csrf_token() }}";
+
+          document.querySelectorAll('[data-remove-employee-id]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              pendingRemoveId = btn.dataset.removeEmployeeId;
+              modal._currentForm = null;
+              modal._removeEmployeeMode = true;
+              if (textEl) textEl.textContent = "{{ _('Удалить сотрудника') }} " + (btn.dataset.removeEmployeeName || '').trim() + " {{ _('из организации?') }}";
+              if (textSecondEl) textSecondEl.textContent = "{{ _('Доступно только если у него нет данных в системе (планов, подписей, сообщений).') }}";
+              modal.classList.add('active');
+            });
+          });
+
+          yesBtn.addEventListener('click', function () {
+            if (!modal._removeEmployeeMode || !pendingRemoveId) return;
+            var id = pendingRemoveId;
+            pendingRemoveId = null;
+            modal._removeEmployeeMode = false;
+            modal.classList.remove('active');
+
+            fetch('/remove-employee/' + id, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+            })
+              .then(function (r) {
+                return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+              })
+              .then(function (res) {
+                if (res.ok && res.data.success) {
+                  window.location.reload();
+                } else {
+                  alert((res.data && res.data.error) || "{{ _('Не удалось удалить сотрудника') }}");
+                }
+              })
+              .catch(function () {
+                alert("{{ _('Ошибка сети') }}");
+              });
+          });
+
+          noBtn.addEventListener('click', function () {
+            modal._removeEmployeeMode = false;
+            pendingRemoveId = null;
+          });
+        })();
       </script>
       {% endif %}
 

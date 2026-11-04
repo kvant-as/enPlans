@@ -512,7 +512,6 @@ def create_ticket(token):
 
     new_ticket = PlanTicket(
         note=note.strip(),
-        luck=False,
         plan_id=current_plan.id,
         user_id=current_user.id,
         is_system=(current_user.id == current_plan.user_id),

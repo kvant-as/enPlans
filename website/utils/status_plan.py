@@ -29,47 +29,63 @@ def _unlink_stale_remark_tickets(path):
     видел бы их как "уже есть сообщение по этому этапу" и не давал бы
     написать новое. Отвязываем все НЕ системные сообщения, привязанные к
     этому этапу: они относятся к состоянию, которое только что отменили,
-    и теперь не должны считаться актуальным замечанием по новой попытке."""
+    и теперь не должны считаться актуальным замечанием по новой попытке.
+    Заодно сбрасываем path.ticket_id — "то самое" замечание шага
+    (см. PlanApprovalPath.ticket) тоже относится к отменённому состоянию."""
     PlanTicket.query.filter_by(approval_path_id=path.id, is_system=False).update(
         {'approval_path_id': None}
     )
+    path.ticket_id = None
 
 
-def handle_draft_status(plan, reason=None):
+def handle_draft_status(plan, reason=None, attachment_file=None):
+    """«Отменить отправку» (доступна только первые 5 минут после реальной
+    внешней отправки, см. api_change_plan_status) — возвращает план не в
+    «В редакции» с нуля, а на тот же этап внутреннего подписания, на
+    котором он был прямо перед отправкой: тому же человеку (последнему
+    внутреннему подписанту, plan.internal_signed_by_user_id —
+    handle_sent_status его больше не очищает) снова нужно подписать и
+    отправить, по тому же маршруту (pending_coordinator_ids/pending_approver_id
+    — тоже не очищаются при отправке) — заново выбирать организации не
+    нужно. is_control тоже восстанавливаем в True — handle_sent_status
+    сбрасывает его в False при реальной отправке, а до этого момента (с
+    "Пройти контроль" и до самой отправки) он был True."""
     try:
         was_sent = plan.is_sent
 
-        plan.is_draft = True
-        plan.is_control = False
         plan.is_sent = False
         plan.is_error = False
         plan.is_approved = False
+        plan.sent_time = None
+
+        if was_sent:
+            plan.pending_signer_user_id = plan.internal_signed_by_user_id
+            plan.is_signed = False
+            plan.is_control = True
 
         plan.change_time = current_utc_time()
 
-        # "Отменить отправку" (was_sent=True) требует указать причину — она
-        # заносится в "Подписи" отдельной строкой в конце списка (см.
-        # plan_signatures_page, тот же стиль, что и "Разработчик плана").
-        # Простой возврат из "В редакции" в "В редакции" (was_sent=False)
-        # причины не требует и тикет не создаёт.
         if was_sent and reason and reason.strip():
             ticket = PlanTicket(
                 note=f'{CANCEL_SEND_NOTE_PREFIX}. Причина: {reason.strip()}',
-                luck=True,
                 is_system=True,
                 user_id=current_user.id if current_user.is_authenticated else None,
                 plan_id=plan.id,
                 begin_time=current_utc_time(),
             )
             db.session.add(ticket)
+            if attachment_file and attachment_file.filename:
+                from website.utils.ticket_attachment import save_ticket_attachment
+                db.session.flush()
+                save_ticket_attachment(ticket, attachment_file)
 
         db.session.commit()
 
-        return {'message': 'Статус изменен на "В редакции"'}
+        return {'message': 'Отправка отменена, план возвращён на этап внутреннего подписания'}
 
     except Exception as e:
         db.session.rollback()
-        return {'error': f'Ошибка при изменении статуса: {str(e)}'}
+        return {'error': f'Ошибка при отмене отправки: {str(e)}'}
 
 def handle_control_status(plan):
     errors = []
@@ -257,12 +273,20 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         sender_phone = sender.telephone if sender else None
         sender_email = sender.email if sender else None
 
-        for step_order, (step_type, org) in enumerate(chain, start=1):
+        # Внешние строки продолжают нумерацию step_order ПОСЛЕ уже
+        # записанных шагов внутренней цепочки этой попытки (is_internal=True,
+        # cycle=0 — "ещё не отправлено", см. internal_sign/
+        # forward_internal_signature) — один непрерывный путь плана.
+        internal_order_start = (db.session.query(db.func.max(PlanApprovalPath.step_order))
+            .filter_by(plan_id=plan.id, cycle=0, is_internal=True).scalar() or 0) + 1
+
+        for step_order, (step_type, org) in enumerate(chain, start=internal_order_start):
             db.session.add(PlanApprovalPath(
                 plan_id=plan.id,
                 step_order=step_order,
                 organization_id=org.id,
                 step_type=step_type,
+                is_internal=False,
                 created_at=current_utc_time(),
                 cycle=new_cycle,
                 sender_post=sender_post,
@@ -270,6 +294,12 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
                 sender_phone=sender_phone,
                 sender_email=sender_email,
             ))
+
+        # Шаги внутренней цепочки этой попытки (submit_for_signature/
+        # forward_internal_signature/internal_sign) привязываются к этому
+        # же номеру цикла — теперь это постоянная история, видимая в
+        # "Подписи" вместе с внешними организациями.
+        PlanApprovalPath.query.filter_by(plan_id=plan.id, cycle=0, is_internal=True).update({'cycle': new_cycle})
 
         plan.sent_time = current_utc_time()
         plan.is_sent = True
@@ -280,15 +310,17 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
         plan.afch = False
 
         # Внутренний цикл подписания завершён — план ушёл во внешний
-        # маршрут (PlanApprovalPath выше), поля цикла больше не нужны.
+        # маршрут (PlanApprovalPath выше). pending_signer_user_id ОБЯЗАТЕЛЬНО
+        # чистим (иначе остальные сотрудники ошибочно увидят "ожидает
+        # подписи" у уже отправленного плана). internal_signed_by_user_id/
+        # internal_signed_at/pending_coordinator_ids/pending_approver_id —
+        # больше НЕ чистим: это теперь снимок "кто и по какому маршруту
+        # последний раз подписывал и отправлял", нужный для "Отменить
+        # отправку" (см. handle_draft_status) — он их безвредно перезатрёт
+        # следующий submit_for_signature/internal_sign в штатном цикле.
         plan.is_signed = False
         plan.pending_signer_user_id = None
         plan.submitted_by_user_id = None
-        plan.internal_signed_by_user_id = None
-        plan.internal_signed_at = None
-        plan.internal_signed_by_snapshot = None
-        plan.pending_coordinator_ids = None
-        plan.pending_approver_id = None
 
         db.session.commit()
 
@@ -316,6 +348,7 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
                 plan_id=plan.id,
                 cycle=cycle,
                 organization_id=current_user.organization_id,
+                is_internal=False,
                 is_viewed=True
             ).order_by(PlanApprovalPath.viewed_at.desc(), PlanApprovalPath.step_order.desc()).first()
 
@@ -332,6 +365,7 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
                     plan_id=plan.id,
                     cycle=cycle,
                     organization_id=current_user.organization_id,
+                    is_internal=False,
                 ).filter(PlanApprovalPath.rejected_at.isnot(None)).order_by(
                     PlanApprovalPath.rejected_at.desc(), PlanApprovalPath.step_order.desc()
                 ).first()
@@ -352,29 +386,11 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
                 current_path.viewed_at = None
                 current_path.viewed_by_user_id = None
                 current_path.viewed_by_snapshot = None
-                note = "Проверка отменена. План возвращен на этап рассмотрения."
             else:
                 current_path.rejected_at = None
                 current_path.rejected_by_snapshot = None
-                note = "Отклонение плана отменено. План возвращен на этап рассмотрения."
 
             _unlink_stale_remark_tickets(current_path)
-
-            # Отмена своего согласования требует письменной причины
-            # (см. api_change_plan_status) — фиксируем её в сообщении
-            # по плану, как и причину отмены отправки разработчиком.
-            if reason:
-                note += f" Причина: {reason.strip()}"
-
-            ticket = PlanTicket(
-                note=note,
-                luck=True,
-                is_system=True,
-                user_id=current_user.id,
-                plan_id=plan.id,
-                begin_time=current_utc_time()
-            )
-            db.session.add(ticket)
 
             notification = Notification(
                 user_id=plan.user_id,
@@ -390,19 +406,10 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
             plan.is_approved = False
             plan.afch = False
 
-            PlanApprovalPath.query.filter_by(plan_id=plan.id, cycle=cycle).update(
+            PlanApprovalPath.query.filter_by(plan_id=plan.id, cycle=cycle, is_internal=False).update(
                 {'is_viewed': False, 'viewed_at': None}
             )
-            
-            ticket = PlanTicket(
-                note="Отмена изменений. Все шаги согласования сброшены, план возвращен в изначальный статус.",
-                luck=True,
-                is_system=True,
-                plan_id=plan.id,
-                begin_time=current_utc_time()
-            ) 
-            db.session.add(ticket)
-            
+
             notification = Notification(
                 user_id=plan.user_id,
                 message=f"План {plan.year} возвращен в статус рассмотрения.",
@@ -436,10 +443,11 @@ def handle_error_status(plan, current_user):
         # вложение уже проверено), а подписавший руководитель — проверяем,
         # что сообщение с замечаниями на этом этапе вообще есть, от кого бы
         # из организации оно ни было оставлено.
-        has_review_message = bool(current_path) and any(
-            not t.is_system and t.approval_path_id == current_path.id for t in plan.tickets
-        )
-        if not has_review_message:
+        review_message = next(
+            (t for t in plan.tickets if current_path and not t.is_system and t.approval_path_id == current_path.id),
+            None
+        ) if current_path else None
+        if not review_message:
             return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
 
         now = current_utc_time()
@@ -447,6 +455,11 @@ def handle_error_status(plan, current_user):
         if current_path:
             current_path.rejected_at = now
             current_path.rejected_by_snapshot = build_signer_snapshot(current_user)
+            # "То самое" замечание шага для столбца "Замечания" в "Подписи"
+            # (см. PlanApprovalPath.ticket) — реальное сообщение из чата
+            # проверки, которое уже обязательно есть (см. review_message
+            # выше), отдельный технический тикет больше не создаётся.
+            current_path.ticket_id = review_message.id
 
         plan.audit_time = now
         plan.is_error = True
@@ -463,16 +476,6 @@ def handle_error_status(plan, current_user):
         # и момент отклонения будет уже не восстановить (см.
         # create_plan_snapshot в utils/plans.py).
         create_plan_snapshot(plan)
-
-        ticket = PlanTicket(
-            note="В плане нашли ошибки, статус изменен на Есть ошибки.",
-            luck=True,
-            is_system=True,
-            plan_id=plan.id,
-            user_id=current_user.id,
-            begin_time=current_utc_time(),
-        )
-        db.session.add(ticket)
 
         notification = Notification(
             user_id=plan.user_id,
@@ -538,36 +541,16 @@ def handle_approved_status(plan, current_user):
             plan.is_control = False
             plan.is_sent = False
             plan.is_error = False
-            
-            ticket = PlanTicket(
-                note="План согласован и утвержден",
-                luck=True,
-                is_system=True,
-                user_id=current_user.id,
-                plan_id=plan.id,
-                begin_time=current_utc_time()
-            )
-            db.session.add(ticket)
-            
+
             notification = Notification(
                 user_id=plan.user_id,
                 message=f"План на {plan.year} был утвержден",
                 created_at=current_utc_time()
             )
             db.session.add(notification)
-            
+
             message = "План полностью согласован и утвержден"
         else:
-            ticket = PlanTicket(
-                note="План был согласован и передан в следующую стадию проверки.",
-                luck=True,
-                is_system=True,
-                # user_id=current_user.id,
-                plan_id=plan.id,
-                begin_time=current_utc_time()
-            )
-            db.session.add(ticket)
-            
             message = "Этап успешно согласован"
         
         db.session.commit()
@@ -625,8 +608,6 @@ def handle_admin_confirm_step(plan, path_id, admin_user):
         ).first()
         is_final = bool(last_path and last_path.id == target_path.id)
 
-        org_name = target_path.organization.full_name if target_path.organization else f'этап {target_path.step_order}'
-
         if is_final:
             plan.is_approved = True
             plan.is_draft = False
@@ -634,23 +615,11 @@ def handle_admin_confirm_step(plan, path_id, admin_user):
             plan.is_sent = False
             plan.is_error = False
 
-            note = f"Администратор подтвердил этап «{org_name}» и весь путь согласования. План согласован и утвержден."
             notif_message = f"План на {plan.year} год был утвержден администратором"
             result_message = 'План полностью согласован и утвержден администратором'
         else:
-            note = f"Администратор подтвердил этап «{org_name}» (шаг {target_path.step_order}) в обход обычного порядка согласования."
             notif_message = f"Этап согласования плана на {plan.year} год подтвержден администратором"
             result_message = 'Этап подтвержден администратором'
-
-        ticket = PlanTicket(
-            note=note,
-            luck=True,
-            is_system=True,
-            user_id=admin_user.id,
-            plan_id=plan.id,
-            begin_time=now
-        )
-        db.session.add(ticket)
 
         notification = Notification(
             user_id=plan.user_id,
@@ -712,27 +681,6 @@ def handle_admin_cancel_step(plan, path_id, admin_user):
 
         plan.audit_time = now
 
-        org_name = target_path.organization.full_name if target_path.organization else f'этап {target_path.step_order}'
-        note = f"Администратор {admin_user.email} отменил подтверждение этапа «{org_name}» (шаг {target_path.step_order})"
-        if len(paths_to_cancel) > 1:
-            note += f" и {len(paths_to_cancel) - 1} последующих зависимых от него этапов"
-        note += "."
-
-        ticket = PlanTicket(
-            note=note,
-            luck=True,
-            is_system=True,
-            user_id=admin_user.id,
-            plan_id=plan.id,
-            begin_time=now
-        )
-        db.session.add(ticket)
-
-        # Notification.message — varchar(140); название организации в
-        # пути согласования может быть сколь угодно длинным (как здесь —
-        # "Гродненское областное управление по надзору..."), поэтому в
-        # уведомление оно не включается (полная версия — в PlanTicket.note
-        # выше, у него такого ограничения нет).
         notification = Notification(
             user_id=plan.user_id,
             message=f"Подтверждение этапа согласования плана на {plan.year} год было отменено администратором",

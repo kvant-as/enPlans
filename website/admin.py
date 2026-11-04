@@ -41,21 +41,31 @@ def _user_on_save(obj, creating):
     if creating:
         obj.application_id = get_current_application_id()
 
-    # Каждая роль (исполнитель/рук. подразделения/рук. организации) — максимум
-    # один сотрудник на организацию (та же проверка, что и в
+    # "Руководитель организации"/"Заместитель руководителя" — максимум один
+    # сотрудник на организацию на каждую роль (та же проверка, что и в
     # views.invite_employee, но нужна и тут — org_role редактируется в
-    # админке напрямую, в обход приглашения).
+    # админке напрямую, в обход приглашения). dept_head/executor — без
+    # ограничения по количеству, в пределах общего лимита ниже.
     if obj.org_role and obj.organization_id:
-        conflict = User.query.filter(
-            User.organization_id == obj.organization_id,
-            User.application_id == obj.application_id,
-            User.org_role == obj.org_role,
-            User.id != obj.id,
-        ).first()
-        if conflict:
-            raise ValueError(
-                f'Роль "{obj.org_role}" уже занята сотрудником {conflict.email} в этой организации'
-            )
+        if obj.org_role in ('org_head', 'org_head_deputy'):
+            conflict = User.query.filter(
+                User.organization_id == obj.organization_id,
+                User.application_id == obj.application_id,
+                User.org_role == obj.org_role,
+                User.id != obj.id,
+            ).first()
+            if conflict:
+                raise ValueError(
+                    f'Роль "{obj.org_role}" уже занята сотрудником {conflict.email} в этой организации'
+                )
+
+        if creating:
+            employees_count = User.query.filter(
+                User.organization_id == obj.organization_id,
+                User.application_id == obj.application_id,
+            ).count()
+            if employees_count >= 7:
+                raise ValueError('В организации не может быть больше 7 сотрудников')
 
 
 def _user_application_display(obj):
@@ -114,6 +124,7 @@ site.register(
             ("executor", "Исполнитель"),
             ("dept_head", "Руководитель структурного подразделения"),
             ("org_head", "Руководитель организации"),
+            ("org_head_deputy", "Заместитель руководителя организации"),
         ], help="Кто этот сотрудник внутри своей организации (не путать с ролями выше — те про права в приложении)."),
         F("organization_id", "Организация", type="fk-search", target=Organization, target_label="full_name"),
         F("application_id", "Приложение", readonly=True, display=_user_application_display,
@@ -245,13 +256,12 @@ site.register(
 site.register(
     PlanTicket, name="Тикеты планов", group="Планы", stat_label="Тикетов",
     list_display=["id", "plan_id", "user", "begin_time", "note"],
-    list_badges=["luck", "is_system"], order_by="-id",
+    list_badges=["is_system"], order_by="-id",
     fields=[
         F("plan_id", "План", type="fk", target=Plan, target_label="id"),
         F("user_id", "Пользователь", type="fk", target=User, target_label="email"),
         F("note", "Текст", type="text", required=True),
         F("begin_time", "Время", type="datetime"),
-        F("luck", "Успех", type="bool"),
         F("is_system", "Системный", type="bool"),
     ],
 )
@@ -473,7 +483,7 @@ site.dashboard(
         #                "УНП 500022116 (утверждающая). Пароль у обеих: 12345678?",
         # },
         {
-            "label": "Добавить остальные предприятия",
+            "label": "Добавить остальные организации",
             "endpoint": "db_bp.fill_remaining_organizations_route",
             "method": "post",
             "confirm": "Добавить из справочников (regulars/coordinators/approvers.xlsx) "

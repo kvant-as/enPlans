@@ -58,7 +58,7 @@ def user_with_all_params():
             if not current_user.is_authenticated:
                 flash("Необходима авторизация", "error")
                 return redirect(url_for('auth.login'))
-            
+
             all_required_filled = (
                 current_user.last_name and
                 current_user.first_name and

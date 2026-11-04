@@ -120,7 +120,7 @@ def fill_organizations(db):
         for org in organizations:
             if not org.okpo or org.okpo == '' or org.okpo == 'nan':
                 # Организации без ОКПО теперь допустимы (см. кнопку
-                # «Добавить остальные предприятия» / fill_remaining_organizations)
+                # «Добавить остальные организации» / fill_remaining_organizations)
                 # — у них никогда не будет региона, и удалять их за это не
                 # нужно, в отличие от организаций с нечитаемым/неполным ОКПО ниже.
                 skipped_count += 1
@@ -182,7 +182,7 @@ def fill_organizations(db):
 
 
 def fill_remaining_organizations(db):
-    """Кнопка «Добавить остальные предприятия» — добирает из тех же трёх
+    """Кнопка «Добавить остальные организации» — добирает из тех же трёх
     справочников (regulars/coordinators/approvers.xlsx), что и
     fill_organizations(), строки БЕЗ ОКПО, которые та функция пропускает
     (там ОКПО обязателен — без него не определить регион). Такие
@@ -884,7 +884,7 @@ def fill_remaining_organizations_route():
         fill_remaining_organizations(db)
         return jsonify({
             'success': True,
-            'message': 'Остальные предприятия (без ОКПО) добавлены'
+            'message': 'Остальные организации (без ОКПО) добавлены'
         }), 200
     except Exception as e:
         db.session.rollback()

@@ -1264,6 +1264,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
+  width: fit-content;
   max-width: 100%;
   white-space: nowrap;
   display: inline-block;
@@ -1530,6 +1531,43 @@ body {
 .plan-executor-card-remove:hover {
   background: rgba(192, 57, 43, 0.1);
   color: #c0392b;
+}
+.plan-executor-card-developer {
+  border-color: var(--green-main, #00798f);
+  background: var(--green-light-back);
+}
+.plan-executor-card-developer-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--white);
+  background: var(--green-main, #00798f);
+  vertical-align: middle;
+}
+.plan-executor-card-developer-form {
+  flex-shrink: 0;
+}
+.plan-executor-card-developer-btn {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color-tin);
+  background: var(--white);
+  color: var(--green-main, #00798f);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.plan-executor-card-developer-btn:hover {
+  background: var(--green-light-back);
+  border-color: var(--green-main, #00798f);
 }
 
 .plan-executor-picker.signer-picker {
@@ -2961,7 +2999,7 @@ input::placeholder {
 @media (min-width: 1081px) {
   .header-cont.planed .navigation-container {
     width: 100%;
-    justify-content: center;
+    justify-content: space-around;
   }
   .header-cont.planed .nav-item {
     flex: 0 0 auto;
@@ -6106,6 +6144,55 @@ input[type="checkbox"]:focus {
   width: 100%;
 }
 
+/* Заголовки блоков "Внутри организации-разработчика"/"Внешние организации"
+   на вкладке "Подписи" — повторяются на каждый цикл отправки, поэтому
+   у первого блока в цикле отступ сверху крупнее (визуально отделяет
+   новый цикл), у остальных — компактнее. */
+.signatures-group {
+  margin-top: 28px;
+}
+.signatures-group:first-child {
+  margin-top: 0;
+}
+.signatures-group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.signatures-group-title-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.signatures-group-title-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.signatures-group-title-internal {
+  color: var(--tr-active, var(--green-main, #00798f));
+}
+.signatures-group-title-internal .signatures-group-title-icon {
+  background: var(--tr-active-back, var(--green-light-back, #e9fcff));
+  color: var(--tr-active, var(--green-main, #00798f));
+}
+.signatures-group-title-external {
+  color: var(--text-title, #1f2937);
+}
+.signatures-group-title-external .signatures-group-title-icon {
+  background: #F8F9FA;
+  border: 2px solid var(--tr-border);
+  color: var(--tr-text-dim);
+}
+
 .track-developer-note {
   display: flex;
   align-items: flex-start;
@@ -8368,8 +8455,8 @@ input[type="checkbox"]:focus {
   align-items: flex-start;
   justify-content: center;
   gap: 6px;
-  margin: 20px 0 4px;
-  padding: 0 10px;
+  margin: 0 0 20px;
+
 }
 .plan-send-step-dot {
   display: flex;
@@ -9961,6 +10048,167 @@ button[disabled] {
 .ecp-key-animation.is-error .ecp-key-error-badge {
   opacity: 1;
   transform: scale(1);
+}
+
+/* Шаг 4 регистрации (param.html) — отдельная от ecp_mock_modal иллюстрация:
+   "ID-карточка" со строками данных, бегущей сканирующей полосой и печатью
+   подтверждения, которая зажигается каждый проход — метафора проверки
+   личности, а не подписания документа (та уже занята ecp-key-animation
+   внутри самой модалки). Кнопка проверки стоит сбоку от карточки, внутри
+   общего блока .ecp-step-illustration. */
+.ecp-step-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding: 36px 28px;
+  border-radius: 20px;
+  background: linear-gradient(160deg, var(--green-light-back) 0%, var(--background-grey) 100%);
+  border: 1px solid var(--border-color-tin);
+  margin-bottom: 20px;
+}
+
+.ecp-verify-card {
+  position: relative;
+  width: 220px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--border-color-tin);
+  box-shadow: 0 14px 30px rgba(0, 85, 100, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ecp-verify-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ecp-verify-card-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--green-light-back);
+  color: var(--green-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ecp-verify-card-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+.ecp-verify-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.ecp-verify-card-line {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--background-grey);
+}
+.ecp-verify-card-line-lg { width: 80%; }
+.ecp-verify-card-line-sm { width: 50%; }
+.ecp-verify-card-line-full { width: 100%; }
+.ecp-verify-card-line-mid { width: 65%; }
+
+.ecp-verify-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: linear-gradient(180deg, rgba(0, 155, 182, 0) 0%, rgba(0, 155, 182, 0.22) 45%, rgba(0, 155, 182, 0.22) 55%, rgba(0, 155, 182, 0) 100%);
+  animation: ecpVerifyScanSweep 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ecpVerifyScanSweep {
+  0% { transform: translateY(-40px); }
+  55% { transform: translateY(150px); }
+  100% { transform: translateY(150px); }
+}
+
+.ecp-verify-seal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--green-main);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.5);
+  box-shadow: 0 0 0 4px var(--green-light-back);
+  animation: ecpVerifySealPop 3.2s ease-in-out infinite;
+}
+.ecp-verify-seal svg {
+  width: 15px;
+  height: 15px;
+}
+@keyframes ecpVerifySealPop {
+  0%, 52% { opacity: 0; transform: scale(0.5); }
+  62% { opacity: 1; transform: scale(1.15); }
+  72% { transform: scale(1); }
+  92% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+.ecp-illustration-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, var(--green-main), var(--green-light));
+  color: var(--white);
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 121, 143, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ecp-illustration-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(0, 121, 143, 0.35);
+}
+.ecp-illustration-cta:active {
+  transform: translateY(0);
+}
+.ecp-illustration-cta svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ecp-verify-scan,
+  .ecp-verify-seal {
+    animation: none;
+  }
+  .ecp-verify-scan {
+    display: none;
+  }
+  .ecp-verify-seal {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (max-width: 480px) {
+  .ecp-step-illustration {
+    flex-direction: column;
+    padding: 28px 20px;
+  }
 }
 
 .ecp-cert-privacy-note {

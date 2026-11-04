@@ -128,7 +128,7 @@ def org_head_forbidden(f):
     декоратор, а инлайн-проверка в самом роуте."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.org_role == 'org_head':
+        if current_user.is_org_manager:
             message = 'Руководитель организации не редактирует содержимое плана'
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'error': message}), 403
@@ -189,13 +189,22 @@ ORG_ROLE_LABELS = {
     'executor': 'Исполнитель',
     'dept_head': 'Руководитель структурного подразделения',
     'org_head': 'Руководитель организации',
+    'org_head_deputy': 'Заместитель руководителя организации',
 }
+
+ORG_EMPLOYEES_MAX = 7
+# По одному на организацию — остальные роли (dept_head/executor) без лимита
+# по количеству, в пределах общего ORG_EMPLOYEES_MAX.
+ORG_SINGLE_SLOT_ROLES = ('org_head', 'org_head_deputy')
 
 @views.route('/invite-employee', methods=['POST'])
 @user_with_all_params()
 @login_required
 @session_required
 def invite_employee():
+    # Приглашать/удалять сотрудников может только сам (оригинальный)
+    # руководитель организации — не заместитель, у него те же права везде
+    # в приложении (is_org_manager), кроме управления составом организации.
     if current_user.org_role != 'org_head':
         flash('Приглашать сотрудников может только руководитель организации', 'error')
         return redirect(url_for('views.profile'))
@@ -211,15 +220,26 @@ def invite_employee():
         flash('Выберите роль сотрудника', 'error')
         return redirect(url_for('views.profile'))
 
-    # Каждая роль — максимум один сотрудник на организацию (в т.ч. "Руководитель
-    # организации": регистрирующий аккаунт её уже занимает, см. add_param).
-    role_taken = User.query.filter(
+    # "Руководитель организации" и "Заместитель руководителя" — максимум один
+    # сотрудник на организацию на каждую роль (в т.ч. сам руководитель:
+    # регистрирующий аккаунт её уже занимает, см. add_param). dept_head/
+    # executor — без ограничения по количеству, в пределах общего лимита.
+    if org_role in ORG_SINGLE_SLOT_ROLES:
+        role_taken = User.query.filter(
+            User.organization_id == current_user.organization_id,
+            User.application_id == get_current_application_id(),
+            User.org_role == org_role
+        ).first()
+        if role_taken:
+            flash(f'Роль «{ORG_ROLE_LABELS[org_role]}» уже занята сотрудником {role_taken.email}', 'error')
+            return redirect(url_for('views.profile'))
+
+    employees_count = User.query.filter(
         User.organization_id == current_user.organization_id,
         User.application_id == get_current_application_id(),
-        User.org_role == org_role
-    ).first()
-    if role_taken:
-        flash(f'Роль «{ORG_ROLE_LABELS[org_role]}» уже занята сотрудником {role_taken.email}', 'error')
+    ).count()
+    if employees_count >= ORG_EMPLOYEES_MAX:
+        flash(f'В организации не может быть больше {ORG_EMPLOYEES_MAX} сотрудников', 'error')
         return redirect(url_for('views.profile'))
 
     existing_user = User.query.filter(
@@ -255,6 +275,69 @@ def invite_employee():
 
     flash(f'Приглашение отправлено на {email}', 'success')
     return redirect(url_for('views.profile'))
+
+def _employee_has_any_data(user_id):
+    """Оставил ли сотрудник в системе хоть что-то (создал план, был
+    исполнителем, писал в тикетах, участвовал в маршруте согласования) —
+    если да, удалять аккаунт нельзя: это сломает ссылки на него в этих
+    записях (Plan.user_id/PlanExecutor.user_id и т.п. — nullable=False)."""
+    from common_models import Plan, PlanExecutor, PlanTicket, PlanApprovalPath
+    if Plan.query.filter(
+        db.or_(
+            Plan.user_id == user_id,
+            Plan.pending_signer_user_id == user_id,
+            Plan.submitted_by_user_id == user_id,
+            Plan.internal_signed_by_user_id == user_id,
+        )
+    ).first():
+        return True
+    if PlanExecutor.query.filter_by(user_id=user_id).first():
+        return True
+    if PlanTicket.query.filter_by(user_id=user_id).first():
+        return True
+    if PlanApprovalPath.query.filter(
+        db.or_(
+            PlanApprovalPath.viewed_by_user_id == user_id,
+            PlanApprovalPath.pending_signer_user_id == user_id,
+            PlanApprovalPath.submitted_by_user_id == user_id,
+            PlanApprovalPath.signed_by_user_id == user_id,
+        )
+    ).first():
+        return True
+    return False
+
+
+@views.route('/remove-employee/<int:user_id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def remove_employee(user_id):
+    """Удаление сотрудника из организации — AJAX. Приглашать/удалять может
+    только сам (оригинальный) руководитель организации, не заместитель.
+    Настоящий DELETE разрешён только если сотрудник ничего не успел
+    сделать в системе (см. _employee_has_any_data) — иначе удаление
+    сломало бы ссылки на него в его же планах/тикетах/подписях."""
+    if current_user.org_role != 'org_head':
+        return jsonify({'success': False, 'error': 'Удалять сотрудников может только руководитель организации'}), 403
+
+    target = User.query.filter(
+        User.id == user_id,
+        User.organization_id == current_user.organization_id,
+        User.application_id == get_current_application_id(),
+    ).first()
+    if not target:
+        return jsonify({'success': False, 'error': 'Сотрудник не найден'}), 404
+
+    if target.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Невозможно удалить самого себя'}), 400
+
+    if _employee_has_any_data(target.id):
+        return jsonify({'success': False, 'error': 'У сотрудника есть данные в системе (планы, подписи, сообщения) — удаление невозможно'}), 400
+
+    db.session.delete(target)
+    db.session.commit()
+
+    return jsonify({'success': True})
 
 @views.route('/profile/edit', methods = ['POST', 'GET'])
 @user_with_all_params()
@@ -571,7 +654,7 @@ def create_plan():
     # Руководитель организации подписывает и отправляет планы, но не
     # заводит их сам — это задача исполнителя/руководителя структурного
     # подразделения (см. "внутренние роли сотрудников").
-    if current_user.org_role == 'org_head':
+    if current_user.is_org_manager:
         flash('Руководитель организации не создаёт планы — это делает исполнитель или руководитель структурного подразделения', 'error')
         return redirect(url_for('views.plans'))
 
@@ -630,13 +713,6 @@ def create_plan():
         if cost_per_toe_value is None:
             return redirect(url_for('views.create_plan'))
 
-        # "Разработчик плана" — по умолчанию тот, кто его создал (обычно
-        # исполнитель) — автозаполняется из профиля, а не остаётся пустым
-        # до ручного нажатия кнопки «Разработчик плана»; саму кнопку это
-        # не отменяет — если план в итоге готовил кто-то другой, данные
-        # можно поправить там же, пока план ещё в редакции.
-        developer_name = ' '.join(filter(None, [current_user.last_name, current_user.first_name, current_user.patronymic_name]))
-
         new_plan = Plan(
             org_id=org_id,
             year=year,
@@ -647,23 +723,27 @@ def create_plan():
             share_energy=share_energy,
             usd_rate=usd_rate_value,
             cost_per_toe_usd=cost_per_toe_value,
-            developer_name=developer_name or None,
-            developer_phone=current_user.telephone,
-            developer_email=current_user.email
         )
-        
+
         db.session.add(new_plan)
         db.session.commit()
 
         # Создатель плана — первая запись в списке "Ответственных
-        # исполнителей" (см. PlanExecutor, common-models) — список можно
-        # дополнить ещё одним сотрудником организации позже, со страницы
-        # "Действия с планом" (add_plan_executor/remove_plan_executor в
-        # plan_bp.py).
+        # исполнителей" (см. PlanExecutor, common-models, максимум 2
+        # человека) — список можно дополнить ещё одним сотрудником
+        # организации позже, со страницы "Действия с планом"
+        # (add_plan_executor/remove_plan_executor в plan_bp.py). Снимок
+        # ФИО/телефона/email делается сразу — используется в "Подписи"
+        # (см. get_plan_executors_summary) и не меняется при последующем
+        # редактировании профиля.
+        developer_name = ' '.join(filter(None, [current_user.last_name, current_user.first_name, current_user.patronymic_name]))
         db.session.add(PlanExecutor(
             plan_id=new_plan.id,
             user_id=current_user.id,
             added_at=current_utc_time(),
+            developer_name=developer_name or None,
+            developer_phone=current_user.telephone,
+            developer_email=current_user.email,
         ))
         db.session.commit()
 
@@ -930,7 +1010,6 @@ def get_ticket_details(ticket_id):
     return jsonify({
         'id': ticket.id,
         'organization': ticket.user.organization.full_name if ticket.user and ticket.user.organization else 'Система',
-        'luck': ticket.luck,
         'note': ticket.note or '',
         'time': ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--',
         'date': ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time else '',

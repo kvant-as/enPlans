@@ -213,7 +213,7 @@
                 {% for candidate in signer_candidates %}
                 <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
                   <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
-                  <span class="signer-picker-item-role">{{ candidate.post or (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения')) }}</span>
+                  <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения'))) }}</span>
                 </div>
                 {% endfor %}
               </div>

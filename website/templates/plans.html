@@ -15,7 +15,7 @@
         <a class="name">{% if audit_page %}{{ _('Просмотр планов мероприятий по энергосбережению') }}{% else %}{{ _('Планы мероприятий по энергосбережению') }}{% endif %}</a>
       </div>
       <div class="header-content-right">
-        {% if current_user.is_auditor == False and current_user.is_reader == False and current_user.org_role != 'org_head' %}
+        {% if current_user.is_auditor == False and current_user.is_reader == False and not current_user.is_org_manager %}
           <button
             type="button"
             class="main-btn main-btn-primary"

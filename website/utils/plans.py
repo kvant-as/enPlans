@@ -5,7 +5,7 @@ from venv import logger
 from flask_login import current_user
 
 from .. import db
-from ..models import Direction, Organization, Plan, PlanColumnConfig, PlanTicket, Indicator, Event, IndicatorUsage, Notification, PlanApprovalPath, User
+from ..models import Direction, Organization, Plan, PlanColumnConfig, PlanExecutor, PlanTicket, Indicator, Event, IndicatorUsage, Notification, PlanApprovalPath, User
 
 from common_models import current_utc_time
 
@@ -160,33 +160,18 @@ def get_column_configs_for_plan(plan):
     return configs
 
 def update_ChangeTimePlan(id):
-    def owner_ticket(plan):
-        new_ticket = PlanTicket(
-            note='Внесение изменений пользователем.',
-            luck = True,
-            is_system = True,
-            plan_id=plan.id,
-            begin_time=current_utc_time()
-        )
-
-        db.session.add(new_ticket)
-        plan.afch = False
-        db.session.commit()
-        
-     
     plan = Plan.query.filter_by(id=id).first()
     if not plan:
-        return 
-    
-    plan.change_time = current_utc_time()
-    plan.is_draft = True   
-    plan.is_control = False  
-    plan.is_sent = False      
-    plan.is_error = False    
-    plan.is_approved = False  
+        return
 
-    if plan.afch == True:
-        owner_ticket(plan)
+    plan.change_time = current_utc_time()
+    plan.is_draft = True
+    plan.is_control = False
+    plan.is_sent = False
+    plan.is_error = False
+    plan.is_approved = False
+
+    plan.afch = False
 
     db.session.commit()
 
@@ -879,9 +864,18 @@ def build_signature_cycles(plan):
     как "Не пройдено" (цикл брошен/отменён), а не "На рассмотрении"/"Ожидание
     очереди" — это решает флаг is_latest, фактическую метку выбирает шаблон.
     """
+    # Внешние (организации маршрута) и внутренние (цепочка подписания
+    # внутри организации-разработчика, is_internal=True, см. internal_sign/
+    # forward_internal_signature) шаги живут в ОДНОЙ таблице — группируем
+    # отдельно по циклам, чтобы 'paths' (используется для расчёта статуса/
+    # first_unviewed в шаблоне) остался строго внешним, как и раньше.
     paths_by_cycle = {}
+    internal_by_cycle = {}
     for path in plan.approval_paths:
-        paths_by_cycle.setdefault(path.cycle, []).append(path)
+        if path.is_internal:
+            internal_by_cycle.setdefault(path.cycle, []).append(path)
+        else:
+            paths_by_cycle.setdefault(path.cycle, []).append(path)
 
     cycle_numbers = sorted(paths_by_cycle.keys())
     if not cycle_numbers:
@@ -889,6 +883,8 @@ def build_signature_cycles(plan):
 
     for cycle_paths in paths_by_cycle.values():
         cycle_paths.sort(key=lambda p: p.step_order)
+    for cycle_steps in internal_by_cycle.values():
+        cycle_steps.sort(key=lambda p: p.step_order)
 
     cancel_tickets = sorted(
         [t for t in plan.tickets if t.note and t.note.startswith(CANCEL_SEND_NOTE_PREFIX) and t.begin_time],
@@ -914,22 +910,6 @@ def build_signature_cycles(plan):
                 cancel_ticket = ticket
                 break
 
-        # Текст замечания, из-за которого план вернули на доработку, — это
-        # обычное (не системное) сообщение, которое проверяющий написал ДО
-        # нажатия "Есть ошибки" (см. has_pending_review_message/create_ticket).
-        # Раньше "чьё это сообщение и к какому этапу относится" подбиралось
-        # эвристикой (org_id + временное окно между отправками), что могло
-        # ошибиться на организации с несколькими этапами в одном цикле —
-        # теперь сообщение жёстко привязано к этапу по id
-        # (PlanTicket.approval_path_id), однозначно. Подвешиваем найденное
-        # на path (не персистится, только для рендера).
-        for path in cycle_paths:
-            remark_tickets = [
-                t for t in plan.tickets
-                if not t.is_system and t.approval_path_id == path.id
-            ]
-            path.remark_ticket = remark_tickets[-1] if remark_tickets else None
-
         # Снимок разработчика на момент ЭТОЙ конкретной отправки (см.
         # sender_* в handle_sent_status) — одинаков на всех строках цикла,
         # берём с первой. Для циклов, отправленных ДО появления этих полей
@@ -949,6 +929,12 @@ def build_signature_cycles(plan):
             dev_phone = plan.user.telephone if plan.user else None
             dev_email = plan.user.email if plan.user else None
 
+        # Шаги внутренней цепочки этого цикла (submit_for_signature/
+        # forward_internal_signature/internal_sign, is_internal=True).
+        # Пусто для циклов, созданных ДО этой фичи — для них шаблон сам
+        # откатывается на единственную строку dev_post/dev_name/... выше.
+        internal_steps = internal_by_cycle.get(cycle_num, [])
+
         cycles.append({
             'cycle': cycle_num,
             'sent_at': sent_at,
@@ -959,9 +945,24 @@ def build_signature_cycles(plan):
             'dev_name': dev_name,
             'dev_phone': dev_phone,
             'dev_email': dev_email,
+            'internal_steps': internal_steps,
         })
 
     return cycles
+
+
+def get_pending_internal_sign_steps(plan):
+    """Шаги внутренней цепочки ТЕКУЩЕЙ, ещё не отправленной реально во
+    внешний маршрут попытки (cycle IS NULL) — для pre-send блока
+    "Подписи" (пока PlanApprovalPath для этого захода ещё не созданы,
+    см. handle_sent_status). Если попытка уже направлялась (см.
+    forward_internal_signature) — показывает уже пройденные шаги цепочки
+    ДО текущего держателя (которого показывает отдельная живая строка).
+    cycle=0 — зарезервированный "ещё не отправлено" (PlanApprovalPath.cycle
+    в остальном NOT NULL, реальные циклы нумеруются с 1, см. handle_sent_status)."""
+    return PlanApprovalPath.query.filter_by(
+        plan_id=plan.id, cycle=0, is_internal=True
+    ).order_by(PlanApprovalPath.step_order).all()
 
 
 def build_signature_print_rows(plan, cycles):
@@ -1030,12 +1031,7 @@ def build_signature_print_rows(plan, cycles):
             else:
                 date_str = '—'
 
-            if path.remark:
-                remark = path.remark
-            elif is_rejected_step and path.remark_ticket:
-                remark = path.remark_ticket.note
-            else:
-                remark = '—'
+            remark = path.ticket.note if path.ticket else '—'
 
             rows.append(('data', [
                 action_label,
@@ -1062,12 +1058,17 @@ def _latest_path_for_org(plan, org_ids):
     отправки плана (approval_paths больше не чистятся при пересылке — см.
     PlanApprovalPath.cycle, — поэтому у организации может быть ещё и
     брошенный этап из старого цикла, который для статуса "не в счёт").
-    None, если план не отправлен или этой организации в цепочке нет."""
-    if not plan.approval_paths:
+    None, если план не отправлен или этой организации в цепочке нет.
+    is_internal=True (внутренняя цепочка подписания до отправки, cycle=0
+    пока план ещё не уходил во внешний маршрут) исключаем явно — иначе
+    organization_id внутреннего шага (= сама организация-разработчик)
+    мог бы случайно совпасть с org_ids."""
+    external_paths = [p for p in plan.approval_paths if not p.is_internal]
+    if not external_paths:
         return None
-    latest_cycle = max(p.cycle for p in plan.approval_paths)
+    latest_cycle = max(p.cycle for p in external_paths)
     return next(
-        (p for p in plan.approval_paths if p.cycle == latest_cycle and p.organization_id in org_ids),
+        (p for p in external_paths if p.cycle == latest_cycle and p.organization_id in org_ids),
         None,
     )
 
@@ -1083,19 +1084,23 @@ def _is_queued_for_org(plan, org_ids):
     my_path = _latest_path_for_org(plan, org_ids)
     if not my_path or my_path.is_viewed:
         return False
-    latest_paths = [p for p in plan.approval_paths if p.cycle == my_path.cycle]
+    latest_paths = [p for p in plan.approval_paths if p.cycle == my_path.cycle and not p.is_internal]
     return any(p.step_order < my_path.step_order and not p.is_viewed for p in latest_paths)
 
 
 def get_current_review_path(plan, current_user):
     """Текущий (непройденный, первый по порядку) этап согласования из
     ПОСЛЕДНЕГО цикла отправки — или None, если либо план не отправлен, либо
-    все этапы пройдены, либо organization_id пользователя на нём не стоит."""
-    if not plan.approval_paths:
+    все этапы пройдены, либо organization_id пользователя на нём не стоит.
+    is_internal=True (внутренняя цепочка до реальной отправки) исключаем —
+    иначе план с уже начатой, но ещё не отправленной цепочкой (cycle=0)
+    ошибочно выглядел бы "отправленным" для этой функции."""
+    external_paths = [p for p in plan.approval_paths if not p.is_internal]
+    if not external_paths:
         return None
-    latest_cycle = max(p.cycle for p in plan.approval_paths)
+    latest_cycle = max(p.cycle for p in external_paths)
     latest_paths = sorted(
-        (p for p in plan.approval_paths if p.cycle == latest_cycle),
+        (p for p in external_paths if p.cycle == latest_cycle),
         key=lambda p: p.step_order,
     )
     current_path = next((p for p in latest_paths if not p.is_viewed), None)
@@ -1142,7 +1147,7 @@ def get_audit_context(plan, current_user):
 
     approve_label = 'Согласовать'
     if current_path:
-        current_cycle_paths = [p for p in plan.approval_paths if p.cycle == current_path.cycle]
+        current_cycle_paths = [p for p in plan.approval_paths if p.cycle == current_path.cycle and not p.is_internal]
         max_step = max((p.step_order for p in current_cycle_paths), default=current_path.step_order)
         if current_path.step_order == max_step:
             approve_label = 'Одобрить'
@@ -1156,8 +1161,14 @@ def get_audit_context(plan, current_user):
     # из СТАРОГО цикла и ошибочно разрешить/запретить отмену не по тому
     # этапу. Цикл для сравнения берём последний всегда, а не только когда
     # current_path есть.
-    latest_cycle = max((p.cycle for p in plan.approval_paths), default=None)
-    cycle_paths = [p for p in plan.approval_paths if latest_cycle is None or p.cycle == latest_cycle]
+    # is_internal=True исключаем явно — иначе у сотрудника организации-
+    # разработчика (её organization_id совпадает с organization_id
+    # внутренних строк её же плана) own_cycle_paths/own_confirmed ошибочно
+    # подхватили бы шаги внутренней цепочки подписания как "подтверждённые
+    # мной внешние этапы согласования".
+    external_paths = [p for p in plan.approval_paths if not p.is_internal]
+    latest_cycle = max((p.cycle for p in external_paths), default=None)
+    cycle_paths = [p for p in external_paths if latest_cycle is None or p.cycle == latest_cycle]
 
     own_cycle_paths = [p for p in cycle_paths if p.organization_id == current_user.organization_id]
     own_confirmed = [p for p in own_cycle_paths if p.is_viewed]
@@ -1204,6 +1215,30 @@ def get_audit_context(plan, current_user):
         'step_submitted_by_id': current_path.submitted_by_user_id if current_path else None,
         'step_pending_decision': current_path.pending_decision if current_path else None,
     }
+
+
+def get_plan_executors_summary(plan):
+    """Строка "ФИО (тел.: ..., email: ...)" для каждого «Ответственного
+    исполнителя» плана (до 2 человек, см. plan_bp::add_plan_executor/
+    remove_plan_executor), через ", ". Снимок каждого (developer_name/
+    phone/email на PlanExecutor) сделан в момент добавления в список и не
+    меняется при редактировании его профиля — та же причина, что у
+    PlanApprovalPath.sender_*. Показывается и до отправки, и во всех уже
+    отправленных циклах в «Подписи» (components.html::plan_signatures_page),
+    одинаково, независимо от того, сколько раз план пересылался (в
+    отличие от cycle.dev_* ниже — тот снимок про ПОДПИСАВШЕГО/отправившего
+    конкретный цикл, отдельное понятие, см. build_signature_cycles).
+    Возвращает None, если список пуст (старый план без ни одной записи —
+    на этот случай в шаблоне есть собственный запасной вариант через
+    plan.user)."""
+    parts = []
+    for e in plan.executors:
+        if not e.developer_name:
+            continue
+        phone = e.developer_phone or '—'
+        email = e.developer_email or '—'
+        parts.append(f'{e.developer_name} (тел.: {phone}, email: {email})')
+    return ', '.join(parts) if parts else None
 
 
 def get_last_internal_return_ticket(plan):
@@ -1321,9 +1356,6 @@ def create_plan_snapshot(plan):
         is_approved=False,
         plan_type=plan.plan_type,
         user_id=plan.user_id,
-        developer_name=plan.developer_name,
-        developer_phone=plan.developer_phone,
-        developer_email=plan.developer_email,
         org_id=plan.org_id,
         snapshot_of_plan_id=plan.id,
         snapshot_at=now,
@@ -1385,6 +1417,21 @@ def create_plan_snapshot(plan):
             label=cfg.label,
         ))
 
+    # «Ответственные исполнители» + отмеченный «Разработчик плана»
+    # (is_developer со снимком developer_*) — без этого копирования
+    # архивная версия теряла бы информацию о разработчике: она хранится
+    # только на PlanExecutor, а не на самом Plan (см. get_plan_developer).
+    for ex in plan.executors:
+        db.session.add(PlanExecutor(
+            plan_id=snapshot.id,
+            user_id=ex.user_id,
+            added_at=ex.added_at,
+            is_developer=ex.is_developer,
+            developer_name=ex.developer_name,
+            developer_phone=ex.developer_phone,
+            developer_email=ex.developer_email,
+        ))
+
     db.session.commit()
     return snapshot
 
@@ -1427,7 +1474,7 @@ def get_signer_candidates(org_id, approver_only=False):
     утверждать план может только руководитель организации, в отличие от
     подписания/согласования/отправки, доступных и руководителю структурного
     подразделения."""
-    roles = ['org_head'] if approver_only else ['dept_head', 'org_head']
+    roles = ['org_head', 'org_head_deputy'] if approver_only else ['dept_head', 'org_head', 'org_head_deputy']
     return User.query.filter(
         User.organization_id == org_id,
         User.org_role.in_(roles)
