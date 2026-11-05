@@ -34,20 +34,76 @@
     </div>
     {% endif %} -->
 
+    {#  Две отдельные сетки: в первой — действия, не меняющие статус плана
+        (информационные/печать/редактирование содержимого), во второй —
+        действия, которые двигают план по циклу согласования (контроль,
+        отправка, подпись, отмена, возврат) — у второй сетки свой отступ
+        сверху (plan-actions-grid-status), чтобы визуально отделить её от
+        первой, как группу совсем другого назначения. #}
     <div class="plan-actions-grid">
       {% if is_owner %}
       <button
         type="button"
         id="developerInfoBtn"
         class="plan-action-tile"
-        
+
       >
         {{ icons.icon_profile() }}
         <span class="plan-action-tile-title">{{ _('Разработчик плана') }}</span>
         <span class="plan-action-tile-sub">{{ _('Кто фактически готовил план') }}</span>
       </button>
+      {% endif %}
 
+      {% if not is_owner %}
+      <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="plan-action-tile" {% if not plan.tickets %}disabled{% endif %}>
+          {{ icons.icon_print() }}
+          <span class="plan-action-tile-title">{{ _('Распечатать сообщения') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Все сообщения по плану в печатную форму') }}</span>
+        </button>
+      </form>
+      {% endif %}
 
+      <form action="{{ url_for('audit_bp.print_signatures', token=plan.token) }}" method="GET" target="_blank">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="plan-action-tile" {% if not plan.sent_time %}disabled{% endif %}>
+          {{ icons.icon_print() }}
+          <span class="plan-action-tile-title">{{ _('Печать подписей') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Путь согласования плана в печатную форму') }}</span>
+        </button>
+      </form>
+
+      {% if is_owner and not current_user.is_reader and not current_user.is_org_manager %}
+      <button
+        type="button"
+        class="plan-action-tile"
+        onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+        {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+      >
+        {{ icons.icon_edit() }}
+        <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Изменить год и целевые показатели плана') }}</span>
+      </button>
+
+      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button
+          type="submit"
+          data-modal-trigger="deletePlan"
+          class="plan-action-tile plan-action-tile-danger"
+          {% if plan.is_sent or plan.is_approved or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+        >
+          {{ icons.icon_delete() }}
+          <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if is_owner %}
+    <div class="plan-actions-grid plan-actions-grid-status">
       {% if not current_user.is_reader and not current_user.is_org_manager %}
       <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -127,61 +183,18 @@
         <span class="plan-action-tile-sub">{{ _('Отправить план обратно с указанием причины') }}</span>
       </button>
       {% endif %}
-
-      {% if not current_user.is_reader and not current_user.is_org_manager %}
-      <button
-        type="button"
-        class="plan-action-tile"
-        onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
-      >
-        {{ icons.icon_edit() }}
-        <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Изменить год и целевые показатели плана') }}</span>
-      </button>
-
-      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button
-          type="submit"
-          data-modal-trigger="deletePlan"
-          class="plan-action-tile plan-action-tile-danger"
-          {% if plan.is_sent or plan.is_approved or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
-        >
-          {{ icons.icon_delete() }}
-          <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
-        </button>
-      </form>
-      {% endif %}
-      {% endif %}
-
-      {% if not is_owner %}
-      <form action="{{ url_for('audit_bp.print_tickets', token=plan.token) }}" method="GET" target="_blank">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit" class="plan-action-tile" {% if not plan.tickets %}disabled{% endif %}>
-          {{ icons.icon_print() }}
-          <span class="plan-action-tile-title">{{ _('Распечатать сообщения') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Все сообщения по плану в печатную форму') }}</span>
-        </button>
-      </form>
-      {% endif %}
-
-      <form action="{{ url_for('audit_bp.print_signatures', token=plan.token) }}" method="GET" target="_blank">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit" class="plan-action-tile" {% if not plan.sent_time %}disabled{% endif %}>
-          {{ icons.icon_print() }}
-          <span class="plan-action-tile-title">{{ _('Печать подписей') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Путь согласования плана в печатную форму') }}</span>
-        </button>
-      </form>
     </div>
+    {% endif %}
 
-    {% if not is_owner and (plan.is_sent or plan.tickets or can_audit) %}
+    {# Вариант А утверждающей организации (ТЗ п.5): plan.org_id совпадает с
+       organization_id утверждающего этапа, is_owner для неё тоже True —
+       но ей всё равно нужен этот раздел (там "Одобрить" у org_head/deputy,
+       см. step_direct_approve), поэтому not is_owner здесь ослаблено. #}
+    {% if (not is_owner or step_direct_approve) and (plan.is_sent or plan.tickets or can_audit) %}
     <hr />
     <h1 class="name">{{ _('Проверка плана') if can_audit else _('Сообщения по согласованию') }}</h1>
 
-    {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}
+    {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel, is_approver_step, step_direct_approve) }}
 
     <div id="planReviewFooterWrap">
       {{ component.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}
@@ -208,9 +221,15 @@
     </div>
     {% endif %}
 
+    {# Утверждающая организация, Вариант Б (ТЗ п.5): dept_head план только
+       направляет руководителю/заместителю, своего решения не выносит —
+       "Подписать"/"Вернуть" ему здесь не показываем вовсе, в отличие от
+       региона/согласующей, где dept_head подписывает сам. #}
+    {% set dept_head_forward_only = is_approver_step and current_user.org_role == 'dept_head' %}
     {% if current_path and current_path.pending_signer_user_id == current_user.id %}
     <div class="plan-actions-grid" style="margin-top: 12px;">
       {% if not step_is_signed %}
+      {% if not dept_head_forward_only %}
       <button type="button" id="stepInternalSignBtn" class="plan-action-tile">
         {{ icons.icon_confirm() }}
         <span class="plan-action-tile-title">{{ _('Подписать') }}</span>
@@ -222,6 +241,7 @@
         <span class="plan-action-tile-title">{{ _('Вернуть на повторное рассмотрение') }}</span>
         <span class="plan-action-tile-sub">{{ _('Отправить решение обратно с указанием причины') }}</span>
       </button>
+      {% endif %}
 
       {% if current_user.org_role == 'dept_head' %}
       <button type="button" id="stepForwardSignBtn" class="plan-action-tile">
@@ -242,6 +262,21 @@
       {% endif %}
     </div>
     {% endif %}
+    {% endif %}
+
+    {# Утверждающая организация, Вариант А (ТЗ п.5) — план создан ею самой:
+       никакого направления нет, org_head/org_head_deputy сразу видят
+       единственное действие «Одобрить» (ЭЦП). Переиспользуем id кнопки и
+       JS-обвязку "Шага 2" (stepInternalSignBtn/ecpStepSignModal выше) —
+       серверный роут (step_internal_sign) сам различает этот случай. #}
+    {% if step_direct_approve %}
+    <div class="plan-actions-grid" style="margin-top: 12px;">
+      <button type="button" id="stepInternalSignBtn" class="plan-action-tile">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Одобрить') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Утвердить план электронной цифровой подписью') }}</span>
+      </button>
+    </div>
     {% endif %}
 
     <hr />

@@ -6144,21 +6144,24 @@ input[type="checkbox"]:focus {
   width: 100%;
 }
 
-/* Заголовки блоков "Внутри организации-разработчика"/"Внешние организации"
-   на вкладке "Подписи" — повторяются на каждый цикл отправки, поэтому
-   у первого блока в цикле отступ сверху крупнее (визуально отделяет
-   новый цикл), у остальных — компактнее. */
-.signatures-group {
-  margin-top: 28px;
+/* Строка-разделитель "Внутри организации-разработчика"/"Внешние
+   организации" ВНУТРИ одной таблицы "Подписи" (track-row-section) —
+   раньше были заголовками двух отдельных карточек/таблиц, теперь обе
+   группы строк живут в одной таблице на цикл отправки, разделитель
+   просто визуально отмечает переход между ними. */
+.track-row-section td {
+  padding: 14px 14px 6px;
+  border-bottom: none;
+  background: transparent;
 }
-.signatures-group:first-child {
-  margin-top: 0;
+.track-row-section:first-child td {
+  padding-top: 2px;
 }
 .signatures-group-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -6217,6 +6220,12 @@ input[type="checkbox"]:focus {
 .track-table-scroll {
   width: 100%;
   overflow-x: auto;
+}
+/* Повторная отправка (после отмены/возврата) добавляет ещё одну таблицу
+   цикла ниже — отделяем её от предыдущей, иначе выглядит как одна
+   непрерывная таблица без разрыва между циклами. */
+.track-table-scroll-cycle {
+  margin-top: 28px;
 }
 .track-table {
   width: 100%;
@@ -6383,6 +6392,12 @@ input[type="checkbox"]:focus {
   grid-auto-rows: 1fr;
   gap: 16px;
   margin-top: 8px;
+}
+/* Вторая сетка "Действий с планом" — те, что меняют его статус (контроль,
+   отправка, подпись, отмена, возврат) — с новой строки, визуально
+   отделена от первой (информационные/печать/редактирование). */
+.plan-actions-grid-status {
+  margin-top: 28px;
 }
 .plan-action-tile {
   display: flex;

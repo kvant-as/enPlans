@@ -72,13 +72,13 @@ def plan_actions(token):
     step_org_head_candidates = []
     current_path = audit_ctx.get('current_path')
     if current_path:
-        # Утверждающий этап (step_type='approver') подписывает/отправляет
-        # только руководитель организации — руководитель структурного
-        # подразделения может согласовывать и отправлять свои планы, но не
-        # утверждать чужие (см. get_signer_candidates).
-        step_signer_candidates = get_signer_candidates(
-            current_path.organization_id, approver_only=(current_path.step_type == 'approver')
-        )
+        # Утверждающий этап (step_type='approver', ТЗ п.5 Вариант Б):
+        # исполнитель направляет план dept_head (который только
+        # пересылает дальше, см. step_forward_signature) ИЛИ сразу
+        # org_head/org_head_deputy — picker предлагает все три роли; кто
+        # из них реально утверждает (а не просто направляет) — отдельное
+        # ограничение внутри step_submit_for_signature/step_internal_sign.
+        step_signer_candidates = get_signer_candidates(current_path.organization_id)
         step_org_head_candidates = [c for c in step_signer_candidates if c.is_org_manager]
 
     from website.utils.plans import get_last_internal_return_ticket
@@ -443,7 +443,12 @@ def forward_internal_signature(token):
     подразделения — руководителю организации или его заместителю;
     руководителю организации — только заместителю), чтобы тот тоже
     посмотрел и сам подписал/отправил (internal_sign, без изменений).
-    Заместитель дальше никому не передаёт — для него этого действия нет."""
+    Заместитель дальше никому не передаёт — для него этого действия нет.
+
+    TODO (ТЗ 3.3, открытый вопрос): если цепочка уже executor → dept_head →
+    org_head, org_head всё равно может направить план дальше org_head_deputy
+    (candidate_roles ниже) — получится 3 внутренних подписанта подряд при
+    заявленном в ТЗ лимите в 2. Не ограничиваем по догадке до уточнения."""
     from website.utils.plans import build_signer_snapshot
 
     current_plan = g.current_plan
@@ -607,6 +612,33 @@ def internal_return(token):
     return redirect(url_for('plan_bp.plan_actions', token=token))
 
 
+def _finalize_step_decision(current_plan, current_path, current_user):
+    """Финализирует подписанное решение этапа ("Шаг 2"): вызывает
+    handle_approved_status/handle_error_status (использует current_user —
+    именно подписавшего, а не исполнителя, направившего решение раньше)
+    и сбрасывает поля внутреннего подцикла. Общая логика для step_dispatch
+    (регион/согласующая — отдельным кликом [Отправить]) и step_internal_sign
+    при step_type='approver' (ТЗ п.5 — «Одобрить» одним действием с ЭЦП,
+    без отдельной отправки). Возвращает текст ошибки или None."""
+    from website.utils.status_plan import handle_approved_status, handle_error_status
+
+    decision = current_path.pending_decision
+    handler = handle_approved_status if decision == 'approved' else handle_error_status
+    result = handler(current_plan, current_user)
+
+    if isinstance(result, dict) and 'error' in result:
+        return result['error']
+
+    current_path.pending_signer_user_id = None
+    current_path.is_signed = False
+    current_path.submitted_by_user_id = None
+    current_path.pending_decision = None
+    current_path.signed_by_user_id = None
+    current_path.signed_at = None
+    current_path.signed_by_snapshot = None
+    return None
+
+
 @plan_bp.route('/step/submit-for-signature/<token>', methods=['POST'])
 @user_with_all_params()
 @login_required
@@ -633,10 +665,29 @@ def step_submit_for_signature(token):
         flash('Этап недоступен для рассмотрения', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
+    is_approver_step = current_path.step_type == 'approver'
+
+    # Утверждающая организация, Вариант А (ТЗ п.5 — план создан ею самой):
+    # никакого "Шага 2" через этот роут нет вообще, org_head/org_head_deputy
+    # сразу подписывают напрямую (см. step_internal_sign). get_current_review_path
+    # и так не выдаёт current_path исполнителю/dept_head в этом случае — но
+    # сам org_head/deputy технически мог бы дойти до этой формы, если он
+    # уже имел current_path, поэтому проверяем явно.
+    if is_approver_step and current_plan.org_id == current_path.organization_id:
+        flash('В этом случае руководитель организации или его заместитель утверждает план напрямую, без направления', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
     decision = request.form.get('decision')
     signer_id = request.form.get('signer_user_id')
 
-    if decision not in ('approved', 'error'):
+    # Утверждающая организация (ТЗ п.5): решения «Есть ошибки» здесь нет
+    # вовсе — исполнитель/руководитель структурного подразделения не
+    # выносят вердикт, они только направляют план дальше по цепочке,
+    # решение всегда считается «Одобряю» (сам факт одобрения оформляет
+    # ЭЦП-подписант, см. step_internal_sign).
+    if is_approver_step:
+        decision = 'approved'
+    elif decision not in ('approved', 'error'):
         flash('Не указано решение', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
@@ -644,12 +695,17 @@ def step_submit_for_signature(token):
         flash('Прикрепите файл с замечаниями перед отправкой на подпись', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
-    # Утверждающий этап (step_type='approver') подписывает только
-    # руководитель организации — руководитель структурного подразделения
-    # может согласовывать/отправлять свои планы, но не утверждать чужие
-    # (см. get_signer_candidates); проверяем и здесь, не только в списке
-    # кандидатов в шаблоне — тот только отображение, не защита.
-    allowed_roles = ['org_head'] if current_path.step_type == 'approver' else ['dept_head', 'org_head']
+    # TODO (ТЗ, открытый вопрос к п.4.3): есть ли роль org_head_deputy в
+    # САМОЙ согласующей организации и что она может делать — до прояснения
+    # не добавляем её в allowed_roles для не-approver этапов (регион/
+    # согласующая), хотя get_signer_candidates уже предлагает её в списке
+    # кандидатов на подпись наравне с org_head.
+    #
+    # Утверждающая организация, Вариант Б: исполнитель направляет план
+    # либо напрямую org_head/org_head_deputy, либо dept_head (который сам
+    # решения не выносит, только пересылает дальше — см.
+    # step_forward_signature), поэтому dept_head тоже допустимая цель.
+    allowed_roles = ['dept_head', 'org_head', 'org_head_deputy'] if is_approver_step else ['dept_head', 'org_head']
     signer = User.query.filter(
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
@@ -664,6 +720,14 @@ def step_submit_for_signature(token):
     current_path.pending_signer_user_id = signer.id
     current_path.submitted_by_user_id = current_user.id
     current_path.is_signed = False
+
+    from website.utils.plans import log_step2_action
+    log_step2_action(
+        current_plan, current_path, current_user,
+        'submitted_forward' if is_approver_step else ('submitted_error' if decision == 'error' else 'submitted_approved'),
+        target_user=signer,
+    )
+
     db.session.commit()
 
     db.session.add(Notification(
@@ -687,13 +751,49 @@ def step_internal_sign(token):
     """Кнопка [Подписать] у руководителя, которому направлено решение
     этапа (см. step_submit_for_signature) — тот же мок-ЭЦП, что и в «Шаге
     1». После подписи становится доступна кнопка [Отправить] — см.
-    step_dispatch."""
+    step_dispatch.
+
+    Для step_type='approver' (ТЗ п.5) — особый случай: «Одобрить» это
+    ОДНО действие с ЭЦП, без отдельного [Отправить] и без решения
+    "Есть ошибки" (его в утверждающей организации нет вовсе), поэтому
+    здесь же сразу финализируем через _finalize_step_decision. А если
+    план создан самой утверждающей организацией (Вариант А) — у
+    org_head/org_head_deputy current_path.pending_signer_user_id вообще
+    не был выставлен (нет отдельного направления, см.
+    step_submit_for_signature), так что принимаем решение "на себя".
+
+    TODO (ТЗ 5, открытый вопрос): org_head и org_head_deputy решают
+    независимо — кто первый вызвал этот роут, тот и утвердил; передачи
+    плана от руководителя заместителю (или наоборот) для Варианта А не
+    реализуем по догадке."""
     from website.utils.plans import build_signer_snapshot, get_current_review_path
 
     current_plan = g.current_plan
     current_path = get_current_review_path(current_plan, current_user)
 
-    if not current_path or current_path.is_signed or current_path.pending_signer_user_id != current_user.id:
+    is_direct_approve = bool(
+        current_path and current_path.step_type == 'approver'
+        and current_plan.org_id == current_path.organization_id
+        and not current_path.pending_signer_user_id and not current_path.is_signed
+        and current_user.is_org_manager
+    )
+
+    # Утверждающая организация, Вариант Б (ТЗ п.5): dept_head план только
+    # направляет дальше (см. step_forward_signature) и сам решения не
+    # выносит — даже если он формально сейчас pending_signer (его выбрал
+    # исполнитель как промежуточную цель), подписывать ему нельзя.
+    if (
+        not is_direct_approve and current_path and current_path.step_type == 'approver'
+        and current_path.pending_signer_user_id == current_user.id
+        and not current_user.is_org_manager
+    ):
+        flash('Решение утверждающей организации подписывает только руководитель организации или его заместитель', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    if is_direct_approve:
+        current_path.pending_decision = 'approved'
+        current_path.submitted_by_user_id = current_user.id
+    elif not current_path or current_path.is_signed or current_path.pending_signer_user_id != current_user.id:
         message = 'Решение не направлено вам на подпись'
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': message}), 403
@@ -704,6 +804,24 @@ def step_internal_sign(token):
     current_path.signed_by_user_id = current_user.id
     current_path.signed_at = current_utc_time()
     current_path.signed_by_snapshot = build_signer_snapshot(current_user)
+
+    from website.utils.plans import log_step2_action
+    log_step2_action(current_plan, current_path, current_user, 'signed')
+
+    if current_path.step_type == 'approver':
+        error = _finalize_step_decision(current_plan, current_path, current_user)
+        if error:
+            db.session.rollback()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': error}), 400
+            flash(error, 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+        db.session.commit()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True})
+        flash('План утверждён', 'success')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
     db.session.commit()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -724,7 +842,16 @@ def step_internal_return(token):
     согласован и не отклонён). Причина — PlanTicket, привязанный к этапу
     СРАЗУ двумя способами: approval_path_id (как и у сообщений живого
     чата) и, дополнительно, current_path.ticket_id — "то самое" замечание
-    этапа для столбца "Замечания" в "Подписи" (см. PlanApprovalPath.ticket)."""
+    этапа для столбца "Замечания" в "Подписи" (см. PlanApprovalPath.ticket).
+
+    TODO (ТЗ 5, открытый вопрос): для step_type='approver' (Вариант Б) ТЗ
+    явно спрашивает, может ли org_head/org_head_deputy вернуть план своему
+    исполнителю, если не согласен с ним, или у него только «Одобрить» —
+    этот роут технически доступен и для approver-этапа (current_path.
+    pending_signer_user_id уже может указывать на org_head/deputy после
+    direct-approve веткой в step_internal_sign это не используется), но
+    в шаблоне для approver-пути отдельно не выводится — оставляем как
+    есть до уточнения, не скрываем и не включаем специально."""
     from website.utils.plans import get_current_review_path
     from website.utils.ticket_attachment import validate_ticket_attachment, save_ticket_attachment
 
@@ -733,6 +860,14 @@ def step_internal_return(token):
 
     if not current_path or current_path.pending_signer_user_id != current_user.id:
         flash('Решение не направлено вам на подпись', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    # Утверждающая организация (ТЗ п.5): dept_head только направляет,
+    # своего решения не выносит — значит и не возвращает его обратно (это
+    # не тот же открытый вопрос, что про org_head/deputy выше — для
+    # dept_head в approver-организации решения нет вообще никакого).
+    if current_path.step_type == 'approver' and not current_user.is_org_manager:
+        flash('Решение утверждающей организации может вернуть только руководитель организации или его заместитель', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
     note = (request.form.get('note') or '').strip()
@@ -764,6 +899,9 @@ def step_internal_return(token):
         save_ticket_attachment(new_ticket, attachment_file)
 
     current_path.ticket_id = new_ticket.id
+
+    from website.utils.plans import log_step2_action
+    log_step2_action(current_plan, current_path, current_user, 'returned', ticket=new_ticket)
 
     current_path.pending_signer_user_id = None
     current_path.is_signed = False
@@ -822,6 +960,10 @@ def step_forward_signature(token):
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
     current_path.pending_signer_user_id = signer.id
+
+    from website.utils.plans import log_step2_action
+    log_step2_action(current_plan, current_path, current_user, 'forwarded', target_user=signer)
+
     db.session.commit()
 
     db.session.add(Notification(
@@ -848,9 +990,11 @@ def step_dispatch(token):
     handle_error_status (они используют current_user, т.е. именно
     подписавшего, для viewed_by_snapshot/rejected_by_snapshot — не
     исполнителя, принявшего решение раньше), затем сбрасывает поля
-    внутреннего подцикла этапа."""
+    внутреннего подцикла этапа. Для step_type='approver' недостижима из
+    обычного UI (там «Одобрить» уже финализирует сама, см.
+    step_internal_sign) — остаётся как общий путь финализации региона/
+    согласующей организации."""
     from website.utils.plans import get_current_review_path
-    from website.utils.status_plan import handle_approved_status, handle_error_status
 
     current_plan = g.current_plan
     current_path = get_current_review_path(current_plan, current_user)
@@ -859,21 +1003,11 @@ def step_dispatch(token):
         flash('Решение не подписано вами', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
-    decision = current_path.pending_decision
-    handler = handle_approved_status if decision == 'approved' else handle_error_status
-    result = handler(current_plan, current_user)
-
-    if isinstance(result, dict) and 'error' in result:
-        flash(result['error'], 'error')
+    error = _finalize_step_decision(current_plan, current_path, current_user)
+    if error:
+        flash(error, 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
-    current_path.pending_signer_user_id = None
-    current_path.is_signed = False
-    current_path.submitted_by_user_id = None
-    current_path.pending_decision = None
-    current_path.signed_by_user_id = None
-    current_path.signed_at = None
-    current_path.signed_by_snapshot = None
     db.session.commit()
 
     flash('Решение отправлено', 'success')
@@ -903,11 +1037,15 @@ def api_verify_certificate(token):
 @login_required
 @owner_only
 @session_required
-def plan_indicators(token):    
+def plan_indicators(token):
     if request.method == 'POST':
         pass
-    
+
     current_plan = g.current_plan
+
+    from website.utils.plans import ensure_column_configs
+    ensure_column_configs(current_plan)
+
     indicators_non_mandatory = (Indicator.query
         .filter_by(IsMandatory=False)
         .filter(

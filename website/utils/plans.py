@@ -136,7 +136,7 @@ def generate_unique_display_code(base_code, plan_id, direction_id):
 def get_column_configs_for_plan(plan):
     plan_year = plan.year
     current_year = current_utc_time().year
-    
+
     if plan_year > current_year:
         labels = ['прогноз', 'прогноз', 'прогноз']
     elif plan_year == current_year:
@@ -145,10 +145,10 @@ def get_column_configs_for_plan(plan):
         labels = ['отчет', 'отчет', 'оценка']
     else:
         labels = ['отчет', 'отчет', 'отчет']
-    
+
     configs = []
     years = [plan_year - 2, plan_year - 1, plan_year]
-    
+
     for year, label in zip(years, labels):
         config = PlanColumnConfig(
             plan_id=plan.id,
@@ -156,8 +156,24 @@ def get_column_configs_for_plan(plan):
             label=label
         )
         configs.append(config)
-    
+
     return configs
+
+
+def ensure_column_configs(plan):
+    """Гарантирует 3 строки PlanColumnConfig (year-2/year-1/year) у плана
+    — обычно их создаёт create_plan (views.py) сразу при заведении плана,
+    но для планов, где по какой-то причине они не создались (например,
+    из тестовых/служебных путей в обход обычного флоу), шаблон
+    plan_indicators.html обращается к ним напрямую по индексу
+    (configs[0]/[1]/[2]) и падает UndefinedError на пустом/неполном
+    списке — подчищаем недостающие годы при каждом заходе на страницу,
+    без дублирования уже существующих."""
+    existing_years = {c.year for c in plan.column_configs}
+    missing = [c for c in get_column_configs_for_plan(plan) if c.year not in existing_years]
+    if missing:
+        db.session.add_all(missing)
+        db.session.commit()
 
 def update_ChangeTimePlan(id):
     plan = Plan.query.filter_by(id=id).first()
@@ -869,10 +885,20 @@ def build_signature_cycles(plan):
     # forward_internal_signature) шаги живут в ОДНОЙ таблице — группируем
     # отдельно по циклам, чтобы 'paths' (используется для расчёта статуса/
     # first_unviewed в шаблоне) остался строго внешним, как и раньше.
+    # is_internal=True строки бывают двух видов, различаем по log_action:
+    # NULL — "Шаг 1" до реальной отправки (внутри организации-разработчика,
+    # internal_sign/forward_internal_signature, см. is_internal выше);
+    # заполнено — "Шаг 2" ВНУТРИ уже внешней организации (регион/
+    # согласующая/утверждающая, log_step2_action) — их прикрепляем к
+    # "своему" официальному шагу по совпадению (cycle, step_order), а не
+    # показываем общим списком наверху цикла.
     paths_by_cycle = {}
     internal_by_cycle = {}
+    step2_by_cycle_order = {}
     for path in plan.approval_paths:
-        if path.is_internal:
+        if path.is_internal and path.log_action:
+            step2_by_cycle_order.setdefault((path.cycle, path.step_order), []).append(path)
+        elif path.is_internal:
             internal_by_cycle.setdefault(path.cycle, []).append(path)
         else:
             paths_by_cycle.setdefault(path.cycle, []).append(path)
@@ -885,6 +911,12 @@ def build_signature_cycles(plan):
         cycle_paths.sort(key=lambda p: p.step_order)
     for cycle_steps in internal_by_cycle.values():
         cycle_steps.sort(key=lambda p: p.step_order)
+    for step2_steps in step2_by_cycle_order.values():
+        step2_steps.sort(key=lambda p: (p.created_at or current_utc_time(), p.id))
+
+    for cycle_paths in paths_by_cycle.values():
+        for path in cycle_paths:
+            path.step2_history = step2_by_cycle_order.get((path.cycle, path.step_order), [])
 
     cancel_tickets = sorted(
         [t for t in plan.tickets if t.note and t.note.startswith(CANCEL_SEND_NOTE_PREFIX) and t.begin_time],
@@ -1108,6 +1140,20 @@ def get_current_review_path(plan, current_user):
         return None
     if current_path.organization_id != current_user.organization_id:
         return None
+    # Утверждающая организация (ТЗ п.5) — доступ зависит от того, кто
+    # создал план:
+    # - Вариант А (план создан самой утверждающей организацией,
+    #   plan.org_id == organization_id этапа): доступ только у
+    #   org_head/org_head_deputy, исполнитель и руководитель структурного
+    #   подразделения в утверждении не участвуют вовсе;
+    # - Вариант Б (план создан другой организацией): исполнитель получает
+    #   план первым и может направить его дальше (как и везде в "Шаге 2"),
+    #   доступ не ограничен — решение в любом случае выносят только
+    #   org_head/org_head_deputy (см. step_submit_for_signature/
+    #   step_internal_sign).
+    if current_path.step_type == 'approver' and plan.org_id == current_path.organization_id:
+        if not current_user.is_org_manager:
+            return None
     return current_path
 
 
@@ -1204,6 +1250,17 @@ def get_audit_context(plan, current_user):
 
     has_remarks = has_pending_review_message(plan, current_user) if can_audit else False
 
+    # ТЗ п.5, Вариант А (план создан самой утверждающей организацией):
+    # никакого направления/решения нет — org_head/org_head_deputy сразу
+    # видят только одну кнопку «Одобрить» с ЭЦП (см. step_internal_sign,
+    # ветка для step_type='approver' без pending_signer_user_id). В
+    # Варианте Б до этого момента доводит обычный "Шаг 2" (submit-for-
+    # signature/forward-signature), see get_current_review_path.
+    is_approver_step = bool(current_path and current_path.step_type == 'approver')
+    step_direct_approve = bool(
+        can_audit and is_approver_step and plan.org_id == current_path.organization_id
+    )
+
     return {
         'current_path': current_path,
         'can_audit': can_audit,
@@ -1214,23 +1271,27 @@ def get_audit_context(plan, current_user):
         'step_is_signed': current_path.is_signed if current_path else False,
         'step_submitted_by_id': current_path.submitted_by_user_id if current_path else None,
         'step_pending_decision': current_path.pending_decision if current_path else None,
+        'is_approver_step': is_approver_step,
+        'step_direct_approve': step_direct_approve,
     }
 
 
 def get_plan_executors_summary(plan):
-    """Строка "ФИО (тел.: ..., email: ...)" для каждого «Ответственного
-    исполнителя» плана (до 2 человек, см. plan_bp::add_plan_executor/
-    remove_plan_executor), через ", ". Снимок каждого (developer_name/
-    phone/email на PlanExecutor) сделан в момент добавления в список и не
-    меняется при редактировании его профиля — та же причина, что у
-    PlanApprovalPath.sender_*. Показывается и до отправки, и во всех уже
-    отправленных циклах в «Подписи» (components.html::plan_signatures_page),
-    одинаково, независимо от того, сколько раз план пересылался (в
-    отличие от cycle.dev_* ниже — тот снимок про ПОДПИСАВШЕГО/отправившего
+    """Список строк "ФИО (тел.: ..., email: ...)" — одна строка на
+    каждого «Ответственного исполнителя» плана (до 2 человек, см.
+    plan_bp::add_plan_executor/remove_plan_executor) — если их больше
+    одного, шаблон показывает второго с новой строки (components.html::
+    plan_signatures_page), а не через запятую на одной. Снимок каждого
+    (developer_name/phone/email на PlanExecutor) сделан в момент
+    добавления в список и не меняется при редактировании его профиля —
+    та же причина, что у PlanApprovalPath.sender_*. Показывается и до
+    отправки, и во всех уже отправленных циклах в «Подписи», одинаково,
+    независимо от того, сколько раз план пересылался (в отличие от
+    cycle.dev_* ниже — тот снимок про ПОДПИСАВШЕГО/отправившего
     конкретный цикл, отдельное понятие, см. build_signature_cycles).
-    Возвращает None, если список пуст (старый план без ни одной записи —
-    на этот случай в шаблоне есть собственный запасной вариант через
-    plan.user)."""
+    Возвращает пустой список, если ответственных исполнителей нет (старый
+    план без ни одной записи — на этот случай в шаблоне есть собственный
+    запасной вариант через plan.user)."""
     parts = []
     for e in plan.executors:
         if not e.developer_name:
@@ -1238,7 +1299,7 @@ def get_plan_executors_summary(plan):
         phone = e.developer_phone or '—'
         email = e.developer_email or '—'
         parts.append(f'{e.developer_name} (тел.: {phone}, email: {email})')
-    return ', '.join(parts) if parts else None
+    return parts
 
 
 def get_last_internal_return_ticket(plan):
@@ -1277,7 +1338,11 @@ def build_approval_chain(plan, coordinator_ids=None, approver_id=None):
 
     Если coordinator_ids/approver_id не переданы явно — берутся из
     plan.pending_coordinator_ids/plan.pending_approver_id (маршрут,
-    сохранённый на шаге внутренней отправки на подпись)."""
+    сохранённый на шаге внутренней отправки на подпись).
+
+    ТЗ п.7: доработанный план всегда проходит маршрут заново с самого
+    начала (регион → согласующие → утверждающий), без пропуска уже
+    пройденных организаций — ровно то, что эта функция и делает."""
     chain = []
 
     if not plan.organization or not plan.organization.region_id:
@@ -1464,17 +1529,44 @@ def build_signer_snapshot(user):
     return ', '.join(parts) if parts else None
 
 
-def get_signer_candidates(org_id, approver_only=False):
-    """Сотрудники организации — кандидаты на подпись: обычно «Руководитель
-    структурного подразделения»/«Руководитель организации» (используется и
-    при первичной отправке плана — plan_send_page, — и на "Шаге 2" при
-    направлении решения этапа согласования на подпись). approver_only=True
-    (этап step_type='approver' — организация выступает именно утверждающей,
-    см. PlanApprovalPath.STEP_TYPES) сужает список до одного org_head:
-    утверждать план может только руководитель организации, в отличие от
-    подписания/согласования/отправки, доступных и руководителю структурного
-    подразделения."""
-    roles = ['org_head', 'org_head_deputy'] if approver_only else ['dept_head', 'org_head', 'org_head_deputy']
+def log_step2_action(plan, path, current_user, action, target_user=None, ticket=None):
+    """Пишет историческую строку "Шага 2" ВНУТРИ внешней организации
+    (регион/согласующая/утверждающая) — кто направил решение, кто
+    переслал без подписи, кто подписал, кто вернул на доработку. Сам
+    официальный шаг (path, is_internal=False) не трогает — это только
+    для "Подписи": build_signature_cycles прикрепляет такие строки к
+    "своему" официальному шагу по совпадению step_order (см. там же).
+    Та же идея, что internal_sign/forward_internal_signature у
+    организации-разработчика (is_internal=True), только organization_id
+    здесь — внешняя организация, а не сама plan.org_id, и состояний
+    больше двух, поэтому — log_action вместо forwarded_to_user_id."""
+    db.session.add(PlanApprovalPath(
+        plan_id=plan.id,
+        step_order=path.step_order,
+        organization_id=path.organization_id,
+        step_type=path.step_type,
+        is_internal=True,
+        cycle=path.cycle,
+        is_viewed=True,
+        created_at=current_utc_time(),
+        signed_by_user_id=current_user.id,
+        signed_at=current_utc_time(),
+        signed_by_snapshot=build_signer_snapshot(current_user),
+        forwarded_to_user_id=target_user.id if target_user else None,
+        log_action=action,
+        ticket_id=ticket.id if ticket else None,
+    ))
+
+
+def get_signer_candidates(org_id):
+    """Сотрудники организации — кандидаты на подпись/направление: «Руководитель
+    структурного подразделения»/«Руководитель организации»/заместитель —
+    используется и при первичной отправке плана (plan_send_page), и на
+    "Шаге 2" при направлении решения этапа согласования/утверждения. Кто из
+    них может реально ПОДПИСАТЬ (а не только направить дальше) — отдельное
+    ограничение по роли в вызывающем коде (ТЗ п.5: утверждает только
+    org_head/org_head_deputy, см. step_internal_sign/step_submit_for_signature)."""
+    roles = ['dept_head', 'org_head', 'org_head_deputy']
     return User.query.filter(
         User.organization_id == org_id,
         User.org_role.in_(roles)

@@ -473,28 +473,20 @@ def create_ticket(token):
     if current_plan.is_approved or current_plan.is_error:
         return _error('План уже обработан')
 
-    # approval_paths больше не чистятся при повторной отправке (см. cycle) —
-    # искать "текущий" этап нужно строго в последнем цикле, иначе можно
-    # найти брошенный непройденный этап из отменённого старого цикла.
-    latest_cycle = db.session.query(db.func.max(PlanApprovalPath.cycle)).filter(
-        PlanApprovalPath.plan_id == current_plan.id
-    ).scalar() or 1
-
-    current_path = PlanApprovalPath.query.filter_by(
-        plan_id=current_plan.id,
-        cycle=latest_cycle,
-        is_viewed=False
-    ).order_by(PlanApprovalPath.step_order).first()
+    # get_current_review_path уже учитывает последний цикл отправки,
+    # исключает внутренние (is_internal) строки и — для утверждающей
+    # организации (step_type='approver', ТЗ п.5) — ограничивает доступ
+    # только org_head/org_head_deputy; раньше здесь была своя отдельная
+    # копия этого запроса без двух последних проверок.
+    from website.utils.plans import get_current_review_path
+    current_path = get_current_review_path(current_plan, current_user)
 
     if not current_path:
         return _error('Нет активных шагов для проверки')
 
-    if current_path.organization_id != current_user.organization_id:
-        return _error('У вас нет прав на отправку сообщения для этого этапа')
-
     prev_path = PlanApprovalPath.query.filter(
         PlanApprovalPath.plan_id == current_plan.id,
-        PlanApprovalPath.cycle == latest_cycle,
+        PlanApprovalPath.cycle == current_path.cycle,
         PlanApprovalPath.step_order == current_path.step_order - 1
     ).first()
 

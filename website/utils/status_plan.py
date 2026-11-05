@@ -334,7 +334,11 @@ def handle_sent_without_check_status(plan, current_user, reason=None):
     try:
         cycle = _latest_cycle(plan.id)
 
-        if current_user.is_auditor:
+        # is_approver (утверждающая организация) — та же механика отмены
+        # СВОЕГО этапа, что и is_auditor (согласующая): без него сотрудник
+        # утверждающей организации проваливался бы в ветку ниже (сброс
+        # is_viewed у ВСЕХ этапов цикла сразу, задуманную для admin/reader).
+        if current_user.is_auditor or current_user.is_approver:
             # Если одна и та же организация занимает НЕСКОЛЬКО ролей/этапов
             # в цепочке согласования одного цикла (например, одновременно
             # region и approver — на малых тестовых конфигурациях это

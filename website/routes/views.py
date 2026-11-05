@@ -261,6 +261,21 @@ def invite_employee():
         organization_id=current_user.organization_id,
         org_role=org_role,
         application_id=get_current_application_id(),
+        # is_auditor/is_approver — не про org_role (место в иерархии внутри
+        # organization_id), а про то, что сама организация выступает
+        # согласующей/утверждающей (см. owner_only/get_filtered_plans).
+        # Берём напрямую из флагов организации (Organization.is_coordinator/
+        # is_region_management/is_approver), а не копируем у пригласившего —
+        # у исторических организаций это было проставлено только одному
+        # аккаунту отдельной миграцией, и копирование у возможно неверно
+        # проставленного current_user повторило бы ту же ошибку. Без этого
+        # любой приглашённый исполнитель/руководитель подразделения не мог
+        # бы вообще открыть ни один план (ТЗ, п.4: решение по плану внутри
+        # согласующей организации выносит исполнитель, не только org_head).
+        is_auditor=bool(current_user.organization and (
+            current_user.organization.is_coordinator or current_user.organization.is_region_management
+        )),
+        is_approver=bool(current_user.organization and current_user.organization.is_approver),
         # Временный непригодный пароль — сотрудник обязательно задаст свой
         # по ссылке из письма (тот же механизм, что и "забыли пароль").
         password=generate_password_hash(uuid.uuid4().hex),
