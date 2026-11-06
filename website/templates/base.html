@@ -48,7 +48,7 @@
             <div class="header-aside" onclick="window.location.href='/'">
                 <div class="logo-wrapper {% if current_user and current_user.is_authenticated %}
                         {% if current_user.is_admin %}red-shadow
-                        {% elif current_user.is_auditor %}green-shadow
+                        {% elif current_user.has_auditor_access %}green-shadow
                         {% endif %}
                     {% endif %}">
                     <img src="{{ url_for('static', filename='img/logo.svg') }}"
@@ -262,7 +262,7 @@
     </div>
     {% endif %}
 
-    {% if context_menu and not (current_user and current_user.is_org_manager) %}
+    {% if context_menu and current_user and current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
         {% set is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or (plan.org_id != current_user.organization_id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">

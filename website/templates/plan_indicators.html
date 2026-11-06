@@ -38,7 +38,7 @@
             <th colspan="2" class="resizable colspan-header" style="max-width: 200px">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                     <a>{{ config.year }} г. {{ config.label }}</a>
-                    {% if not plan.is_draft or plan.pending_signer_user_id or plan.is_historical or current_user.is_org_manager or (plan.org_id != current_user.organization_id)%}
+                    {% if not plan.is_draft or plan.pending_signer_user_id or plan.is_historical or current_user.org_role not in ('executor', 'dept_head') or not (current_user.organization and current_user.organization.is_regular) or (plan.org_id != current_user.organization_id)%}
                     {%else%}
                         <span class="edit-header-icon" data-config-id="{{ config.id }}" data-year="{{ config.year }}" data-label="{{ config.label }}" style="cursor: pointer; opacity: 0.5; transition: opacity 0.2s;">
                             {{ icons.icon_dots() }}

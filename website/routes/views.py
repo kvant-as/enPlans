@@ -53,13 +53,13 @@ def owner_only(f):
 
         has_access = (
             current_user.is_admin or
-            current_user.is_auditor or
-            # is_approver (утверждающая организация) исторически был
-            # пропущен здесь — её сотрудники не могли открыть ни один
+            current_user.has_auditor_access or
+            # has_approver_access (утверждающая организация) исторически
+            # был пропущен здесь — её сотрудники не могли открыть ни один
             # owner_only-роут (включая "Действия с планом"), хотя сами
             # этапы step_type='approver' в маршруте для них создаются и
             # предназначены именно им (см. "Шаг 2" внутреннего подписания).
-            current_user.is_approver or
+            current_user.has_approver_access or
             current_user.is_reader or
             plan.user_id == current_user.id or
             # Любой сотрудник той же организации-разработчика — не только
@@ -128,12 +128,17 @@ def org_head_forbidden(f):
     декоратор, а инлайн-проверка в самом роуте."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_org_manager:
-            message = 'Руководитель организации не редактирует содержимое плана'
+        from website.utils.plans import can_edit_plan_data
+        current_plan = getattr(g, 'current_plan', None)
+        allowed = can_edit_plan_data(current_user, current_plan) if current_plan is not None else (
+            current_user.org_role in ('executor', 'dept_head')
+            and current_user.organization and current_user.organization.is_regular
+        )
+        if not allowed:
+            message = 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'error': message}), 403
             flash(message, 'error')
-            current_plan = getattr(g, 'current_plan', None)
             if current_plan is not None:
                 return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
             return redirect(url_for('views.plans'))
@@ -261,21 +266,6 @@ def invite_employee():
         organization_id=current_user.organization_id,
         org_role=org_role,
         application_id=get_current_application_id(),
-        # is_auditor/is_approver — не про org_role (место в иерархии внутри
-        # organization_id), а про то, что сама организация выступает
-        # согласующей/утверждающей (см. owner_only/get_filtered_plans).
-        # Берём напрямую из флагов организации (Organization.is_coordinator/
-        # is_region_management/is_approver), а не копируем у пригласившего —
-        # у исторических организаций это было проставлено только одному
-        # аккаунту отдельной миграцией, и копирование у возможно неверно
-        # проставленного current_user повторило бы ту же ошибку. Без этого
-        # любой приглашённый исполнитель/руководитель подразделения не мог
-        # бы вообще открыть ни один план (ТЗ, п.4: решение по плану внутри
-        # согласующей организации выносит исполнитель, не только org_head).
-        is_auditor=bool(current_user.organization and (
-            current_user.organization.is_coordinator or current_user.organization.is_region_management
-        )),
-        is_approver=bool(current_user.organization and current_user.organization.is_approver),
         # Временный непригодный пароль — сотрудник обязательно задаст свой
         # по ссылке из письма (тот же механизм, что и "забыли пароль").
         password=generate_password_hash(uuid.uuid4().hex),
@@ -666,11 +656,16 @@ def news_post(id):
 @session_required
 @reader_forbidden
 def create_plan():
-    # Руководитель организации подписывает и отправляет планы, но не
-    # заводит их сам — это задача исполнителя/руководителя структурного
-    # подразделения (см. "внутренние роли сотрудников").
-    if current_user.is_org_manager:
-        flash('Руководитель организации не создаёт планы — это делает исполнитель или руководитель структурного подразделения', 'error')
+    # Создавать план может только исполнитель/руководитель структурного
+    # подразделения ОБЫЧНОЙ организации-разработчика (Organization.is_regular) —
+    # руководитель организации планы не заводит (подписывает/утверждает),
+    # а согласующая/утверждающая организация без своего is_regular вообще
+    # не готовит планы, даже если у кого-то там org_role='executor'.
+    if not (
+        current_user.org_role in ('executor', 'dept_head')
+        and current_user.organization and current_user.organization.is_regular
+    ):
+        flash('Создавать планы может только исполнитель или руководитель структурного подразделения организации-разработчика', 'error')
         return redirect(url_for('views.plans'))
 
     if request.method == 'POST':

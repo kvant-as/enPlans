@@ -195,31 +195,18 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
             flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
             return redirect(url_for('auth.param'))
 
-    if user_type == 'respondent':
-        current_user.is_auditor = False
-        current_user.is_approver = False
-        # Тот, кто сам регистрирует организацию (а не приглашён руководителем
-        # через invite_employee — у таких org_role уже проставлен заранее),
-        # автоматически становится её руководителем и дальше сам добавляет
-        # сотрудников из профиля.
+    if user_type in ('respondent', 'auditor', 'approver'):
+        # is_auditor/is_approver больше не проставляются на пользователе —
+        # согласующая/утверждающая принадлежность организации читается
+        # прямо из Organization.is_coordinator/is_region_management/
+        # is_approver (см. User.has_auditor_access/has_approver_access),
+        # сам user_type с формы регистрации сейчас используется только
+        # чтобы определить, что текущий аккаунт становится руководителем
+        # организации (а не приглашённым сотрудником — у тех org_role уже
+        # проставлен заранее через invite_employee).
         if not current_user.org_role:
             current_user.org_role = 'org_head'
-        current_app.logger.info(f'User {current_user.id} set as respondent')
-    elif user_type == 'auditor':
-        current_user.is_auditor = True
-        current_user.is_approver = False
-        # Внутренние роли (Исполнитель/Руководитель) теперь нужны и
-        # согласующим организациям — см. "Шаг 2" внутреннего подписания
-        # (подписывает решение организации не тот, кто его рассматривал).
-        if not current_user.org_role:
-            current_user.org_role = 'org_head'
-        current_app.logger.info(f'User {current_user.id} set as auditor')
-    elif user_type == 'approver':
-        current_user.is_auditor = False
-        current_user.is_approver = True
-        if not current_user.org_role:
-            current_user.org_role = 'org_head'
-        current_app.logger.info(f'User {current_user.id} set as approver')
+        current_app.logger.info(f'User {current_user.id} set as {user_type}')
     else:
         current_app.logger.warning(f'Unknown user_type: {user_type} for user {current_user.id}')
         flash(f'Такого типа пользователя не существует: {str(e)}', 'error')

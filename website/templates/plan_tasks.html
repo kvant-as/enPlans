@@ -18,7 +18,7 @@
           class="svg-btn dots-btn"
           data-tooltip="Редактировать"
           onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-          {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical or current_user.is_org_manager or (plan.org_id != current_user.organization_id) or current_user.is_reader %}disabled{% endif %}
+          {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical or current_user.org_role not in ('executor', 'dept_head') or not (current_user.organization and current_user.organization.is_regular) or (plan.org_id != current_user.organization_id) or current_user.is_reader %}disabled{% endif %}
         >
           {{ icons.icon_edit() }}
         </button>

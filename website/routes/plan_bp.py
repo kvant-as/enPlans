@@ -134,6 +134,7 @@ def _plan_executor_candidates(plan):
     already_ids = {e.user_id for e in plan.executors} or {plan.user_id}
     return User.query.filter(
         User.organization_id == plan.org_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(['executor', 'dept_head']),
         ~User.id.in_(already_ids) if already_ids else True
     ).order_by(User.org_role.desc()).all()
@@ -175,6 +176,7 @@ def add_plan_executor(token):
     candidate = User.query.filter(
         User.id == user_id,
         User.organization_id == current_plan.org_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(['executor', 'dept_head'])
     ).first() if user_id else None
 
@@ -313,7 +315,9 @@ def plan_send_page(token):
     # его не выбирал.
     from website.utils.plans import build_approval_chain
     energy_dept_entry = next(
-        (org for step_type, org in build_approval_chain(current_plan, coordinator_ids=[], approver_id=None) if step_type == 'approver'),
+        (org for step_type, org in build_approval_chain(
+            current_plan, coordinator_ids=[], approver_id=None, use_pending_fallback=False
+        ) if step_type == 'approver'),
         None,
     )
 
@@ -353,6 +357,7 @@ def submit_for_signature(token):
     signer = User.query.filter(
         User.id == signer_id,
         User.organization_id == current_plan.org_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(['dept_head', 'org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 
@@ -616,10 +621,10 @@ def _finalize_step_decision(current_plan, current_path, current_user):
     """Финализирует подписанное решение этапа ("Шаг 2"): вызывает
     handle_approved_status/handle_error_status (использует current_user —
     именно подписавшего, а не исполнителя, направившего решение раньше)
-    и сбрасывает поля внутреннего подцикла. Общая логика для step_dispatch
-    (регион/согласующая — отдельным кликом [Отправить]) и step_internal_sign
-    при step_type='approver' (ТЗ п.5 — «Одобрить» одним действием с ЭЦП,
-    без отдельной отправки). Возвращает текст ошибки или None."""
+    и сбрасывает поля внутреннего подцикла. Вызывается из step_internal_sign
+    сразу после подписи — подпись и финализация решения (отправка дальше
+    по маршруту либо «Есть ошибки») всегда одно действие, для всех
+    step_type. Возвращает текст ошибки или None."""
     from website.utils.status_plan import handle_approved_status, handle_error_status
 
     decision = current_path.pending_decision
@@ -709,6 +714,7 @@ def step_submit_for_signature(token):
     signer = User.query.filter(
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(allowed_roles)
     ).first() if signer_id else None
 
@@ -750,14 +756,18 @@ def step_submit_for_signature(token):
 def step_internal_sign(token):
     """Кнопка [Подписать] у руководителя, которому направлено решение
     этапа (см. step_submit_for_signature) — тот же мок-ЭЦП, что и в «Шаге
-    1». После подписи становится доступна кнопка [Отправить] — см.
-    step_dispatch.
+    1». Подпись сразу же финализирует решение (через _finalize_step_decision)
+    — отдельного клика [Отправить] нет: как только руководитель подписал,
+    план либо уходит дальше по маршруту, либо этап становится «Есть
+    ошибки» — в зависимости от того, какое решение было направлено ему на
+    подпись (см. step_submit_for_signature). В "Подписи" это один и тот же
+    момент, поэтому отдельная строка "Подписал(а) решение" (log_step2_action)
+    здесь больше не пишется — итог виден по самому официальному шагу
+    (его viewed_by_snapshot/rejected_by_snapshot и дате).
 
-    Для step_type='approver' (ТЗ п.5) — особый случай: «Одобрить» это
-    ОДНО действие с ЭЦП, без отдельного [Отправить] и без решения
-    "Есть ошибки" (его в утверждающей организации нет вовсе), поэтому
-    здесь же сразу финализируем через _finalize_step_decision. А если
-    план создан самой утверждающей организацией (Вариант А) — у
+    Для step_type='approver' (ТЗ п.5) — особый случай: решения "Есть
+    ошибки" в утверждающей организации нет вовсе (только «Одобрить»). А
+    если план создан самой утверждающей организацией (Вариант А) — у
     org_head/org_head_deputy current_path.pending_signer_user_id вообще
     не был выставлен (нет отдельного направления, см.
     step_submit_for_signature), так что принимаем решение "на себя".
@@ -805,28 +815,27 @@ def step_internal_sign(token):
     current_path.signed_at = current_utc_time()
     current_path.signed_by_snapshot = build_signer_snapshot(current_user)
 
-    from website.utils.plans import log_step2_action
-    log_step2_action(current_plan, current_path, current_user, 'signed')
+    decision = current_path.pending_decision
+    is_approver_step = current_path.step_type == 'approver'
 
-    if current_path.step_type == 'approver':
-        error = _finalize_step_decision(current_plan, current_path, current_user)
-        if error:
-            db.session.rollback()
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'error': error}), 400
-            flash(error, 'error')
-            return redirect(url_for('plan_bp.plan_actions', token=token))
-        db.session.commit()
+    error = _finalize_step_decision(current_plan, current_path, current_user)
+    if error:
+        db.session.rollback()
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True})
-        flash('План утверждён', 'success')
+            return jsonify({'success': False, 'error': error}), 400
+        flash(error, 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
-
     db.session.commit()
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True})
-    flash('Решение подписано', 'success')
+    if is_approver_step:
+        message = 'План утверждён'
+    elif decision == 'approved':
+        message = 'Решение подписано и отправлено'
+    else:
+        message = 'План возвращён на доработку'
+    flash(message, 'success')
     return redirect(url_for('plan_bp.plan_actions', token=token))
 
 
@@ -952,6 +961,7 @@ def step_forward_signature(token):
     signer = User.query.filter(
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(['org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 
@@ -974,43 +984,6 @@ def step_forward_signature(token):
     db.session.commit()
 
     flash('Решение направлено руководителю организации на подпись', 'success')
-    return redirect(url_for('plan_bp.plan_actions', token=token))
-
-
-@plan_bp.route('/step/dispatch/<token>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@owner_only
-@historical_forbidden
-@reader_forbidden
-def step_dispatch(token):
-    """Кнопка [Отправить] у подписавшего руководителя — фактическая
-    финализация решения этапа (момент, когда внешний статус/«Подписи»
-    реально меняются): вызывает уже существующие handle_approved_status/
-    handle_error_status (они используют current_user, т.е. именно
-    подписавшего, для viewed_by_snapshot/rejected_by_snapshot — не
-    исполнителя, принявшего решение раньше), затем сбрасывает поля
-    внутреннего подцикла этапа. Для step_type='approver' недостижима из
-    обычного UI (там «Одобрить» уже финализирует сама, см.
-    step_internal_sign) — остаётся как общий путь финализации региона/
-    согласующей организации."""
-    from website.utils.plans import get_current_review_path
-
-    current_plan = g.current_plan
-    current_path = get_current_review_path(current_plan, current_user)
-
-    if not current_path or not current_path.is_signed or current_path.pending_signer_user_id != current_user.id:
-        flash('Решение не подписано вами', 'error')
-        return redirect(url_for('plan_bp.plan_actions', token=token))
-
-    error = _finalize_step_decision(current_plan, current_path, current_user)
-    if error:
-        flash(error, 'error')
-        return redirect(url_for('plan_bp.plan_actions', token=token))
-
-    db.session.commit()
-
-    flash('Решение отправлено', 'success')
     return redirect(url_for('plan_bp.plan_actions', token=token))
 
 
@@ -1079,11 +1052,12 @@ def api_update_column_label(token):
         if plan.is_historical:
             return jsonify({'success': False, 'error': 'Это архивная версия плана — только для просмотра'}), 403
 
-        if current_user.is_org_manager:
-            return jsonify({'success': False, 'error': 'Руководитель организации не редактирует содержимое плана'}), 403
+        from website.utils.plans import can_edit_plan_data
+        if not can_edit_plan_data(current_user, plan):
+            return jsonify({'success': False, 'error': 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'}), 403
 
         data = request.get_json()
-        
+
         config_id = data.get('config_id')
         new_label = data.get('label')
         
@@ -1457,8 +1431,9 @@ def delete_indicator(id):
     if current_plan.is_historical:
         return _indicator_action_response(current_plan.token, 'Это архивная версия плана — только для просмотра', 'error')
 
-    if current_user.is_org_manager:
-        return _indicator_action_response(current_plan.token, 'Руководитель организации не редактирует содержимое плана', 'error')
+    from website.utils.plans import can_edit_plan_data
+    if not can_edit_plan_data(current_user, current_plan):
+        return _indicator_action_response(current_plan.token, 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика', 'error')
 
     db.session.delete(indicator)
     db.session.commit()
@@ -1652,8 +1627,9 @@ def edit_event(id):
         if current_plan.is_historical:
             return _event_action_response('Это архивная версия плана — только для просмотра', 'error')
 
-        if current_user.is_org_manager:
-            return _event_action_response('Руководитель организации не редактирует содержимое плана', 'error')
+        from website.utils.plans import can_edit_plan_data
+        if not can_edit_plan_data(current_user, current_plan):
+            return _event_action_response('Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика', 'error')
 
         event_type = request.form.get('event_type') or 'saving'
         edit_type = request.form.get('edit_type') or 'full'
@@ -1828,8 +1804,9 @@ def delete_eventes(id):
     if current_plan.is_historical:
         return _event_action_response('Это архивная версия плана — только для просмотра', 'error')
 
-    if current_user.is_org_manager:
-        return _event_action_response('Руководитель организации не редактирует содержимое плана', 'error')
+    from website.utils.plans import can_edit_plan_data
+    if not can_edit_plan_data(current_user, current_plan):
+        return _event_action_response('Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика', 'error')
 
     if current_event.is_econom and not current_event.is_increase:
         event_type = 'saving'
@@ -1907,8 +1884,9 @@ def upload_event_teo(id):
     if current_event.plan.is_historical:
         return jsonify({'success': False, 'message': 'Это архивная версия плана — только для просмотра'}), 403
 
-    if current_user.is_org_manager:
-        return jsonify({'success': False, 'message': 'Руководитель организации не редактирует содержимое плана'}), 403
+    from website.utils.plans import can_edit_plan_data
+    if not can_edit_plan_data(current_user, current_event.plan):
+        return jsonify({'success': False, 'message': 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'}), 403
 
     teo_file = request.files.get('teo_file')
     if not teo_file or not teo_file.filename:
@@ -1941,8 +1919,9 @@ def delete_event_teo(id):
     if current_event.plan.is_historical:
         return jsonify({'success': False, 'message': 'Это архивная версия плана — только для просмотра'}), 403
 
-    if current_user.is_org_manager:
-        return jsonify({'success': False, 'message': 'Руководитель организации не редактирует содержимое плана'}), 403
+    from website.utils.plans import can_edit_plan_data
+    if not can_edit_plan_data(current_user, current_event.plan):
+        return jsonify({'success': False, 'message': 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'}), 403
 
     try:
         delete_teo_file(current_event)
@@ -1981,8 +1960,9 @@ def api_change_plan_status(token):
             flash('Статус не указан', 'error')
             return redirect(request.referrer or url_for('views.plans'))
 
-    if status == 'control' and current_user.is_org_manager:
-        message = 'Руководитель организации не редактирует содержимое плана'
+    from website.utils.plans import can_edit_plan_data
+    if status == 'control' and not can_edit_plan_data(current_user, plan):
+        message = 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'
         if request.is_json:
             return jsonify({'error': message}), 403
         else:
@@ -2034,17 +2014,25 @@ def api_change_plan_status(token):
     elif status == 'approved':
         result = handler(plan, current_user)
     elif status == 'sent_without_check':
+        # TODO: "Отменить изменения" на этапах согласования/утверждения
+        # временно отключена (см. get_audit_context::can_cancel) — кнопка
+        # скрыта, но дублируем запрет и здесь на случай прямого запроса.
+        error_msg = 'Отмена изменений на этапах согласования/утверждения временно недоступна'
+        if request.is_json:
+            return jsonify({'error': error_msg}), 403
+        flash(error_msg, 'error')
+        return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
         # Отмена проверяющим своего подтверждения этапа — тоже требует
         # письменного обоснования, по аналогии с отменой отправки
         # разработчиком (status == 'draft' ниже); причина попадёт в
         # сообщения по плану (см. handle_sent_without_check_status).
-        if not (reason and reason.strip()):
-            error_msg = 'Укажите причину отмены своего согласования'
-            if request.is_json:
-                return jsonify({'error': error_msg}), 400
-            flash(error_msg, 'error')
-            return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
-        result = handler(plan, current_user, reason)
+        # if not (reason and reason.strip()):
+        #     error_msg = 'Укажите причину отмены своего согласования'
+        #     if request.is_json:
+        #         return jsonify({'error': error_msg}), 400
+        #     flash(error_msg, 'error')
+        #     return redirect(request.referrer or url_for('plan_bp.plan_actions', token=plan.token))
+        # result = handler(plan, current_user, reason)
     elif status == 'draft':
         # "Отменить отправку" (план уже был отправлен) обязательно требует
         # причину — она попадёт в "Подписи" отдельной строкой в конце

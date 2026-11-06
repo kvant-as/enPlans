@@ -4,7 +4,7 @@ from common_models import (
     PlanTicket, Unit, Direction, News, Event, Indicator, IndicatorUsage,
     StatPlan, StatPlanValue, ChatMessage, Chat,
 
-    Report, Version_report
+    Report, Version_report, Role,
 )
 
 __all__ = [
@@ -13,5 +13,5 @@ __all__ = [
     'PlanTicket', 'Unit', 'Direction', 'News', 'Event', 'Indicator',
     'IndicatorUsage', 'StatPlan', 'StatPlanValue', 'ChatMessage', 'Chat',
 
-    'Report', 'Version_report'
+    'Report', 'Version_report', 'Role',
 ]

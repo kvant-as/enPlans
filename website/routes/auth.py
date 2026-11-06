@@ -302,7 +302,7 @@ def delete_account():
         flash('Неверный email для подтверждения', 'error')
         return redirect(url_for('views.profile'))
     
-    if user.is_admin or user.is_auditor:
+    if user.is_admin or user.has_auditor_access:
         flash('Пользователь с вашим статусом не может удалить аккаунт', 'error')
         return redirect(url_for('views.profile'))
     

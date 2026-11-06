@@ -15,7 +15,14 @@
         <a class="name">{% if audit_page %}{{ _('Просмотр планов мероприятий по энергосбережению') }}{% else %}{{ _('Планы мероприятий по энергосбережению') }}{% endif %}</a>
       </div>
       <div class="header-content-right">
-        {% if current_user.is_auditor == False and current_user.is_reader == False and not current_user.is_org_manager %}
+        {# "Создать план" — доступно только executor/dept_head ОБЫЧНОЙ
+           организации-разработчика (Organization.is_regular), как и сам
+           роут views.create_plan — то же условие. То, что организация
+           ТАКЖЕ выступает согласующей/утверждающей для чужих планов
+           (has_auditor_access/has_approver_access, Вариант А п.5), никак
+           не мешает ей готовить и редактировать СВОЙ план — это не
+           взаимоисключающие роли. #}
+        {% if current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
           <button
             type="button"
             class="main-btn main-btn-primary"

@@ -191,6 +191,21 @@ def update_ChangeTimePlan(id):
 
     db.session.commit()
 
+def can_edit_plan_data(user, plan):
+    """Создавать план и заполнять его содержимое (показатели, мероприятия,
+    метаданные) может только сотрудник ОБЫЧНОЙ организации-разработчика
+    (Organization.is_regular — не только согласующей/утверждающей, см.
+    get_filtered_plans/Вариант А ТЗ п.5) с ролью executor или dept_head, и
+    только для плана СВОЕЙ организации. org_head/org_head_deputy этим не
+    занимаются (is_org_manager — они подписывают/утверждают), это
+    единственное правило — больше никаких исключений."""
+    return bool(
+        user.organization_id == plan.org_id
+        and user.org_role in ('executor', 'dept_head')
+        and user.organization and user.organization.is_regular
+    )
+
+
 def get_plans_by_okpo():
     """Фильтрация по 4-ой цифре с конца ОКПО организации пользователя —
     кроме admin/is_reader, которые видят всё вне зависимости от ОКПО (и
@@ -208,7 +223,7 @@ def get_plans_by_okpo():
     org_okpo = str(current_user.organization.okpo) if current_user.organization else ''
     okpo_digit = org_okpo[-4] if len(org_okpo) >= 4 else None
 
-    if current_user.is_auditor and okpo_digit == "8":
+    if current_user.has_auditor_access and okpo_digit == "8":
         return Plan.query.filter(status_filter).order_by(Plan.year.asc())
 
     return Plan.query.join(Organization).filter(
@@ -219,34 +234,56 @@ def get_plans_by_okpo():
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_ynp="", region_id=None, search_approver_org="", page=1, per_page=5):
     try:
         # current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
-        
-        if user.is_auditor or user.is_approver:
-            # is_approver (утверждающая организация) — та же механика, что
-            # и у is_auditor (согласующая): список планов по собственным
-            # этапам в PlanApprovalPath, а не по org_id (который у
-            # организации-рецензента никогда не совпадёт с org_id плана).
-            # Раньше is_approver здесь не проверялся вовсе — такие аккаунты
-            # проваливались в ветку "else" ниже и не видели ни одного плана.
+        is_hybrid_org = False
+        is_reviewer_only = False
+
+        if user.has_auditor_access or user.has_approver_access:
+            # has_approver_access (утверждающая организация) — та же
+            # механика, что и у has_auditor_access (согласующая): список
+            # планов по собственным этапам в PlanApprovalPath, а не по
+            # org_id (который у организации-рецензента никогда не
+            # совпадёт с org_id плана).
             auditor_org_ids = []
             if user.organization_id:
                 auditor_org_ids.append(user.organization_id)
-            
+
             if hasattr(user, 'organizations') and user.organizations:
                 auditor_org_ids.extend([org.id for org in user.organizations])
-            
+
+            # ТЗ п.5, Вариант А: организация может ОДНОВРЕМЕННО быть
+            # обычной (is_regular — готовит свои планы) и согласующей/
+            # утверждающей для чужих. INNER JOIN по PlanApprovalPath ниже
+            # отфильтровал бы собственные (ещё не отправленные/без единого
+            # этапа) планы такой организации полностью — объединяем через
+            # OUTER JOIN с условием "или наша организация — автор плана".
+            is_hybrid_org = bool(user.organization and user.organization.is_regular)
+            # Вкладки статуса ("На рассмотрении"/"Ожидание очереди" у
+            # чисто проверяющей организации, или "В редакции"/"На
+            # подписании"/"На согласовании" у is_regular, включая
+            # гибридную) должны совпадать с тем, что показывает шаблон
+            # (plan_count/plans.html) — там решает тот же is_regular.
+            is_reviewer_only = not is_hybrid_org
+
             if not auditor_org_ids:
                 base_query = Plan.query.filter(False)
             else:
-                base_query = Plan.query.join(PlanApprovalPath, Plan.id == PlanApprovalPath.plan_id)\
-                    .filter(PlanApprovalPath.organization_id.in_(auditor_org_ids))\
-                    .filter(
-                        db.or_(
-                            Plan.is_sent == True,
-                            Plan.is_error == True,
-                            Plan.is_approved == True
-                        )
-                    )\
-                    .distinct()
+                reviewer_condition = db.and_(
+                    PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                    db.or_(
+                        Plan.is_sent == True,
+                        Plan.is_error == True,
+                        Plan.is_approved == True
+                    )
+                )
+                if is_hybrid_org:
+                    own_condition = Plan.org_id == user.organization_id
+                    base_query = Plan.query.outerjoin(PlanApprovalPath, Plan.id == PlanApprovalPath.plan_id)\
+                        .filter(db.or_(reviewer_condition, own_condition))\
+                        .distinct()
+                else:
+                    base_query = Plan.query.join(PlanApprovalPath, Plan.id == PlanApprovalPath.plan_id)\
+                        .filter(reviewer_condition)\
+                        .distinct()
         elif user.is_admin or user.is_reader:
             # is_reader — читатель, видит все планы (как admin), но
             # изменить/создать ничего не может (см. reader_forbidden в
@@ -311,7 +348,7 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         
         filtered_query = base_query
         
-        if user.is_auditor and status_filter in ('sogl', 'sent', 'in_transit'):
+        if is_reviewer_only and status_filter in ('sogl', 'sent', 'in_transit'):
             # Раньше "На рассмотрении"/"Согласованные" у проверяющего
             # сверялись по PlanApprovalPath.is_viewed БЕЗ учёта цикла
             # отправки — approval_paths больше не чистятся при пересылке
@@ -339,7 +376,16 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             filtered_query = Plan.query.filter(Plan.id.in_(matching_ids))
         elif status_filter != 'all' and status_filter in status_filters:
             filtered_query = filtered_query.filter(status_filters[status_filter])
-        
+            if is_hybrid_org:
+                # У гибридной организации base_query объединяет (через OR)
+                # и её собственные планы, и чужие планы в очереди на
+                # согласование/утверждение — те тоже могут быть is_sent/
+                # is_error/is_approved. Вкладки "На согласовании"/"Есть
+                # ошибки"/"Утверждённые" здесь — про СВОИ планы, не про
+                # очередь на рассмотрение (у неё и слов таких в интерфейсе
+                # нет, см. plan_count), поэтому сужаем явно.
+                filtered_query = filtered_query.filter(Plan.org_id == user.organization_id)
+
         if year_filter != 'all':
             filtered_query = filtered_query.filter(Plan.year == int(year_filter))
         
@@ -349,7 +395,7 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
         # current_app.logger.debug(f'plans count={len(plans)}')
 
-        if user.is_auditor and auditor_org_ids:
+        if is_reviewer_only and auditor_org_ids:
             for plan in plans:
                 plan.is_queued_for_viewer = _is_queued_for_org(plan, auditor_org_ids)
         else:
@@ -364,7 +410,10 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             'all': count_query.count()
         }
 
-        if user.is_auditor and auditor_org_ids:
+        if is_reviewer_only and auditor_org_ids:
+            # Организация ТОЛЬКО согласует/утверждает чужие планы (не
+            # is_regular) — вкладки про очередь на рассмотрение, не про
+            # жизненный цикл своего плана (его у неё просто нет).
             all_org_candidates = count_query.filter(
                 Plan.is_sent == True,
                 PlanApprovalPath.organization_id.in_(auditor_org_ids),
@@ -389,15 +438,24 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             status_counts['draft'] = 0
             status_counts['control'] = 0
         else:
-            status_counts['draft'] = count_query.filter(Plan.is_draft == True).count()
-            status_counts['control'] = count_query.filter(Plan.is_control == True, Plan.pending_signer_user_id.is_(None)).count()
+            # is_regular (в т.ч. гибридная согласующая/утверждающая, ТЗ
+            # п.5 Вариант А) — вкладки про СВОИ планы (В редакции/На
+            # подписании/На согласовании/...), как у обычной организации.
+            # У гибридной count_query (= base_query) через OR включает ещё
+            # и чужие планы в очереди на рассмотрение — сужаем явно по
+            # org_id, иначе они задвоили бы "На согласовании"/"Есть
+            # ошибки"/"Утверждённые" (is_sent/is_error/is_approved такие
+            # же и у плана, который просто ждёт нашего решения).
+            own_count_query = count_query.filter(Plan.org_id == user.organization_id) if is_hybrid_org else count_query
+            status_counts['draft'] = own_count_query.filter(Plan.is_draft == True).count()
+            status_counts['control'] = own_count_query.filter(Plan.is_control == True, Plan.pending_signer_user_id.is_(None)).count()
             # "На подписании" — внутренний цикл подписания (см. Plan.pending_signer_user_id
             # в plan_bp.py :: submit_for_signature/internal_sign/internal_return) — план
             # ещё черновик (is_draft/is_control не менялись), но уже направлен руководителю.
-            status_counts['signing'] = count_query.filter(Plan.pending_signer_user_id.isnot(None)).count()
-            status_counts['sent'] = count_query.filter(Plan.is_sent == True).count()
-            status_counts['error'] = count_query.filter(Plan.is_error == True).count()
-            status_counts['approved'] = count_query.filter(Plan.is_approved == True).count()
+            status_counts['signing'] = own_count_query.filter(Plan.pending_signer_user_id.isnot(None)).count()
+            status_counts['sent'] = own_count_query.filter(Plan.is_sent == True).count()
+            status_counts['error'] = own_count_query.filter(Plan.is_error == True).count()
+            status_counts['approved'] = own_count_query.filter(Plan.is_approved == True).count()
         
         return plans, total_count, status_counts
         
@@ -1036,16 +1094,16 @@ def build_signature_print_rows(plan, cycles):
             is_rejected_step = bool(path.rejected_at) and not path.is_viewed
             is_abandoned = (not cycle['is_latest']) and not path.is_viewed and not is_rejected_step
             action_label = 'Утверждение' if path.step_type == 'approver' else 'Согласование'
-            done_label = 'Утверждено' if (path.step_type == 'approver' and path.is_viewed) else 'Согласовано'
-
+            # Статусы в печатной форме — те же пять слов, что и на странице
+            # "Подписи" (components.html::plan_signatures_page).
             if path.is_viewed:
-                status = done_label
+                status = 'Согласован'
             elif is_abandoned:
-                status = 'Не пройдено'
+                status = 'Ожидание очереди'
             elif is_rejected_step:
-                status = 'Есть ошибки'
+                status = 'Не согласован'
             elif is_active:
-                status = 'На подписании' if path.pending_signer_user_id else 'На рассмотрении'
+                status = 'На рассмотрении'
             else:
                 status = 'Ожидание очереди'
 
@@ -1198,55 +1256,33 @@ def get_audit_context(plan, current_user):
         if current_path.step_order == max_step:
             approve_label = 'Одобрить'
 
-    # Раньше при current_path is None (обычный случай сразу после того, как
-    # организация подтвердила СВОЙ этап — "текущим" становится этап
-    # СЛЕДУЮЩЕЙ организации, не её) ограничение по циклу полностью
-    # пропадало — user_has_viewed_current сканировал approval_paths ВСЕХ
-    # циклов подряд. На планах с несколькими циклами (после отклонения и
-    # повторной отправки) это могло найти подтверждённый этап организации
-    # из СТАРОГО цикла и ошибочно разрешить/запретить отмену не по тому
-    # этапу. Цикл для сравнения берём последний всегда, а не только когда
-    # current_path есть.
-    # is_internal=True исключаем явно — иначе у сотрудника организации-
-    # разработчика (её organization_id совпадает с organization_id
-    # внутренних строк её же плана) own_cycle_paths/own_confirmed ошибочно
-    # подхватили бы шаги внутренней цепочки подписания как "подтверждённые
-    # мной внешние этапы согласования".
-    external_paths = [p for p in plan.approval_paths if not p.is_internal]
-    latest_cycle = max((p.cycle for p in external_paths), default=None)
-    cycle_paths = [p for p in external_paths if latest_cycle is None or p.cycle == latest_cycle]
-
-    own_cycle_paths = [p for p in cycle_paths if p.organization_id == current_user.organization_id]
-    own_confirmed = [p for p in own_cycle_paths if p.is_viewed]
-    own_rejected = [p for p in own_cycle_paths if p.rejected_at]
-    user_has_viewed_current = bool(own_confirmed) or bool(own_rejected)
-
-    # Раньше "следующий этап уже подтверждён — отменить нельзя" проверялся
-    # через next_path, который считался ТОЛЬКО когда current_path есть —
-    # а current_path как раз всегда None сразу после того, как организация
-    # подтвердила/отклонила СВОЙ этап (см. выше), то есть ИМЕННО в тот
-    # момент, когда организация пытается отменить своё решение. Из-за
-    # этого проверка следующего этапа фактически никогда не срабатывала:
-    # первый проверяющий мог отменить своё "Согласовано" даже после того,
-    # как второй уже подтвердил свой этап поверх него — цепочка
-    # согласования теряла целостность (второй этап остаётся "подтверждён",
-    # хотя этап, от которого он зависел, снова не пройден).
+    # TODO: "Отменить изменения" на этапах согласования/утверждения
+    # временно отключена по просьбе пользователя (закомментировано, не
+    # удалено) — can_cancel всегда False, пока не понадобится вернуть.
+    # Старая логика (кто и когда мог отменить своё подтверждение/
+    # отклонение этапа) оставлена ниже закомментированной как есть.
+    can_cancel = False
+    # external_paths = [p for p in plan.approval_paths if not p.is_internal]
+    # latest_cycle = max((p.cycle for p in external_paths), default=None)
+    # cycle_paths = [p for p in external_paths if latest_cycle is None or p.cycle == latest_cycle]
     #
-    # Правильная проверка — по шагам ПОСЛЕ последнего шага ЭТОЙ организации
-    # в текущем цикле: если там уже есть подтверждённый ИЛИ отклонённый
-    # этап, отменять свой — нельзя.
-    blocked_by_later_step = False
-    if user_has_viewed_current:
-        own_last_step_order = max(
-            (p.step_order for p in own_confirmed + own_rejected), default=None
-        )
-        if own_last_step_order is not None:
-            blocked_by_later_step = any(
-                p.step_order > own_last_step_order and (p.is_viewed or p.rejected_at)
-                for p in cycle_paths
-            )
-
-    can_cancel = user_has_viewed_current and not blocked_by_later_step
+    # own_cycle_paths = [p for p in cycle_paths if p.organization_id == current_user.organization_id]
+    # own_confirmed = [p for p in own_cycle_paths if p.is_viewed]
+    # own_rejected = [p for p in own_cycle_paths if p.rejected_at]
+    # user_has_viewed_current = bool(own_confirmed) or bool(own_rejected)
+    #
+    # blocked_by_later_step = False
+    # if user_has_viewed_current:
+    #     own_last_step_order = max(
+    #         (p.step_order for p in own_confirmed + own_rejected), default=None
+    #     )
+    #     if own_last_step_order is not None:
+    #         blocked_by_later_step = any(
+    #             p.step_order > own_last_step_order and (p.is_viewed or p.rejected_at)
+    #             for p in cycle_paths
+    #         )
+    #
+    # can_cancel = user_has_viewed_current and not blocked_by_later_step
 
     has_remarks = has_pending_review_message(plan, current_user) if can_audit else False
 
@@ -1322,7 +1358,7 @@ def get_last_internal_return_ticket(plan):
     return None
 
 
-def build_approval_chain(plan, coordinator_ids=None, approver_id=None):
+def build_approval_chain(plan, coordinator_ids=None, approver_id=None, use_pending_fallback=True):
     """Строит упорядоченный список (step_type, organization) для маршрута
     внешнего согласования плана: региональное управление (всегда первым) +
     выбранные согласующие + Департамент по энергоэффективности (если
@@ -1338,7 +1374,14 @@ def build_approval_chain(plan, coordinator_ids=None, approver_id=None):
 
     Если coordinator_ids/approver_id не переданы явно — берутся из
     plan.pending_coordinator_ids/plan.pending_approver_id (маршрут,
-    сохранённый на шаге внутренней отправки на подпись).
+    сохранённый на шаге внутренней отправки на подпись). use_pending_fallback=False
+    отключает этот откат — нужно там, где явно хотят узнать маршрут БЕЗ
+    выбора пользователя (plan_send_page: обязательный ли Департамент по
+    энергоэффективности сам по себе), иначе при повторной отправке плана
+    сюда подставлялся бы устаревший pending_approver_id из прошлой,
+    уже отменённой/возвращённой попытки — и утверждающая организация
+    задваивалась бы в предпросмотре маршрута (видна и как выбор
+    пользователя на этом шаге, и как "обязательный" Департамент).
 
     ТЗ п.7: доработанный план всегда проходит маршрут заново с самого
     начала (регион → согласующие → утверждающий), без пропуска уже
@@ -1355,9 +1398,9 @@ def build_approval_chain(plan, coordinator_ids=None, approver_id=None):
     if region_org:
         chain.append(('region', region_org))
 
-    if not coordinator_ids and plan.pending_coordinator_ids:
+    if use_pending_fallback and not coordinator_ids and plan.pending_coordinator_ids:
         coordinator_ids = plan.pending_coordinator_ids.split(',')
-    if not approver_id and plan.pending_approver_id:
+    if use_pending_fallback and not approver_id and plan.pending_approver_id:
         approver_id = plan.pending_approver_id
 
     for coord_id in (coordinator_ids or []):
@@ -1566,9 +1609,12 @@ def get_signer_candidates(org_id):
     них может реально ПОДПИСАТЬ (а не только направить дальше) — отдельное
     ограничение по роли в вызывающем коде (ТЗ п.5: утверждает только
     org_head/org_head_deputy, см. step_internal_sign/step_submit_for_signature)."""
+    from common_models import get_current_application_id
+
     roles = ['dept_head', 'org_head', 'org_head_deputy']
     return User.query.filter(
         User.organization_id == org_id,
+        User.application_id == get_current_application_id(),
         User.org_role.in_(roles)
     ).order_by(User.org_role.desc()).all()
 

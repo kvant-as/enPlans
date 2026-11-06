@@ -154,26 +154,6 @@
               </div>
             </div>
           </div>
-          <!-- <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_profile() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                {% if current_user.is_admin %}
-                  <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_auditor %}
-                  <span class="date-label">{{ _('Согласовывающая организация') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_approver %}
-                  <span class="date-label">{{ _('Утверждающая организация') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_reader %}
-                  <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
-                {% else %}
-                  <span class="date-label">{{ _('Организация-разработчик') }}: demo-{{ current_user.id }}</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
           {% if current_user.org_role %}
           <div class="date-item">
             <div class="date-icon">
@@ -188,7 +168,7 @@
               </div>
             </div>
           </div>
-          {% endif %} -->
+          {% endif %}
         </div>
       </div>
     </div>

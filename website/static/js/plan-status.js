@@ -8,29 +8,43 @@ function initStatusProgress() {
         return;
     }
     
-    const isAuditor = document.querySelector('body')?.dataset?.isAuditor === 'true' || 
+    const isAuditor = document.querySelector('body')?.dataset?.isAuditor === 'true' ||
                       document.querySelector('.stats-container')?.querySelector('.stat-number-sogl') !== null;
-    
+
+    // dotIndex раньше был зашит числом и предполагал фиксированный порядок
+    // тайлов в DOM (.stat-and-dot) — при любой перестановке тайлов
+    // (см. components.html::plan_count) заливка и точки съезжали на чужой
+    // статус. Вместо номера — data-value тайла, которому принадлежит
+    // точка; реальный индекс среди statusDots ищем на лету ниже, так что
+    // порядок тайлов в разметке можно менять не трогая этот файл.
     let statusConfig;
-    
+
     if (isAuditor) {
         statusConfig = {
-            'plan-cont-sent': { width: '33%', color: 'var(--color-sented)', dotIndex: 0 },
-            'plan-cont-sogl': { width: '66%', color: 'var(--color-sogl)', dotIndex: 1 },
-            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dotIndex: 2 },
-            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dotIndex: 3 }
+            'plan-cont-sent': { width: '33%', color: 'var(--color-sented)', dataValue: 'sent' },
+            'plan-cont-transit': { width: '50%', color: '#35a6d0', dataValue: 'in_transit' },
+            'plan-cont-sogl': { width: '66%', color: 'var(--color-sogl)', dataValue: 'sogl' },
+            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dataValue: 'error' },
+            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dataValue: 'approved' }
         };
     } else {
         statusConfig = {
-            'plan-cont-redac': { width: '16%', color: 'var(--color-redaced)', dotIndex: 0 },
-            'plan-cont-control': { width: '33%', color: 'var(--color-controled)', dotIndex: 1 },
-            'plan-cont-signing': { width: '50%', color: '#35a6d0', dotIndex: 2 },
-            'plan-cont-sent': { width: '66%', color: 'var(--color-sented)', dotIndex: 3 },
-            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dotIndex: 4 },
-            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dotIndex: 5 }
+            'plan-cont-redac': { width: '16%', color: 'var(--color-redaced)', dataValue: 'draft' },
+            'plan-cont-control': { width: '33%', color: 'var(--color-controled)', dataValue: 'control' },
+            'plan-cont-signing': { width: '50%', color: '#35a6d0', dataValue: 'signing' },
+            'plan-cont-sent': { width: '66%', color: 'var(--color-sented)', dataValue: 'sent' },
+            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dataValue: 'error' },
+            'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dataValue: 'approved' }
         };
     }
-    
+
+    function dotIndexFor(dataValue) {
+        const tile = document.querySelector('.stat-and-dot[data-value="' + dataValue + '"]');
+        const dot = tile ? tile.querySelector('.status-dot') : null;
+        if (!dot) return -1;
+        return Array.prototype.indexOf.call(statusDots, dot);
+    }
+
     const totalDots = Object.keys(statusConfig).length;
     
     let activePlan = null;
@@ -53,13 +67,15 @@ function initStatusProgress() {
     function updateProgress(className) {
         const config = statusConfig[className];
         if (!config) return;
+        const dotIndex = dotIndexFor(config.dataValue);
+        if (dotIndex === -1) return;
 
         // Тайлы теперь разной ширины (размер по тексту), поэтому точки
         // статусов больше не стоят на равных % от трека — процент из
         // statusConfig.width тут был бы неверным. Меряем позицию
         // реальной точки-цели в DOM и ставим ширину полосы в px.
         const lineContainer = progressLine.parentElement;
-        const targetDot = statusDots[config.dotIndex];
+        const targetDot = statusDots[dotIndex];
         if (lineContainer && targetDot) {
             const containerRect = lineContainer.getBoundingClientRect();
             const dotRect = targetDot.getBoundingClientRect();
@@ -69,11 +85,11 @@ function initStatusProgress() {
             progressLine.style.width = config.width;
         }
         progressLine.style.background = config.color;
-        
+
         statusDots.forEach((dot, index) => {
             if (index < totalDots) {
                 dot.style.display = '';
-                if (index <= config.dotIndex) {
+                if (index <= dotIndex) {
                     dot.classList.add('active');
                     dot.style.background = config.color;
                 } else {

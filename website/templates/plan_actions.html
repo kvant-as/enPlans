@@ -74,7 +74,7 @@
         </button>
       </form>
 
-      {% if is_owner and not current_user.is_reader and not current_user.is_org_manager %}
+      {% if is_owner and current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
       <button
         type="button"
         class="plan-action-tile"
@@ -104,7 +104,7 @@
 
     {% if is_owner %}
     <div class="plan-actions-grid plan-actions-grid-status">
-      {% if not current_user.is_reader and not current_user.is_org_manager %}
+      {% if current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
       <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="status" value="control" />
@@ -226,14 +226,18 @@
        "Подписать"/"Вернуть" ему здесь не показываем вовсе, в отличие от
        региона/согласующей, где dept_head подписывает сам. #}
     {% set dept_head_forward_only = is_approver_step and current_user.org_role == 'dept_head' %}
-    {% if current_path and current_path.pending_signer_user_id == current_user.id %}
+    {# step_internal_sign теперь сразу финализирует решение (подпись =
+       отправка дальше/«Есть ошибки» одним кликом) — отдельной кнопки
+       [Отправить] после уже подписанного решения больше нет: как только
+       is_signed становится True, этот блок в тот же запрос снова
+       перестаёт быть актуальным current_path (шаг уже пройден/отклонён). #}
+    {% if current_path and current_path.pending_signer_user_id == current_user.id and not step_is_signed %}
     <div class="plan-actions-grid" style="margin-top: 12px;">
-      {% if not step_is_signed %}
       {% if not dept_head_forward_only %}
       <button type="button" id="stepInternalSignBtn" class="plan-action-tile">
         {{ icons.icon_confirm() }}
         <span class="plan-action-tile-title">{{ _('Подписать') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Подписать решение электронной цифровой подписью') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Подписать решение электронной цифровой подписью и отправить') }}</span>
       </button>
 
       <button type="button" id="stepInternalReturnBtn" class="plan-action-tile plan-action-tile-danger">
@@ -249,16 +253,6 @@
         <span class="plan-action-tile-title">{{ _('Отправить на подпись') }}</span>
         <span class="plan-action-tile-sub">{{ _('Направить руководителю организации, не подписывая самому') }}</span>
       </button>
-      {% endif %}
-      {% else %}
-      <form action="{{ url_for('plan_bp.step_dispatch', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit" class="plan-action-tile">
-          {{ icons.icon_send() }}
-          <span class="plan-action-tile-title">{{ _('Отправить') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Решение подписано — отправить дальше по маршруту') }}</span>
-        </button>
-      </form>
       {% endif %}
     </div>
     {% endif %}
@@ -1308,9 +1302,20 @@
 
     const maxLength = parseInt(textarea.getAttribute("maxlength")) || 500;
 
+    function hasAttachment() {
+      const attachmentInput = document.getElementById("chatAttachmentInput");
+      const attachPreview = document.getElementById("chatAttachPreview");
+      if (attachmentInput && attachmentInput.files && attachmentInput.files.length > 0) return true;
+      if (attachPreview && attachPreview.style.display !== "none" && attachPreview.style.display !== "") return true;
+      return false;
+    }
+
+    // Сообщение с замечанием требует прикреплённый файл (см.
+    // audit_bp.create_ticket) — кнопка "Отправить" остаётся заблокированной,
+    // пока файл не выбран, чтобы не узнавать об этом только после сервера.
     function updateButtonState() {
       const hasText = textarea.value.trim().length > 0;
-      if (hasText) {
+      if (hasText && hasAttachment()) {
         sendButton.removeAttribute("disabled");
         sendButton.classList.remove("disabled");
       } else {
@@ -1390,6 +1395,7 @@
       }
       if (attachPreviewName) attachPreviewName.textContent = "";
       if (removeAttachmentFlag) removeAttachmentFlag.value = markRemoval ? "1" : "0";
+      updateButtonState();
     }
 
     if (attachmentInput) {
@@ -1412,6 +1418,7 @@
           delete attachPreview.dataset.existing;
         }
         if (removeAttachmentFlag) removeAttachmentFlag.value = "0";
+        updateButtonState();
       });
     }
 
