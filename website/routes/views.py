@@ -128,14 +128,19 @@ def org_head_forbidden(f):
     декоратор, а инлайн-проверка в самом роуте."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from website.utils.plans import can_edit_plan_data
+        from website.utils.plans import plan_edit_denial, PLAN_EDIT_ROLE_DENIED
         current_plan = getattr(g, 'current_plan', None)
-        allowed = can_edit_plan_data(current_user, current_plan) if current_plan is not None else (
-            current_user.org_role in ('executor', 'dept_head')
-            and current_user.organization and current_user.organization.is_regular
-        )
-        if not allowed:
-            message = 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'
+        if current_plan is not None:
+            # Роль + состояние плана (на подписи/отправлен/утверждён — ТЗ
+            # п.3.3-3.4), см. plan_edit_lock_reason.
+            message = plan_edit_denial(current_user, current_plan)
+        else:
+            role_ok = (
+                current_user.org_role in ('executor', 'dept_head')
+                and current_user.organization and current_user.organization.is_regular
+            )
+            message = None if role_ok else PLAN_EDIT_ROLE_DENIED
+        if message:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'error': message}), 403
             flash(message, 'error')
@@ -356,6 +361,53 @@ def edit_profile():
         return render_template('edit_profile.html', 
                             hide_header=False,
                             current_user=current_user)
+
+def can_refresh_org_from_egr(user, org):
+    """Обновлять данные организации из ЕГР может её руководитель (не
+    заместитель — как и управление составом организации) или администратор."""
+    if not org or not user or not user.is_authenticated:
+        return False
+    if user.is_admin:
+        return True
+    return user.organization_id == org.id and user.org_role == 'org_head'
+
+
+@views.route('/organization/<int:org_id>/egr-refresh', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def egr_refresh_organization(org_id):
+    """Кнопка «Обновить из ЕГР» в карточке организации: полное и
+    сокращённое наименование, регион, юридический адрес и состояние
+    (действующая / в ликвидации / ликвидирована / банкротство) по УНП —
+    см. utils/egr.py. Отвечает JSON со списком изменений."""
+    from website.utils.egr import EgrError, fetch_organization, apply_to_organization, STATUS_LABELS
+
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify({'success': False, 'error': 'Организация не найдена'}), 404
+    if not can_refresh_org_from_egr(current_user, org):
+        return jsonify({'success': False, 'error': 'Обновлять данные организации может только её руководитель или администратор'}), 403
+    if not org.ynp:
+        return jsonify({'success': False, 'error': 'У организации не указан УНП — обновить из ЕГР нельзя'}), 400
+
+    try:
+        data = fetch_organization(org.ynp)
+    except EgrError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 502
+
+    changes = apply_to_organization(org, data)
+    db.session.commit()
+    current_app.logger.info(f'EGR refresh org {org.id} (УНП {org.ynp}) by user {current_user.id}: {len(changes)} changes')
+
+    return jsonify({
+        'success': True,
+        'changes': [{'field': f, 'old': o, 'new': n} for f, o, n in changes],
+        'status': org.egr_status,
+        'status_kind': org.egr_status_kind,
+        'status_label': STATUS_LABELS.get(org.egr_status_kind or 'unknown'),
+    })
+
 
 @views.route('/edit-user-org', methods=['POST'])
 @user_with_all_params()
@@ -914,8 +966,23 @@ def delete_plan(token):
         # Удаление "живого" плана удаляет и все его замороженные версии
         # (snapshot_of_plan_id) — self-referential cascade на Plan не
         # настроен (см. create_plan_snapshot в utils/plans.py), поэтому
-        # чистим явно.
-        for snapshot in Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all():
+        # чистим явно. Вместе с версиями удаляются и их подписи/замечания
+        # (PlanApprovalPath/PlanTicket, cascade delete-orphan) — это
+        # единственный случай, когда подписи удаляются.
+        snapshots = Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all()
+        plan_ids = [current_plan.id] + [s.id for s in snapshots]
+
+        # PlanApprovalPath.ticket_id <-> PlanTicket.approval_path_id — взаимные
+        # FK без post_update: каскадное удаление упиралось бы в цикл,
+        # поэтому сначала разрываем ссылки между ними.
+        from website.models import PlanApprovalPath, PlanTicket
+        PlanApprovalPath.query.filter(PlanApprovalPath.plan_id.in_(plan_ids)).update(
+            {'ticket_id': None}, synchronize_session=False)
+        PlanTicket.query.filter(PlanTicket.plan_id.in_(plan_ids)).update(
+            {'approval_path_id': None}, synchronize_session=False)
+        db.session.flush()
+
+        for snapshot in snapshots:
             db.session.delete(snapshot)
 
         db.session.delete(current_plan)

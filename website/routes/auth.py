@@ -26,6 +26,22 @@ from website.sessions import create_session_token, set_session_cookie, clear_ses
 auth = Blueprint('auth', __name__)
 login_manager = LoginManager()
 
+
+def login_or_registration_required(f):
+    """Вошедший пользователь ИЛИ посетитель с черновиком регистрации, у
+    которого почта уже подтверждена (website.user.pending_registration) —
+    аккаунта у него ещё нет, он создаётся на последнем шаге /param (ЭЦП)."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from ..user import pending_registration
+        if current_user.is_authenticated or pending_registration():
+            return f(*args, **kwargs)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api'):
+            return jsonify({'error': 'Необходима авторизация'}), 401
+        flash('Необходима авторизация', 'error')
+        return redirect(url_for('auth.login'))
+    return decorated_function
+
 def user_without_param():
     def decorator(f):
         @wraps(f)
@@ -161,12 +177,11 @@ def code():
 
 @auth.route('/resend-code', methods=['POST'])
 def resend_code():
-    from ..user import gener_password, send_activation_email
+    from ..user import send_activation_email
     try:
-        session.pop('activation_code', None)
-        new_code = gener_password()
-        session['activation_code'] = new_code
-        
+        # send_activation_email сам генерирует код и кладёт в сессию его
+        # ХЭШ (раньше здесь генерировался ещё один код и открытым текстом
+        # клался в сессию — тут же перезаписывался вторым).
         email = session.get('temp_user', {}).get('email')
         if email:
             send_activation_email(email)
@@ -179,7 +194,7 @@ def resend_code():
     return redirect(url_for('auth.code'))
 
 @auth.route('/param', methods=['GET', 'POST'])
-@login_required
+@login_or_registration_required
 # @user_without_param()
 def param():
     if request.method == 'GET':
@@ -242,7 +257,7 @@ def complete_profile():
     return redirect(url_for('views.profile'))
 
 @auth.route('/verify-certificate', methods=['POST'])
-@login_required
+@login_or_registration_required
 def verify_certificate_route():
     """Проверка сертификата ЭЦП на финальном шаге регистрации (param.html,
     шаг 4) — та же демо-модалка EcpMockModal, что и на отправке плана, но

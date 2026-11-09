@@ -458,6 +458,7 @@
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, #007bff, #00d4ff);
+  color: white;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -489,11 +490,11 @@
 .chat-btn svg {
   width: 18px;
   height: 18px;
-  fill: var(--white);
+  /* fill: var(--white); */
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 .chat-btn:hover svg {
-  fill: var(--white);
+  /* fill: var(--white); */
 }
 .chat-btn:hover .btn-text {
   color: var(--white);

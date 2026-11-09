@@ -1,4 +1,4 @@
-﻿// NumericInputHandler определён и инициализируется в base.js (который
+// NumericInputHandler определён и инициализируется в base.js (который
 // подключается раньше) — здесь раньше была устаревшая копия этого же
 // объекта, которая просто молча перезаписывала var NumericInputHandler
 // из base.js (ничего своего не вызывала — ни одного NumericInputHandler.init
@@ -324,11 +324,23 @@ class PlanEvents {
             { code: '0004', name: 'Январь-Декабрь' }
         ];
         
+        // Периоды заполняются по нарастающей: «Январь-Июнь» можно
+        // редактировать, только когда «Январь-Март» не 0, «Январь-Сентябрь» —
+        // когда «Январь-Июнь» не 0 (то же проверяет сервер —
+        // validate_period_values). Закрытая строка помечается
+        // data-period-locked, и TableContextMenu.isEditDisabled гасит для
+        // неё «Редактировать».
+        const previousPeriod = { '0002': '0001', '0003': '0002' };
+        const periodValue = (code) => {
+            const d = this.periodMetrics && this.periodMetrics[code];
+            return d ? (parseFloat(d.eff_curr_year) || 0) : 0;
+        };
+
         periods.forEach(period => {
             const periodData = this.periodMetrics && this.periodMetrics[period.code];
             const eventId = periodData ? periodData.id : null;
             const effValue = periodData ? periodData.eff_curr_year : 0;
-            
+
             const row = document.createElement('tr');
             row.className = 'menu-row';
             if (eventId) {
@@ -336,6 +348,12 @@ class PlanEvents {
             }
             row.setAttribute('data-period-code', period.code);
             row.setAttribute('data-period-name', period.name);
+            const prevCode = previousPeriod[period.code];
+            if (prevCode && periodValue(prevCode) === 0) {
+                const prevName = periods.find(p => p.code === prevCode).name;
+                row.setAttribute('data-period-locked', '1');
+                row.setAttribute('title', `Сначала заполните «${prevName}»`);
+            }
             row.innerHTML = `
                 <td colspan="8">${period.name}</td>
                 <td style="text-align: end;" class="period-eff-value">${this.formatNumber(effValue)}</td>
@@ -862,6 +880,9 @@ class TableContextMenu {
 
     isEditDisabled(row) {
         if (!row) return true;
+        // Период, который ещё нельзя заполнять (предыдущий равен 0) — см.
+        // data-period-locked при отрисовке строк периодов.
+        if (row.dataset && row.dataset.periodLocked === '1') return true;
         const rowCode = this.getRowCode(row);
         return this.immutableCodes.includes(rowCode) || this.immutableEditCodes.includes(rowCode);
     }
@@ -1422,6 +1443,7 @@ class PlansLoader {
         const statApproved = document.querySelector('.stat-number-sub');
         const statSogl = document.querySelector('.stat-number-sogl');
         const statInTransit = document.querySelector('.stat-number-transit');
+        const statReview = document.querySelector('.stat-number-review');
 
         if (statAll) statAll.textContent = counts.all || '-';
         if (statDraft) statDraft.textContent = counts.draft || '-';
@@ -1432,6 +1454,9 @@ class PlansLoader {
         if (statApproved) statApproved.textContent = counts.approved || '-';
         if (statSogl) statSogl.textContent = counts.sogl || '-';
         if (statInTransit) statInTransit.textContent = counts.in_transit || '-';
+        // «На рассмотрении» чужих планов у гибридной организации
+        // (get_filtered_plans: status 'review').
+        if (statReview) statReview.textContent = counts.review || '-';
     }
     
     attachCheckboxListeners() {
@@ -1686,7 +1711,7 @@ class PlansLoader {
             statusMap = {
                 'all': 'Статус',
                 'sent': 'На рассмотрении',
-                'in_transit': 'Ожидание очереди',
+                'in_transit': 'В ожидании',
                 'sogl': 'Согласованные',
                 'error': 'Есть ошибки',
                 'approved': 'Утвержденные'
@@ -1698,8 +1723,13 @@ class PlansLoader {
                 'control': 'Контроль пройден',
                 'signing': 'На подписании',
                 'sent': 'На согласовании',
+                'in_transit': 'В ожидании',
+                'review': 'На рассмотрении',
+                'sogl': 'Согласованные',
                 'error': 'Есть ошибки',
-                'approved': 'Согласованные'
+                // раньше здесь было «Согласованные» — у вкладки
+                // approved подпись «Утвержденные»
+                'approved': 'Утвержденные'
             };
         }
         

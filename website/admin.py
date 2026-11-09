@@ -153,6 +153,9 @@ site.register(
     ],
 )
 
+# Добавление организации по УНП с подстановкой из ЕГР (routes/admin_org.py)
+site.link("Добавить организацию по УНП", "admin_org.by_unp", group="Основные")
+
 site.register(
     Region, name="Регионы", group="Основные",
     list_display=["id", "number", "name"], search=["name"], order_by="number",

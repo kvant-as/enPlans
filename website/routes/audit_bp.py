@@ -493,19 +493,14 @@ def create_ticket(token):
     if prev_path and not prev_path.is_viewed:
         return _error('Предыдущий этап еще не пройден')
 
-    # Сообщение проверяющего — это замечание по плану, а "Не согласовать и
-    # направить на подпись" (step_submit_for_signature) требует вложение у
-    # ПОСЛЕДНЕГО такого сообщения (has_pending_review_attachment) — чтобы
-    # не узнавать об этом только на шаге отправки решения, требуем файл
-    # сразу при отправке самого сообщения.
+    # ТЗ п.4.1: замечание — обязательный текст, файл к нему — по желанию
+    # (раньше файл требовался всегда).
     attachment_file = request.files.get('attachment')
-    if not attachment_file or not attachment_file.filename:
-        return _error('Прикрепите файл с замечаниями перед отправкой на подпись')
-
-    from website.utils.ticket_attachment import validate_ticket_attachment
-    attachment_error = validate_ticket_attachment(attachment_file)
-    if attachment_error:
-        return _error(attachment_error)
+    if attachment_file and attachment_file.filename:
+        from website.utils.ticket_attachment import validate_ticket_attachment
+        attachment_error = validate_ticket_attachment(attachment_file)
+        if attachment_error:
+            return _error(attachment_error)
 
     current_plan.afch = True
 

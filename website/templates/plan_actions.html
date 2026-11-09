@@ -34,6 +34,7 @@
     </div>
     {% endif %} -->
 
+
     {#  Две отдельные сетки: в первой — действия, не меняющие статус плана
         (информационные/печать/редактирование содержимого), во второй —
         действия, которые двигают план по циклу согласования (контроль,
@@ -142,7 +143,7 @@
       >
         {{ icons.icon_cancel() }}
         <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
-        <span class="plan-action-tile-sub" id="cancelSendBtnSub">{{ _('Доступно первые 5 минут — план вернётся на этап подписания') }}</span>
+        <span class="plan-action-tile-sub" id="cancelSendBtnSub">{{ _('Доступно первые 5 минут — откат к подписанию, без следов в «Подписях»') }}</span>
       </button>
       {% endif %}
 
@@ -191,14 +192,33 @@
        но ей всё равно нужен этот раздел (там "Одобрить" у org_head/deputy,
        см. step_direct_approve), поэтому not is_owner здесь ослаблено. #}
     {% if (not is_owner or step_direct_approve) and (plan.is_sent or plan.tickets or can_audit) %}
-    <hr />
-    <h1 class="name">{{ _('Проверка плана') if can_audit else _('Сообщения по согласованию') }}</h1>
 
-    {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel, is_approver_step, step_direct_approve) }}
+    {#  Решение проверяющего по своему этапу — отдельный слой плиток вместо
+        бывшего блока «Проверка плана» (чат + кнопки под ним). Обе плитки
+        только НАПРАВЛЯЮТ решение руководителю на подпись (step_submit_for_
+        signature), сама смена статуса — при подписи (step_internal_sign).
+        «Не согласовать» доступна сразу, без предварительного сообщения в
+        чате: текст ошибки и файл вводятся прямо в её модалке
+        (stepRejectModal). На этапе утверждающей организации (ТЗ п.5)
+        вердикта «Есть ошибки» нет — только «Утвердить». Вариант А
+        (step_direct_approve) — своя единственная плитка «Одобрить» ниже. #}
+    {% if can_audit and not step_direct_approve %}
+    <div class="plan-actions-grid plan-actions-grid-status">
+      <button type="button" class="plan-action-tile" data-open-step-signer-modal="approved">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Утвердить') if is_approver_step else _('Согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Направить решение руководителю на подпись') }}</span>
+      </button>
 
-    <div id="planReviewFooterWrap">
-      {{ component.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}
+      {% if not is_approver_step %}
+      <button type="button" id="stepRejectBtn" class="plan-action-tile plan-action-tile-danger">
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Не согласовать и отправить на подпись') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Указать ошибки, приложить файл и направить руководителю') }}</span>
+      </button>
+      {% endif %}
     </div>
+    {% endif %}
 
     {# "Шаг 2" внутреннего подписания — РЕШЕНИЕ этого этапа (не плана)
        направлено на подпись руководителю организации этапа. Виден
@@ -240,10 +260,15 @@
         <span class="plan-action-tile-sub">{{ _('Подписать решение электронной цифровой подписью и отправить') }}</span>
       </button>
 
-      <button type="button" id="stepInternalReturnBtn" class="plan-action-tile plan-action-tile-danger">
+      {#  Этап утверждения — только положительное решение («Утвердить»):
+          вернуть его на повторное рассмотрение нельзя. #}
+      <button type="button" id="stepInternalReturnBtn" class="plan-action-tile plan-action-tile-danger"
+              {% if is_approver_step %}disabled title="{{ _('На этапе утверждения решение только положительное') }}"{% endif %}>
         {{ icons.icon_cancel() }}
         <span class="plan-action-tile-title">{{ _('Вернуть на повторное рассмотрение') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Отправить решение обратно с указанием причины') }}</span>
+        <span class="plan-action-tile-sub">
+          {% if is_approver_step %}{{ _('Недоступно на этапе утверждения') }}{% else %}{{ _('Отправить решение обратно с указанием причины') }}{% endif %}
+        </span>
       </button>
       {% endif %}
 
@@ -288,7 +313,7 @@
     </div>
 
     <div class="profile-tab-panel active" data-tab-panel="org">
-      {{ component.organization_view_card(plan.organization, plan.user) }}
+      {{ component.organization_view_card(plan.organization, plan.user, viewer=current_user) }}
     </div>
 
     <div class="profile-tab-panel" data-tab-panel="respondent">
@@ -414,43 +439,22 @@
       <a id="modal-title">{{ _('Отменить отправку') }}</a>
       {{ icons.icon_close() }}
     </div>
-    <form id="cancelSendForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST" enctype="multipart/form-data">
+    {#  «Отменить отправку» — просто откат последнего действия («Подписать и
+        отправить»): причина не нужна, в «Подписях» ничего не остаётся
+        (см. status_plan.handle_draft_status). #}
+    <form id="cancelSendForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="draft" />
-      <div class="app-group">
-        <label>{{ _('Причина отмены отправки') }} <span class="required-star">*</span></label>
-        <div class="chat-attach-preview" id="cancelSendAttachPreview" style="display:none;">
-          <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
-          <span class="chat-attach-preview-name" id="cancelSendAttachPreviewName"></span>
-          <button type="button" class="chat-attach-remove" id="cancelSendAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
-        </div>
-        <div class="bottom_tickets_arrea">
-          <div class="textarea-wrapper">
-            <textarea
-              name="reason"
-              id="cancelSendReason"
-              class="sent-textarea"
-              rows="3"
-              maxlength="500"
-              required
-              placeholder="{{ _('Укажите, почему план возвращается в редакцию') }}"
-            ></textarea>
-            <span class="char-counter" id="cancelSendCharCounter">0/500</span>
-          </div>
-          <label class="chat-attach-btn" id="cancelSendAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
-            {{ icons.icon_paperclip() }}
-            <input type="file" name="attachment" id="cancelSendAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
-          </label>
-          <button type="submit" id="cancelSendSubmit" class="chat-btn" disabled>
-            <span class="btn-spinner" aria-hidden="true"></span>
-            {{ icons.icon_confirm() }}
-            <span class="btn-text">{{ _('Подтвердить отмену') }}</span>
-          </button>
-        </div>
-      </div>
+      <p class="cancel-send-text">
+        {{ _('Отправка будет отменена, как будто её не было: план вернётся к вам на подпись по тому же маршруту, а в «Подписях» не останется никаких записей об этой отправке.') }}
+      </p>
       <div class="button-auth-area">
+        <button type="submit" id="cancelSendSubmit" class="no-submit-button blue">
+          {{ icons.icon_cancel() }}
+          <span class="btn-text">{{ _('Отменить отправку') }}</span>
+        </button>
         <button type="button" class="svg-btn" data-close-modal-btn="cancelSendModal">
-          <span class="btn-text">{{ _('Отмена') }}</span>
+          <span class="btn-text">{{ _('Не отменять') }}</span>
         </button>
       </div>
     </form>
@@ -670,16 +674,17 @@
           </div>
           <label class="chat-attach-btn" id="stepReturnAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
             {{ icons.icon_paperclip() }}
-            <input type="file" name="attachment" id="stepReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+            <input type="file" name="attachment" id="stepReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx" />
           </label>
           <button type="submit" id="stepReturnSubmit" class="chat-btn" disabled>
             <span class="btn-spinner" aria-hidden="true"></span>
-            {{ icons.icon_confirm() }}
+            {{ icons.icon_send() }}
             <span class="btn-text">{{ _('Подтвердить возврат') }}</span>
           </button>
         </div>
       </div>
       <div class="button-auth-area">
+        <div></div>
         <button type="button" class="svg-btn" data-close-modal-btn="stepReturnModal">
           <span class="btn-text">{{ _('Отмена') }}</span>
         </button>
@@ -718,17 +723,104 @@
           </div>
           <label class="chat-attach-btn" id="internalReturnAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
             {{ icons.icon_paperclip() }}
-            <input type="file" name="attachment" id="internalReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+            <input type="file" name="attachment" id="internalReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx" />
           </label>
           <button type="submit" id="internalReturnSubmit" class="chat-btn" disabled>
             <span class="btn-spinner" aria-hidden="true"></span>
-            {{ icons.icon_confirm() }}
+            {{ icons.icon_send() }}
             <span class="btn-text">{{ _('Подтвердить возврат') }}</span>
           </button>
         </div>
       </div>
       <div class="button-auth-area">
+        <div></div>
         <button type="button" class="svg-btn" data-close-modal-btn="internalReturnModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{#  «Не согласовать и отправить на подпись» — то же оформление, что у
+    internalReturnModal, плюс выбор руководителя. Текст ошибки И файл
+    обязательны (проверяются и здесь, и на сервере — step_submit_for_signature
+    сам создаёт замечание этапа из этих полей). #}
+<div id="stepRejectModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Не согласовать и отправить на подпись') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="stepRejectForm" action="{{ url_for('plan_bp.step_submit_for_signature', token=plan.token) }}" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="decision" value="error" />
+      <div class="plan-send-warning" style="margin-bottom: 12px;">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Чтобы не согласовать план') }}</p>
+          <p>{{ _('Необходимо написать текст ошибки и прикрепить файл с замечаниями — оба поля обязательны.') }}</p>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Текст ошибки') }} <span class="required-star">*</span></label>
+        <div class="chat-attach-preview" id="stepRejectAttachPreview" style="display:none;">
+          <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
+          <span class="chat-attach-preview-name" id="stepRejectAttachPreviewName"></span>
+          <button type="button" class="chat-attach-remove" id="stepRejectAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
+        </div>
+        <div class="bottom_tickets_arrea">
+          <div class="textarea-wrapper">
+            <textarea
+              name="note"
+              id="stepRejectNote"
+              class="sent-textarea"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="{{ _('Укажите, какие ошибки нужно исправить') }}"
+            ></textarea>
+            <span class="char-counter" id="stepRejectCharCounter">0/500</span>
+          </div>
+          <label class="chat-attach-btn" id="stepRejectAttachBtn" title="{{ _('Прикрепите файл с замечаниями (до 20 МБ) — обязательно') }}">
+            {{ icons.icon_paperclip() }}
+            <input type="file" name="attachment" id="stepRejectAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+          </label>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
+        <div class="signer-picker" id="stepRejectSignerPicker">
+          <button type="button" class="signer-picker-toggle" id="stepRejectSignerPickerToggle" {% if not step_signer_candidates %}disabled{% endif %}>
+            <span class="signer-picker-value" id="stepRejectSignerPickerValue">{{ _('Выберите руководителя') }}</span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="signer-picker-menu" id="stepRejectSignerPickerMenu">
+            {% for candidate in step_signer_candidates %}
+            <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+              <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+              <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения'))) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <input type="hidden" name="signer_user_id" id="stepRejectSignerValue" value="" />
+      </div>
+      {% if not step_signer_candidates %}
+      <div class="plan-send-warning">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Некому подписать') }}</p>
+          <p>{{ _('В организации не назначен ни руководитель структурного подразделения, ни руководитель организации.') }}</p>
+        </div>
+      </div>
+      {% endif %}
+      <div class="button-auth-area">
+        <button type="submit" id="stepRejectSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_send() }}
+          <span class="btn-text">{{ _('Отправить на подпись') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="stepRejectModal">
           <span class="btn-text">{{ _('Отмена') }}</span>
         </button>
       </div>
@@ -747,6 +839,18 @@
     var btn = e.target.closest("[data-close-modal-btn]");
     if (!btn) return;
     var modal = document.getElementById(btn.dataset.closeModalBtn);
+    if (modal) modal.classList.remove("active");
+  });
+
+  // Крестик (svg.close из icons.icon_close) в шапке ЛЮБОЙ модалки этой
+  // страницы. Раньше закрытие по нему навешивал только handleModal — а
+  // модалки, которые открываются напрямую через classList.add("active")
+  // (stepSignerModal, forwardSignerModal, planForwardSignerModal), так и
+  // оставались без обработчика крестика и не закрывались.
+  document.addEventListener("click", function (e) {
+    var closeIcon = e.target.closest(".modal .modal-header .close");
+    if (!closeIcon) return;
+    var modal = closeIcon.closest(".modal");
     if (modal) modal.classList.remove("active");
   });
 
@@ -771,16 +875,6 @@
     if (!modal || !btn) return;
 
     handleModal(modal, btn, modal.querySelector(".close"));
-
-    setupTicketStyleForm({
-      textareaId: "cancelSendReason",
-      counterId: "cancelSendCharCounter",
-      submitId: "cancelSendSubmit",
-      attachInputId: "cancelSendAttachmentInput",
-      attachPreviewId: "cancelSendAttachPreview",
-      attachPreviewNameId: "cancelSendAttachPreviewName",
-      attachRemoveBtnId: "cancelSendAttachRemoveBtn",
-    });
 
     // «Отменить отправку» активна только первые 5 минут после реальной
     // отправки (plan.sent_time, data-sent-at) — сервер и так отказывает
@@ -823,8 +917,11 @@
 
     const maxLength = parseInt(textarea.getAttribute("maxlength")) || 500;
 
+    // cfg.canSubmit — доп. условие сверх "есть текст" (stepRejectModal:
+    // ещё обязательный файл и выбранный руководитель).
     function updateButtonState() {
-      submitBtn.disabled = textarea.value.trim().length === 0;
+      const hasText = textarea.value.trim().length > 0;
+      submitBtn.disabled = !(hasText && (!cfg.canSubmit || cfg.canSubmit()));
     }
 
     function updateCounter() {
@@ -862,6 +959,7 @@
       if (attachmentInput) attachmentInput.value = "";
       if (attachPreview) attachPreview.style.display = "none";
       if (attachPreviewName) attachPreviewName.textContent = "";
+      updateButtonState();
     }
 
     if (attachmentInput) {
@@ -880,13 +978,55 @@
         }
         if (attachPreviewName) attachPreviewName.textContent = file.name;
         if (attachPreview) attachPreview.style.display = "flex";
+        updateButtonState();
       });
     }
 
     if (attachRemoveBtn) {
       attachRemoveBtn.addEventListener("click", clearAttachment);
     }
+
+    return { updateButtonState: updateButtonState };
   }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // «Не согласовать и отправить на подпись» — модалка открывается сразу
+    // (без предварительного сообщения в чате); отправка активна, только
+    // когда есть текст ошибки, прикреплён файл и выбран руководитель.
+    var modal = document.getElementById("stepRejectModal");
+    var btn = document.getElementById("stepRejectBtn");
+    if (!modal || !btn) return;
+
+    handleModal(modal, btn, modal.querySelector(".close"));
+
+    var attachInput = document.getElementById("stepRejectAttachmentInput");
+    var signerValue = document.getElementById("stepRejectSignerValue");
+    var form = setupTicketStyleForm({
+      textareaId: "stepRejectNote",
+      counterId: "stepRejectCharCounter",
+      submitId: "stepRejectSubmit",
+      attachInputId: "stepRejectAttachmentInput",
+      attachPreviewId: "stepRejectAttachPreview",
+      attachPreviewNameId: "stepRejectAttachPreviewName",
+      attachRemoveBtnId: "stepRejectAttachRemoveBtn",
+      canSubmit: function () {
+        return !!(attachInput && attachInput.files && attachInput.files.length > 0 && signerValue && signerValue.value);
+      },
+    });
+
+    // initSignerPicker сам включил бы кнопку при выборе руководителя (без
+    // учёта текста/файла) — поэтому submitId ему не передаём, а после
+    // выбора просто пересчитываем общее условие (capture — пункты меню
+    // сами делают stopPropagation, до bubble-слушателя клик не дошёл бы;
+    // setTimeout — hidden.value к этому моменту ещё не записан).
+    initSignerPicker("stepRejectSignerPicker", "stepRejectSignerPickerToggle", "stepRejectSignerPickerValue", "stepRejectSignerPickerMenu", "stepRejectSignerValue", null);
+    var menu = document.getElementById("stepRejectSignerPickerMenu");
+    if (menu && form) {
+      menu.addEventListener("click", function () {
+        setTimeout(form.updateButtonState, 0);
+      }, true);
+    }
+  });
 
   document.addEventListener("DOMContentLoaded", function () {
     var modal = document.getElementById("internalReturnModal");
@@ -907,13 +1047,12 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
-    // Кнопка [Подписать и отправить] (внутренняя подпись + реальная внешняя
-    // отправка объединены в одно действие) — та же мок-ЭЦП модалка, что и
-    // на согласовании/отправке, просто отдельный экземпляр
+    // Кнопка [Подписать и отправить] — та же мок-ЭЦП модалка, что и на
+    // согласовании/отправке, просто отдельный экземпляр
     // (ecpInternalSignModal), чтобы не конфликтовать с ecpApproveModal на
-    // той же странице. После успеха ЭЦП — подряд internal_sign (подпись)
-    // и change-status status=sent (реальная отправка по сохранённому на
-    // шаге 4 маршруту, см. submit_for_signature/handle_sent_status), затем
+    // той же странице. После успеха ЭЦП — ОДИН запрос internal_sign: он
+    // подписывает и сразу отправляет по сохранённому на шаге 4 маршруту
+    // одной транзакцией (см. plan_bp.internal_sign/handle_sent_status), затем
     // перезагрузка страницы.
     var signBtn = document.getElementById("internalSignBtn");
     if (signBtn && window.EcpMockModal) {
@@ -932,22 +1071,7 @@
             }).then(function (signResp) {
               return signResp.json().then(function (signData) {
                 if (!signResp.ok || signData.success === false) {
-                  throw new Error(signData.error || "Не удалось подписать план");
-                }
-                return fetch("{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}", {
-                  method: "POST",
-                  headers: {
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRFToken": csrfToken,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ status: "sent" }),
-                });
-              });
-            }).then(function (sendResp) {
-              return sendResp.json().then(function (sendData) {
-                if (!sendResp.ok || sendData.error) {
-                  throw new Error(sendData.error || "Не удалось отправить план на согласование");
+                  throw new Error(signData.error || "Не удалось подписать и отправить план");
                 }
                 window.location.reload();
               });
@@ -1046,10 +1170,10 @@
       });
     }
 
-    // Кнопки "Есть ошибки"/"Согласовать" теперь внутри .tickets-actions-bar
-    // (переотрисовывается AJAX'ом) просто открывают stepSignerModal с
-    // нужным решением — делегируем на document по той же причине, что и
-    // #cancelCheckBtn ниже.
+    // Плитка «Согласовать»/«Утвердить» (слой решения проверяющего) просто
+    // открывает stepSignerModal с решением approved — делегировано на
+    // document (data-open-step-signer-modal). «Не согласовать» — своя
+    // модалка stepRejectModal (текст + файл + руководитель), см. выше.
     var stepSignerModal = document.getElementById("stepSignerModal");
     var stepSignerDecision = document.getElementById("stepSignerDecision");
     if (stepSignerModal && stepSignerDecision) {
@@ -1302,20 +1426,12 @@
 
     const maxLength = parseInt(textarea.getAttribute("maxlength")) || 500;
 
-    function hasAttachment() {
-      const attachmentInput = document.getElementById("chatAttachmentInput");
-      const attachPreview = document.getElementById("chatAttachPreview");
-      if (attachmentInput && attachmentInput.files && attachmentInput.files.length > 0) return true;
-      if (attachPreview && attachPreview.style.display !== "none" && attachPreview.style.display !== "") return true;
-      return false;
-    }
-
-    // Сообщение с замечанием требует прикреплённый файл (см.
-    // audit_bp.create_ticket) — кнопка "Отправить" остаётся заблокированной,
-    // пока файл не выбран, чтобы не узнавать об этом только после сервера.
+    // Замечание — обязательный текст, файл по желанию (ТЗ п.4.1, см.
+    // audit_bp.create_ticket) — кнопка "Отправить" активна, как только
+    // введён текст.
     function updateButtonState() {
       const hasText = textarea.value.trim().length > 0;
-      if (hasText && hasAttachment()) {
+      if (hasText) {
         sendButton.removeAttribute("disabled");
         sendButton.classList.remove("disabled");
       } else {

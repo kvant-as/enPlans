@@ -182,6 +182,73 @@ html[data-theme] .fixed-header {
 }
 :root[data-theme="dark"] .svg-btn:hover { background-color: #262c35; }
 
+/* base.css :: раскрывающаяся карточка сотрудника («Что может эта роль») */
+:root[data-theme="dark"] .role-card:hover { border-color: var(--green-main); }
+:root[data-theme="dark"] .role-card.is-open { box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.6); }
+:root[data-theme="dark"] .role-card:hover .role-card-chevron { background: #232932; color: #7fdcec; }
+:root[data-theme="dark"] .role-card.is-open .role-card-chevron { color: #7fdcec; }
+
+/* base.css :: «Сотрудники организации» / модалка приглашения */
+:root[data-theme="dark"] .employees-capacity-bar { background: #2b313b; }
+:root[data-theme="dark"] .employees-capacity-bar span { background: var(--green-main); }
+:root[data-theme="dark"] .employee-badge-self { color: #7fdcec; background: rgba(28, 171, 196, 0.15); }
+:root[data-theme="dark"] .employee-badge-pending { color: #f3c46b; background: rgba(243, 196, 107, 0.12); }
+:root[data-theme="dark"] .plan-executor-card-pending .plan-executor-card-icon { color: #f3c46b; background: rgba(243, 196, 107, 0.12); }
+:root[data-theme="dark"] .invite-role-option { background: #1b2027; border-color: #2b313b; }
+:root[data-theme="dark"] .invite-role-option:hover { border-color: var(--green-main); }
+:root[data-theme="dark"] .invite-role-option-title { color: #eef1f5; }
+:root[data-theme="dark"] .invite-role-option-check { border-color: #3a414c; }
+:root[data-theme="dark"] .invite-role-option:has(input:checked) {
+  background: rgba(28, 171, 196, 0.1);
+  border-color: var(--green-main);
+  box-shadow: 0 0 0 1px var(--green-main) inset;
+}
+:root[data-theme="dark"] .invite-role-option:has(input:checked) .invite-role-option-check {
+  background: var(--green-main);
+  border-color: var(--green-main);
+  color: #0f1216;
+}
+:root[data-theme="dark"] .invite-modal-note { background: #1b2027; color: #9aa3af; }
+
+/* base.css :: .main-btn-primary — фирменный бирюзовый светлее (как
+   --green-main в тёмной теме), тени темнее, неактивное — под тёмный фон. */
+:root[data-theme="dark"] .main-btn-primary {
+  --mbp-top: #2fbcd4;
+  --mbp-bottom: #1596ad;
+  --mbp-hover-top: #48cbe1;
+  --mbp-hover-bottom: #1cabc4;
+  --mbp-active: #127f92;
+  --mbp-shadow: 28, 171, 196;
+  --mbp-ring-gap: var(--body-background);
+}
+:root[data-theme="dark"] .main-btn-primary:disabled,
+:root[data-theme="dark"] .main-btn-primary[aria-disabled="true"] {
+  color: #6b7686;
+  background: #232932;
+  border-color: #2b313b;
+}
+
+/* base.css :: .no-submit-button.blue — в тёмной теме общая группа ниже
+   перекрашивает фон/рамку .no-submit-button; синей основной кнопке
+   возвращаем её вид, тени — темнее, неактивное состояние — под тёмный фон. */
+:root[data-theme="dark"] .no-submit-button.blue {
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 4px 14px -2px rgba(22, 119, 255, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+:root[data-theme="dark"] .no-submit-button.blue:focus-visible {
+  box-shadow: 0 0 0 3px var(--body-background), 0 0 0 5px rgba(59, 139, 255, 0.7);
+}
+:root[data-theme="dark"] .no-submit-button.blue:disabled {
+  color: #6b7686;
+  background: #232932 !important;
+  border-color: #2b313b;
+  box-shadow: none;
+}
+
 :root[data-theme="dark"] .dop-menu-btn,
 :root[data-theme="dark"] .footer-col h4::after,
 :root[data-theme="dark"] .social-links a:hover,
@@ -268,10 +335,35 @@ html[data-theme] .fixed-header {
   background: rgba(27, 32, 39, 0.85);
 }
 
-/* website/static/css/base.css :: .notif-popup */
+/* website/static/css/base.css :: .notif-popup (список уведомлений) */
 :root[data-theme="dark"] .notif-popup {
-  background: rgba(27, 32, 39, 0.85);
+  background: #1b2027;
+  border-color: #2b313b;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.6), 0 4px 12px -4px rgba(0, 0, 0, 0.4);
 }
+:root[data-theme="dark"] .notif-header,
+:root[data-theme="dark"] .load-more-notifications {
+  border-color: #2b313b;
+}
+:root[data-theme="dark"] .notif-header-count {
+  background: rgba(28, 171, 196, 0.15);
+  color: #7fdcec;
+}
+:root[data-theme="dark"] .notif-read-all { color: #7fdcec; }
+:root[data-theme="dark"] .notif-read-all:hover:not(:disabled) { background: rgba(28, 171, 196, 0.12); color: #a6ecf7; }
+:root[data-theme="dark"] .notif:hover { background: #232932; }
+:root[data-theme="dark"] .notif.unread { background: rgba(28, 171, 196, 0.07); }
+:root[data-theme="dark"] .notif.unread:hover { background: rgba(28, 171, 196, 0.12); }
+:root[data-theme="dark"] .notif-message { color: #b8c0cb; }
+:root[data-theme="dark"] .notif.unread .notif-message { color: #eef1f5; }
+:root[data-theme="dark"] .notif.unread .notif-time { color: #7fdcec; }
+:root[data-theme="dark"] .notif-dot { background: #44cce4; box-shadow: 0 0 0 3px rgba(68, 204, 228, 0.15); }
+:root[data-theme="dark"] .notif-icon-sign    { background: rgba(28, 171, 196, 0.14); color: #7fdcec; }
+:root[data-theme="dark"] .notif-icon-success { background: rgba(52, 211, 153, 0.13); color: #6ee7b7; }
+:root[data-theme="dark"] .notif-icon-error   { background: rgba(232, 114, 114, 0.14); color: #f19a9a; }
+:root[data-theme="dark"] .notif-icon-warning { background: rgba(243, 196, 107, 0.13); color: #f3c46b; }
+:root[data-theme="dark"] .notif-icon-info    { background: #232932; color: #9aa3af; }
+:root[data-theme="dark"] .notif-empty-icon   { background: rgba(28, 171, 196, 0.14); color: #7fdcec; }
 
 /* Тёмная тема для flash-уведомлений (.custom-alert, .alert-close) теперь
    в общем common_models/static_assets/css/message-flash.css. */
@@ -746,6 +838,47 @@ html[data-theme] .fixed-header {
 /* website/static/css/base.css :: .confirm-delete-area input */
 :root[data-theme="dark"] .confirm-delete-area input {
   border: 1px solid #2b313b;
+}
+
+/* base.css :: «Опасная зона» (новое оформление) */
+:root[data-theme="dark"] .danger-zone {
+  border-color: #4a2427;
+  background:
+    linear-gradient(180deg, rgba(232, 114, 114, 0.07) 0%, rgba(0, 0, 0, 0) 90px),
+    #1b2027;
+}
+:root[data-theme="dark"] .danger-zone-actions {
+  border-top: 1px dashed #4a2427;
+}
+:root[data-theme="dark"] .danger-zone-icon {
+  background: rgba(232, 114, 114, 0.14);
+  color: #e87272;
+}
+:root[data-theme="dark"] .danger-zone-heading { color: #f19a9a; }
+:root[data-theme="dark"] .confirm-delete-email {
+  background: #232932;
+  border-color: #2b313b;
+  color: #eef1f5;
+}
+:root[data-theme="dark"] .confirm-delete-area input:focus {
+  border-color: #e87272;
+  box-shadow: 0 0 0 3px rgba(232, 114, 114, 0.18);
+}
+:root[data-theme="dark"] .confirm-delete-area input.input-valid {
+  border-color: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+}
+:root[data-theme="dark"] .confirm-delete-area input.input-invalid {
+  border-color: #7f3a3a;
+}
+:root[data-theme="dark"] .confirm-delete-hint { color: #9aa3af; }
+:root[data-theme="dark"] .danger-zone-btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--body-background), 0 0 0 5px rgba(232, 114, 114, 0.6);
+}
+:root[data-theme="dark"] .danger-zone-btn:disabled {
+  color: #7a5a5d;
+  background: #2a2125;
+  border-color: #3a2a2e;
 }
 
 /* website/static/css/base.css :: .session-card-status */

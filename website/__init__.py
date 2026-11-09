@@ -3,7 +3,7 @@ from datetime import timedelta
 from importlib.resources import files
 from dotenv import load_dotenv
 
-from flask import Flask, flash, render_template, session, request, g, redirect, url_for
+from flask import Flask, flash, render_template, session, request, g, redirect, url_for, jsonify
 from flask_babel import Babel
 from flask_socketio import SocketIO
 from flask_bcrypt import Bcrypt
@@ -112,6 +112,16 @@ def create_app():
         # понятным сообщением (см. website/utils/teo.py:check_disk_space).
         TEO_DISK_USAGE_LIMIT_PERCENT=float(os.getenv('TEO_DISK_USAGE_LIMIT_PERCENT', 80)),
         TICKET_ATTACHMENT_MAX_FILE_SIZE=int(os.getenv('TICKET_ATTACHMENT_MAX_FILE_SIZE', 20 * 1024 * 1024)),
+        # ЕГР (egr.gov.by) — обновление данных организации по УНП
+        # (utils/egr.py). EGR_API_KEY — если ЕГР выдал ключ доступа
+        # (заголовок Authorization по спецификации API), иначе пусто.
+        EGR_API_BASE=os.getenv('EGR_API_BASE', 'https://egr.gov.by/api/v2/egr'),
+        EGR_API_KEY=os.getenv('EGR_API_KEY'),
+        EGR_TIMEOUT=float(os.getenv('EGR_TIMEOUT', 15)),
+        # Сверка организации с ЕГР перед «Подписать и отправить» — короткий
+        # таймаут, чтобы недоступный ЕГР не задерживал подпись.
+        EGR_CHECK_ON_SEND=os.getenv('EGR_CHECK_ON_SEND', 'true').lower() in ('1', 'true', 'yes'),
+        EGR_SEND_TIMEOUT=float(os.getenv('EGR_SEND_TIMEOUT', 5)),
     )
     app.config['TEO_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'teo')
     app.config['TICKET_ATTACHMENT_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'tickets')
@@ -166,6 +176,8 @@ def create_app():
     app.register_blueprint(stat_bp, url_prefix='/stat-reports')
     app.register_blueprint(db_bp, url_prefix='/database')
     app.register_blueprint(admin_support_bp, url_prefix='/admin/support-chats')
+    from .routes.admin_org import admin_org_bp
+    app.register_blueprint(admin_org_bp, url_prefix='/admin/org-by-unp')
 
     common_templates = str(files('common_models') / 'templates')
 
@@ -238,6 +250,59 @@ def create_app():
                 flash('Недостаточно прав для доступа к админ-панели', 'error')
                 return redirect(url_for('views.begin_page'))
             
+    # Организация не действующая по ЕГР (ликвидирована / в ликвидации /
+    # банкротство, utils/egr.py::INACTIVE_KINDS) — её сотрудникам доступен
+    # только просмотр: любой изменяющий запрос (не GET/HEAD/OPTIONS)
+    # отклоняется. Исключения — то, без чего человек застрял бы: вход/выход
+    # и пароль, служебные запросы сессии, отметка уведомлений, обращение в
+    # поддержку, экспорт (это просмотр) и «Обновить из ЕГР» — если
+    # организацию восстановили, руководитель снимет блокировку сам.
+    # Администраторов не касается.
+    EGR_BLOCK_ALLOWED_ENDPOINTS = {
+        'auth.logout', 'auth.login', 'auth.forgot_password', 'auth.reset_password',
+        'views.egr_refresh_organization', 'views.start_export',
+        'api_bp.mark_all_notifications_read', 'api_bp.mark_notification_read',
+    }
+    EGR_BLOCK_ALLOWED_PREFIXES = ('/_session', '/_forms', '/api/chat', '/static')
+
+    @app.before_request
+    def block_inactive_organization():
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return None
+        if not current_user.is_authenticated or getattr(current_user, 'is_admin', False):
+            return None
+        if request.endpoint in EGR_BLOCK_ALLOWED_ENDPOINTS or request.path.startswith(EGR_BLOCK_ALLOWED_PREFIXES):
+            return None
+        from website.utils.egr import org_is_inactive, inactive_notice
+        org = current_user.organization
+        if not org_is_inactive(org):
+            return None
+
+        message = inactive_notice(org)
+        app.logger.info(f'EGR block: user {current_user.id} org {org.id} ({org.egr_status_kind}) -> {request.endpoint}')
+        wants_json = (
+            request.is_json
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or 'application/json' in (request.headers.get('Accept') or '')
+        )
+        if wants_json:
+            return jsonify({'success': False, 'error': message}), 403
+        flash(message, 'error')
+        return redirect(request.referrer or url_for('views.profile'))
+
+    @app.context_processor
+    def inject_inactive_org_notice():
+        """Плашка в base.html для сотрудников недействующей организации."""
+        try:
+            if current_user.is_authenticated and not getattr(current_user, 'is_admin', False):
+                from website.utils.egr import org_is_inactive, inactive_notice
+                org = current_user.organization
+                if org_is_inactive(org):
+                    return {'inactive_org_notice': inactive_notice(org)}
+        except Exception:
+            pass
+        return {'inactive_org_notice': None}
+
     @app.template_filter('ru_date')
     def ru_date(date):
         months = {

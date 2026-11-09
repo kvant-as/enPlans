@@ -82,7 +82,9 @@ const Notifications = {
     markAllBtn: null,
     loadMoreBtn: null,
     page: 1,
-    perPage: 3,
+    // Строки списка компактнее прежних карточек — на первом экране
+    // помещается больше.
+    perPage: 6,
     hasMore: true,
     isLoading: false,
     unreadTotal: 0,
@@ -164,6 +166,29 @@ const Notifications = {
         return div.innerHTML;
     },
 
+    // Тип уведомления — по тексту (у Notification нет отдельного поля
+    // типа): от него зависит иконка и её цвет в списке.
+    // Порядок важен: первое совпадение побеждает (ошибки/отмены проверяются
+    // раньше «успеха», иначе «Подтверждение … отменено» стало бы зелёным).
+    NOTIF_KINDS: [
+        { kind: 'sign',    re: /подпис/i },
+        { kind: 'error',   re: /ошибк|доработк|отклон|не согласован/i },
+        { kind: 'warning', re: /отмен|возвращен|повторное рассмотрение/i },
+        { kind: 'success', re: /утвержд|подтвержд|согласован(?!ия)/i },
+    ],
+    NOTIF_ICONS: {
+        sign:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+    },
+
+    notifKind(message) {
+        const found = this.NOTIF_KINDS.find(k => k.re.test(message || ''));
+        return found ? found.kind : 'info';
+    },
+
     buildNotifNode(n) {
         const notif = document.createElement("div");
         notif.classList.add("notif");
@@ -172,11 +197,16 @@ const Notifications = {
             notif.classList.add("unread");
         }
 
+        const kind = this.notifKind(n.message);
         const formattedTime = this.formatNotificationTime(n.created_at);
 
         notif.innerHTML = `
-            <div class="notif-message">${this.escapeHtml(n.message)}</div>
-            <div class="notif-time">${formattedTime}</div>
+            <span class="notif-icon notif-icon-${kind}" aria-hidden="true">${this.NOTIF_ICONS[kind]}</span>
+            <div class="notif-content">
+                <div class="notif-message">${this.escapeHtml(n.message)}</div>
+                <div class="notif-time">${formattedTime}</div>
+            </div>
+            <span class="notif-dot" aria-hidden="true"></span>
         `;
 
         notif.addEventListener('click', () => {
@@ -193,8 +223,10 @@ const Notifications = {
 
         if (!data || data.length === 0) {
             this.notifListEl.innerHTML = `
-                <div class='empty-state'>
-                    <h1>Нет уведомлений</h1>
+                <div class="notif-empty">
+                    <span class="notif-empty-icon">${this.NOTIF_ICONS.info}</span>
+                    <div class="notif-empty-title">Уведомлений пока нет</div>
+                    <div class="notif-empty-text">Здесь появятся события по вашим планам</div>
                 </div>
             `;
             return;
@@ -299,6 +331,14 @@ const Notifications = {
 
     updateCounter(count) {
         this.unreadTotal = count;
+        // Счётчик непрочитанных и в шапке попапа (рядом с заголовком);
+        // кнопка «Прочитать все» неактивна, когда читать нечего.
+        const headerCount = document.getElementById("notifHeaderCount");
+        if (headerCount) {
+            headerCount.textContent = count > 99 ? '99+' : count;
+            headerCount.style.display = count > 0 ? "inline-flex" : "none";
+        }
+        if (this.markAllBtn) this.markAllBtn.disabled = count === 0;
         if (count > 0) {
             this.notifCountEl.innerText = count > 99 ? '99+' : count;
             this.notifCountEl.style.display = "flex";
@@ -383,6 +423,7 @@ const activationCode = {
             });
 
             inputs[Math.min(pasteData.length - 1, inputs.length - 1)].focus();
+            inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
         });
   }
 };
@@ -640,7 +681,11 @@ const formSteps = {
 // func to show modals
 function handleModal(modalElement, openLink, closeLink) {
     openLink.addEventListener('click', function(event) {
-        if (openLink.style.opacity === '0.5') {
+        // .btn-disabled (погашенная кнопка панели таблицы — напр.
+        // «Редактировать» на «Январь-Декабрь» или на ещё закрытом периоде)
+        // гасит кнопку классом, а не inline-стилем — без этой проверки
+        // модалка всё равно открывалась пустой.
+        if (openLink.style.opacity === '0.5' || openLink.classList.contains('btn-disabled')) {
             event.preventDefault();
         } else {
             modalElement.classList.add('active');
@@ -3225,3 +3270,50 @@ document.addEventListener('click', (e) => {
 
     window.TeoViewer.open(url, name, url);
 });
+// Кнопка отправки auth-форм неактивна, пока обязательные поля не заполнены.
+// <form data-require-valid>; поле пароля-подтверждения сверяется через data-cm-pwmatch.
+(function () {
+    function isAutofilled(el) {
+        try { return el.matches(':-webkit-autofill') || el.matches(':autofill'); } catch (e) { return false; }
+    }
+
+    function fieldOk(el) {
+        if (el.disabled || el.type === 'hidden') return true;
+        if (el.required && !el.value.trim() && !isAutofilled(el)) return false;
+        if (el.value && el.minLength > 0 && el.value.length < el.minLength) return false;
+        if (el.value && !el.checkValidity()) return false;
+        return true;
+    }
+
+    function setup(form) {
+        var submit = form.querySelector('button[type="submit"]');
+        if (!submit) return;
+        var match = form.querySelector('[data-cm-pwmatch]');
+
+        function update() {
+            var ok = Array.prototype.every.call(form.querySelectorAll('input, select, textarea'), fieldOk);
+            if (ok && match) {
+                var a = document.querySelector(match.getAttribute('data-password'));
+                var b = document.querySelector(match.getAttribute('data-confirm'));
+                ok = !!(a && b && a.value === b.value);
+            }
+            submit.disabled = !ok;
+        }
+
+        form.addEventListener('input', update);
+        form.addEventListener('change', update);
+        form.addEventListener('submit', function (e) {
+            update();
+            if (submit.disabled) e.preventDefault();
+        });
+        // автозаполнение браузера не всегда шлёт input
+        form.addEventListener('animationstart', update);
+        update();
+        setTimeout(update, 0);
+        setTimeout(update, 600);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[data-require-valid]').forEach(setup);
+    });
+})();

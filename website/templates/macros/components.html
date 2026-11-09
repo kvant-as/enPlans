@@ -60,24 +60,19 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
 
   <div class="menu-conteiner">
     <div class="menu-conteiner-btns">
-      {#  "Подписи" должна оставаться доступна и после [Вернуть на
-          внутреннюю доработку] (pending_signer_user_id уже сброшен в
-          None, plan.sent_time ещё не было) — там всё ещё есть что
-          показать: строка "Направление плана" с замечанием руководителя
-          (см. get_last_internal_return_ticket/plan_signatures_page). #}
-      {% set return_ticket = plan.tickets|selectattr('is_system', 'equalto', False)|selectattr('approval_path_id', 'equalto', none)|sort(attribute='begin_time')|last if plan.tickets else none %}
-      {% set has_fresh_return = return_ticket and (not plan.sent_time or return_ticket.begin_time > plan.sent_time) %}
+      {#  Та же видимость, что у вкладки «Подписи» в plan_navigation_header:
+          только если у этой версии плана есть хотя бы один PlanApprovalPath. #}
+      {% if plan.approval_paths %}
       {% set is_reviewer = current_user.has_auditor_access or current_user.has_approver_access %}
-      {% set tickets_reachable = plan.sent_time or (plan.pending_signer_user_id and not is_reviewer) or has_fresh_return %}
       <a
-        href="{% if tickets_reachable %}{% if is_reviewer %}/plans/plan/actions/{{ plan.token }}{% else %}/plans/plan/signatures/{{ plan.token }}{% endif %}#tickets_link{% endif %}"
-        class="element {% if not tickets_reachable %}non{% endif %}"
-        {% if not tickets_reachable %}title="{{ _('План ещё не отправлялся') }}"{% endif %}
+        href="{% if is_reviewer %}/plans/plan/actions/{{ plan.token }}{% else %}/plans/plan/signatures/{{ plan.token }}{% endif %}#tickets_link"
+        class="element"
         id=""
       >
         <img src="{{ url_for('static', filename='img/icon-tickets.svg') }}" />
         <span class="element-text">Подписи</span>
       </a>
+      {% endif %}
       <a
         href="{{ url_for('views.export', plan_id=plan.id, format='xlsx') }}"
         class="element"
@@ -136,8 +131,33 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
   {% set external_paths = plan.approval_paths|rejectattr('is_internal')|list %}
   {% set latest_cycle = (external_paths|map(attribute='cycle')|max) if external_paths else none %}
   {% set user_path = external_paths|selectattr('organization_id', 'equalto', current_user.organization_id)|selectattr('cycle', 'equalto', latest_cycle)|first if (current_user and current_user.organization_id and external_paths) else none %}
+  {#  «В ожидании» — план отправлен, этап этой организации в текущем цикле
+      ещё не пройден, но перед ним есть непройденный этап другой
+      организации (очередь не дошла). Считаем прямо здесь, а не только по
+      plan.is_queued_for_viewer (его ставит лишь список /plans) — иначе на
+      страницах самого плана следующая организация видела «На
+      рассмотрении», хотя план ещё у предыдущей. Свои планы организации
+      (она же разработчик) — не очередь, а свой статус. #}
+  {#  Свой план (организация пользователя — разработчик) или чужой. У
+      организации, которая и разрабатывает, и согласует/утверждает, для
+      СВОИХ планов — формулировки разработчика («На согласовании»), а
+      формулировки проверяющего («На рассмотрении»/«Согласован»/«В
+      ожидании») — только для чужих. #}
+  {% set is_own = current_user and plan.org_id == current_user.organization_id %}
+  {#  Формулировки проверяющего — только если эта организация действительно
+      есть в маршруте плана (user_path); иначе нейтральное «На согласовании». #}
+  {% set is_reviewer_view = current_user and (current_user.has_auditor_access or current_user.has_approver_access) and not is_own and user_path %}
+  {% set is_queued = (plan.is_queued_for_viewer|default(false)) and not is_own %}
+  {% if not is_queued and plan.is_sent and user_path and not user_path.is_viewed and not is_own %}
+    {% set earlier_pending = external_paths|selectattr('cycle', 'equalto', latest_cycle)|rejectattr('is_viewed')|selectattr('step_order', 'lt', user_path.step_order)|list %}
+    {% set is_queued = earlier_pending|length > 0 %}
+  {% endif %}
+  {#  Свой план на шаге утверждения В СВОЕЙ ЖЕ организации (ТЗ п.5,
+      Вариант А) — «На утверждении», а не общее «На согласовании». #}
+  {% set current_step = external_paths|selectattr('cycle', 'equalto', latest_cycle)|rejectattr('is_viewed')|sort(attribute='step_order')|first if external_paths else none %}
+  {% set own_approval_step = is_own and plan.is_sent and current_step and current_step.step_type == 'approver' and current_step.organization_id == current_user.organization_id %}
 <a
-  class="status-plan {% if plan.is_historical %}status-historical {% elif plan.is_draft %}status-draft {% elif plan.is_error %}status-error {% elif plan.pending_signer_user_id %}status-signing {% elif plan.is_control %}status-control {% elif plan.is_queued_for_viewer %}status-transit {% elif plan.is_sent and current_user and (current_user.has_auditor_access or current_user.has_approver_access) and user_path and user_path.is_viewed %}status-sogl {% elif plan.is_sent %}status-sent {% elif plan.is_approved %}status-approved {% endif %}"
+  class="status-plan {% if plan.is_historical %}status-historical {% elif plan.is_draft %}status-draft {% elif plan.is_error %}status-error {% elif plan.pending_signer_user_id %}status-signing {% elif plan.is_control %}status-control {% elif is_queued %}status-transit {% elif plan.is_sent and is_reviewer_view and user_path and user_path.is_viewed %}status-sogl {% elif plan.is_sent %}status-sent {% elif plan.is_approved %}status-approved {% endif %}"
 >
   {% if plan.is_historical %} {{ icons.icon_calendar() }}
   <span>{{ _('Архивная версия') }}{% if plan.snapshot_at %} — {{ plan.snapshot_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}</span>
@@ -149,15 +169,17 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
   <span>{% if current_user and current_user.org_role in ('dept_head', 'org_head') %}{{ _('На подписании') }}{% else %}{{ _('На подписании') }}{% endif %}</span>
   {% elif plan.is_control %} {{ icons.control_icon() }}
   <span>{{ _('Контроль пройден') }}</span>
-  {% elif plan.is_queued_for_viewer %} {{ icons.icon_clock() }}
-  <span>{{ _('Ожидание очереди') }}</span>
-  {% elif plan.is_sent and current_user and (current_user.has_auditor_access or current_user.has_approver_access) %}
+  {% elif is_queued %} {{ icons.icon_clock() }}
+  <span>{{ _('В ожидании') }}</span>
+  {% elif plan.is_sent and is_reviewer_view %}
   {% if user_path and user_path.is_viewed
   %} {{ icons.approved_icon() }}
   <span>{{ _('Согласован') }}</span>
   {% else %} {{ icons.pending_icon() }}
   <span>{{ _('На рассмотрении') }}</span>
-  {% endif %} {% elif plan.is_sent %} {{ icons.pending_icon() }}
+  {% endif %} {% elif own_approval_step %} {{ icons.pending_icon() }}
+  <span>{{ _('На утверждении') }}</span>
+  {% elif plan.is_sent %} {{ icons.pending_icon() }}
   <span>{{ _('На согласовании') }}</span>
   {% elif plan.is_approved %} {{ icons.approved_icon() }}
   <span>{{ _('Утвержден') }}</span>
@@ -435,15 +457,16 @@ plan=None, current_user=None) %}
       <span class="nav-text-mobile">{{ _('Действия') }}</span>
     </div>
 
-    {#  Как и в plan_menu выше — остаётся доступна и после [Вернуть на
-        внутреннюю доработку] (см. комментарий там же). #}
-    {% set nav_return_ticket = plan.tickets|selectattr('is_system', 'equalto', False)|selectattr('approval_path_id', 'equalto', none)|sort(attribute='begin_time')|last if plan.tickets else none %}
-    {% set nav_has_fresh_return = nav_return_ticket and (not plan.sent_time or nav_return_ticket.begin_time > plan.sent_time) %}
-    {% set signatures_reachable = plan.sent_time or plan.pending_signer_user_id or nav_has_fresh_return %}
+    {#  Вкладка видна только когда у ЭТОЙ версии плана есть хотя бы один
+        PlanApprovalPath (шаг внутренней цепочки, возврат или этап
+        маршрута). Вся история подписей хранится на текущей версии, а
+        архивные копии («Есть ошибки», create_plan_snapshot) создаются без
+        подписей — у них вкладки нет. #}
+    {% if plan.approval_paths %}
     <div
-      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}{% if not signatures_reachable %} disabled-tab{% endif %}"
-      onclick="{% if signatures_reachable %}window.location.href='/plans/plan/signatures/{{plan.token}}'{% endif %}"
-      data-tooltip="{{ _('Подписи') }}{% if not signatures_reachable %} — {{ _('план ещё не отправлялся') }}{% endif %}"
+      class="nav-item {% if active_plan_tab == 'signatures' %} active{% endif %}"
+      onclick="window.location.href='/plans/plan/signatures/{{plan.token}}'"
+      data-tooltip="{{ _('Подписи') }}"
     >
       <div class="nav-icon-wrapper">
         {{ icons.icon_confirm() }} {% if active_plan_tab == 'signatures' %}
@@ -453,6 +476,7 @@ plan=None, current_user=None) %}
       <span class="nav-text">{{ _('Подписи плана') }}</span>
       <span class="nav-text-mobile">{{ _('Подписи') }}</span>
     </div>
+    {% endif %}
 
   </nav>
 </div>
@@ -645,7 +669,11 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
 {% endmacro %} -->
 
 {% macro plan_signatures_page(plan, current_user, cycles=[], last_internal_return_ticket=none, pending_chain=[], plan_executors_summary=none, pending_internal_steps=[]) %}
-{% set latest = cycles[-1] if cycles else none %}
+{#  Текущий этап/статус — по последней ВНЕШНЕЙ отправке: вернутые на
+    внутреннюю доработку попытки (is_returned_internal, только внутренние
+    шаги) идут в истории своими таблицами, но на статус не влияют. #}
+{% set external_cycles = cycles|rejectattr('is_returned_internal')|list %}
+{% set latest = external_cycles[-1] if external_cycles else none %}
 {% set latest_paths = latest.paths if latest else [] %}
 {% set first_unviewed = latest_paths|selectattr('is_viewed', 'equalto', False)|first %}
 {% set total_stages = 1 + latest_paths|length %}
@@ -714,7 +742,64 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
   </tr>
   {% endmacro %}
 
-  {% if not cycles %}
+  {#  Этап = одна организация пути (1 — разработчик, дальше — маршрут,
+      PlanApprovalPath.stage). Основная строка этапа — итоговый шаг
+      (подпись руководителя / решение организации); действия внутри
+      организации до него (исполнитель направил, руководитель
+      подразделения согласовал, переслал без подписи, ...) — подэтапы,
+      свёрнуты и раскрываются кнопкой на основной строке (JS ниже). #}
+  {% macro stage_toggle(key, count) %}
+  <button type="button" class="track-stage-toggle" data-stage-toggle="{{ key }}" aria-expanded="false"
+          title="{{ _('Показать внутренние шаги') }}" aria-label="{{ _('Внутренние шаги') }}: {{ count }}">
+    <svg class="track-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></svg>
+    <span class="track-stage-count">{{ count }}</span>
+  </button>
+  {% endmacro %}
+
+  {#  state — цвет статуса подэтапа по решению: done (зелёный) /
+      rejected (красный). #}
+  {% macro substep_row(key, type_label, org_name, person, status_label, date_str, note, state='done') %}
+  <tr class="track-row track-substep" data-stage-of="{{ key }}" hidden>
+    <td class="track-row-type"><div class="track-row-type-inner track-substep-type">{{ type_label }}</div></td>
+    <td>{{ org_name }}</td>
+    <td>{{ person or '—' }}</td>
+    <td><span class="track-chip track-chip-{{ state }}">{{ status_label }}</span></td>
+    <td>{{ date_str }}</td>
+    <td>{{ note or '—' }}</td>
+  </tr>
+  {% endmacro %}
+
+  {% macro dev_substep(key, step, org_name) %}
+  {% if step.step_type == 'submitter' %}
+    {% set type_label, status_label = _('Направление на подпись'), _('Направление на подпись') %}
+  {% elif step.forwarded_to_user_id %}
+    {% set type_label, status_label = _('Внутреннее согласование'), _('Направление на подпись') %}
+  {% else %}
+    {% set type_label, status_label = _('Внутреннее согласование'), _('Согласован') %}
+  {% endif %}
+  {{ substep_row(key, type_label, org_name, step.signed_by_snapshot, status_label, step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—', none) }}
+  {% endmacro %}
+  {% set dev_org_name = plan.organization.full_name if plan.organization else '—' %}
+
+  {#  Разработчик плана — первая строка КАЖДОЙ попытки подписания. #}
+  {% macro dev_header_row() %}
+  <tr class="track-row-dev">
+    <td colspan="{{ col_count }}">
+      {{ _('Ответственный исполнитель') }}:
+      {% if plan_executors_summary %}
+        {% for part in plan_executors_summary %}{{ part }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+      {% else %}—{% endif %}
+    </td>
+  </tr>
+  {% endmacro %}
+
+  {#  Блок текущей, ещё не отправленной попытки — раньше показывался только
+      при полном отсутствии истории (not cycles). Теперь история (в т.ч.
+      вернутые на внутреннюю доработку попытки) остаётся на плане, поэтому
+      он нужен и при непустой истории, если план снова на подписи —
+      захватываем его в переменную и выводим ПОСЛЕ истории (по хронологии). #}
+  {% set show_presend = (not cycles) or plan.pending_signer_user_id %}
+  {% set presend_html %}
   {#  Вкладка "Подписи" видна сразу, как только исполнитель выбрал маршрут
       (submit_for_signature) — до реальной внешней отправки
       (handle_sent_status, когда появляется первый настоящий цикл — см.
@@ -724,30 +809,11 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
       PlanApprovalPath под это не заводим (см. get_last_internal_return_ticket
       в utils/plans.py — причина возврата без подписи хранится обычным
       сообщением в чате, не отдельным полем/строкой). #}
-  <div class="track-table-scroll">
-    <table class="track-table">
-      {{ track_thead() }}
-      <tbody>
+      <tbody class="track-cycle">
+        {{ dev_header_row() }}
         {{ section_row(_('Внутри организации-разработчика'), icons.icon_profile(), 'internal') }}
-        <tr class="track-row-dev">
-          <td colspan="{{ col_count }}">
-            {{ _('Ответственный исполнитель') }}:
-            {% if plan_executors_summary %}
-              {% for part in plan_executors_summary %}{{ part }}{% if not loop.last %}<br>{% endif %}{% endfor %}
-            {% else %}—{% endif %}
-          </td>
-        </tr>
-        {% for step in pending_internal_steps %}
-        <tr class="track-row track-row-done">
-          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</div></td>
-          <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
-          <td>{{ step.signed_by_snapshot or '—' }}</td>
-          <td><span class="track-chip track-chip-done">{{ _('Согласован') }}</span></td>
-          <td>{{ step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—' }}</td>
-          <td>—</td>
-        </tr>
-        {% endfor %}
-        <tr class="track-row {% if plan.pending_signer_user_id %}track-row-active{% else %}track-row-rejected{% endif %}">
+        {% set presend_key = 'presend-1' %}
+        <tr class="track-row track-stage {% if plan.pending_signer_user_id %}track-row-active{% else %}track-row-rejected{% endif %}" data-stage-key="{{ presend_key }}">
           <td class="track-row-type">
             <div class="track-row-type-inner">
               <span class="track-row-icon">
@@ -758,6 +824,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
                 {% endif %}
               </span>
               {{ _('Направление плана') }}
+              {% if pending_internal_steps %}{{ stage_toggle(presend_key, pending_internal_steps|length) }}{% endif %}
             </div>
           </td>
           <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
@@ -794,6 +861,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             {% else %}—{% endif %}
           </td>
         </tr>
+        {% for step in pending_internal_steps %}{{ dev_substep(presend_key, step, dev_org_name) }}{% endfor %}
 
         {% if pending_chain %}
         {#  Маршрут уже выбран (submit_for_signature), но план ещё не
@@ -820,24 +888,21 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         {% endfor %}
         {% endif %}
       </tbody>
-    </table>
-  </div>
-  {% endif %}
+  {% endset %}
 
-  {% for cycle in cycles %}
-  <div class="track-table-scroll{% if not loop.first %} track-table-scroll-cycle{% endif %}">
+  {#  Одна таблица на всю историю: шапка — один раз сверху, каждая
+      попытка начинается со строки разработчика плана (dev_header_row), — свой
+      <tbody class="track-cycle"> (разделитель между ними — в CSS), текущая
+      неотправленная попытка (presend_html) — последним <tbody>. Столбцы
+      у всех попыток общие и не «пляшут» по ширине. #}
+  <div class="track-table-scroll">
     <table class="track-table">
       {{ track_thead() }}
-      <tbody>
+
+  {% for cycle in cycles %}
+      <tbody class="track-cycle">
+        {{ dev_header_row() }}
         {{ section_row(_('Внутри организации-разработчика'), icons.icon_profile(), 'internal') }}
-        <tr class="track-row-dev">
-          <td colspan="{{ col_count }}">
-            {{ _('Ответственный исполнитель') }}:
-            {% if plan_executors_summary %}
-              {% for part in plan_executors_summary %}{{ part }}{% if not loop.last %}<br>{% endif %}{% endfor %}
-            {% else %}—{% endif %}
-          </td>
-        </tr>
 
         {#  "Направление плана" — одна строка на каждый шаг внутренней
             цепочки (PlanInternalSignStep, cycle.internal_steps) — и тот,
@@ -846,27 +911,68 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             Для циклов, отправленных ДО этой фичи (internal_steps пуст)
             — старая единственная строка на cycle.dev_* (снимок из
             PlanApprovalPath.sender_*, см. build_signature_cycles). #}
-        {% if cycle.internal_steps %}
-        {% for step in cycle.internal_steps %}
-        <tr class="track-row track-row-done">
-          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</div></td>
+        {% set dev_key = 'c' ~ cycle.cycle ~ '-1' %}
+        {% set dev_main = cycle.dev_main %}
+        {% set dev_subs = cycle.dev_substeps %}
+        {% if dev_main and dev_main.log_action == 'internal_returned' %}
+        {#  Возврат на внутреннюю доработку — кто вернул, когда и почему
+            (см. plan_bp.internal_return). #}
+        <tr class="track-row track-stage track-row-rejected" data-stage-key="{{ dev_key }}">
+          <td class="track-row-type">
+            <div class="track-row-type-inner">
+              <span class="track-row-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" d="M18 6L6 18M6 6L18 18" />
+                </svg>
+              </span>
+              {{ _('Направление плана') }}
+              {% if dev_subs %}{{ stage_toggle(dev_key, dev_subs|length) }}{% endif %}
+            </div>
+          </td>
           <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
-          <td>{{ step.signed_by_snapshot or '—' }}</td>
-          <td><span class="track-chip track-chip-done">{{ _('Согласован') if step.forwarded_to_user_id else _('Направлен') }}</span></td>
-          <td>{{ step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—' }}</td>
+          <td>{{ dev_main.rejected_by_snapshot or dev_main.signed_by_snapshot or '—' }}</td>
+          <td><span class="track-chip track-chip-rejected">{{ _('Не согласован') }}</span></td>
+          <td>{{ dev_main.rejected_at.strftime('%d.%m.%Y') if dev_main.rejected_at else '—' }}</td>
+          <td>
+            {% if dev_main.ticket %}
+              {{ dev_main.ticket.note }}
+              {% if dev_main.ticket.attachment_filename %}
+              <button
+                type="button"
+                class="ticket-attachment-chip"
+                data-ticket-attachment-url="{{ url_for('audit_bp.get_ticket_attachment', token=plan.token, ticket_id=dev_main.ticket.id) }}"
+                data-ticket-attachment-name="{{ dev_main.ticket.attachment_original_name or _('Файл') }}"
+                title="{{ dev_main.ticket.attachment_original_name or _('Файл') }}"
+              >
+                {{ icons.icon_paperclip() }}
+                <span class="ticket-attachment-name">{{ dev_main.ticket.attachment_original_name or _('Файл') }}</span>
+              </button>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% elif dev_main %}
+        <tr class="track-row track-stage track-row-done" data-stage-key="{{ dev_key }}">
+          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}{% if dev_subs %}{{ stage_toggle(dev_key, dev_subs|length) }}{% endif %}</div></td>
+          <td>{{ dev_org_name }}</td>
+          <td>{{ dev_main.signed_by_snapshot or '—' }}</td>
+          <td><span class="track-chip track-chip-done">{{ _('Направлен') }}</span></td>
+          <td>{{ dev_main.signed_at.strftime('%d.%m.%Y') if dev_main.signed_at else '—' }}</td>
           <td>—</td>
         </tr>
-        {% endfor %}
         {% else %}
-        <tr class="track-row track-row-done">
-          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}</div></td>
-          <td>{{ plan.organization.full_name if plan.organization else '—' }}</td>
+        {#  Старые отправки (до внутренней цепочки) или отправка без
+            итогового шага — единственная строка из снимка отправителя. #}
+        <tr class="track-row track-stage track-row-done" data-stage-key="{{ dev_key }}">
+          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ _('Направление плана') }}{% if dev_subs %}{{ stage_toggle(dev_key, dev_subs|length) }}{% endif %}</div></td>
+          <td>{{ dev_org_name }}</td>
           <td>{% if cycle.dev_name %}{{ cycle.dev_post or '—' }}, {{ cycle.dev_name }}{% else %}—{% endif %}</td>
           <td><span class="track-chip track-chip-done">{{ _('Направлен') }}</span></td>
           <td>{{ cycle.sent_at.strftime('%d.%m.%Y') if cycle.sent_at else '—' }}</td>
           <td>—</td>
         </tr>
         {% endif %}
+        {% for step in dev_subs %}{{ dev_substep(dev_key, step, dev_org_name) }}{% endfor %}
 
         {% if cycle.cancel_ticket %}
         <tr class="track-row-dev">
@@ -888,7 +994,29 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         </tr>
         {% endif %}
 
+        {% if not cycle.is_returned_internal %}
         {{ section_row(_('Внешние организации'), icons.icon_org(), 'external') }}
+        {% elif cycle.planned_route %}
+        {#  Попытку вернули на внутреннюю доработку до отправки — показываем,
+            куда план должен был пойти (снимок маршрута на строке возврата,
+            PlanApprovalPath.route_snapshot), со статусом «Не отправлен». #}
+        {{ section_row(_('Внешние организации'), icons.icon_org(), 'external') }}
+        {% for step_type, org in cycle.planned_route %}
+        <tr class="track-row track-row-abandoned">
+          <td class="track-row-type">
+            <div class="track-row-type-inner">
+              <span class="track-row-icon">{{ icons.pending_icon() }}</span>
+              {{ _('Утверждение') if step_type == 'approver' else _('Согласование') }}
+            </div>
+          </td>
+          <td>{{ org.full_name }}</td>
+          <td>—</td>
+          <td><span class="track-chip track-chip-abandoned">{{ _('Не отправлен') }}</span></td>
+          <td>—</td>
+          <td>—</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
         {% for path in cycle.paths %}
         {% set is_active = cycle.is_latest and path == first_unviewed %}
         {#  is_rejected_step смотрит на то, что РЕАЛЬНО сохранено на самом
@@ -915,29 +1043,10 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         {% set row_state = 'done' if path.is_viewed else ('abandoned' if is_abandoned else ('rejected' if is_rejected_step else ('active' if is_active else 'pending'))) %}
         {#  "Шаг 2" ВНУТРИ этой организации (кто направил решение, кто
             переслал без подписи, кто подписал, кто вернул на доработку —
-            см. log_step2_action/build_signature_cycles) — все промежуточные
-            действия перед итоговой строкой этого этапа ниже. #}
-        {% for step in path.step2_history %}
-        <tr class="track-row track-row-done">
-          <td class="track-row-type"><div class="track-row-type-inner"><span class="track-row-icon">{{ icons.icon_check() }}</span>{{ action_label }}</div></td>
-          <td>{{ path.organization.full_name if path.organization else '—' }}</td>
-          <td>{{ step.signed_by_snapshot or '—' }}</td>
-          {% set step2_label = {
-            'submitted_approved': _('Направил(а) решение «Согласован» на подпись'),
-            'submitted_error': _('Направил(а) решение «Не согласован» на подпись'),
-            'submitted_forward': _('Направил(а) на подпись'),
-            'forwarded': _('Переслал(а) без подписи'),
-            'signed': _('Подписал(а) решение'),
-            'returned': _('Вернул(а) на повторное рассмотрение'),
-          }.get(step.log_action, step.log_action) %}
-          <td><span class="track-chip track-chip-done">{{ step2_label }}{% if step.forwarded_to and step.log_action in ('forwarded', 'submitted_forward', 'submitted_approved', 'submitted_error') %} ({{ step.forwarded_to.last_name }} {{ step.forwarded_to.first_name }}){% endif %}</span></td>
-          <td>{{ step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—' }}</td>
-          <td>
-            {% if step.ticket %}{{ step.ticket.note }}{% else %}—{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-        <tr class="track-row track-row-{{ row_state }}">
+            см. log_step2_action/build_signature_cycles) — подэтапы этого
+            этапа, раскрываются под основной строкой (stage_toggle). #}
+        {% set ext_key = 'c' ~ cycle.cycle ~ '-' ~ (path.stage or (loop.index + 1)) %}
+        <tr class="track-row track-stage track-row-{{ row_state }}" data-stage-key="{{ ext_key }}">
           <td class="track-row-type">
             <div class="track-row-type-inner">
               <span class="track-row-icon">
@@ -955,6 +1064,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
                 {% else %}{{ icons.pending_icon() }}{% endif %}
               </span>
               {{ action_label }}
+              {% if path.step2_history %}{{ stage_toggle(ext_key, path.step2_history|length) }}{% endif %}
             </div>
           </td>
           <td>{{ path.organization.full_name if path.organization else '—' }}</td>
@@ -1019,11 +1129,39 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             {% else %}—{% endif %}
           </td>
         </tr>
+        {#  Статус подэтапа — действие без ФИО адресата, цвет — по решению,
+            которое несёт это направление: «Не согласован» — красный,
+            «Согласован» — зелёный. Пересылка без подписи наследует решение
+            предыдущего направления; возврат на повторное рассмотрение —
+            красный и сбрасывает решение. #}
+        {% set ns = namespace(decision='approved') %}
+        {% for step in path.step2_history %}
+          {% if step.log_action == 'submitted_error' %}{% set ns.decision = 'error' %}
+          {% elif step.log_action in ('submitted_approved', 'submitted_forward') %}{% set ns.decision = 'approved' %}{% endif %}
+          {% if step.log_action == 'returned' %}
+            {% set step2_label, step2_state = _('Возврат на повторное рассмотрение'), 'rejected' %}
+            {% set ns.decision = 'approved' %}
+          {% elif step.log_action == 'signed' %}
+            {% set step2_label, step2_state = _('Подписание'), ('rejected' if (ns.decision == 'error' or path.rejected_at) else 'done') %}
+          {% else %}
+            {% set step2_label, step2_state = _('Направление на подпись'), ('rejected' if ns.decision == 'error' else 'done') %}
+          {% endif %}
+          {{ substep_row(ext_key, _('Внутреннее рассмотрение'), path.organization.full_name if path.organization else '—', step.signed_by_snapshot, step2_label, step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—', step.ticket.note if step.ticket else none, step2_state) }}
         {% endfor %}
-        </tbody>
-      </table>
-    </div>
+        {% endfor %}
+        {#  Финальная строка попытки, если план ушёл в «Есть ошибки» (внешнее
+            отклонение или возврат на внутреннюю доработку) — после всех
+            организаций маршрута (см. utils/plans.py::add_rework_step). #}
+        {% if cycle.rework_step %}
+        <tr class="track-row track-row-rework">
+          <td colspan="{{ col_count }}" class="track-row-rework-label">{{ _('План отправлен на доработку') }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
   {% endfor %}
+  {% if show_presend %}{{ presend_html }}{% endif %}
+    </table>
+  </div>
   {% else %}
   <div class="no-info-container">
     <div class="empty-state">
@@ -1078,7 +1216,7 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
         ></textarea>
         <span class="char-counter">0/500</span>
       </div>
-      <label class="chat-attach-btn" id="chatAttachBtn" title="{{ _('Прикрепите файл с замечаниями (до 20 МБ) — обязательно') }}">
+      <label class="chat-attach-btn" id="chatAttachBtn" title="{{ _('Прикрепить файл с замечаниями (до 20 МБ) — по желанию') }}">
         {{ icons.icon_paperclip() }}
         <input
           type="file"
@@ -1362,8 +1500,8 @@ show_checkboxes %}
           {% endif %}
         >
           {{ icons.icon_view() }}
-          <span class="tooltip-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
-          <span class="btn-text">{{ _('Ожидание очереди') if is_queued else _('Просмотр') }}</span>
+          <span class="tooltip-text">{{ _('В ожидании') if is_queued else _('Просмотр') }}</span>
+          <span class="btn-text">{{ _('В ожидании') if is_queued else _('Просмотр') }}</span>
         </button>
         {% if plan.org_id == current_user.organization_id and not current_user.is_reader %} {% if not (plan.is_sent or
         plan.is_approved or plan.pending_signer_user_id) %}
@@ -1458,9 +1596,10 @@ selected_status='all', selected_year='all') %}
         {% else %} {{ _('На подписании') }} {% endif %} {% elif
         selected_status == 'sent' %} {% if current_user and
         (current_user.has_auditor_access or current_user.has_approver_access) and not (current_user.organization and current_user.organization.is_regular) %} {{ _('На рассмотрении') }} {% else %} {{
-        _('На согласовании') }} {% endif %} {% elif selected_status == 'sogl' %}
+        _('На согласовании') }} {% endif %} {% elif selected_status == 'review' %}
+        {{ _('На рассмотрении') }} {% elif selected_status == 'sogl' %}
         {{ _('Согласованные') }} {% elif selected_status == 'in_transit' %}
-        {{ _('Ожидание очереди') }} {% elif selected_status == 'error' %} {{
+        {{ _('В ожидании') }} {% elif selected_status == 'error' %} {{
         _('Есть ошибки') }} {% elif selected_status == 'approved' %} {{
         _('Утвержденные') }} {% else %} {{ _('Статус') }} {% endif %}
       </span>
@@ -1471,14 +1610,16 @@ selected_status='all', selected_year='all') %}
 
       {% if current_user and (current_user.has_auditor_access or current_user.has_approver_access) and not (current_user.organization and current_user.organization.is_regular) %}
       <div class="dropdown-item" data-value="in_transit">
-        {{ _('Ожидание очереди') }}
+        {{ _('В ожидании') }}
       </div>
       <div class="dropdown-item" data-value="sent">
         {{ _('На рассмотрении') }}
       </div>
+      {% if current_user.organization and (current_user.organization.is_coordinator or current_user.organization.is_region_management) %}
       <div class="dropdown-item" data-value="sogl">
         {{ _('Согласованные') }}
       </div>
+      {% endif %}
       {% else %}
       <div class="dropdown-item" data-value="draft">{{ _('В редакции') }}</div>
       <div class="dropdown-item" data-value="control">
@@ -1494,6 +1635,13 @@ selected_status='all', selected_year='all') %}
       <div class="dropdown-item" data-value="sent">
         {{ _('На согласовании') }}
       </div>
+      {% if current_user and (current_user.has_auditor_access or current_user.has_approver_access) %}
+      <div class="dropdown-item" data-value="in_transit">{{ _('В ожидании') }}</div>
+      <div class="dropdown-item" data-value="review">{{ _('На рассмотрении') }}</div>
+      {% if current_user.organization and (current_user.organization.is_coordinator or current_user.organization.is_region_management) %}
+      <div class="dropdown-item" data-value="sogl">{{ _('Согласованные') }}</div>
+      {% endif %}
+      {% endif %}
       {% endif %}
 
       <div class="dropdown-item" data-value="error">{{ _('Есть ошибки') }}</div>
@@ -1555,7 +1703,34 @@ selected_status='all', selected_year='all') %}
     />
   </div>
 </div>
+{% endmacro %} {% macro stat_split_column(top, bottom) %}
+{#  Один столбец из двух половинок с общей точкой под ними — для пар
+    статусов, которые стоят на одном шаге пути: «В ожидании / На
+    рассмотрении» (план у проверяющей организации — до или в её очереди)
+    и «Утвержденные / Есть ошибки» (два конечных исхода). Линия прогресса
+    (plan-status.js) доходит до общей точки и окрашивается цветом статуса
+    плана. Каждая половинка — обычный .stat-and-dot со своим data-value,
+    поэтому клик-фильтр и счётчики (plan.js) работают как у остальных
+    плиток. top/bottom — (data-value, класс счётчика, id счётчика, подпись). #}
+<div class="stat-column">
+  <div class="stat-split">
+    {% for value, number_class, number_id, label in [top, bottom] %}
+    <div class="stat-and-dot" data-value="{{ value }}">
+      <div class="stat stat-half">
+        <a class="{{ number_class }}" id="{{ number_id }}">-</a>
+        <a class="word-numb">{{ label }}</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="status-dot"></div>
+</div>
 {% endmacro %} {% macro plan_count(current_user) %}
+{% set is_reviewer = current_user.has_auditor_access or current_user.has_approver_access %}
+{#  «Согласованные» — только у согласующей организации (в т.ч.
+    регионального управления): утверждающая не «согласует», а утверждает —
+    её итог виден во «Утвержденных», вкладка была бы всегда пустой. #}
+{% set is_coord_org = current_user.organization and (current_user.organization.is_coordinator or current_user.organization.is_region_management) %}
 <div class="stats-container">
   <div class="stats-track">
     <div class="stat-and-dot" data-value="all">
@@ -1563,6 +1738,7 @@ selected_status='all', selected_year='all') %}
         <a class="stat-number" id="stat-all">-</a>
         <a class="word-numb">{{ _('Все') }}</a>
       </div>
+      <div class="status-dot-spacer" aria-hidden="true"></div>
     </div>
     {# Вкладки статусов плана: организация, которая ТОЛЬКО согласует/
        утверждает чужие планы (не is_regular) — видит узкий набор без
@@ -1571,21 +1747,11 @@ selected_status='all', selected_year='all') %}
        в том числе гибридная (сама готовит планы И согласует/утверждает
        чужие, ТЗ п.5 Вариант А) — видит полный набор, включая "На
        подписании": ей он действительно нужен для СВОИХ планов. #}
-    {% if (current_user.has_auditor_access or current_user.has_approver_access) and not (current_user.organization and current_user.organization.is_regular) %}
-    <div class="stat-and-dot" data-value="in_transit">
-      <div class="stat">
-        <a class="stat-number-transit" id="stat-in-transit">-</a>
-        <a class="word-numb">{{ _('Ожидание очереди') }}</a>
-      </div>
-      <div class="status-dot"></div>
-    </div>
-    <div class="stat-and-dot" data-value="sent">
-      <div class="stat">
-        <a class="stat-number-sent" id="stat-sent">-</a>
-        <a class="word-numb">{{ _('На рассмотрении') }}</a>
-      </div>
-      <div class="status-dot"></div>
-    </div>
+    {% if is_reviewer and not (current_user.organization and current_user.organization.is_regular) %}
+    {{ stat_split_column(
+        ('in_transit', 'stat-number-transit', 'stat-in-transit', _('В ожидании')),
+        ('sent', 'stat-number-sent', 'stat-sent', _('На рассмотрении'))) }}
+    {% if is_coord_org %}
     <div class="stat-and-dot" data-value="sogl">
       <div class="stat">
         <a class="stat-number-sogl" id="stat-sogl">-</a>
@@ -1593,6 +1759,7 @@ selected_status='all', selected_year='all') %}
       </div>
       <div class="status-dot"></div>
     </div>
+    {% endif %}
     {% else %}
     <div class="stat-and-dot" data-value="draft">
       <div class="stat">
@@ -1611,7 +1778,7 @@ selected_status='all', selected_year='all') %}
     <div class="stat-and-dot" data-value="signing">
       <div class="stat">
         <a class="stat-number-signing" id="stat-signing">-</a>
-        <a class="word-numb">{% if current_user and current_user.org_role in ('dept_head', 'org_head') %}{{ _('На подписании') }}{% else %}{{ _('На подписании') }}{% endif %}</a>
+        <a class="word-numb">{{ _('На подписании') }}</a>
       </div>
       <div class="status-dot"></div>
     </div>
@@ -1622,21 +1789,27 @@ selected_status='all', selected_year='all') %}
       </div>
       <div class="status-dot"></div>
     </div>
+    {#  Гибридная организация (разработчик И проверяющая) — плюс столбец
+        про ЧУЖИЕ планы в её очереди (см. get_filtered_plans: 'in_transit'
+        / 'review'). «На согласовании» выше — только её собственные. #}
+    {% if is_reviewer %}
+    {{ stat_split_column(
+        ('in_transit', 'stat-number-transit', 'stat-in-transit', _('В ожидании')),
+        ('review', 'stat-number-review', 'stat-review', _('На рассмотрении'))) }}
+    {% if is_coord_org %}
+    <div class="stat-and-dot" data-value="sogl">
+      <div class="stat">
+        <a class="stat-number-sogl" id="stat-sogl">-</a>
+        <a class="word-numb">{{ _('Согласованные') }}</a>
+      </div>
+      <div class="status-dot"></div>
+    </div>
     {% endif %}
-    <div class="stat-and-dot" data-value="error">
-      <div class="stat">
-        <a class="stat-number-eror" id="stat-error">-</a>
-        <a class="word-numb">{{ _('Есть ошибки') }}</a>
-      </div>
-      <div class="status-dot"></div>
-    </div>
-    <div class="stat-and-dot" data-value="approved">
-      <div class="stat">
-        <a class="stat-number-sub" id="stat-approved">-</a>
-        <a class="word-numb">{{ _('Утвержденные') }}</a>
-      </div>
-      <div class="status-dot"></div>
-    </div>
+    {% endif %}
+    {% endif %}
+    {{ stat_split_column(
+        ('approved', 'stat-number-sub', 'stat-approved', _('Утвержденные')),
+        ('error', 'stat-number-eror', 'stat-error', _('Есть ошибки'))) }}
   </div>
   <div class="progress-line-container">
     <div class="progress-line-background"></div>
@@ -1644,6 +1817,7 @@ selected_status='all', selected_year='all') %}
   </div>
 </div>
 {% endmacro %}
+
 
 {% macro year_picker(selected_year, taken_years=[], min_year=2024, max_year=2050, onchange='', current_year_attr=none) %}
 <div class="year-picker" id="yearPicker">
@@ -1679,8 +1853,13 @@ selected_status='all', selected_year='all') %}
 {% endmacro %}
 
 
-{% macro organization_view_card(organization, current_user=None) %}
+{% macro organization_view_card(organization, current_user=None, viewer=None) %}
 {% if organization %}
+{#  Данные из ЕГР (состояние, юр. адрес, дата сверки) — только показ;
+    само обновление — пункт «Обновить из ЕГР» в меню «Действия с
+    организацией» в профиле (profile.html). #}
+{% set egr_kind = organization.egr_status_kind %}
+{% set egr_labels = {'active': _('Действующая'), 'liquidating': _('В процессе ликвидации'), 'liquidated': _('Ликвидирована'), 'bankrupt': _('Банкротство'), 'unknown': _('Состояние не определено')} %}
 <div class="org-card">
   <div class="org-card-header">
     <div class="org-card-heading">
@@ -1718,21 +1897,43 @@ selected_status='all', selected_year='all') %}
       {{ icons.icon_region() }}
       <span class="org-code-value">{{ organization.region.name or _('Нет данных') }}</span>
     </div>
-    <div class="org-code-chip">
+    {#  Функции организации в маршруте плана — по флагам САМОЙ организации,
+        а не по правам пользователя, и все сразу: организация может быть
+        одновременно разработчиком и согласующей/утверждающей (ТЗ п.5,
+        Вариант А) — раньше показывалась только одна из функций. #}
+    {% set org_roles = [] %}
+    {% if organization.is_regular %}{% set _ignore = org_roles.append(_('Организация-разработчик')) %}{% endif %}
+    {% if organization.is_coordinator or organization.is_region_management %}{% set _ignore = org_roles.append(_('Согласовывающая организация')) %}{% endif %}
+    {% if organization.is_approver %}{% set _ignore = org_roles.append(_('Утверждающая организация')) %}{% endif %}
+    {% if current_user and current_user.is_reader %}{% set _ignore = org_roles.append(_('Читатель')) %}{% endif %}
+    {% for role_label in org_roles %}
+    <div class="org-code-chip org-role-chip">
       {{ icons.icon_org() }}
-        {% if current_user %}
-          {% if current_user.has_auditor_access %}
-            <span class="org-code-value">{{ _('Согласовывающая организация') }}</span>
-          {% elif current_user.has_approver_access %}
-            <span class="org-code-value">{{ _('Утверждающая организация') }}</span>
-          {% elif current_user.is_reader %}
-            <span class="org-code-value">{{ _('Читатель') }}</span>
-          {% else %}
-            <span class="org-code-value">{{ _('Организация-разработчик') }}</span>
-          {% endif %}
-        {% endif %}
+      <span class="org-code-value">{{ role_label }}</span>
     </div>
+    {% endfor %}
+    {% if egr_kind %}
+    <div class="org-code-chip org-egr-status org-egr-status-{{ egr_kind }}" title="{{ _('Состояние по ЕГР') }}{% if organization.egr_status %}: {{ organization.egr_status }}{% endif %}">
+      <span class="org-egr-status-dot" aria-hidden="true"></span>
+      <span class="org-code-value">{{ egr_labels.get(egr_kind, organization.egr_status) }}</span>
+    </div>
+    {% endif %}
   </div>
+  {% if organization.legal_address %}
+  <p class="org-card-address"><span>{{ _('Юридический адрес') }}:</span> {{ organization.legal_address }}</p>
+  {% endif %}
+  {% if organization.egr_checked_at %}
+  <p class="org-egr-checked">{{ _('Сверено с ЕГР') }} {{ organization.egr_checked_at.strftime('%d.%m.%Y %H:%M') }}</p>
+  {% endif %}
+  {% if organization.is_regular and (organization.is_approver or organization.is_coordinator or organization.is_region_management) %}
+  <p class="org-card-roles-note">
+    {% if organization.is_approver %}
+      {{ _('Организация сама заполняет и отправляет свои планы и утверждает планы других организаций. Свои планы она может утвердить сама — в этом случае утверждает только руководитель организации или его заместитель.') }}
+    {% else %}
+      {{ _('Организация сама заполняет и отправляет свои планы и согласовывает планы других организаций.') }}
+    {% endif %}
+  </p>
+  {% endif %}
 </div>
 {% endif %}
 {% endmacro %}

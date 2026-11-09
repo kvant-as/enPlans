@@ -191,19 +191,53 @@ def update_ChangeTimePlan(id):
 
     db.session.commit()
 
+PLAN_EDIT_ROLE_DENIED = 'Редактировать содержимое плана может только исполнитель или руководитель структурного подразделения организации-разработчика'
+
+
+def plan_edit_lock_reason(plan):
+    """Почему содержимое плана сейчас заблокировано для ЛЮБОГО сотрудника
+    организации-разработчика — или None, если не заблокировано.
+
+    ТЗ п.3.3: пока план у подписанта (pending_signer_user_id), он
+    заблокирован для всех; п.3.4: после отправки (is_sent) — тоже; после
+    утверждения — тем более. Раньше это держалось только на disabled в
+    шаблонах, а сервер принимал правку — и update_ChangeTimePlan тут же
+    сбрасывал is_sent/is_control, молча выдёргивая план из маршрута
+    согласования (или из-под подписанта)."""
+    if plan.is_historical:
+        return 'Это архивная версия плана — только для просмотра'
+    if plan.is_approved:
+        return 'План утверждён — его содержимое больше нельзя изменить'
+    if plan.is_sent:
+        return 'План отправлен на согласование — его содержимое заблокировано'
+    if plan.pending_signer_user_id:
+        return 'План направлен на подпись — его содержимое заблокировано до подписи или возврата на доработку'
+    return None
+
+
+def plan_edit_denial(user, plan):
+    """Текст отказа в правке содержимого плана или None, если правка
+    разрешена (см. can_edit_plan_data)."""
+    if not (
+        user.organization_id == plan.org_id
+        and user.org_role in ('executor', 'dept_head')
+        and user.organization and user.organization.is_regular
+    ):
+        return PLAN_EDIT_ROLE_DENIED
+    return plan_edit_lock_reason(plan)
+
+
 def can_edit_plan_data(user, plan):
     """Создавать план и заполнять его содержимое (показатели, мероприятия,
     метаданные) может только сотрудник ОБЫЧНОЙ организации-разработчика
     (Organization.is_regular — не только согласующей/утверждающей, см.
     get_filtered_plans/Вариант А ТЗ п.5) с ролью executor или dept_head, и
     только для плана СВОЕЙ организации. org_head/org_head_deputy этим не
-    занимаются (is_org_manager — они подписывают/утверждают), это
-    единственное правило — больше никаких исключений."""
-    return bool(
-        user.organization_id == plan.org_id
-        and user.org_role in ('executor', 'dept_head')
-        and user.organization and user.organization.is_regular
-    )
+    занимаются (is_org_manager — они подписывают/утверждают).
+
+    Плюс сам план должен быть в редактируемом состоянии — не у подписанта,
+    не отправлен, не утверждён (см. plan_edit_lock_reason)."""
+    return plan_edit_denial(user, plan) is None
 
 
 def get_plans_by_okpo():
@@ -236,6 +270,7 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         # current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
         is_hybrid_org = False
         is_reviewer_only = False
+        auditor_org_ids = []
 
         if user.has_auditor_access or user.has_approver_access:
             # has_approver_access (утверждающая организация) — та же
@@ -374,17 +409,48 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                     if _is_queued_for_org(p, auditor_org_ids) == (status_filter == 'in_transit'):
                         matching_ids.append(p.id)
             filtered_query = Plan.query.filter(Plan.id.in_(matching_ids))
+        elif is_hybrid_org and auditor_org_ids and status_filter in ('in_transit', 'review', 'sogl'):
+            # Гибридная организация (сама разработчик И проверяющая, ТЗ п.5
+            # Вариант А): кроме вкладок своих планов — вкладки про ЧУЖИЕ
+            # планы в её маршруте: 'in_transit' («В ожидании», очередь не
+            # дошла), 'review' («На рассмотрении», дошла, ждёт её решения),
+            # 'sogl' («Согласованные» — только у согласующей: уже согласовала,
+            # план идёт дальше). Своя 'sent' («На согласовании») — только про
+            # свои планы, поэтому отдельное значение 'review'.
+            candidates = filtered_query.filter(
+                Plan.is_sent == True,
+                Plan.org_id != user.organization_id,
+                PlanApprovalPath.organization_id.in_(auditor_org_ids),
+            ).distinct().all()
+            matching_ids = []
+            for p in candidates:
+                my_path = _latest_path_for_org(p, auditor_org_ids)
+                if not my_path:
+                    continue
+                if status_filter == 'sogl':
+                    if my_path.is_viewed:
+                        matching_ids.append(p.id)
+                elif not my_path.is_viewed and _is_queued_for_org(p, auditor_org_ids) == (status_filter == 'in_transit'):
+                    matching_ids.append(p.id)
+            filtered_query = Plan.query.filter(Plan.id.in_(matching_ids))
         elif status_filter != 'all' and status_filter in status_filters:
             filtered_query = filtered_query.filter(status_filters[status_filter])
             if is_hybrid_org:
                 # У гибридной организации base_query объединяет (через OR)
-                # и её собственные планы, и чужие планы в очереди на
-                # согласование/утверждение — те тоже могут быть is_sent/
-                # is_error/is_approved. Вкладки "На согласовании"/"Есть
-                # ошибки"/"Утверждённые" здесь — про СВОИ планы, не про
-                # очередь на рассмотрение (у неё и слов таких в интерфейсе
-                # нет, см. plan_count), поэтому сужаем явно.
-                filtered_query = filtered_query.filter(Plan.org_id == user.organization_id)
+                # и её собственные планы, и чужие планы в её маршруте.
+                # «В редакции»/«Контроль»/«На подписании»/«На согласовании» —
+                # только СВОИ (у чужих этих статусов для неё нет). «Есть
+                # ошибки»/«Утвержденные» — итог: свои И чужие, в маршруте
+                # которых она есть, — как у чисто проверяющей организации
+                # (иначе утверждённый ею чужой план не попадал ни в одну
+                # вкладку, кроме «Все»).
+                if status_filter in ('error', 'approved') and auditor_org_ids:
+                    filtered_query = filtered_query.filter(db.or_(
+                        Plan.org_id == user.organization_id,
+                        PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                    )).distinct()
+                else:
+                    filtered_query = filtered_query.filter(Plan.org_id == user.organization_id)
 
         if year_filter != 'all':
             filtered_query = filtered_query.filter(Plan.year == int(year_filter))
@@ -395,12 +461,17 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         plans = filtered_query.order_by(Plan.begin_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
         # current_app.logger.debug(f'plans count={len(plans)}')
 
-        if is_reviewer_only and auditor_org_ids:
-            for plan in plans:
-                plan.is_queued_for_viewer = _is_queued_for_org(plan, auditor_org_ids)
-        else:
-            for plan in plans:
-                plan.is_queued_for_viewer = False
+        # «В ожидании» (очередь до организации ещё не дошла) — для любой
+        # проверяющей организации, в т.ч. гибридной (она же разработчик, ТЗ
+        # п.5 Вариант А): раньше флаг ставился только чисто проверяющим, и
+        # гибридная видела чужой план «На рассмотрении», хотя он ещё у
+        # предыдущей организации. Свои планы — не очередь.
+        for plan in plans:
+            plan.is_queued_for_viewer = bool(
+                auditor_org_ids
+                and plan.org_id != user.organization_id
+                and _is_queued_for_org(plan, auditor_org_ids)
+            )
 
         count_query = base_query
         if year_filter != 'all':
@@ -456,6 +527,36 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
             status_counts['sent'] = own_count_query.filter(Plan.is_sent == True).count()
             status_counts['error'] = own_count_query.filter(Plan.is_error == True).count()
             status_counts['approved'] = own_count_query.filter(Plan.is_approved == True).count()
+
+            # Гибридная — ещё счётчики чужих планов в её маршруте (вкладки
+            # «В ожидании»/«На рассмотрении»/«Согласованные», см. фильтр
+            # выше), а «Есть ошибки»/«Утвержденные» — свои И чужие.
+            if is_hybrid_org and auditor_org_ids:
+                in_route = db.or_(
+                    Plan.org_id == user.organization_id,
+                    PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                )
+                status_counts['error'] = count_query.filter(Plan.is_error == True, in_route).distinct().count()
+                status_counts['approved'] = count_query.filter(Plan.is_approved == True, in_route).distinct().count()
+
+                status_counts['in_transit'] = 0
+                status_counts['review'] = 0
+                status_counts['sogl'] = 0
+                foreign = count_query.filter(
+                    Plan.is_sent == True,
+                    Plan.org_id != user.organization_id,
+                    PlanApprovalPath.organization_id.in_(auditor_org_ids),
+                ).distinct().all()
+                for p in foreign:
+                    my_path = _latest_path_for_org(p, auditor_org_ids)
+                    if not my_path:
+                        continue
+                    if my_path.is_viewed:
+                        status_counts['sogl'] += 1
+                    elif _is_queued_for_org(p, auditor_org_ids):
+                        status_counts['in_transit'] += 1
+                    else:
+                        status_counts['review'] += 1
         
         return plans, total_count, status_counts
         
@@ -809,28 +910,35 @@ def other_data_indicatorUpdate(plan_id):
         current_app.logger.error(f"Ошибка при обновлении индикаторов для плана {plan.id}: {e}")
         db.session.rollback()
 
-def validate_period_values(plan_id, current_period_code, current_value, exclude_event_id=None):
+def validate_period_values(plan_id, current_period_code, current_value, exclude_event_id=None, is_increase=None):
     period_codes = ['0001', '0002', '0003', '0004']
-    
+
     if current_period_code not in period_codes:
         return None
-    
+
     period_names = {
         '0001': 'Январь-Март',
         '0002': 'Январь-Июнь',
         '0003': 'Январь-Сентябрь',
         '0004': 'Январь-Декабрь'
     }
-    
+
     period_events = Event.query.filter(
         Event.id_plan == plan_id,
         Event.direction.has(Direction.code.in_(period_codes)),
         Event.is_corrected == False
     )
-    
+
+    # Периоды части 2 (экономия) и части 3 (увеличение) — разные строки с
+    # ОДИНАКОВЫМИ кодами 0001-0004: без этого фильтра значения двух частей
+    # перемешивались в один словарь по коду (какая строка последней, та и
+    # побеждала). Сверяем только внутри своей части.
+    if is_increase is not None:
+        period_events = period_events.filter(Event.is_increase == bool(is_increase))
+
     if exclude_event_id:
         period_events = period_events.filter(Event.id != exclude_event_id)
-    
+
     period_events = period_events.all()
     
     # Январь-декабрь (0004) считается автоматически как сумма всех реальных
@@ -870,6 +978,27 @@ def validate_period_values(plan_id, current_period_code, current_value, exclude_
             return 'Значение "{}" ({:.2f} т у.т.) не может быть больше "{}" ({:.2f} т у.т.)'.format(
                 period_names[current_period_code], current_value_num,
                 period_names[next_code], next_value
+            )
+        # Заполнение — строго по нарастающей: нельзя обнулить период, пока
+        # следующий за ним уже заполнен (иначе следующий оказался бы
+        # заполненным "раньше" своего предшественника).
+        if current_value_num == 0 and next_value:
+            return 'Нельзя обнулить "{}", пока заполнен "{}" — сначала обнулите "{}"'.format(
+                period_names[current_period_code], period_names[next_code], period_names[next_code]
+            )
+
+    # Порядок заполнения: «Январь-Март» → «Январь-Июнь» → «Январь-Сентябрь».
+    # Следующий период можно заполнить, только когда предыдущий не равен 0,
+    # и значение не может быть меньше предыдущего (нарастающий итог).
+    prev_code = {'0002': '0001', '0003': '0002'}.get(current_period_code)
+    if prev_code:
+        prev_value = _as_float(prev_code) or 0
+        if current_value_num != 0 and prev_value == 0:
+            return 'Сначала заполните "{}" — периоды заполняются по нарастающей'.format(period_names[prev_code])
+        if current_value_num != 0 and current_value_num < prev_value:
+            return 'Значение "{}" ({:.2f} т у.т.) не может быть меньше "{}" ({:.2f} т у.т.) — значения вводятся нарастающим итогом'.format(
+                period_names[current_period_code], current_value_num,
+                period_names[prev_code], prev_value
             )
 
     return None
@@ -953,17 +1082,31 @@ def build_signature_cycles(plan):
     paths_by_cycle = {}
     internal_by_cycle = {}
     step2_by_cycle_order = {}
+    rework_by_cycle = {}
     for path in plan.approval_paths:
-        if path.is_internal and path.log_action:
+        # «План отправлен на доработку» — финальная строка попытки (см.
+        # add_rework_step), показывается отдельно после всех организаций.
+        if path.is_internal and path.log_action == REWORK_LOG_ACTION:
+            rework_by_cycle[path.cycle] = path
+            continue
+        # 'internal_returned' — возврат на внутреннюю доработку
+        # (plan_bp.internal_return): это шаг внутренней цепочки
+        # организации-разработчика, а не "Шаг 2" внешней организации.
+        if path.is_internal and path.log_action and path.log_action != 'internal_returned':
             step2_by_cycle_order.setdefault((path.cycle, path.step_order), []).append(path)
         elif path.is_internal:
             internal_by_cycle.setdefault(path.cycle, []).append(path)
         else:
             paths_by_cycle.setdefault(path.cycle, []).append(path)
 
-    cycle_numbers = sorted(paths_by_cycle.keys())
+    # Кроме циклов внешней отправки — ещё и вернутые на внутреннюю
+    # доработку попытки: у них только внутренние шаги (свой номер цикла,
+    # см. internal_return), внешних этапов нет. cycle=0 — текущая, ещё не
+    # отправленная попытка — показывается отдельно (pending_internal_steps).
+    cycle_numbers = sorted(set(paths_by_cycle) | {c for c in internal_by_cycle if c})
     if not cycle_numbers:
         return []
+    last_external_cycle = max(paths_by_cycle) if paths_by_cycle else None
 
     for cycle_paths in paths_by_cycle.values():
         cycle_paths.sort(key=lambda p: p.step_order)
@@ -987,12 +1130,16 @@ def build_signature_cycles(plan):
 
     cycles = []
     for idx, cycle_num in enumerate(cycle_numbers):
-        cycle_paths = paths_by_cycle[cycle_num]
+        cycle_paths = paths_by_cycle.get(cycle_num, [])
+        # Вернутая на внутреннюю доработку попытка — внешних этапов нет,
+        # план никуда не отправлялся (sent_at=None).
+        is_returned_internal = not cycle_paths
         sent_at = cycle_start(cycle_paths)
 
         next_start = None
         if idx + 1 < len(cycle_numbers):
-            next_start = cycle_start(paths_by_cycle[cycle_numbers[idx + 1]])
+            next_num = cycle_numbers[idx + 1]
+            next_start = cycle_start(paths_by_cycle.get(next_num, []) or internal_by_cycle.get(next_num, []))
 
         cancel_ticket = None
         for ticket in cancel_tickets:
@@ -1025,20 +1172,50 @@ def build_signature_cycles(plan):
         # откатывается на единственную строку dev_post/dev_name/... выше.
         internal_steps = internal_by_cycle.get(cycle_num, [])
 
+        # Вернутая попытка: куда план должен был пойти (снимок маршрута на
+        # строке возврата, см. internal_return) — шаблон показывает эти
+        # организации со статусом «Не отправлен».
+        planned_route = []
+        if is_returned_internal:
+            return_step = next((s for s in internal_steps if s.log_action == 'internal_returned'), None)
+            planned_route = decode_route_snapshot(return_step.route_snapshot) if return_step else []
+
         cycles.append({
             'cycle': cycle_num,
             'sent_at': sent_at,
             'paths': cycle_paths,
+            'planned_route': planned_route,
+            'rework_step': rework_by_cycle.get(cycle_num),
             'cancel_ticket': cancel_ticket,
-            'is_latest': idx == len(cycle_numbers) - 1,
+            # «Последний» — последняя ВНЕШНЯЯ отправка (по ней шаблон
+            # считает текущий этап и статус); вернутые внутренние попытки
+            # на это не влияют.
+            'is_latest': cycle_num == last_external_cycle,
+            'is_returned_internal': is_returned_internal,
             'dev_post': dev_post,
             'dev_name': dev_name,
             'dev_phone': dev_phone,
             'dev_email': dev_email,
             'internal_steps': internal_steps,
+            # Этап 1 (организация-разработчик) — основной шаг и подэтапы.
+            'dev_main': split_dev_stage(internal_steps)[0],
+            'dev_substeps': split_dev_stage(internal_steps)[1],
         })
 
     return cycles
+
+
+def split_dev_stage(internal_steps):
+    """Шаги организации-разработчика одной попытки -> (основной, подэтапы).
+    Основной (итоговый) шаг этапа — «Подписал ЭЦП и направил» (internal_sign,
+    forwarded_to_user_id=None) или возврат на доработку ('internal_returned');
+    всё, что было до него (исполнитель направил на подпись, руководитель
+    подразделения согласовал и направил дальше), — подэтапы. Пока итогового
+    шага нет (план ещё на подписи), основной шаг — None."""
+    main = next((s for s in reversed(internal_steps)
+                 if s.log_action == 'internal_returned'
+                 or (not s.log_action and s.forwarded_to_user_id is None)), None)
+    return main, [s for s in internal_steps if s is not main]
 
 
 def get_pending_internal_sign_steps(plan):
@@ -1050,9 +1227,13 @@ def get_pending_internal_sign_steps(plan):
     ДО текущего держателя (которого показывает отдельная живая строка).
     cycle=0 — зарезервированный "ещё не отправлено" (PlanApprovalPath.cycle
     в остальном NOT NULL, реальные циклы нумеруются с 1, см. handle_sent_status)."""
+    # log_action IS NULL — только шаги "направил/подписал"; строка возврата
+    # на внутреннюю доработку (log_action='internal_returned', см.
+    # plan_bp.internal_return) показывается отдельной строкой "Не
+    # согласован" из last_internal_return_ticket, не как пройденный шаг.
     return PlanApprovalPath.query.filter_by(
         plan_id=plan.id, cycle=0, is_internal=True
-    ).order_by(PlanApprovalPath.step_order).all()
+    ).filter(PlanApprovalPath.log_action.is_(None)).order_by(PlanApprovalPath.step_order).all()
 
 
 def build_signature_print_rows(plan, cycles):
@@ -1068,7 +1249,8 @@ def build_signature_print_rows(plan, cycles):
       ('data', [тип, организация, должность/ФИО/телефон, статус, дата,
                 замечания]) — обычная строка таблицы.
     """
-    latest = cycles[-1] if cycles else None
+    external_cycles = [c for c in cycles if not c.get('is_returned_internal')]
+    latest = external_cycles[-1] if external_cycles else None
     latest_paths = latest['paths'] if latest else []
     first_unviewed = next((p for p in latest_paths if not p.is_viewed), None)
 
@@ -1079,6 +1261,36 @@ def build_signature_print_rows(plan, cycles):
             if cycle['dev_name'] else 'Разработчик плана: —'
         )
         rows.append(('header', dev_line))
+
+        # Вернутая на внутреннюю доработку попытка — только шаги внутри
+        # организации-разработчика: кто одобрил и кто вернул (с причиной).
+        if cycle.get('is_returned_internal'):
+            org_name = plan.organization.full_name if plan.organization else '—'
+            for step in cycle['internal_steps']:
+                if step.log_action == 'internal_returned':
+                    rows.append(('data', [
+                        'Направление плана', org_name,
+                        step.rejected_by_snapshot or step.signed_by_snapshot or '—',
+                        'Не согласован',
+                        step.rejected_at.strftime('%d.%m.%Y') if step.rejected_at else '—',
+                        step.ticket.note if step.ticket else '—',
+                    ]))
+                else:
+                    rows.append(('data', [
+                        'Направление плана', org_name,
+                        step.signed_by_snapshot or '—',
+                        'Направление на подпись' if step.step_type == 'submitter' else 'Согласован',
+                        step.signed_at.strftime('%d.%m.%Y') if step.signed_at else '—',
+                        '—',
+                    ]))
+            for step_type, org in cycle.get('planned_route', []):
+                rows.append(('data', [
+                    'Утверждение' if step_type == 'approver' else 'Согласование',
+                    org.full_name, '—', 'Не отправлен', '—', '—',
+                ]))
+            if cycle.get('rework_step'):
+                rows.append(('header', 'План отправлен на доработку'))
+            continue
 
         rows.append(('data', [
             'Направление плана',
@@ -1131,6 +1343,9 @@ def build_signature_print_rows(plan, cycles):
                 date_str,
                 remark,
             ]))
+
+        if cycle.get('rework_step'):
+            rows.append(('header', 'План отправлен на доработку'))
 
         cancel_ticket = cycle.get('cancel_ticket')
         if cancel_ticket:
@@ -1426,6 +1641,51 @@ def build_approval_chain(plan, coordinator_ids=None, approver_id=None, use_pendi
     return chain
 
 
+REWORK_LOG_ACTION = 'sent_to_rework'
+
+
+def add_rework_step(plan, cycle, user):
+    """Финальный шаг попытки «План отправлен на доработку» — после всех
+    организаций маршрута (и при внешнем «Есть ошибки», и при возврате на
+    внутреннюю доработку). Внутренняя строка (is_internal=True) с
+    log_action='sent_to_rework' и step_order после всех строк цикла —
+    логика согласования (этапы, очередь, "Шаг 2") её не видит, она только
+    для «Подписей»/печати (build_signature_cycles → cycle['rework_step'])."""
+    now = current_utc_time()
+    next_order = (db.session.query(db.func.max(PlanApprovalPath.step_order))
+        .filter_by(plan_id=plan.id, cycle=cycle).scalar() or 0) + 1
+    step = PlanApprovalPath(
+        plan_id=plan.id, step_order=next_order, cycle=cycle,
+        organization_id=plan.org_id, step_type='rework', is_internal=True,
+        is_viewed=True, created_at=now,
+        signed_by_user_id=user.id if user else None, signed_at=now,
+        signed_by_snapshot=build_signer_snapshot(user) if user else None,
+        log_action=REWORK_LOG_ACTION,
+    )
+    db.session.add(step)
+    return step
+
+
+def encode_route_snapshot(chain):
+    """[(step_type, Organization), ...] из build_approval_chain ->
+    "region:7946,approver:8945" для PlanApprovalPath.route_snapshot."""
+    return ','.join(f'{step_type}:{org.id}' for step_type, org in chain) or None
+
+
+def decode_route_snapshot(value):
+    """Обратно: "region:7946,approver:8945" -> [(step_type, Organization)];
+    организации, которых больше нет, пропускаются."""
+    route = []
+    for part in (value or '').split(','):
+        step_type, _, org_id = part.partition(':')
+        if not step_type or not org_id.isdigit():
+            continue
+        org = Organization.query.get(int(org_id))
+        if org:
+            route.append((step_type, org))
+    return route
+
+
 def create_plan_snapshot(plan):
     """Замораживает точную копию плана "как есть" отдельной строкой Plan —
     вызывается из handle_error_status (status_plan.py) СРАЗУ после того,
@@ -1589,6 +1849,7 @@ def log_step2_action(plan, path, current_user, action, target_user=None, ticket=
         organization_id=path.organization_id,
         step_type=path.step_type,
         is_internal=True,
+        stage=path.stage,
         cycle=path.cycle,
         is_viewed=True,
         created_at=current_utc_time(),
@@ -1601,41 +1862,29 @@ def log_step2_action(plan, path, current_user, action, target_user=None, ticket=
     ))
 
 
-def get_signer_candidates(org_id):
+def get_signer_candidates(org_id, exclude_user_id=None):
     """Сотрудники организации — кандидаты на подпись/направление: «Руководитель
     структурного подразделения»/«Руководитель организации»/заместитель —
     используется и при первичной отправке плана (plan_send_page), и на
     "Шаге 2" при направлении решения этапа согласования/утверждения. Кто из
     них может реально ПОДПИСАТЬ (а не только направить дальше) — отдельное
     ограничение по роли в вызывающем коде (ТЗ п.5: утверждает только
-    org_head/org_head_deputy, см. step_internal_sign/step_submit_for_signature)."""
+    org_head/org_head_deputy, см. step_internal_sign/step_submit_for_signature).
+
+    exclude_user_id — тот, кто направляет: самому себе направить на подпись
+    нельзя (например, dept_head, сам подготовивший план, не видит себя в
+    списке подписантов)."""
     from common_models import get_current_application_id
 
     roles = ['dept_head', 'org_head', 'org_head_deputy']
-    return User.query.filter(
+    query = User.query.filter(
         User.organization_id == org_id,
         User.application_id == get_current_application_id(),
         User.org_role.in_(roles)
-    ).order_by(User.org_role.desc()).all()
-
-
-def has_pending_review_attachment(plan, current_user):
-    """Как has_pending_review_message, но проверяет, что у ПОСЛЕДНЕГО
-    своего сообщения по текущему этапу есть вложение — "Не согласовать и
-    направить на подпись" требует приложенный файл с замечаниями (см.
-    "Шаг 2" внутреннего подписания), в отличие от обычного сообщения в
-    чате, где вложение было и остаётся необязательным."""
-    current_path = get_current_review_path(plan, current_user)
-    if not current_path:
-        return False
-    own_tickets = [
-        t for t in plan.tickets
-        if not t.is_system and t.user_id == current_user.id and t.approval_path_id == current_path.id
-    ]
-    if not own_tickets:
-        return False
-    last_ticket = max(own_tickets, key=lambda t: t.begin_time or current_utc_time())
-    return bool(last_ticket.attachment_filename)
+    )
+    if exclude_user_id:
+        query = query.filter(User.id != exclude_user_id)
+    return query.order_by(User.org_role.desc()).all()
 
 
 def has_pending_review_message(plan, current_user):

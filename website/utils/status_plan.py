@@ -38,20 +38,59 @@ def _unlink_stale_remark_tickets(path):
     path.ticket_id = None
 
 
-def handle_draft_status(plan, reason=None, attachment_file=None):
+def _rollback_last_send(plan):
+    """Убирает следы последней отправки (handle_sent_status), как будто её
+    не было: удаляет внешние этапы её цикла и строку «Подписал и
+    отправил» (internal_sign), а шаги «направил на подпись» этой попытки
+    возвращает в текущую, ещё не отправленную попытку (cycle=0).
+    Возвращает текст ошибки, если откатывать уже нельзя — проверяющие
+    успели что-то сделать по этой отправке (их действия не удаляем)."""
+    external = [p for p in plan.approval_paths if not p.is_internal]
+    if not external:
+        return None
+    cycle = max(p.cycle for p in external)
+    cycle_rows = [p for p in plan.approval_paths if p.cycle == cycle]
+    cycle_external = [p for p in cycle_rows if not p.is_internal]
+    step2_rows = [p for p in cycle_rows if p.is_internal and p.log_action and p.log_action != 'internal_returned']
+
+    touched = (
+        step2_rows
+        or any(p.is_viewed or p.rejected_at or p.pending_signer_user_id or p.ticket_id for p in cycle_external)
+        or PlanTicket.query.filter(PlanTicket.approval_path_id.in_([p.id for p in cycle_external])).first()
+    )
+    if touched:
+        return 'Отменить отправку уже нельзя — план начали рассматривать'
+
+    for p in cycle_external:
+        db.session.delete(p)
+    for p in cycle_rows:
+        if not p.is_internal:
+            continue
+        if p.forwarded_to_user_id is None and not p.log_action:
+            # «Подписал и отправил» — именно это действие и отменяется.
+            db.session.delete(p)
+        elif not p.log_action:
+            # «Направил на подпись» до отправки — остаётся частью текущей
+            # попытки, как было до «Подписать и отправить».
+            p.cycle = 0
+    return None
+
+
+def handle_draft_status(plan):
     """«Отменить отправку» (доступна только первые 5 минут после реальной
-    внешней отправки, см. api_change_plan_status) — возвращает план не в
-    «В редакции» с нуля, а на тот же этап внутреннего подписания, на
-    котором он был прямо перед отправкой: тому же человеку (последнему
-    внутреннему подписанту, plan.internal_signed_by_user_id —
-    handle_sent_status его больше не очищает) снова нужно подписать и
-    отправить, по тому же маршруту (pending_coordinator_ids/pending_approver_id
-    — тоже не очищаются при отправке) — заново выбирать организации не
-    нужно. is_control тоже восстанавливаем в True — handle_sent_status
-    сбрасывает его в False при реальной отправке, а до этого момента (с
-    "Пройти контроль" и до самой отправки) он был True."""
+    внешней отправки, см. api_change_plan_status) — откат ровно на одно
+    действие назад, к моменту перед «Подписать и отправить»: план снова у
+    того же подписанта (plan.internal_signed_by_user_id), по тому же
+    маршруту (pending_coordinator_ids/pending_approver_id не очищались),
+    is_control=True. В «Подписях» от этой отправки не остаётся ничего —
+    ни этапов, ни отдельной записи «Отправка отменена» (_rollback_last_send)."""
     try:
         was_sent = plan.is_sent
+
+        if was_sent:
+            error = _rollback_last_send(plan)
+            if error:
+                return {'error': error}
 
         plan.is_sent = False
         plan.is_error = False
@@ -65,23 +104,9 @@ def handle_draft_status(plan, reason=None, attachment_file=None):
 
         plan.change_time = current_utc_time()
 
-        if was_sent and reason and reason.strip():
-            ticket = PlanTicket(
-                note=f'{CANCEL_SEND_NOTE_PREFIX}. Причина: {reason.strip()}',
-                is_system=True,
-                user_id=current_user.id if current_user.is_authenticated else None,
-                plan_id=plan.id,
-                begin_time=current_utc_time(),
-            )
-            db.session.add(ticket)
-            if attachment_file and attachment_file.filename:
-                from website.utils.ticket_attachment import save_ticket_attachment
-                db.session.flush()
-                save_ticket_attachment(ticket, attachment_file)
-
         db.session.commit()
 
-        return {'message': 'Отправка отменена, план возвращён на этап внутреннего подписания'}
+        return {'message': 'Отправка отменена, план снова ожидает вашей подписи'}
 
     except Exception as e:
         db.session.rollback()
@@ -287,6 +312,7 @@ def handle_sent_status(plan, coordinator_ids=None, approver_id=None):
                 organization_id=org.id,
                 step_type=step_type,
                 is_internal=False,
+                stage=step_order - internal_order_start + 2,
                 created_at=current_utc_time(),
                 cycle=new_cycle,
                 sender_post=sender_post,
@@ -448,10 +474,18 @@ def handle_error_status(plan, current_user):
         # вложение уже проверено), а подписавший руководитель — проверяем,
         # что сообщение с замечаниями на этом этапе вообще есть, от кого бы
         # из организации оно ни было оставлено.
-        review_message = next(
-            (t for t in plan.tickets if current_path and not t.is_system and t.approval_path_id == current_path.id),
-            None
-        ) if current_path else None
+        # Приоритет — замечание, явно закреплённое за этапом при «Не
+        # согласовать и отправить на подпись» (current_path.ticket_id, см.
+        # step_submit_for_signature); иначе — первое сообщение по этапу
+        # (старый путь через чат).
+        review_message = None
+        if current_path and current_path.ticket and current_path.ticket.plan_id == plan.id and not current_path.ticket.is_system:
+            review_message = current_path.ticket
+        if not review_message and current_path:
+            review_message = next(
+                (t for t in plan.tickets if not t.is_system and t.approval_path_id == current_path.id),
+                None
+            )
         if not review_message:
             return {'error': 'Сначала необходимо отправить сообщение с замечаниями'}
 
@@ -480,6 +514,15 @@ def handle_error_status(plan, current_user):
         # update_ChangeTimePlan сбросит is_error/is_draft на живой строке,
         # и момент отклонения будет уже не восстановить (см.
         # create_plan_snapshot в utils/plans.py).
+        # Последний шаг этой попытки — «План отправлен на доработку» (после
+        # всех организаций маршрута, см. add_rework_step).
+        if current_path:
+            from website.utils.plans import add_rework_step
+            add_rework_step(plan, current_path.cycle, current_user)
+
+        # Копия плана "как есть" БЕЗ подписей — вся история согласования
+        # (PlanApprovalPath/PlanTicket) остаётся на текущей версии, чтобы
+        # в «Подписях» была видна вся история попыток.
         create_plan_snapshot(plan)
 
         notification = Notification(

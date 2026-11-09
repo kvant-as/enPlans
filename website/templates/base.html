@@ -75,10 +75,13 @@
                         </button>
                         <div id="notifPopup" class="notif-popup">
                             <div class="notif-header">
-                                <span>{{ _('Уведомления') }}</span>
-                                <button id="markAllRead" type="button" class="svg-btn tooltip-btn">
+                                <div class="notif-header-title">
+                                    <span>{{ _('Уведомления') }}</span>
+                                    <span class="notif-header-count" id="notifHeaderCount" style="display: none;">0</span>
+                                </div>
+                                <button id="markAllRead" type="button" class="notif-read-all">
                                     {{ icons.icon_read_all() }}
-                                    <span class="tooltip-text">{{ _('Прочитать') }}</span>
+                                    <span>{{ _('Прочитать все') }}</span>
                                 </button>
                             </div>
                             <div class="notif-body" id="notifList"></div>
@@ -515,8 +518,18 @@
         </div>
     </div>
 
-    <main> 
+    <main>
     <div id="flash-container"></div>
+
+    {#  Организация не действующая по ЕГР — только просмотр (сервер
+        отклоняет любые изменения, см. block_inactive_organization в
+        website/__init__.py). #}
+    {% if inactive_org_notice %}
+    <div class="inactive-org-banner" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span>{{ inactive_org_notice }}</span>
+    </div>
+    {% endif %}
 
       {% block content %} 
       {% endblock %}
