@@ -10,7 +10,14 @@
         {{ current_user.first_name[:1] | upper }}{{ current_user.last_name[:1] | upper }}
       </div>
       <div class="employee-card">
-        <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
+        <div class="employee-name-row">
+          <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
+          {% if current_user.org_role %}
+          <span class="employee-role">
+            {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+          </span>
+          {% endif %}
+        </div>
         <a class="employee-company" title="{% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}">
           {% if current_user.organization %} {{ current_user.organization.full_name}} {% endif%}
         </a>
@@ -25,7 +32,7 @@
       </button>
       <button type="button" class="profile-tab" data-tab="org" role="tab" aria-selected="false">
         {{ icons.icon_org() }}
-        <span>{{ _('Предприятие') }}</span>
+        <span>{{ _('Организация') }}</span>
       </button>
       <button type="button" class="profile-tab" data-tab="sessions" role="tab" aria-selected="false">
         {{ icons.icon_clock() }}
@@ -147,26 +154,21 @@
               </div>
             </div>
           </div>
+          {% if current_user.org_role %}
           <div class="date-item">
             <div class="date-icon">
-              {{ icons.icon_profile() }}
+              {{ icons.icon_org() }}
             </div>
             <div class="date-content">
               <div class="date-info">
-                {% if current_user.is_admin %}
-                  <span class="date-label">{{ _('Администратор') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_auditor %}
-                  <span class="date-label">{{ _('Согласовывающая организация') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_approver %}
-                  <span class="date-label">{{ _('Утверждающая организация') }}: demo-{{ current_user.id }}</span>
-                {% elif current_user.is_reader %}
-                  <span class="date-label">{{ _('Читатель') }}: demo-{{ current_user.id }}</span>
-                {% else %}
-                  <span class="date-label">{{ _('Организация-разработчик') }}: demo-{{ current_user.id }}</span>
-                {% endif %}
+                <span class="date-label">{{ _('Роль в организации') }}</span>
+                <span class="date-day">
+                  {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+                </span>
               </div>
             </div>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -175,7 +177,7 @@
       <div class="header-content">
         <div class="header-content-left">
           <a class="name" style="padding-bottom: 0">
-            {{ _('Предприятие') }}
+            {{ _('Организация') }}
           </a>
         </div>
         <div class="header-content-right">
@@ -189,6 +191,17 @@
                       <button class="nav-menu-item" id="orgUserbutton" {% if not can_change_modal %}disabled{% endif %}>
                           {{ icons.icon_org() }}
                           <span>{{ _('Сменить организацию') }}</span>
+                      </button>
+                      {#  Обновить данные организации из ЕГР по УНП — руководитель
+                          организации или администратор (views.can_refresh_org_from_egr);
+                          остальным пункт виден неактивным с подсказкой почему. #}
+                      {% set egr_org = current_user.organization %}
+                      {% set egr_allowed = egr_org and egr_org.ynp and (current_user.is_admin or current_user.org_role == 'org_head') %}
+                      <button class="nav-menu-item" id="egrRefreshBtn"
+                              {% if egr_allowed %}data-egr-refresh-url="{{ url_for('views.egr_refresh_organization', org_id=egr_org.id) }}"{% else %}disabled{% endif %}
+                              title="{% if not egr_org or not egr_org.ynp %}{{ _('У организации не указан УНП') }}{% elif not egr_allowed %}{{ _('Доступно руководителю организации') }}{% else %}{{ _('Наименование, регион, юр. адрес и состояние — по УНП из ЕГР') }}{% endif %}">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                          <span>{{ _('Обновить из ЕГР') }}</span>
                       </button>
                       <button class="nav-menu-item" disabled>
                           {{ icons.icon_edit() }}
@@ -204,7 +217,432 @@
             </div>
         </div>
       </div>
-      {{ component.organization_view_card(current_user.organization, current_user) }}
+      {{ component.organization_view_card(current_user.organization, current_user, viewer=current_user) }}
+      <script>
+        // «Обновить из ЕГР» (меню «Действия с организацией» выше) —
+        // views.egr_refresh_organization: показывает, что изменилось, и
+        // перезагружает страницу, чтобы карточка показала новые данные.
+        (function () {
+          var btn = document.getElementById('egrRefreshBtn');
+          if (!btn || !btn.dataset.egrRefreshUrl) return;
+          var label = btn.querySelector('span');
+          var notify = function (msg, kind) {
+            if (typeof messageFlash !== 'undefined') messageFlash.addMessage(msg, kind); else alert(msg);
+          };
+          btn.addEventListener('click', function () {
+            var csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            btn.disabled = true;
+            btn.classList.add('is-loading');
+            if (label) label.textContent = "{{ _('Обновление…') }}";
+            fetch(btn.dataset.egrRefreshUrl, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+              .then(function (res) {
+                if (!res.ok || !res.d.success) throw new Error(res.d.error || "{{ _('Не удалось обновить данные из ЕГР') }}");
+                var changes = res.d.changes || [];
+                notify(changes.length
+                  ? "{{ _('Обновлено из ЕГР') }}: " + changes.map(function (c) { return c.field; }).join(', ')
+                  : "{{ _('Данные совпадают с ЕГР — изменений нет') }}", 'success');
+                setTimeout(function () { window.location.reload(); }, 1100);
+              })
+              .catch(function (e) {
+                notify(e.message, 'error');
+                btn.disabled = false;
+                btn.classList.remove('is-loading');
+                if (label) label.textContent = "{{ _('Обновить из ЕГР') }}";
+              });
+          });
+        })();
+      </script>
+
+      {% if current_user.org_role %}
+      {# Приглашать/удалять сотрудников может только сам (оригинальный)
+         руководитель организации — не заместитель (у него те же права
+         везде в приложении, кроме управления составом организации). #}
+      {% set can_manage_employees = current_user.org_role == 'org_head' %}
+      {#  Описание роли зависит от того, кем организация выступает в маршруте
+          плана (ТЗ п.3-5): разработчик (is_regular), согласующая
+          (is_coordinator / региональное управление is_region_management),
+          утверждающая (is_approver). Функций может быть несколько (напр.
+          разработчик + утверждающая) — тогда под ролью по строке на каждую,
+          с подписью функции; при одной функции подпись не нужна. #}
+      {% set org = current_user.organization %}
+      {% set org_functions = [] %}
+      {% if org and org.is_regular %}{% set _ignore = org_functions.append('developer') %}{% endif %}
+      {% if org and (org.is_coordinator or org.is_region_management) %}{% set _ignore = org_functions.append('coordinator') %}{% endif %}
+      {% if org and org.is_approver %}{% set _ignore = org_functions.append('approver') %}{% endif %}
+      {% if not org_functions %}{% set _ignore = org_functions.append('developer') %}{% endif %}
+      {% set is_developer_org = 'developer' in org_functions %}
+
+      {% set function_labels = {
+        'developer':   _('Разработка плана'),
+        'coordinator': _('Согласование'),
+        'approver':    _('Утверждение'),
+      } %}
+      {% set role_texts = {
+        'developer': {
+          'executor':        _('Заполняет план, проходит контроль, выбирает путь согласования и направляет план руководителю на подпись'),
+          'dept_head':       _('Заполняет план; получив его на подпись — подписывает ЭЦП и отправляет, передаёт руководителю организации или возвращает на доработку'),
+          'org_head':        _('Подписывает план ЭЦП и отправляет на согласование или возвращает на доработку. Содержимое плана не редактирует'),
+          'org_head_deputy': _('Те же права, что у руководителя организации: подписывает план ЭЦП и отправляет его на согласование'),
+        },
+        'coordinator': {
+          'executor':        _('Проверяет поступивший план и выносит вердикт — «Согласовать» или «Не согласовать» с замечаниями — и направляет решение руководителю'),
+          'dept_head':       _('Соглашается с вердиктом исполнителя и подписывает его ЭЦП, передаёт руководителю организации или возвращает исполнителю с пояснением'),
+          'org_head':        _('Выносит финальное решение: подписывает вердикт исполнителя ЭЦП или возвращает его исполнителю с пояснением'),
+          'org_head_deputy': _('Права при согласовании планов пока не определены'),
+        },
+        'approver': {
+          'executor':        _('Проверяет план и направляет его на утверждение руководителю') ~ (_(' (в утверждении планов своей организации не участвует)') if is_developer_org else ''),
+          'dept_head':       _('Только передаёт план руководителю организации на утверждение, своего решения не выносит') ~ (_(' (в утверждении планов своей организации не участвует)') if is_developer_org else ''),
+          'org_head':        _('Утверждает план подписью ЭЦП («Одобрить»)') ~ (_('; планы своей организации утверждает напрямую') if is_developer_org else ''),
+          'org_head_deputy': _('Утверждает план подписью ЭЦП («Одобрить») — так же, как руководитель организации'),
+        },
+      } %}
+      {% macro role_hints(role_key, cls) %}
+        {% for fn in org_functions %}
+        <span class="{{ cls }}">{% if org_functions|length > 1 %}<b class="role-hint-function">{{ function_labels[fn] }}:</b> {% endif %}{{ role_texts[fn][role_key] }}</span>
+        {% endfor %}
+      {% endmacro %}
+      {#  Выдвижной блок «Что может эта роль» внутри карточки сотрудника —
+          раскрывается кликом по карточке (см. скрипт [data-role-card] ниже). #}
+      {% macro role_details(role_key) %}
+      <div class="role-details" aria-hidden="true">
+        <div class="role-details-inner">
+          <div class="role-details-content">
+            {{ role_hints(role_key, 'plan-executor-card-hint') }}
+          </div>
+        </div>
+      </div>
+      {% endmacro %}
+      {% macro card_chevron() %}
+      <span class="role-card-chevron" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+      {% endmacro %}
+      {% set role_meta = {
+        'org_head':        {'label': _('Руководитель организации')},
+        'org_head_deputy': {'label': _('Заместитель руководителя организации')},
+        'dept_head':       {'label': _('Руководитель структурного подразделения')},
+        'executor':        {'label': _('Исполнитель')},
+      } %}
+      {% set all_employees = [current_user] + org_employees %}
+      {% set employees_count = all_employees | length %}
+      {% set employees_by_role = {} %}
+      {% for employee in all_employees %}{% set _ignore = employees_by_role.update({employee.org_role: employee}) %}{% endfor %}
+      {% set flat_employees = all_employees | selectattr('org_role', 'in', ['dept_head', 'executor']) | list %}
+
+      {% set employees_max = 7 %}
+      {% set can_invite = can_manage_employees and employees_count < employees_max %}
+      {% set deputy_vacant = not employees_by_role.get('org_head_deputy') %}
+
+      {# Карточка сотрудника — одна разметка для всех ролей. Пока сотрудник
+         не прошёл регистрацию по ссылке из письма (нет ФИО) — вместо имени
+         email и бейдж «Ожидает регистрации». #}
+      {% macro employee_card(employee, meta, removable) %}
+      {% set registered = employee.last_name or employee.first_name or employee.patronymic_name %}
+      <div class="plan-executor-card role-card{% if employee.id == current_user.id %} plan-executor-card-self{% endif %}{% if not registered %} plan-executor-card-pending{% endif %}"
+           data-role-card tabindex="0" role="button" aria-expanded="false"
+           title="{{ _('Нажмите, чтобы узнать, что может эта роль') }}">
+        <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+        <div class="plan-executor-card-body">
+          <span class="plan-executor-card-name">
+            {% if registered %}
+              {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic_name }}
+            {% else %}
+              {{ employee.email }}
+            {% endif %}
+            {% if employee.id == current_user.id %}<span class="employee-badge employee-badge-self">{{ _('Вы') }}</span>{% endif %}
+            {% if not registered %}<span class="employee-badge employee-badge-pending">{{ _('Ожидает регистрации') }}</span>{% endif %}
+          </span>
+          <span class="plan-executor-card-meta">{{ meta.label }}{% if registered and employee.email %} · {{ employee.email }}{% endif %}</span>
+        </div>
+        {% if removable %}
+        <button type="button" class="plan-executor-card-remove" title="{{ _('Удалить из организации') }}"
+                data-remove-employee-id="{{ employee.id }}"
+                data-remove-employee-name="{{ (employee.last_name ~ ' ' ~ employee.first_name) if registered else employee.email }}">&times;</button>
+        {% endif %}
+        {{ card_chevron() }}
+        {{ role_details(employee.org_role) }}
+      </div>
+      {% endmacro %}
+
+      <hr/>
+      <div class="employees-header">
+        <div class="employees-header-text">
+          <h1 class="name">{{ _('Сотрудники организации') }}</h1>
+        </div>
+      </div>
+
+      <div class="org-roles-note">
+        <p>
+          {% if can_manage_employees %}
+            {% if employees_count >= employees_max %}
+              {{ _('Все места заняты. Чтобы пригласить нового сотрудника, удалите одного из текущих.') }}
+            {% else %}
+              {{ _('Руководитель организации и его заместитель — по одному. Руководителей структурных подразделений и исполнителей — сколько нужно, в пределах общего лимита.') }}
+            {% endif %}
+          {% else %}
+            {{ _('Кто за какую роль отвечает в вашей организации. Приглашать и удалять сотрудников может только руководитель организации.') }}
+          {% endif %}
+        </p>
+      </div>
+      <div class="employees-capacity" title="{{ _('Занято мест в организации') }}">
+        <div class="employees-capacity-bar">
+          <span style="width: {{ (employees_count / employees_max * 100)|round(0, 'floor')|int }}%"></span>
+        </div>
+        <span class="employees-capacity-label">{{ employees_count }} {{ _('из') }} {{ employees_max }}</span>
+      </div>
+      <div class="plan-executors-list">
+        {% for role_key in ['org_head', 'org_head_deputy'] %}
+        {% set meta = role_meta[role_key] %}
+        {% set occupant = employees_by_role.get(role_key) %}
+        {% if occupant %}
+        {{ employee_card(occupant, meta, role_key != 'org_head' and occupant.id != current_user.id and can_manage_employees) }}
+        {% else %}
+        <div class="plan-executor-card plan-executor-card-vacant role-card"
+             data-role-card tabindex="0" role="button" aria-expanded="false"
+             title="{{ _('Нажмите, чтобы узнать, что может эта роль') }}">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">{{ meta.label }}</span>
+            <span class="plan-executor-card-meta">{{ _('Место свободно') }}</span>
+          </div>
+          {% if can_invite %}
+          <button type="button" class="plan-executor-card-invite-btn" data-open-invite-modal data-invite-role="{{ role_key }}">
+            {{ icons.icon_add() }}
+            <span>{{ _('Пригласить') }}</span>
+          </button>
+          {% else %}
+          <span class="plan-executor-card-vacant-label">{{ _('Вакантно') }}</span>
+          {% endif %}
+          {{ card_chevron() }}
+          {{ role_details(role_key) }}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {% for employee in flat_employees %}
+        {{ employee_card(employee, role_meta[employee.org_role], employee.id != current_user.id and can_manage_employees) }}
+        {% endfor %}
+      </div>
+      {% if can_invite %}
+      <button type="button" class="main-btn main-btn-primary employees-invite-btn" data-open-invite-modal>
+        {{ icons.icon_add() }}
+        <span class="btn-text">{{ _('Пригласить сотрудника') }}</span>
+      </button>
+      {% endif %}
+      {% if can_invite %}
+      {#  «Пригласить сотрудника» — одна модалка вместо раскрывающихся форм
+          под карточками: email + роль карточками с описанием прав. Шлёт те
+          же поля (email, org_role), что и раньше — views.invite_employee. #}
+      <div id="inviteEmployeeModal" class="modal">
+        <div class="modal-content invite-modal">
+          <div class="modal-header">
+            <a id="modal-title">{{ _('Пригласить сотрудника') }}</a>
+            {{ icons.icon_close() }}
+          </div>
+          <form action="{{ url_for('views.invite_employee') }}" method="POST" id="inviteEmployeeForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <div class="app-group">
+              <label for="inviteEmail">{{ _('Email сотрудника') }} <span class="required-star">*</span></label>
+              <div class="input-with-icon">
+                {{ icons.icon_email() }}
+                <input type="email" name="email" id="inviteEmail" class="app-input" placeholder="name@company.by" autocomplete="off" required />
+              </div>
+              <span class="invite-field-error" id="inviteEmailError">{{ _('Введите корректный email') }}</span>
+            </div>
+
+            <div class="app-group">
+              <label>{{ _('Роль') }} <span class="required-star">*</span></label>
+              <div class="invite-role-options" role="radiogroup">
+                {% set invite_roles = ['dept_head', 'executor'] + (['org_head_deputy'] if deputy_vacant else []) %}
+                {% for role_key in invite_roles %}
+                <label class="invite-role-option">
+                  <input type="radio" name="org_role" value="{{ role_key }}" {% if loop.first %}checked{% endif %} />
+                  <span class="invite-role-option-check" aria-hidden="true">{{ icons.icon_check() }}</span>
+                  <span class="invite-role-option-body">
+                    <span class="invite-role-option-title">{{ role_meta[role_key].label }}</span>
+                    {{ role_hints(role_key, 'invite-role-option-hint') }}
+                  </span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="invite-modal-note">
+              {{ icons.icon_info() }}
+              <span>{{ _('На email придёт ссылка для входа — сотрудник задаст пароль и заполнит ФИО и телефон сам. Ссылка действует 1 час.') }}</span>
+            </div>
+
+            <div class="button-auth-area">
+              <button type="submit" class="main-btn main-btn-primary" id="inviteEmployeeSubmit" disabled>
+                <span class="btn-spinner" aria-hidden="true"></span>
+                {{ icons.icon_send() }}
+                <span class="btn-text">{{ _('Отправить приглашение') }}</span>
+              </button>
+              <button type="button" class="svg-btn" data-close-invite-modal>
+                <span class="btn-text">{{ _('Отмена') }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <script>
+        // Раскрытие карточки сотрудника — блок «Что может эта роль».
+        // Клики по кнопкам внутри карточки («Пригласить», «×») не
+        // раскрывают её — у них своё действие.
+        (function () {
+          function toggle(card) {
+            var open = !card.classList.contains('is-open');
+            card.classList.toggle('is-open', open);
+            card.setAttribute('aria-expanded', open ? 'true' : 'false');
+            var details = card.querySelector('.role-details');
+            if (details) details.setAttribute('aria-hidden', open ? 'false' : 'true');
+          }
+          document.addEventListener('click', function (e) {
+            var card = e.target.closest('[data-role-card]');
+            if (!card || e.target.closest('button, a, input, label')) return;
+            // Выделение текста (например, email) — не повод сворачивать.
+            if (window.getSelection && String(window.getSelection()).length) return;
+            toggle(card);
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            var card = e.target.closest && e.target.closest('[data-role-card]');
+            if (!card || e.target !== card) return;
+            e.preventDefault();
+            toggle(card);
+          });
+        })();
+
+        (function () {
+          var modal = document.getElementById('inviteEmployeeModal');
+          if (!modal) return;
+          var form = document.getElementById('inviteEmployeeForm');
+          var email = document.getElementById('inviteEmail');
+          var emailError = document.getElementById('inviteEmailError');
+          var submit = document.getElementById('inviteEmployeeSubmit');
+          var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+          function isValid() { return EMAIL_RE.test(email.value.trim()); }
+          function update() { submit.disabled = !isValid(); }
+
+          function open(role) {
+            form.reset();
+            var radio = role && form.querySelector('input[name="org_role"][value="' + role + '"]');
+            if (radio) radio.checked = true;
+            emailError.classList.remove('visible');
+            email.classList.remove('is-invalid');
+            submit.classList.remove('is-checking');
+            update();
+            modal.classList.add('active');
+            setTimeout(function () { email.focus(); }, 50);
+          }
+          function close() { modal.classList.remove('active'); }
+
+          document.querySelectorAll('[data-open-invite-modal]').forEach(function (btn) {
+            btn.addEventListener('click', function () { open(btn.dataset.inviteRole); });
+          });
+          modal.querySelector('.modal-header .close').addEventListener('click', close);
+          modal.querySelector('[data-close-invite-modal]').addEventListener('click', close);
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) close();
+          });
+
+          email.addEventListener('input', function () {
+            update();
+            if (isValid()) {
+              emailError.classList.remove('visible');
+              email.classList.remove('is-invalid');
+            }
+          });
+          // Ошибку показываем не на каждый символ, а когда поле покинули
+          // с непустым неправильным значением.
+          email.addEventListener('blur', function () {
+            var bad = email.value.trim() && !isValid();
+            emailError.classList.toggle('visible', !!bad);
+            email.classList.toggle('is-invalid', !!bad);
+          });
+
+          form.addEventListener('submit', function (e) {
+            if (!isValid()) {
+              e.preventDefault();
+              emailError.classList.add('visible');
+              email.classList.add('is-invalid');
+              return;
+            }
+            submit.classList.add('is-checking');
+            submit.disabled = true;
+          });
+        })();
+        (function () {
+          // Удаление сотрудника — AJAX, через общий #confirmModal (см.
+          // base.html). Он уже используется формой удаления аккаунта
+          // (profile.js/deleteProfileBtn) — чтобы случайный клик "Да" тут
+          // не отправил ту форму заодно, явно сбрасываем modal._currentForm.
+          var modal = document.getElementById('confirmModal');
+          var yesBtn = document.getElementById('confirmYes');
+          var noBtn = document.getElementById('confirmNo');
+          var textEl = document.getElementById('modal-text');
+          var textSecondEl = document.getElementById('modal-text-second');
+          if (!modal || !yesBtn || !noBtn) return;
+
+          var pendingRemoveId = null;
+          var csrfToken = "{{ csrf_token() }}";
+
+          document.querySelectorAll('[data-remove-employee-id]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              pendingRemoveId = btn.dataset.removeEmployeeId;
+              modal._currentForm = null;
+              modal._removeEmployeeMode = true;
+              if (textEl) textEl.textContent = "{{ _('Удалить сотрудника') }} " + (btn.dataset.removeEmployeeName || '').trim() + " {{ _('из организации?') }}";
+              if (textSecondEl) textSecondEl.textContent = "{{ _('Доступно только если у него нет данных в системе (планов, подписей, сообщений).') }}";
+              modal.classList.add('active');
+            });
+          });
+
+          yesBtn.addEventListener('click', function () {
+            if (!modal._removeEmployeeMode || !pendingRemoveId) return;
+            var id = pendingRemoveId;
+            pendingRemoveId = null;
+            modal._removeEmployeeMode = false;
+            modal.classList.remove('active');
+
+            fetch('/remove-employee/' + id, {
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+            })
+              .then(function (r) {
+                return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+              })
+              .then(function (res) {
+                if (res.ok && res.data.success) {
+                  window.location.reload();
+                } else {
+                  alert((res.data && res.data.error) || "{{ _('Не удалось удалить сотрудника') }}");
+                }
+              })
+              .catch(function () {
+                alert("{{ _('Ошибка сети') }}");
+              });
+          });
+
+          noBtn.addEventListener('click', function () {
+            modal._removeEmployeeMode = false;
+            pendingRemoveId = null;
+          });
+        })();
+      </script>
+      {% endif %}
+
       <hr/>
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">
@@ -222,16 +660,6 @@
                 {% else %}
                   <span class="date-empty">Нет данных</span>
                 {% endif %}
-              </div>
-            </div>
-          </div>
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_org() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('ID') }}: {{ current_user.organization.id }}</span>
               </div>
             </div>
           </div>
@@ -269,7 +697,7 @@
            data-expires-at="{{ session_info.expires_at }}"
            data-server-time="{{ session_info.server_time }}">
         <div class="session-card-top">
-          <span class="session-role-badge">{{ session_info.role_label }}</span>
+          <!-- <span class="session-role-badge">{{ session_info.role_label }}</span> -->
           <div class="session-card-status">
             <span class="session-status-dot"></span>
             <span>{{ _('Текущая сессия активна') }}</span>
@@ -372,28 +800,40 @@
         </div>
 
       </div>
+      {#  «Опасная зона» — карточка с красным акцентом. id/классы, на которые
+          завязан static/js/profile.js (confirm-email-field, deleteProfileBtn,
+          deleteProfile_form, current_user_email, input-valid/input-invalid),
+          не менялись — проверка email и модалка подтверждения работают как
+          раньше. #}
       <div class="danger-zone">
-          <div class="danger-zone-header">
-              <div class="danger-zone-title">
-                  <p class="danger-zone-description">{{ _('После удаления аккаунта все ваши планы и данные будут безвозвратно удалены. Это действие невозможно отменить.') }}</p>
-              </div>
+          <div class="org-roles-note">
+            <p>
+              {{ _('Удаление аккаунта необратимо. Все ваши данные будут удалены.') }}
+            </p>
           </div>
           <div class="danger-zone-actions">
               <form id="deleteProfile_form" action="{{ url_for('auth.delete_account') }}" method="POST">
                   <div class="confirm-delete-area">
-                      <div class="app-group">
-                          <label for="confirm-email-field">{{ _('Введите') }} <strong>{{ current_user.email }}</strong> {{ _('для подтверждения') }}</label>
-                          <div class="input-with-icon">
-                              <input type="text" id="confirm-email-field" name="confirm_email" class="app-input danger-input" placeholder="Ваш электронный адрес">
+                      <label for="confirm-email-field">
+                          {{ _('Чтобы подтвердить, введите') }}
+                          <code class="confirm-delete-email">{{ current_user.email }}</code>
+                      </label>
+                      <div class="confirm-delete-row">
+                          <div class="confirm-delete-input-wrap">
+                              <input type="text" id="confirm-email-field" name="confirm_email" class="app-input danger-input"
+                                     placeholder="{{ _('Ваш электронный адрес') }}" autocomplete="off" spellcheck="false"
+                                     aria-describedby="confirm-delete-hint">
+                              <span class="confirm-delete-check" aria-hidden="true">{{ icons.icon_check() }}</span>
                           </div>
+                          <button type="button" id="deleteProfileBtn" class="danger-zone-btn">
+                              {{ icons.icon_delete() }}
+                              <span>{{ _('Удалить аккаунт') }}</span>
+                          </button>
                       </div>
+                      <p class="confirm-delete-hint" id="confirm-delete-hint">{{ _('Кнопка станет активной, когда адрес совпадёт.') }}</p>
                   </div>
                   <input type="hidden" id="current_user_email" value="{{ current_user.email }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="button" id="deleteProfileBtn" class="danger-zone-btn">
-                      {{ icons.icon_delete() }}
-                      <span>{{ _('Удалить аккаунт') }}</span>
-                  </button>
               </form>
           </div>
       </div>
@@ -402,16 +842,6 @@
       <h1 class="name">{{ _('Прочая информация') }}</h1>
       <div class="dates-card">
         <div class="dates-list">
-          <div class="date-item">
-            <div class="date-icon">
-              {{ icons.icon_email() }}
-            </div>
-            <div class="date-content">
-              <div class="date-info">
-                <span class="date-label">{{ _('Email для входа') }}: {{ current_user.email }}</span>
-              </div>
-            </div>
-          </div>
           <div class="date-item">
             <div class="date-icon">
               {{ icons.icon_profile() }}

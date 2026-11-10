@@ -1,231 +1,168 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Отправка плана на рассмотрение') }} - EnPlans{% endblock %}
+{% block title %}{{ _('Отправка плана на подпись') }} - EnPlans{% endblock %}
 {% block content %}
 
 <div class="pers-page">
-  {{ component.back_header(plan, current_user, back_url='/plans/plan/tasks/' + plan.token, back_text=_('К плану')) }}
+  {{ component.plan_header_bar(plan, current_user, back_url='/plans/plan/tasks/' + plan.token, back_text=_('К плану')) }}
 
-  <div class="personal-acc-conteiner edit-page">
-    <a class="name">{{ _('Отправка плана на рассмотрение') }}</a>
-
-    <div class="plan-send-stepper" id="planSendStepper">
-      <div class="plan-send-step-dot" data-step="1">
-        <span class="plan-send-step-circle">1</span>
-        <span class="plan-send-step-label">{{ _('Согласующие') }}</span>
-      </div>
-      <div class="plan-send-step-line"></div>
-      <div class="plan-send-step-dot" data-step="2">
-        <span class="plan-send-step-circle">2</span>
-        <span class="plan-send-step-label">{{ _('Утверждающая организация') }}</span>
-      </div>
-      <div class="plan-send-step-line"></div>
-      <div class="plan-send-step-dot" data-step="3">
-        <span class="plan-send-step-circle">3</span>
-        <span class="plan-send-step-label">{{ _('Проверка') }}</span>
-      </div>
-      <div class="plan-send-step-line"></div>
-      <div class="plan-send-step-dot" data-step="4">
-        <span class="plan-send-step-circle">4</span>
-        <span class="plan-send-step-label">{{ _('Подпись') }}</span>
-      </div>
+  <div class="personal-acc-conteiner edit-page plan-send-page">
+    {#  Одна страница без шагов: слева выбор организаций, справа панель с
+        маршрутом плана и выбором руководителя, который его подпишет. #}
+    <div class="ps-head">
+      <a class="name">{{ _('Отправка плана на подпись') }}</a>
     </div>
 
-    <div id="planSendRoot">
-      <div class="progress-modal-bar-container">
-        <div class="progress-modal-bar" id="modal-progress-bar" style="width: 25%"></div>
-      </div>
-
-      <div id="step1" class="modal-step">
-        <div class="step-description">
-          <p>{{ _('Выберите организации, через которые план пройдёт согласование — последовательно и автоматически, этап за этапом.') }}</p>
-          <p class="step-note">{{ _('Первой в списке всегда будет региональное управление по надзору за рациональным использованием ТЭР — оно добавляется автоматически. Если организация даст положительную оценку, план сам перейдёт к следующему этапу; если оценка отрицательная — вы получите результаты проверки, а план перейдёт в статус «Есть ошибки».') }}</p>
-        </div>
-
-        <div class="input-with-icon">
-          {{ icons.icon_search() }}
-          <input type="text" id="coordinator-search" placeholder="{{ _('Поиск организации...') }}" class="app-input" />
-        </div>
-
-        <div class="org-picker">
-          <div class="org-picker-toolbar">
-            <span class="org-picker-toolbar-label">{{ _('Сортировать:') }}</span>
-            <button type="button" class="org-picker-sort-btn" data-field="name">{{ _('По названию') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="ynp">{{ _('По УНП') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="okpo">{{ _('По ОКПО') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="region">{{ _('По региону') }}</button>
+    <div id="planSendRoot" class="ps-layout">
+      <section class="ps-main">
+        <div id="step1">
+          {#  Сначала обязательный выбор (утверждающая), потом необязательный
+              (согласующие) — так пользователь не упрётся в выключенное
+              «Далее», не поняв, чего не хватает. #}
+          <div class="ps-tabs" role="tablist">
+            <button type="button" class="ps-tab is-active" role="tab" aria-selected="true" data-picker="approver">
+              <span class="ps-tab-text">
+                <span class="ps-tab-title">{{ _('Утверждающая') }}</span>
+                <span class="ps-tab-caption">{{ _('обязательно') }}</span>
+              </span>
+              <span id="approver-count" class="ps-tab-count is-zero">0</span>
+            </button>
+            <button type="button" class="ps-tab" role="tab" aria-selected="false" data-picker="coordinator">
+              <span class="ps-tab-text">
+                <span class="ps-tab-title">{{ _('Согласующие') }}</span>
+                <span class="ps-tab-caption">{{ _('по желанию') }}</span>
+              </span>
+              <span id="coordinator-count" class="ps-tab-count is-zero">0</span>
+            </button>
           </div>
-          <div class="org-picker-list" id="coordinator-tbody">
-            <div class="org-picker-loading-row">
-              <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+
+          {% macro picker_tools(kind) %}
+          <div class="ps-picker-tools">
+            <div class="input-with-icon">
+              {{ icons.icon_search() }}
+              <input type="search" id="{{ kind }}-search" placeholder="{{ _('УНП или наименование организации') }}" class="app-input" autocomplete="off" />
             </div>
-          </div>
-        </div>
-
-        <div class="selected-organizations">
-          <h4>
-            {{ _('организации для согласования:') }}
-            <span id="coordinator-count" class="selected-count">0</span>
-          </h4>
-          <div id="selected-coordinators" class="selected-org-list">
-            <div class="empty-message">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="3" width="16" height="18" rx="1"></rect>
-                <line x1="8" y1="7.5" x2="8" y2="7.5"></line>
-                <line x1="12" y1="7.5" x2="12" y2="7.5"></line>
-                <line x1="16" y1="7.5" x2="16" y2="7.5"></line>
-                <line x1="8" y1="11.5" x2="8" y2="11.5"></line>
-                <line x1="12" y1="11.5" x2="12" y2="11.5"></line>
-                <line x1="16" y1="11.5" x2="16" y2="11.5"></line>
-                <path d="M9 21v-6h6v6"></path>
-              </svg>
-              <span>{{ _('Ничего не выбрано') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="button-auth-area">
-          <button type="button" class="svg-btn blue" id="step1-next-btn">
-            <span class="btn-text">{{ _('Далее') }}</span>
-            {{ icons.next_icon() }}
-          </button>
-        </div>
-      </div>
-
-      <div id="step2" class="modal-step" style="display: none">
-        <div class="step-description">
-          <p>{{ _('Выберите организацию для утверждения плана.') }}</p>
-          <p class="step-note">{{ _('Может быть выбрана только одна организация.') }}</p>
-        </div>
-
-        <div class="input-with-icon">
-          {{ icons.icon_search() }}
-          <input type="text" id="approver-search" placeholder="{{ _('Поиск организации...') }}" class="app-input" />
-        </div>
-
-        <div class="org-picker">
-          <div class="org-picker-toolbar">
-            <span class="org-picker-toolbar-label">{{ _('Сортировать:') }}</span>
-            <button type="button" class="org-picker-sort-btn" data-field="name">{{ _('По названию') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="ynp">{{ _('По УНП') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="okpo">{{ _('По ОКПО') }}</button>
-            <button type="button" class="org-picker-sort-btn" data-field="region">{{ _('По региону') }}</button>
-          </div>
-          <div class="org-picker-list org-picker-list--radio" id="approver-tbody">
-            <div class="org-picker-loading-row">
-              <span class="loading-spinner"></span> {{ _('Загрузка...') }}
-            </div>
-          </div>
-        </div>
-
-        <div class="selected-organizations approver">
-          <h4>
-            {{ _('Организация для утверждения:') }}
-            <span id="approver-count" class="selected-count approver-count">0</span>
-          </h4>
-          <div id="selected-approver" class="selected-org-list">
-            <div class="empty-message">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="3" width="16" height="18" rx="1"></rect>
-                <line x1="8" y1="7.5" x2="8" y2="7.5"></line>
-                <line x1="12" y1="7.5" x2="12" y2="7.5"></line>
-                <line x1="16" y1="7.5" x2="16" y2="7.5"></line>
-                <line x1="8" y1="11.5" x2="8" y2="11.5"></line>
-                <line x1="12" y1="11.5" x2="12" y2="11.5"></line>
-                <line x1="16" y1="11.5" x2="16" y2="11.5"></line>
-                <path d="M9 21v-6h6v6"></path>
-              </svg>
-              <span>{{ _('Ничего не выбрано') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="button-auth-area">
-          <button type="button" class="svg-btn blue" id="step2-next-btn" disabled>
-            <span class="btn-text">{{ _('Далее') }}</span>
-            {{ icons.next_icon() }}
-          </button>
-          <button type="button" class="svg-btn" id="step2-back-btn">
-            {{ icons.back_icon() }}
-            <span class="btn-text">{{ _('Назад') }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div id="step3" class="modal-step" style="display: none">
-        <div class="step-description">
-          <p>{{ _('Проверьте путь согласования перед отправкой — на следующем шаге потребуется сертификат ЭЦП.') }}</p>
-          <p>{{ _('Если всё верно, нажмите кнопку «Далее».') }}</p>
-        </div>
-
-        <div class="plan-approval-path">
-          <div id="approval-slider-container">
-            <div class="approval-path-placeholder">
-              {{ _('Выберите организации для отображения пути согласования') }}
-            </div>
-          </div>
-        </div>
-
-        <div class="button-auth-area">
-          <button type="button" class="svg-btn blue" id="step3-next-btn">
-            <span class="btn-text">{{ _('Далее') }}</span>
-            {{ icons.next_icon() }}
-          </button>
-          <button type="button" class="svg-btn" id="step3-back-btn">
-            {{ icons.back_icon() }}
-            <span class="btn-text">{{ _('Назад') }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div id="step4" class="modal-step" style="display: none">
-        <div class="step-description">
-          <p>{{ _('Для отправки плана пройдите проверку электронной цифровой подписи.') }}</p>
-        </div>
-
-        <div class="ecp-check-prompt" id="ecpCheckPrompt">
-          <div class="ecp-check-prompt-visual">
-            <div class="ecp-key-hero" id="ecpKeyHero">
-              <div class="ecp-key-hero-shape" id="ecpKeyShape">
-                <div class="ecp-key-hero-ring"></div>
-                <div class="ecp-key-hero-shaft"></div>
-                <div class="ecp-key-hero-tooth ecp-key-hero-tooth-1"></div>
-                <div class="ecp-key-hero-tooth ecp-key-hero-tooth-2"></div>
+            {#  Тот же выпадающий список, что у фильтров в списке планов
+                (.custom-dropdown). Изначально сортировки нет — на кнопке
+                «Сортировка»; открытие/выбор — plan_send.js::initSort. #}
+            <div class="custom-dropdown ps-sort" data-sort-for="{{ kind }}">
+              <button type="button" class="dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
+                <span class="selected-option" data-placeholder="{{ _('Сортировка') }}">{{ _('Сортировка') }}</span>
+                {{ icons.dropdown_arrow() }}
+              </button>
+              <div class="dropdown-menu-filter" role="listbox">
+                <button type="button" class="dropdown-item" role="option" data-value="">{{ _('Без сортировки') }}</button>
+                <button type="button" class="dropdown-item" role="option" data-value="name">{{ _('По названию') }}</button>
+                <button type="button" class="dropdown-item" role="option" data-value="region">{{ _('По региону') }}</button>
+                <button type="button" class="dropdown-item" role="option" data-value="ynp">{{ _('По УНП') }}</button>
+                <button type="button" class="dropdown-item" role="option" data-value="okpo">{{ _('По ОКПО') }}</button>
               </div>
             </div>
           </div>
-          <div class="ecp-check-prompt-action">
-            <p class="ecp-check-prompt-title" id="ecpCheckPromptTitle">{{ _('Проверка ЭЦП ещё не пройдена') }}</p>
-            <p class="ecp-check-prompt-text" id="ecpCheckPromptText">{{ _('Подтвердите электронную цифровую подпись, чтобы разблокировать отправку плана.') }}</p>
-            <button type="button" class="ecp-check-prompt-btn" id="openEcpCheckBtn">
-              {{ icons.icon_confirm() }}
-              <span class="btn-text">{{ _('Пройти проверку ЭЦП') }}</span>
-            </button>
+          {% endmacro %}
+
+          <div class="ps-picker" data-picker-panel="coordinator" hidden>
+            <p class="ps-hint">{{ _('Если план должны согласовать ещё какие-то организации, отметьте их. Они получат план по очереди — порядок можно поменять в маршруте справа.') }}</p>
+            {{ picker_tools('coordinator') }}
+            <div class="org-picker">
+              <div class="org-picker-list" id="coordinator-tbody">
+                <div class="org-picker-loading-row">
+                  <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ps-picker" data-picker-panel="approver">
+            <p class="ps-hint">{{ _('Выберите организацию, которая утвердит план. Она будет последней в маршруте.') }}</p>
+            {{ picker_tools('approver') }}
+            <div class="org-picker">
+              <div class="org-picker-list org-picker-list--radio" id="approver-tbody">
+                <div class="org-picker-loading-row">
+                  <span class="loading-spinner"></span> {{ _('Загрузка...') }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <form id="sentForm" class="sent-form" action="/plans/plan/change-status/{{ plan.token }}" method="POST">
+      {#  Маршрут плана — собирается по мере выбора слева (renderRoute в
+          plan_send.js): региональное управление (всегда первое,
+          автоматически) → отмеченные согласующие → Департамент (если план
+          проходит порог) → утверждающая. Под ним — кто подпишет. #}
+      <aside class="ps-route" id="ps-route">
+        <h2 class="ps-route-title">{{ _('Маршрут плана') }}</h2>
+        <p class="ps-route-sub ps-route-intro">{{ _('Организации, которые получат план после подписи — по очереди, сверху вниз. Каждая согласует план, последняя утверждает.') }}</p>
+
+        {#  Маршрут прошлого раза: этого же плана — уже подставлен (можно
+            очистить), другого плана организации — подставляется по кнопке. #}
+        {% if previous_route %}
+        <div class="ps-prefill" id="ps-prefill" data-kind="{{ previous_route.kind }}">
+          {% if previous_route.kind == 'this' %}
+          <p class="ps-prefill-text" id="ps-prefill-text">{{ _('Подставлен маршрут из прошлой отправки этого плана.') }}</p>
+          <button type="button" class="ps-prefill-btn" id="ps-prefill-clear">{{ _('Собрать заново') }}</button>
+          {% else %}
+          <p class="ps-prefill-text" id="ps-prefill-text">{{ _('Можно взять маршрут из плана на %(year)s год.', year=previous_route.year) }}</p>
+          <button type="button" class="ps-prefill-btn" id="ps-prefill-apply">{{ _('Подставить') }}</button>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <ol class="ps-route-list" id="ps-route-list" aria-live="polite"></ol>
+
+        <form id="sentForm" class="ps-sign" action="{{ url_for('plan_bp.submit_for_signature', token=plan.token) }}" method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <input type="hidden" name="status" value="sent" />
           <input type="hidden" name="coordinator_ids" id="coordinator-ids-input" value="" />
           <input type="hidden" name="approver_id" id="approver-id-input" value="" />
 
-          <div class="button-auth-area">
+          <h2 class="ps-route-title">{{ _('Кто подпишет') }}</h2>
+          <p class="ps-route-sub ps-sign-hint">{{ _('Руководитель подпишет план электронной подписью и отправит его по маршруту.') }}</p>
+
+          {% if not signer_candidates %}
+          <div class="plan-send-warning">
+            {{ icons.error_icon() }}
+            <div>
+              <p class="plan-send-warning-title">{{ _('Некому подписать') }}</p>
+              <p>{{ _('В организации нет руководителя структурного подразделения или руководителя организации. Попросите руководителя организации добавить сотрудника в профиле.') }}</p>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="ps-signer-group">
+              <div class="signer-picker" id="signer-picker">
+                <button
+                  type="button"
+                  class="signer-picker-toggle"
+                  id="signer-picker-toggle"
+                  {% if not signer_candidates %}disabled{% endif %}
+                >
+                  <span class="signer-picker-value" id="signer-picker-value">{{ _('Выберите руководителя') }}</span>
+                  {{ icons.dropdown_arrow() }}
+                </button>
+                <div class="signer-picker-menu" id="signer-picker-menu">
+                  {% for candidate in signer_candidates %}
+                  <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+                    <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+                    <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения'))) }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              <input type="hidden" name="signer_user_id" id="signer-select" value="" />
+          </div>
+
+          <div class="ps-route-footer" id="ps-route-footer">
             <button type="submit" class="main-btn main-btn-primary" id="submit-sent-button" disabled>
               <span class="btn-spinner" aria-hidden="true"></span>
               {{ icons.icon_send() }}
-              <span class="btn-text">{{ _('Отправить план') }}</span>
+              <span class="btn-text">{{ _('Отправить на подпись') }}</span>
             </button>
-            <button type="button" class="svg-btn" id="step4-back-btn">
-              {{ icons.back_icon() }}
-              <span class="btn-text">{{ _('Назад') }}</span>
-            </button>
+            <p class="ps-route-note" id="ps-route-note"></p>
           </div>
         </form>
-      </div>
+      </aside>
     </div>
   </div>
-
-  {{ component.ecp_mock_modal('ecpMockModal') }}
 </div>
 
 {{ affects.bg_effect() }}
@@ -233,15 +170,10 @@
 <script>
   window.planToken = '{{ plan.token }}';
   window.regionNumber = '{{ plan.organization.region.number if plan.organization and plan.organization.region else "" }}';
-  window.icons = {
-    icon_region: `{{ icons.icon_region() }}`,
-    icon_municipal: `{{ icons.icon_municipal() }}`,
-    icon_higher: `{{ icons.icon_higher() }}`,
-    icon_check: `{{ icons.icon_check() }}`,
-    icon_department: `{{ icons.icon_department() }}`,
-  };
+  window.energyDepartmentName = {{ (energy_department_org.full_name if energy_department_org else none) | tojson }};
+  window.regionOrgName = {{ (region_org.full_name if region_org else none) | tojson }};
+  window.previousRoute = {{ previous_route | tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/ecp-mock-modal.js') }}"></script>
 <script src="{{ url_for('static', filename='js/plan_send.js') }}"></script>
 
 {% endblock %}

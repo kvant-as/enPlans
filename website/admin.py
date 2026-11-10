@@ -41,6 +41,32 @@ def _user_on_save(obj, creating):
     if creating:
         obj.application_id = get_current_application_id()
 
+    # "Руководитель организации"/"Заместитель руководителя" — максимум один
+    # сотрудник на организацию на каждую роль (та же проверка, что и в
+    # views.invite_employee, но нужна и тут — org_role редактируется в
+    # админке напрямую, в обход приглашения). dept_head/executor — без
+    # ограничения по количеству, в пределах общего лимита ниже.
+    if obj.org_role and obj.organization_id:
+        if obj.org_role in ('org_head', 'org_head_deputy'):
+            conflict = User.query.filter(
+                User.organization_id == obj.organization_id,
+                User.application_id == obj.application_id,
+                User.org_role == obj.org_role,
+                User.id != obj.id,
+            ).first()
+            if conflict:
+                raise ValueError(
+                    f'Роль "{obj.org_role}" уже занята сотрудником {conflict.email} в этой организации'
+                )
+
+        if creating:
+            employees_count = User.query.filter(
+                User.organization_id == obj.organization_id,
+                User.application_id == obj.application_id,
+            ).count()
+            if employees_count >= 7:
+                raise ValueError('В организации не может быть больше 7 сотрудников')
+
 
 def _user_application_display(obj):
     return obj.application.name if obj.application else "—"
@@ -79,8 +105,8 @@ def _support_chat_rows():
 
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
-    list_display=["id", "email", "organization", "begin_time"],
-    list_badges=["is_admin", "is_auditor", "is_approver", "is_reader"],
+    list_display=["id", "email", "organization", "org_role", "begin_time"],
+    list_badges=["is_admin", "has_auditor_access", "has_approver_access", "is_reader", "is_verified"],
     search=["email", "last_name", "first_name", "telephone"],
     scope_query=_scope_to_this_app,
     on_save=_user_on_save,
@@ -89,10 +115,17 @@ site.register(
         F("last_name", "Фамилия"), F("first_name", "Имя"), F("patronymic_name", "Отчество"),
         F("telephone", "Телефон"), F("post", "Должность"),
         F("is_admin", "Администратор", type="bool"),
-        F("is_auditor", "Согласовывающая организация", type="bool"),
-        F("is_approver", "Утверждающая организация", type="bool"),
         F("is_reader", "Читатель", type="bool"),
-        F("organization_id", "Организация", type="fk-search", target=Organization, target_label="full_name"),
+        F("is_verified", "Верифицирован (ЭЦП)", type="bool",
+          help="Прошёл проверку ЭЦП на регистрации (или приглашён уже верифицированным руководителем). Блокирует регистрацию новых аккаунтов на его организацию."),
+        F("org_role", "Роль в организации", type="select", choices=[
+            ("executor", "Исполнитель"),
+            ("dept_head", "Руководитель структурного подразделения"),
+            ("org_head", "Руководитель организации"),
+            ("org_head_deputy", "Заместитель руководителя организации"),
+        ], help="Кто этот сотрудник внутри своей организации (не путать с ролями выше — те про права в приложении)."),
+        F("organization_id", "Организация", type="fk-search", target=Organization, target_label="full_name",
+          help="Согласующая/утверждающая организация определяется флагами самой организации (is_coordinator/is_region_management/is_approver) — здесь достаточно привязать сотрудника к ней."),
         F("application_id", "Приложение", readonly=True, display=_user_application_display,
           help="Аккаунт создаётся только для текущего приложения (EnPlans) — не редактируется."),
         F("password", "Пароль", type="password", create_only=False, skip_if_blank=True,
@@ -103,7 +136,7 @@ site.register(
 site.register(
     Organization, name="Организации", group="Основные", stat_label="Организаций",
     list_display=["id", "full_name", "okpo", "region", "ministry", ("accounts", "Email аккаунта")],
-    list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management"],
+    list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management", "is_energy_department"],
     list_format={"accounts": _org_account_emails},
     search=["full_name", "okpo", "ynp"],
     fields=[
@@ -116,8 +149,14 @@ site.register(
         F("is_coordinator", "Координатор", type="bool"),
         F("is_approver", "Утверждающая", type="bool"),
         F("is_region_management", "Региональное управление", type="bool"),
+        F("is_energy_department", "Департамент по энергоэффективности", type="bool"),
     ],
 )
+
+# Добавление организации по УНП с подстановкой из ЕГР (routes/admin_org.py)
+site.link("Добавить организацию по УНП", "admin_org.by_unp", group="Основные")
+# Тестовые пользователи маршрута согласования (routes/admin_test_users.py)
+site.link("Тестовые пользователи", "admin_test_users.index", group="Вспомогательные")
 
 site.register(
     Region, name="Регионы", group="Основные",
@@ -221,13 +260,12 @@ site.register(
 site.register(
     PlanTicket, name="Тикеты планов", group="Планы", stat_label="Тикетов",
     list_display=["id", "plan_id", "user", "begin_time", "note"],
-    list_badges=["luck", "is_system"], order_by="-id",
+    list_badges=["is_system"], order_by="-id",
     fields=[
         F("plan_id", "План", type="fk", target=Plan, target_label="id"),
         F("user_id", "Пользователь", type="fk", target=User, target_label="email"),
         F("note", "Текст", type="text", required=True),
         F("begin_time", "Время", type="datetime"),
-        F("luck", "Успех", type="bool"),
         F("is_system", "Системный", type="bool"),
     ],
 )
@@ -431,22 +469,38 @@ site.dashboard(
             "confirm": "Загрузить архив со статистикой? Имена файлов внутри должны "
                        "соответствовать формату «окпо_..._год_...xlsx».",
         },
+        # {
+        #     "label": "Создать тестовых проверяющих",
+        #     "endpoint": "db_bp.create_test_auditors_route",
+        #     "method": "post",
+        #     "confirm": "Удалить все ранее созданные тестовые аккаунты проверяющих и "
+        #                "создать заново — по одному на каждое региональное управление "
+        #                "(пароль у всех: 12345678)?",
+        # },
+        # {
+        #     "label": "Создать тестовых согласующих/утверждающих",
+        #     "endpoint": "db_bp.create_test_approvers_route",
+        #     "method": "post",
+        #     "confirm": "Удалить ранее созданные тестовые аккаунты согласующей/"
+        #                "утверждающей организации и создать заново — по одной на "
+        #                "организацию с УНП 200100489 (согласовывающая) и "
+        #                "УНП 500022116 (утверждающая). Пароль у обеих: 12345678?",
+        # },
         {
-            "label": "Создать тестовых проверяющих",
-            "endpoint": "db_bp.create_test_auditors_route",
+            "label": "Добавить остальные организации",
+            "endpoint": "db_bp.fill_remaining_organizations_route",
             "method": "post",
-            "confirm": "Удалить все ранее созданные тестовые аккаунты проверяющих и "
-                       "создать заново — по одному на каждое региональное управление "
-                       "(пароль у всех: 12345678)?",
+            "confirm": "Добавить из справочников (regulars/coordinators/approvers.xlsx) "
+                       "организации без ОКПО? У них не будет привязки к региону. "
+                       "Повторный запуск только обновит их роли, дублей не создаст.",
         },
         {
-            "label": "Создать тестовых согласующих/утверждающих",
-            "endpoint": "db_bp.create_test_approvers_route",
+            "label": "Сбросить роли организаций вне справочников",
+            "endpoint": "db_bp.reset_unlisted_organizations_roles_route",
             "method": "post",
-            "confirm": "Удалить ранее созданные тестовые аккаунты согласующей/"
-                       "утверждающей организации и создать заново — по одной на "
-                       "организацию с УНП 200100489 (согласовывающая) и "
-                       "УНП 500022116 (утверждающая). Пароль у обеих: 12345678?",
+            "confirm": "Снять «Разработчик/Согласующая/Утверждающая» со всех организаций, "
+                       "которых нет ни в одном из трёх справочников (по ОКПО, а для "
+                       "организаций без ОКПО — по УНП)? Региональное управление не затронет.",
         },
         # {
         #     "label": "Синхронизировать направления энергосбережения",

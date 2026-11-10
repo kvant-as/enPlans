@@ -5,6 +5,14 @@
 (function () {
     var STORAGE_KEY = 'enplans-theme';
 
+    // Тёмная тема временно выключена (DARK_THEME_ENABLED в настройках
+    // приложения, флаг выставляет base.html): всегда светлая, ни кнопка,
+    // ни выбор из другой вкладки её не включают.
+    if (window.ENPLANS_DARK_THEME_ENABLED === false) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        return;
+    }
+
     function apply(theme) {
         document.documentElement.setAttribute('data-theme', theme);
     }

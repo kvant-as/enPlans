@@ -4,7 +4,7 @@ from flask import current_app, flash, redirect, request, session, url_for
 from sqlalchemy import func
 from website import db
 from website.email import send_email
-from website.models import User
+from website.models import User, Organization
 from common_models import get_current_application_id
 from flask import request, flash, redirect, session, url_for
 import logging
@@ -15,9 +15,31 @@ from flask_login import (
 )
 
 from sqlalchemy import func
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from common_models import current_utc_time
 
 logger = logging.getLogger(__name__)
+
+# Черновик регистрации живёт в сессии (session['temp_user']) — аккаунт в
+# базе создаётся только на последнем шаге, после ЭЦП (add_param). Сессия
+# Flask — подписанная cookie (подделать нельзя), но НЕ зашифрованная
+# (клиент может прочитать) — поэтому код подтверждения хранится только
+# хэшем, а отметку «почта подтверждена» подделать нельзя из-за подписи.
+REGISTRATION_TTL_SECONDS = 24 * 3600
+
+
+def pending_registration():
+    """Черновик регистрации с ПОДТВЕРЖДЁННОЙ почтой (или None): шаг /param
+    доступен такому посетителю без аккаунта и входа."""
+    temp = session.get('temp_user') or {}
+    if not temp.get('email_verified') or not temp.get('email') or not temp.get('password'):
+        return None
+    started = temp.get('started_at') or 0
+    if current_utc_time().timestamp() - started > REGISTRATION_TTL_SECONDS:
+        session.pop('temp_user', None)
+        return None
+    return temp
 
 PHONE_PREFIX = '+375'
 PHONE_TOTAL_DIGITS = 12
@@ -64,7 +86,10 @@ def gener_password():
 
 def send_activation_email(email):
     activation_code = gener_password()
-    session['activation_code'] = activation_code
+    # Только хэш: сессия — читаемая клиентом cookie, раньше код лежал в ней
+    # открытым текстом и подтверждение почты можно было обойти.
+    session.pop('activation_code', None)
+    session['activation_code_hash'] = generate_password_hash(activation_code)
     send_email(activation_code, email, 'code')
 
 def sign_def(email, password1, password2):
@@ -92,7 +117,9 @@ def sign_def(email, password1, password2):
         else:
             session['temp_user'] = {
                 'email': email,
-                'password': generate_password_hash(password1)
+                'password': generate_password_hash(password1),
+                'email_verified': False,
+                'started_at': current_utc_time().timestamp(),
             }
             session.permanent = True
             send_activation_email(email) 
@@ -103,26 +130,28 @@ def sign_def(email, password1, password2):
         return redirect(url_for('auth.sign'))
 
 def activate_account():
+    """Подтверждение почты кодом из письма. Аккаунт в базе НЕ создаётся —
+    только отмечаем в черновике регистрации (сессии), что почта
+    подтверждена; аккаунт появится после последнего шага (ЭЦП, add_param)."""
     input_code = ''.join([
             request.form.get(f'activation_code_{i}', '') for i in range(5)
         ])
-    if input_code == session.get('activation_code'):
-        new_user = User(
-            email=session['temp_user']['email'],
-            password=session['temp_user']['password'],
-            application_id=get_current_application_id()
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        session.pop('temp_user', None)
-        session.pop('activation_code', None)
+    temp = session.get('temp_user')
+    code_hash = session.get('activation_code_hash')
+    if not temp or not code_hash:
+        flash('Сессия регистрации истекла — зарегистрируйтесь заново', 'error')
+        return redirect(url_for('auth.sign'))
 
-        login_user(new_user)
-        flash('Почта подтверждена, заполните необходимые данные для продолжения!', 'success')
-        return redirect(url_for('auth.param'))        
-    else:
+    if not (input_code and check_password_hash(code_hash, input_code)):
         flash('Некорректный код активации', 'error')
-        return redirect(url_for('auth.code')) 
+        return redirect(url_for('auth.code'))
+
+    temp['email_verified'] = True
+    session['temp_user'] = temp
+    session.pop('activation_code_hash', None)
+    session.modified = True
+    flash('Почта подтверждена, заполните необходимые данные для продолжения!', 'success')
+    return redirect(url_for('auth.param'))
          
 def add_param(first_name, last_name, patronymic_name, telephone, organization_id=None, user_type='respondent', post=None):
     required_fields = {
@@ -162,56 +191,126 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
         flash('Необходимо выбрать принадлежность: организацию, министерство или регион!', 'error')
         return redirect(url_for('auth.param'))
 
-    # Один УНП — один аккаунт (в рамках ЭТОГО приложения — та же организация
-    # вполне может иметь отдельный аккаунт в другом приложении, это другой
-    # Application.id). Фронт уже прячет такие организации из результатов
-    # поиска (см. /api/organizations?exclude_registered=true), но это
-    # единственная настоящая защита от дублей — обходится напрямую через форму.
-    existing_user = User.query.filter(
-        User.organization_id == org_id,
-        User.application_id == get_current_application_id(),
-        User.id != current_user.id
-    ).first()
-    if existing_user:
-        flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
+    # Поиск организации (auth.param, /api/organizations) уже показывает
+    # только is_active=True — эта проверка на то, если id организации
+    # пришёл напрямую через форму в обход поиска.
+    org = Organization.query.filter_by(id=org_id, is_active=True).first()
+    if not org:
+        flash('Организация не найдена или недоступна для регистрации', 'error')
         return redirect(url_for('auth.param'))
 
-    if user_type == 'respondent':
-        current_user.is_auditor = False
-        current_user.is_approver = False
-        current_app.logger.info(f'User {current_user.id} set as respondent')
-    elif user_type == 'auditor':
-        current_user.is_auditor = True
-        current_user.is_approver = False
-        current_app.logger.info(f'User {current_user.id} set as auditor')
-    elif user_type == 'approver':
-        current_user.is_auditor = False
-        current_user.is_approver = True
-        current_app.logger.info(f'User {current_user.id} set as approver')
+    # Организация считается занятой только если на ней уже есть
+    # ВЕРИФИЦИРОВАННЫЙ аккаунт (прошедший проверку ЭЦП — финальный шаг
+    # регистрации, см. auth.param/param.html). Если организация занята
+    # только неверифицированными "самозванцами" — регистрация разрешена, а
+    # при успешном прохождении ЭЦП (ниже, после коммита) все их аккаунты
+    # удаляются. Фронт прячет уже верифицированные организации из поиска
+    # (см. /api/organizations?exclude_registered=true), но это единственная
+    # настоящая защита от дублей — обходится напрямую через форму.
+    #
+    # Исключение — сотрудник, приглашённый руководителем организации
+    # (views.invite_employee): у него organization_id уже проставлен ЗАРАНЕЕ
+    # и совпадает с org_id, который он сейчас "выбирает" на этой же форме —
+    # это не повторная привязка нового аккаунта к занятой организации, а
+    # просто то же самое значение, с которым его создали.
+    # Новый регистрант (аккаунта ещё нет — черновик в сессии, почта
+    # подтверждена) или вошедший пользователь со старым незавершённым
+    # аккаунтом (созданным ещё по прежнему порядку регистрации).
+    pending = None if current_user.is_authenticated else pending_registration()
+    if not current_user.is_authenticated and not pending:
+        flash('Сессия регистрации истекла — зарегистрируйтесь заново', 'error')
+        return redirect(url_for('auth.sign'))
+
+    if pending:
+        # Email мог успеть занять кто-то другой, пока шла регистрация.
+        if User.query.filter(func.lower(User.email) == func.lower(pending['email']),
+                             User.application_id == get_current_application_id()).first():
+            session.pop('temp_user', None)
+            flash('Пользователь с таким email уже существует — войдите в систему', 'error')
+            return redirect(url_for('auth.login'))
+        user = User(
+            email=pending['email'],
+            password=pending['password'],
+            application_id=get_current_application_id(),
+        )
     else:
-        current_app.logger.warning(f'Unknown user_type: {user_type} for user {current_user.id}')
-        flash(f'Такого типа пользователя не существует: {str(e)}', 'error')
+        user = current_user
+
+    if user.organization_id != org_id:
+        verified_q = User.query.filter(
+            User.organization_id == org_id,
+            User.application_id == get_current_application_id(),
+            User.is_verified == True,
+        )
+        # У ещё не созданного пользователя id нет — условие id != NULL в SQL
+        # отсекло бы ВСЕ строки и проверка молча перестала бы работать.
+        if user.id is not None:
+            verified_q = verified_q.filter(User.id != user.id)
+        if verified_q.first():
+            flash('Для этой организации уже зарегистрирован аккаунт. Один УНП — один аккаунт в системе.', 'error')
+            return redirect(url_for('auth.param'))
+
+    if user_type in ('respondent', 'auditor', 'approver'):
+        # is_auditor/is_approver больше не проставляются на пользователе —
+        # согласующая/утверждающая принадлежность организации читается
+        # прямо из Organization.is_coordinator/is_region_management/
+        # is_approver (см. User.has_auditor_access/has_approver_access),
+        # сам user_type с формы регистрации сейчас используется только
+        # чтобы определить, что текущий аккаунт становится руководителем
+        # организации (а не приглашённым сотрудником — у тех org_role уже
+        # проставлен заранее через invite_employee).
+        if not user.org_role:
+            user.org_role = 'org_head'
+    else:
+        current_app.logger.warning(f'Unknown user_type: {user_type} for user {user.id or pending and pending["email"]}')
+        flash('Такого типа пользователя не существует', 'error')
         return redirect(url_for('auth.param'))
-        
-        
-    current_user.first_name = first_name.strip()
-    current_user.last_name = last_name.strip()
-    current_user.patronymic_name = patronymic_name.strip() if patronymic_name else None
-    current_user.telephone = normalized_telephone
-    current_user.post = post.strip() if post else ''
-    
-    current_user.organization_id = org_id
+
+    user.first_name = first_name.strip()
+    user.last_name = last_name.strip()
+    user.patronymic_name = patronymic_name.strip() if patronymic_name else None
+    user.telephone = normalized_telephone
+    user.post = post.strip() if post else ''
+    user.organization_id = org_id
+
+    # Эта точка достигается только после успешной проверки ЭЦП на клиенте
+    # (см. param.html/base.js::MultiStepForm — шаг 4 вызывает реальную
+    # отправку формы лишь в onSuccess ЭЦП-модалки), поэтому сохранение
+    # данных = подтверждение личности: аккаунт сразу верифицированный.
+    user.is_verified = True
 
     try:
+        if pending:
+            db.session.add(user)
+        db.session.flush()
+
+        # Прежние НЕверифицированные аккаунты этой же организации (остатки
+        # старого порядка регистрации, когда аккаунт создавался сразу после
+        # подтверждения почты) удаляются вместе с данными — каскад
+        # User.plans удалит и их планы.
+        old_accounts = User.query.filter(
+            User.organization_id == org_id,
+            User.application_id == get_current_application_id(),
+            User.id != user.id,
+            User.is_verified.isnot(True),
+        ).all()
+        for old_user in old_accounts:
+            db.session.delete(old_user)
         db.session.commit()
-        flash('Данные успешно сохранены!', 'success')
-        # send_email(
-        #     recipient_email=current_user.email,
-        #     message=current_user.first_name or "Пользователь",
-        #     email_type="registration"
-        # )
-        return redirect(url_for('views.profile'))
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при сохранении данных: {str(e)}', 'error')
+        current_app.logger.error(f'Registration save failed: {e}', exc_info=True)
+        flash('Ошибка при сохранении данных — попробуйте ещё раз', 'error')
         return redirect(url_for('auth.param'))
+
+    flash('Добро пожаловать в EnPlans!', 'success')
+    if pending:
+        # Регистрация завершена: аккаунт создан — входим в него и чистим
+        # черновик из сессии.
+        session.pop('temp_user', None)
+        session.pop('activation_code_hash', None)
+        login_user(user)
+        from website.sessions import create_session_token, set_session_cookie
+        current_app.logger.info(f'User {user.id} registered (org {org_id}) after EDS')
+        return set_session_cookie(redirect(url_for('views.profile')), create_session_token(user))
+    return redirect(url_for('views.profile'))

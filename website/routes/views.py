@@ -8,18 +8,22 @@ import uuid
 import threading
 from datetime import timedelta, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from flask_login import (
     current_user, login_required
 )
 
-from common_models import current_utc_time, db, UserAppActivity
+from itsdangerous import URLSafeTimedSerializer
+from werkzeug.security import generate_password_hash
+
+from common_models import current_utc_time, db, UserAppActivity, get_current_application_id
 from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
+from website.email import send_email
 
-from ..models import News, PlanColumnConfig, Organization, Plan, PlanTicket, Indicator, IndicatorUsage
+from ..models import News, PlanColumnConfig, Organization, Plan, PlanExecutor, PlanTicket, Indicator, IndicatorUsage, User
 from website import db
 
 from functools import wraps
@@ -49,9 +53,22 @@ def owner_only(f):
 
         has_access = (
             current_user.is_admin or
-            current_user.is_auditor or
+            current_user.has_auditor_access or
+            # has_approver_access (утверждающая организация) исторически
+            # был пропущен здесь — её сотрудники не могли открыть ни один
+            # owner_only-роут (включая "Действия с планом"), хотя сами
+            # этапы step_type='approver' в маршруте для них создаются и
+            # предназначены именно им (см. "Шаг 2" внутреннего подписания).
+            current_user.has_approver_access or
             current_user.is_reader or
-            plan.user_id == current_user.id
+            plan.user_id == current_user.id or
+            # Любой сотрудник той же организации-разработчика — не только
+            # тот, кто создал план (см. "внутренние роли сотрудников":
+            # исполнитель/рук. подразделения/рук. организации работают над
+            # одним и тем же планом из разных аккаунтов). Раздача прав по
+            # конкретным действиям внутри этой организации — отдельно, по
+            # org_role, в конкретных местах, не здесь.
+            (plan.org_id is not None and plan.org_id == current_user.organization_id)
         )
 
         if not has_access:
@@ -81,6 +98,58 @@ def reader_forbidden(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def historical_forbidden(f):
+    """Блокирует изменяющие действия на замороженном снимке плана
+    (Plan.is_historical — см. create_plan_snapshot в utils/plans.py).
+    Навешивается ПОСЛЕ owner_only (нужен g.current_plan). Снимок остаётся
+    полностью доступен для просмотра по своему собственному token — этот
+    декоратор закрывает только POST/мутирующие роуты."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        current_plan = getattr(g, 'current_plan', None)
+        if current_plan is not None and current_plan.is_historical:
+            message = 'Это архивная версия плана — только для просмотра'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def org_head_forbidden(f):
+    """Блокирует создание/редактирование содержимого плана (показатели,
+    мероприятия, метаданные плана) для руководителя организации — по
+    аналогии с запретом создавать планы (create_plan, views.py):
+    руководитель организации только просматривает, подписывает и
+    отправляет/утверждает, содержимым занимаются исполнитель и
+    руководитель структурного подразделения. Навешивается ПОСЛЕ owner_only
+    там, где он есть (нужен g.current_plan); для роутов без owner_only
+    (id-based — create-indicator/<id> и т.п.) используется не этот
+    декоратор, а инлайн-проверка в самом роуте."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from website.utils.plans import plan_edit_denial, PLAN_EDIT_ROLE_DENIED
+        current_plan = getattr(g, 'current_plan', None)
+        if current_plan is not None:
+            # Роль + состояние плана (на подписи/отправлен/утверждён — ТЗ
+            # п.3.3-3.4), см. plan_edit_lock_reason.
+            message = plan_edit_denial(current_user, current_plan)
+        else:
+            role_ok = (
+                current_user.org_role in ('executor', 'dept_head')
+                and current_user.organization and current_user.organization.is_regular
+            )
+            message = None if role_ok else PLAN_EDIT_ROLE_DENIED
+        if message:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': message}), 403
+            flash(message, 'error')
+            if current_plan is not None:
+                return redirect(url_for('plan_bp.plan_actions', token=current_plan.token))
+            return redirect(url_for('views.plans'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @views.route('/change_language/<lang_code>')
 def change_language(lang_code):
     if lang_code in current_app.config['LANGUAGES']:
@@ -92,9 +161,10 @@ def change_language(lang_code):
 @login_required
 @session_required
 def profile():
-    can_change_modal = True
-    if Plan.query.filter(Plan.user_id == current_user.id).count() > 0:
-        can_change_modal = False
+    # Смена организации в профиле доступна только администратору — обычный
+    # пользователь организацию себе больше не меняет сам (раньше это было
+    # разрешено, пока у него не было ни одного плана).
+    can_change_modal = current_user.is_admin
 
     token, payload = get_or_refresh_session(current_user)
     session_info = build_session_info(current_user, payload)
@@ -104,14 +174,180 @@ def profile():
     session_info['created_at_dt'] = datetime.fromisoformat(session_info['created_at'])
     session_info['expires_at_dt'] = datetime.fromisoformat(session_info['expires_at'])
 
+    # Список коллег по организации видят все роли (исполнитель/рук.
+    # подразделения/рук. организации) — приглашать и удалять может только
+    # руководитель организации (см. can_change_modal и шаблон).
+    org_employees = []
+    if current_user.org_role and current_user.organization_id:
+        org_employees = User.query.filter(
+            User.organization_id == current_user.organization_id,
+            User.application_id == get_current_application_id(),
+            User.id != current_user.id
+        ).order_by(User.begin_time.desc()).all()
+
     response = make_response(render_template('profile.html',
                         can_change_modal=can_change_modal,
                         hide_header=False,
                         current_user=current_user,
                         change_orgUser_modal = True,
-                        session_info = session_info
+                        session_info = session_info,
+                        org_employees = org_employees
                            ))
     return set_session_cookie(response, token)
+
+ORG_ROLE_LABELS = {
+    'executor': 'Исполнитель',
+    'dept_head': 'Руководитель структурного подразделения',
+    'org_head': 'Руководитель организации',
+    'org_head_deputy': 'Заместитель руководителя организации',
+}
+
+ORG_EMPLOYEES_MAX = 7
+# По одному на организацию — остальные роли (dept_head/executor) без лимита
+# по количеству, в пределах общего ORG_EMPLOYEES_MAX.
+ORG_SINGLE_SLOT_ROLES = ('org_head', 'org_head_deputy')
+
+@views.route('/invite-employee', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def invite_employee():
+    # Приглашать/удалять сотрудников может только сам (оригинальный)
+    # руководитель организации — не заместитель, у него те же права везде
+    # в приложении (is_org_manager), кроме управления составом организации.
+    if current_user.org_role != 'org_head':
+        flash('Приглашать сотрудников может только руководитель организации', 'error')
+        return redirect(url_for('views.profile'))
+
+    email = (request.form.get('email') or '').strip()
+    org_role = request.form.get('org_role')
+
+    if not email:
+        flash('Укажите email сотрудника', 'error')
+        return redirect(url_for('views.profile'))
+
+    if org_role not in ORG_ROLE_LABELS:
+        flash('Выберите роль сотрудника', 'error')
+        return redirect(url_for('views.profile'))
+
+    # "Руководитель организации" и "Заместитель руководителя" — максимум один
+    # сотрудник на организацию на каждую роль (в т.ч. сам руководитель:
+    # регистрирующий аккаунт её уже занимает, см. add_param). dept_head/
+    # executor — без ограничения по количеству, в пределах общего лимита.
+    if org_role in ORG_SINGLE_SLOT_ROLES:
+        role_taken = User.query.filter(
+            User.organization_id == current_user.organization_id,
+            User.application_id == get_current_application_id(),
+            User.org_role == org_role
+        ).first()
+        if role_taken:
+            flash(f'Роль «{ORG_ROLE_LABELS[org_role]}» уже занята сотрудником {role_taken.email}', 'error')
+            return redirect(url_for('views.profile'))
+
+    employees_count = User.query.filter(
+        User.organization_id == current_user.organization_id,
+        User.application_id == get_current_application_id(),
+    ).count()
+    if employees_count >= ORG_EMPLOYEES_MAX:
+        flash(f'В организации не может быть больше {ORG_EMPLOYEES_MAX} сотрудников', 'error')
+        return redirect(url_for('views.profile'))
+
+    existing_user = User.query.filter(
+        func.lower(User.email) == func.lower(email),
+        User.application_id == get_current_application_id()
+    ).first()
+    if existing_user:
+        flash('Сотрудник с таким email уже зарегистрирован', 'error')
+        return redirect(url_for('views.profile'))
+
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    token = serializer.dumps(email, salt='password-reset-salt')
+
+    # ФИО/должность/телефон сотрудник вводит сам при первом входе (см.
+    # auth.complete_profile) — организатор задаёт только email и роль,
+    # организация уже привязана (organization_id), шаг её выбора пропускается.
+    employee = User(
+        email=email,
+        organization_id=current_user.organization_id,
+        org_role=org_role,
+        application_id=get_current_application_id(),
+        # Временный непригодный пароль — сотрудник обязательно задаст свой
+        # по ссылке из письма (тот же механизм, что и "забыли пароль").
+        password=generate_password_hash(uuid.uuid4().hex),
+        reset_password_token=token,
+        reset_password_expires=datetime.utcnow() + timedelta(hours=1),
+    )
+    db.session.add(employee)
+    db.session.commit()
+
+    invite_url = url_for('auth.reset_password', token=token, _external=True)
+    send_email(invite_url, email, 'employee_invite')
+
+    flash(f'Приглашение отправлено на {email}', 'success')
+    return redirect(url_for('views.profile'))
+
+def _employee_has_any_data(user_id):
+    """Оставил ли сотрудник в системе хоть что-то (создал план, был
+    исполнителем, писал в тикетах, участвовал в маршруте согласования) —
+    если да, удалять аккаунт нельзя: это сломает ссылки на него в этих
+    записях (Plan.user_id/PlanExecutor.user_id и т.п. — nullable=False)."""
+    from common_models import Plan, PlanExecutor, PlanTicket, PlanApprovalPath
+    if Plan.query.filter(
+        db.or_(
+            Plan.user_id == user_id,
+            Plan.pending_signer_user_id == user_id,
+            Plan.submitted_by_user_id == user_id,
+            Plan.internal_signed_by_user_id == user_id,
+        )
+    ).first():
+        return True
+    if PlanExecutor.query.filter_by(user_id=user_id).first():
+        return True
+    if PlanTicket.query.filter_by(user_id=user_id).first():
+        return True
+    if PlanApprovalPath.query.filter(
+        db.or_(
+            PlanApprovalPath.viewed_by_user_id == user_id,
+            PlanApprovalPath.pending_signer_user_id == user_id,
+            PlanApprovalPath.submitted_by_user_id == user_id,
+            PlanApprovalPath.signed_by_user_id == user_id,
+        )
+    ).first():
+        return True
+    return False
+
+
+@views.route('/remove-employee/<int:user_id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def remove_employee(user_id):
+    """Удаление сотрудника из организации — AJAX. Приглашать/удалять может
+    только сам (оригинальный) руководитель организации, не заместитель.
+    Настоящий DELETE разрешён только если сотрудник ничего не успел
+    сделать в системе (см. _employee_has_any_data) — иначе удаление
+    сломало бы ссылки на него в его же планах/тикетах/подписях."""
+    if current_user.org_role != 'org_head':
+        return jsonify({'success': False, 'error': 'Удалять сотрудников может только руководитель организации'}), 403
+
+    target = User.query.filter(
+        User.id == user_id,
+        User.organization_id == current_user.organization_id,
+        User.application_id == get_current_application_id(),
+    ).first()
+    if not target:
+        return jsonify({'success': False, 'error': 'Сотрудник не найден'}), 404
+
+    if target.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Невозможно удалить самого себя'}), 400
+
+    if _employee_has_any_data(target.id):
+        return jsonify({'success': False, 'error': 'У сотрудника есть данные в системе (планы, подписи, сообщения) — удаление невозможно'}), 400
+
+    db.session.delete(target)
+    db.session.commit()
+
+    return jsonify({'success': True})
 
 @views.route('/profile/edit', methods = ['POST', 'GET'])
 @user_with_all_params()
@@ -126,21 +362,68 @@ def edit_profile():
                             hide_header=False,
                             current_user=current_user)
 
+def can_refresh_org_from_egr(user, org):
+    """Обновлять данные организации из ЕГР может её руководитель (не
+    заместитель — как и управление составом организации) или администратор."""
+    if not org or not user or not user.is_authenticated:
+        return False
+    if user.is_admin:
+        return True
+    return user.organization_id == org.id and user.org_role == 'org_head'
+
+
+@views.route('/organization/<int:org_id>/egr-refresh', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def egr_refresh_organization(org_id):
+    """Кнопка «Обновить из ЕГР» в карточке организации: полное и
+    сокращённое наименование, регион, юридический адрес и состояние
+    (действующая / в ликвидации / ликвидирована / банкротство) по УНП —
+    см. utils/egr.py. Отвечает JSON со списком изменений."""
+    from website.utils.egr import EgrError, fetch_organization, apply_to_organization, STATUS_LABELS
+
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify({'success': False, 'error': 'Организация не найдена'}), 404
+    if not can_refresh_org_from_egr(current_user, org):
+        return jsonify({'success': False, 'error': 'Обновлять данные организации может только её руководитель или администратор'}), 403
+    if not org.ynp:
+        return jsonify({'success': False, 'error': 'У организации не указан УНП — обновить из ЕГР нельзя'}), 400
+
+    try:
+        data = fetch_organization(org.ynp)
+    except EgrError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 502
+
+    changes = apply_to_organization(org, data)
+    db.session.commit()
+    current_app.logger.info(f'EGR refresh org {org.id} (УНП {org.ynp}) by user {current_user.id}: {len(changes)} changes')
+
+    return jsonify({
+        'success': True,
+        'changes': [{'field': f, 'old': o, 'new': n} for f, o, n in changes],
+        'status': org.egr_status,
+        'status_kind': org.egr_status_kind,
+        'status_label': STATUS_LABELS.get(org.egr_status_kind or 'unknown'),
+    })
+
+
 @views.route('/edit-user-org', methods=['POST'])
 @user_with_all_params()
 @login_required
 def edit_user_org():
     try:
+        if not current_user.is_admin:
+            flash('Сменить организацию может только администратор', 'error')
+            return redirect(url_for('views.profile'))
+
         item_id = request.form.get('id_org')
         item_type = request.form.get('item_type', 'organization')
-        
+
         if not item_id:
             flash('Элемент не выбран!', 'error')
             return redirect(request.referrer)
-        
-        if Plan.query.filter(Plan.user_id == current_user.id).count() > 0:
-            flash('У вас существуют планы энергосбережения, редактирование запрещено', 'error')
-            return redirect(url_for('views.profile'))
         
         if item_type == 'organization':
             current_user.plan_type = None
@@ -409,7 +692,7 @@ def news_post(id):
         abort(404)
     
     if post.published_at is None:
-        post.published_at = post.created_at
+        post.published_at = post.created_time
     
     post.views_count = (post.views_count or 0) + 1
     db.session.commit()
@@ -425,6 +708,18 @@ def news_post(id):
 @session_required
 @reader_forbidden
 def create_plan():
+    # Создавать план может только исполнитель/руководитель структурного
+    # подразделения ОБЫЧНОЙ организации-разработчика (Organization.is_regular) —
+    # руководитель организации планы не заводит (подписывает/утверждает),
+    # а согласующая/утверждающая организация без своего is_regular вообще
+    # не готовит планы, даже если у кого-то там org_role='executor'.
+    if not (
+        current_user.org_role in ('executor', 'dept_head')
+        and current_user.organization and current_user.organization.is_regular
+    ):
+        flash('Создавать планы может только исполнитель или руководитель структурного подразделения организации-разработчика', 'error')
+        return redirect(url_for('views.plans'))
+
     if request.method == 'POST':
         year = int(request.form.get('year'))
 
@@ -433,12 +728,12 @@ def create_plan():
             return redirect(url_for('views.create_plan'))
 
         existing_plan = Plan.query.filter_by(
-            user_id=current_user.id,
+            org_id=current_user.organization_id,
             year=year
         ).first()
 
         if existing_plan:
-            flash(f'У вас уже есть план на {year} год!', 'error')
+            flash(f'У вашей организации уже есть план на {year} год!', 'error')
             return redirect(url_for('views.create_plan'))
 
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
@@ -489,10 +784,29 @@ def create_plan():
             saving_fuel=saving_fuel,
             share_energy=share_energy,
             usd_rate=usd_rate_value,
-            cost_per_toe_usd=cost_per_toe_value
+            cost_per_toe_usd=cost_per_toe_value,
         )
-        
+
         db.session.add(new_plan)
+        db.session.commit()
+
+        # Создатель плана — первая запись в списке "Ответственных
+        # исполнителей" (см. PlanExecutor, common-models, максимум 2
+        # человека) — список можно дополнить ещё одним сотрудником
+        # организации позже, со страницы "Действия с планом"
+        # (add_plan_executor/remove_plan_executor в plan_bp.py). Снимок
+        # ФИО/телефона/email делается сразу — используется в "Подписи"
+        # (см. get_plan_executors_summary) и не меняется при последующем
+        # редактировании профиля.
+        developer_name = ' '.join(filter(None, [current_user.last_name, current_user.first_name, current_user.patronymic_name]))
+        db.session.add(PlanExecutor(
+            plan_id=new_plan.id,
+            user_id=current_user.id,
+            added_at=current_utc_time(),
+            developer_name=developer_name or None,
+            developer_phone=current_user.telephone,
+            developer_email=current_user.email,
+        ))
         db.session.commit()
 
         existing_indicators = select(IndicatorUsage.id_indicator).where(
@@ -524,7 +838,11 @@ def create_plan():
     current_time = current_utc_time()
     next_year = current_time.year + 1
 
-    taken_years = [p.year for p in Plan.query.filter_by(user_id=current_user.id).all()]
+    taken_years = [
+        p.year for p in Plan.query.filter_by(
+            org_id=current_user.organization_id, snapshot_of_plan_id=None
+        ).all()
+    ]
 
     # если план на next_year уже есть — предложим первый свободный год после него,
     # чтобы в выпадающем списке по умолчанию не оказался отключённый вариант
@@ -546,6 +864,8 @@ def create_plan():
 @owner_only
 @login_required
 @session_required
+@historical_forbidden
+@org_head_forbidden
 @reader_forbidden
 def edit_plan(token):
     if request.method == 'POST':
@@ -554,7 +874,11 @@ def edit_plan(token):
         if not current_plan:
             flash('План не найден или у вас нет прав для его редактирования', 'error')
             return redirect(url_for('views.plans'))
-        
+
+        if current_plan.pending_signer_user_id:
+            flash('План направлен на подпись — редактирование недоступно', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
         new_year = int(request.form.get('year'))
         old_year = current_plan.year
 
@@ -563,13 +887,14 @@ def edit_plan(token):
             return redirect(url_for('views.edit_plan', token=token))
 
         existing_plan = Plan.query.filter(
-            Plan.user_id == current_user.id,
+            Plan.org_id == current_plan.org_id,
             Plan.year == new_year,
-            Plan.token != token
+            Plan.token != token,
+            Plan.snapshot_of_plan_id.is_(None)
         ).first()
 
         if existing_plan:
-            flash(f'У вас уже есть другой план на {new_year} год!', 'error')
+            flash(f'У вашей организации уже есть другой план на {new_year} год!', 'error')
             return redirect(url_for('views.plans'))
         
         energy_saving = to_decimal_1(request.form.get('energy_saving'))
@@ -602,8 +927,9 @@ def edit_plan(token):
 
         taken_years = [
             p.year for p in Plan.query.filter(
-                Plan.user_id == current_user.id,
-                Plan.token != token
+                Plan.org_id == plan.org_id,
+                Plan.token != token,
+                Plan.snapshot_of_plan_id.is_(None)
             ).all()
         ]
 
@@ -621,10 +947,44 @@ def edit_plan(token):
 @owner_only
 @login_required
 @session_required
+@org_head_forbidden
 @reader_forbidden
 def delete_plan(token):
     try:
         current_plan = g.current_plan
+
+        # Архивную версию нельзя удалить отдельно — только вместе с
+        # "живым" планом, которому она принадлежит (см. ветку ниже).
+        if current_plan.is_historical:
+            flash('Архивную версию нельзя удалить отдельно — она удаляется вместе с оригиналом плана', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
+        if current_plan.pending_signer_user_id:
+            flash('План направлен на подпись — удаление недоступно', 'error')
+            return redirect(url_for('plan_bp.plan_actions', token=token))
+
+        # Удаление "живого" плана удаляет и все его замороженные версии
+        # (snapshot_of_plan_id) — self-referential cascade на Plan не
+        # настроен (см. create_plan_snapshot в utils/plans.py), поэтому
+        # чистим явно. Вместе с версиями удаляются и их подписи/замечания
+        # (PlanApprovalPath/PlanTicket, cascade delete-orphan) — это
+        # единственный случай, когда подписи удаляются.
+        snapshots = Plan.query.filter_by(snapshot_of_plan_id=current_plan.id).all()
+        plan_ids = [current_plan.id] + [s.id for s in snapshots]
+
+        # PlanApprovalPath.ticket_id <-> PlanTicket.approval_path_id — взаимные
+        # FK без post_update: каскадное удаление упиралось бы в цикл,
+        # поэтому сначала разрываем ссылки между ними.
+        from website.models import PlanApprovalPath, PlanTicket
+        PlanApprovalPath.query.filter(PlanApprovalPath.plan_id.in_(plan_ids)).update(
+            {'ticket_id': None}, synchronize_session=False)
+        PlanTicket.query.filter(PlanTicket.plan_id.in_(plan_ids)).update(
+            {'approval_path_id': None}, synchronize_session=False)
+        db.session.flush()
+
+        for snapshot in snapshots:
+            db.session.delete(snapshot)
+
         db.session.delete(current_plan)
         db.session.commit()
         flash('План успешно удален', 'success')
@@ -650,10 +1010,10 @@ def check_plan_year():
         return jsonify({'exists': False})
     
     existing_plan = Plan.query.filter_by(
-        user_id=current_user.id,
+        org_id=current_user.organization_id,
         year=year
-    ).first()   
-        
+    ).first()
+
     return jsonify({'exists': existing_plan is not None})
 
 @views.route('/stats', methods=['GET', 'POST'])
@@ -727,7 +1087,6 @@ def get_ticket_details(ticket_id):
     return jsonify({
         'id': ticket.id,
         'organization': ticket.user.organization.full_name if ticket.user and ticket.user.organization else 'Система',
-        'luck': ticket.luck,
         'note': ticket.note or '',
         'time': ticket.begin_time.strftime('%H:%M') if ticket.begin_time else '--:--',
         'date': ticket.begin_time.strftime('%d %b %Y') if ticket.begin_time else '',
@@ -759,7 +1118,7 @@ def begin_page():
     organization_data = org_query.count()
     organization_growth = org_query.filter(Organization.created_at >= month_ago).count()
 
-    plan_query = Plan.query
+    plan_query = Plan.query.filter(Plan.snapshot_of_plan_id.is_(None))
     plan_data = plan_query.count()
     plan_growth = plan_query.filter(Plan.begin_time >= month_ago).count()
 

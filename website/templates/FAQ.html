@@ -64,7 +64,7 @@
 
           <div class="category-modern">
             <div class="category-header-modern">
-              <h3>Работа с планами</h3>
+              <h3>Разработка плана</h3>
             </div>
             <div class="questions-list-modern">
               <a href="#create-plan" class="question-link-modern">
@@ -79,14 +79,25 @@
               <a href="#plan-control-send" class="question-link-modern">
                 Контроль и отправка плана
               </a>
-              <a href="#audit-data" class="question-link-modern">
-                Согласование планов
-              </a>
               <a href="#export" class="question-link-modern">
                 Экспорт плана
               </a>
               <a href="#plans" class="question-link-modern">
                 Виды планов
+              </a>
+            </div>
+          </div>
+
+          <div class="category-modern">
+            <div class="category-header-modern">
+              <h3>Согласование плана</h3>
+            </div>
+            <div class="questions-list-modern">
+              <a href="#audit-data" class="question-link-modern">
+                Согласование планов
+              </a>
+              <a href="#approval-route" class="question-link-modern">
+                Путь согласования
               </a>
             </div>
           </div>
@@ -688,11 +699,229 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#plan-control-send" class="nav-btn prev">
+              <a href="#plans" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#export" class="nav-btn next">
+              <a href="#approval-route" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        {#  Путь согласования — кто, где и в каком порядке проверяет план.
+            Диаграмма — встроенный SVG (стили .rd-* в faq.css), на белом фоне. #}
+        <article class="answer-active-modern" id="approval-route">
+          <div class="answer-header-modern">
+            <h1 class="answer-title-modern">Путь согласования плана</h1>
+          </div>
+          <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>
+                После подписи план по очереди проходит организации маршрута:
+                <strong>региональное управление</strong> (добавляется автоматически) →
+                выбранные <strong>согласующие организации</strong> →
+                <strong>Департамент по энергоэффективности</strong> (автоматически, если потребление ТЭР от 25 тыс. т у.т.) →
+                <strong>утверждающая организация</strong>. Внутри каждой организации план проверяют её сотрудники — на схеме показано, кто и что может сделать.
+              </p>
+            </div>
+
+            <figure class="faq-route-diagram">
+              <svg viewBox="0 0 680 1290" role="img" aria-labelledby="rdTitle rdDesc">
+                <title id="rdTitle">Путь согласования плана</title>
+                <desc id="rdDesc">Организация-разработчик готовит и подписывает план, согласующие организации по очереди выносят решение, утверждающая организация утверждает план.</desc>
+                <defs>
+                  <marker id="rdArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0 0L10 5L0 10z" fill="#8a94a3" />
+                  </marker>
+                  <marker id="rdArrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0 0L10 5L0 10z" fill="#d14343" />
+                  </marker>
+                </defs>
+
+                <!-- рамки разделов — первыми, чтобы их фон не закрывал стрелки между разделами -->
+                <rect class="rd-frame" x="10" y="10" width="660" height="290" rx="14" />
+                <rect class="rd-frame" x="10" y="340" width="660" height="440" rx="14" />
+                <rect class="rd-frame" x="10" y="800" width="660" height="420" rx="14" />
+
+                <!-- ===== 1. Организация-разработчик ===== -->
+                <text class="rd-section" x="28" y="34">1. Организация-разработчик</text>
+
+                <g class="rd-node rd-error">
+                  <rect x="30" y="60" width="160" height="56" rx="10" />
+                  <text class="rd-t" x="110" y="82">Есть ошибки</text>
+                  <text class="rd-s" x="110" y="100">Новая версия плана</text>
+                </g>
+                <g class="rd-node rd-plain">
+                  <rect x="220" y="60" width="300" height="56" rx="10" />
+                  <text class="rd-t" x="370" y="82">Подготовка плана</text>
+                  <text class="rd-s" x="370" y="100">Исполнитель или рук. подразделения</text>
+                </g>
+                <g class="rd-node rd-dev">
+                  <rect x="50" y="170" width="240" height="60" rx="10" />
+                  <text class="rd-t" x="170" y="194">Рук. подразделения</text>
+                  <text class="rd-s" x="170" y="213">Подписать / направить / вернуть</text>
+                </g>
+                <g class="rd-node rd-dev">
+                  <rect x="390" y="170" width="240" height="60" rx="10" />
+                  <text class="rd-t" x="510" y="194">Рук. орг. / заместитель</text>
+                  <text class="rd-s" x="510" y="213">Подписать / вернуть</text>
+                </g>
+
+                <path class="rd-line" d="M190 88H216" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M370 116V140M170 140H510" />
+                <path class="rd-line" d="M170 140V166" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M510 140V166" marker-end="url(#rdArrow)" />
+                <path class="rd-dash" d="M290 200H386" marker-end="url(#rdArrow)" />
+                <path class="rd-ret" d="M90 170V120" marker-end="url(#rdArrowRed)" />
+                <path class="rd-ret" d="M630 200H652V46H110V56" marker-end="url(#rdArrowRed)" />
+
+                <path class="rd-line" d="M170 230V320M510 230V320M170 320H510M340 320V386" marker-end="url(#rdArrow)" />
+                <text class="rd-label" x="180" y="262">Подпись ЭЦП</text>
+                <text class="rd-label" x="520" y="262">Подпись ЭЦП</text>
+
+                <!-- ===== 2. Согласующая организация ===== -->
+                <text class="rd-section" x="28" y="364">2. Согласующая организация</text>
+                <text class="rd-note" x="356" y="380">Каждая организация маршрута — по очереди</text>
+
+                <g class="rd-node rd-plain">
+                  <rect x="190" y="390" width="300" height="60" rx="10" />
+                  <text class="rd-t" x="340" y="414">Исполнитель</text>
+                  <text class="rd-s" x="340" y="433">«Согласовать» или «Не согласовать»</text>
+                </g>
+                <g class="rd-node rd-coord">
+                  <rect x="50" y="500" width="240" height="60" rx="10" />
+                  <text class="rd-t" x="170" y="524">Рук. подразделения</text>
+                  <text class="rd-s" x="170" y="543">Подписывает или направляет</text>
+                </g>
+                <g class="rd-node rd-coord">
+                  <rect x="390" y="500" width="240" height="60" rx="10" />
+                  <text class="rd-t" x="510" y="524">Рук. организации</text>
+                  <text class="rd-s" x="510" y="543">Подписывает решение</text>
+                </g>
+
+                <path class="rd-line" d="M340 450V474M170 474H510" />
+                <path class="rd-line" d="M170 474V496" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M510 474V496" marker-end="url(#rdArrow)" />
+                <path class="rd-dash" d="M290 530H386" marker-end="url(#rdArrow)" />
+                <path class="rd-ret" d="M50 530H28V420H186" marker-end="url(#rdArrowRed)" />
+                <path class="rd-ret" d="M630 530H652V420H494" marker-end="url(#rdArrowRed)" />
+
+                <g class="rd-node rd-plain">
+                  <rect x="200" y="600" width="280" height="48" rx="10" />
+                  <text class="rd-t" x="340" y="628">Решение подписано</text>
+                </g>
+                <path class="rd-line" d="M170 560V624H196" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M510 560V624H484" marker-end="url(#rdArrow)" />
+                <text class="rd-label" x="180" y="588">Подпись ЭЦП</text>
+                <text class="rd-label" x="520" y="588">Подпись ЭЦП</text>
+
+                <g class="rd-node rd-error">
+                  <rect x="40" y="700" width="240" height="56" rx="10" />
+                  <text class="rd-t" x="160" y="722">«Не согласован»</text>
+                  <text class="rd-s" x="160" y="740">План возвращается разработчику</text>
+                </g>
+                <path class="rd-line" d="M340 648V672H160V696" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M340 672H560V846" marker-end="url(#rdArrow)" />
+                <text class="rd-label rd-label-end" x="552" y="700">«Согласован»</text>
+                <text class="rd-label rd-label-end" x="552" y="716">дальше по маршруту</text>
+
+                <!-- ===== 3. Утверждающая организация ===== -->
+                <text class="rd-section" x="28" y="824">3. Утверждающая организация</text>
+
+                <g class="rd-node rd-plain">
+                  <rect x="380" y="850" width="270" height="56" rx="10" />
+                  <text class="rd-t" x="515" y="872">План создан этой организацией?</text>
+                  <text class="rd-s" x="515" y="890">Разработчик = утверждающая</text>
+                </g>
+                <path class="rd-line" d="M515 906V930H170V956" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M515 930V1046" marker-end="url(#rdArrow)" />
+                <text class="rd-label" x="330" y="922">Нет</text>
+                <text class="rd-label" x="525" y="990">Да</text>
+
+                <g class="rd-node rd-appr">
+                  <rect x="50" y="960" width="240" height="56" rx="10" />
+                  <text class="rd-t" x="170" y="982">Исполнитель</text>
+                  <text class="rd-s" x="170" y="1000">Проверяет и направляет</text>
+                </g>
+                <g class="rd-node rd-appr">
+                  <rect x="50" y="1050" width="240" height="56" rx="10" />
+                  <text class="rd-t" x="170" y="1072">Рук. подразделения</text>
+                  <text class="rd-s" x="170" y="1090">Только направляет</text>
+                </g>
+                <g class="rd-node rd-appr">
+                  <rect x="380" y="1050" width="270" height="56" rx="10" />
+                  <text class="rd-t" x="515" y="1072">Рук. организации / заместитель</text>
+                  <text class="rd-s" x="515" y="1090">Только «Одобрить»</text>
+                </g>
+                <path class="rd-dash" d="M170 1016V1046" marker-end="url(#rdArrow)" />
+                <path class="rd-dash" d="M290 1078H376" marker-end="url(#rdArrow)" />
+                <path class="rd-dash" d="M290 988H440V1046" marker-end="url(#rdArrow)" />
+
+                <g class="rd-node rd-done">
+                  <rect x="380" y="1150" width="270" height="50" rx="10" />
+                  <text class="rd-t" x="515" y="1170">План утверждён</text>
+                  <text class="rd-s" x="515" y="1187">Маршрут завершён</text>
+                </g>
+                <path class="rd-line" d="M515 1106V1146" marker-end="url(#rdArrow)" />
+                <text class="rd-label" x="525" y="1131">Подпись ЭЦП</text>
+
+                <!-- ===== Обозначения ===== -->
+                <path class="rd-line" d="M30 1250H70" marker-end="url(#rdArrow)" />
+                <text class="rd-legend" x="80" y="1254">Основной путь</text>
+                <path class="rd-dash" d="M230 1250H270" marker-end="url(#rdArrow)" />
+                <text class="rd-legend" x="280" y="1254">Направить без подписи</text>
+                <path class="rd-ret" d="M460 1250H500" marker-end="url(#rdArrowRed)" />
+                <text class="rd-legend" x="510" y="1254">Вернуть с пояснением</text>
+              </svg>
+            </figure>
+
+            <div class="steps-container">
+              <div class="step-item">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <h4>Организация-разработчик</h4>
+                  <p>
+                    Исполнитель или руководитель структурного подразделения готовит план и направляет его на подпись. Руководитель подразделения может подписать сам, направить руководителю организации или вернуть на доработку. Руководитель организации (или заместитель) подписывает план ЭЦП — и он уходит по маршруту.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <h4>Согласующие организации</h4>
+                  <p>
+                    План сначала рассматривает исполнитель и выбирает «Согласовать» или «Не согласовать» (с текстом ошибки и файлом). Решение подписывает ЭЦП руководитель подразделения или руководитель организации — он может и вернуть решение исполнителю с пояснением. Сам руководитель организации решение первым не выносит: ему его направляют сотрудники.
+                  </p>
+                </div>
+              </div>
+              <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Утверждающая организация</h4>
+                  <p>
+                    Если план создан другой организацией, исполнитель проверяет его и направляет дальше, руководитель подразделения только передаёт, а руководитель организации (или заместитель) нажимает «Одобрить» и подписывает ЭЦП. Если план создан самой утверждающей организацией — его сразу утверждает её руководитель.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout callout--warning">
+              <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+              <div class="callout-body">
+                <p class="callout-title">Если нашли ошибки</p>
+                <p>План с решением «Не согласован» возвращается разработчику: создаётся его новая версия для исправления, а вся история подписей остаётся на вкладке «Подписи». После исправления план снова проходит весь маршрут с начала.</p>
+              </div>
+            </div>
+
+            <div class="answer-navigation">
+              <a href="#audit-data" class="nav-btn prev">
+                {{ icons.back_icon() }}
+                <span>Предыдущий вопрос</span>
+              </a>
+              <a href="#ecp-obtain" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -784,7 +1013,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#audit-data" class="nav-btn prev">
+              <a href="#plan-control-send" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
@@ -910,7 +1139,7 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#difference-calculation" class="nav-btn next">
+              <a href="#audit-data" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -1865,7 +2094,7 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <a href="#ecp-obtain" class="nav-btn next">
+              <a href="#export" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -1946,7 +2175,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#plan-control-send" class="nav-btn prev">
+              <a href="#approval-route" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
