@@ -122,6 +122,9 @@ def create_app():
         # таймаут, чтобы недоступный ЕГР не задерживал подпись.
         EGR_CHECK_ON_SEND=os.getenv('EGR_CHECK_ON_SEND', 'true').lower() in ('1', 'true', 'yes'),
         EGR_SEND_TIMEOUT=float(os.getenv('EGR_SEND_TIMEOUT', 5)),
+        # Тёмная тема временно выключена: переключателя нет, сохранённый
+        # выбор игнорируется — всегда светлая. Вернуть: DARK_THEME_ENABLED=true.
+        DARK_THEME_ENABLED=os.getenv('DARK_THEME_ENABLED', 'false').lower() in ('1', 'true', 'yes'),
     )
     app.config['TEO_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'teo')
     app.config['TICKET_ATTACHMENT_UPLOAD_FOLDER'] = os.path.join(app.config['ATTACHMENTS_UPLOAD_FOLDER'], 'tickets')
@@ -178,6 +181,8 @@ def create_app():
     app.register_blueprint(admin_support_bp, url_prefix='/admin/support-chats')
     from .routes.admin_org import admin_org_bp
     app.register_blueprint(admin_org_bp, url_prefix='/admin/org-by-unp')
+    from .routes.admin_test_users import admin_test_users_bp
+    app.register_blueprint(admin_test_users_bp, url_prefix='/admin/test-users')
 
     common_templates = str(files('common_models') / 'templates')
 

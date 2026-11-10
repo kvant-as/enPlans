@@ -1,10 +1,14 @@
-/* Страница «Отправка плана на рассмотрение» — перенесена сюда из модального
- * окна (раньше SendModalPreview в plan.js). Логика шагов 1-2 (выбор
- * согласующих/утверждающего) и предпросмотра пути согласования перенесена
- * почти без изменений; добавлен отдельный шаг предпросмотра (3) перед
- * шагом проверки ЭЦП (4) — сама проверка там сейчас чисто демонстрационная
- * (см. EcpMockModal, static/js/ecp-mock-modal.js), реальной серверной
- * валидации пока нет (функция в разработке).
+/* Страница «Путь согласования» (plan_send.html) — один экран без шагов.
+ *
+ * Слева — выбор организаций (вкладки «Утверждающая» / «Согласующие»).
+ * Справа — панель: маршрут плана, который собирается по мере выбора
+ * (renderRoute): региональное управление (всегда первое, автоматически) →
+ * отмеченные согласующие (порядок можно менять) → Департамент по
+ * энергоэффективности (если план проходит порог) → утверждающая; под ним —
+ * «Кто подпишет» (выбор руководителя) и «Отправить на подпись».
+ *
+ * Порядок согласующих = порядок ключей selectedCoordinators (Map) — именно
+ * в нём id уходят на сервер в coordinator_ids.
  */
 class PlanSendWizard {
     constructor(rootId) {
@@ -14,40 +18,26 @@ class PlanSendWizard {
             return;
         }
 
-        this.progressBar = this.root.querySelector('#modal-progress-bar');
-        this.stepEls = Array.from(this.root.querySelectorAll('[id^="step"]'))
-            .filter(el => /^step\d+$/.test(el.id))
-            .sort((a, b) => parseInt(a.id.slice(4), 10) - parseInt(b.id.slice(4), 10));
-
-        this.totalSteps = this.stepEls.length || 1;
-        this.currentStep = 1;
-
-        this.stepperDots = Array.from(document.querySelectorAll('#planSendStepper .plan-send-step-dot'));
-
         this.selectedCoordinators = new Map();
         this.selectedApprover = null;
+        this.selectedApproverName = '';
 
         this.coordinatorSearch = this.root.querySelector('#coordinator-search');
         this.approverSearch = this.root.querySelector('#approver-search');
         this.coordinatorTbody = this.root.querySelector('#coordinator-tbody');
         this.approverTbody = this.root.querySelector('#approver-tbody');
-        this.selectedCoordinatorsContainer = this.root.querySelector('#selected-coordinators');
-        this.selectedApproverContainer = this.root.querySelector('#selected-approver');
         this.coordinatorIdsInput = this.root.querySelector('#coordinator-ids-input');
         this.approverIdInput = this.root.querySelector('#approver-id-input');
         this.coordinatorCount = this.root.querySelector('#coordinator-count');
         this.approverCount = this.root.querySelector('#approver-count');
-        this.approvalSliderContainer = this.root.querySelector('#approval-slider-container');
 
-        this.buttons = {
-            step1Next: this.root.querySelector('#step1-next-btn'),
-            step2Back: this.root.querySelector('#step2-back-btn'),
-            step2Next: this.root.querySelector('#step2-next-btn'),
-            step3Back: this.root.querySelector('#step3-back-btn'),
-            step3Next: this.root.querySelector('#step3-next-btn'),
-            step4Back: this.root.querySelector('#step4-back-btn'),
-        };
+        this.tabs = Array.from(this.root.querySelectorAll('.ps-tab'));
+        this.pickerPanels = Array.from(this.root.querySelectorAll('[data-picker-panel]'));
 
+        this.routeEl = this.root.querySelector('#ps-route');
+        this.routeList = this.root.querySelector('#ps-route-list');
+        this.routeNote = this.root.querySelector('#ps-route-note');
+        this.signerSelect = this.root.querySelector('#signer-select');
         this.submitButton = this.root.querySelector('#submit-sent-button');
 
         this.coordinatorPage = 1;
@@ -61,6 +51,7 @@ class PlanSendWizard {
         this.coordinatorSearchTimeout = null;
         this.approverSearchTimeout = null;
 
+        // Изначально без сортировки — на кнопке «Сортировка».
         this.coordinatorSort = { field: null, dir: 'asc' };
         this.approverSort = { field: null, dir: 'asc' };
 
@@ -76,47 +67,153 @@ class PlanSendWizard {
         };
 
         this.init();
-        this.updateButtonsState();
-        this.updateStepper();
     }
 
     init() {
+        this.initPrefill();
         this.loadCoordinators();
         this.loadApprovers();
+        this.initTabs();
         this.initSearch();
         this.initNavigation();
         this.initScrollLoading();
-        this.initSliderDrag();
         this.initSort();
+        this.updateCounts();
+        this.renderRoute();
         this.updateButtonsState();
     }
 
-    initSort() {
-        this.initPickerSort(this.root.querySelector('#step1 .org-picker-toolbar'), this.coordinatorSort, () => this.loadCoordinators(true));
-        this.initPickerSort(this.root.querySelector('#step2 .org-picker-toolbar'), this.approverSort, () => this.loadApprovers(true));
+    /* ---------- вкладки «Согласующие» / «Утверждающая» ---------- */
+
+    initTabs() {
+        this.tabs.forEach((tab) => {
+            tab.addEventListener('click', () => this.showPicker(tab.dataset.picker));
+        });
     }
 
-    // Панель "Сортировать: По названию / По УНП" над списком — раньше это
-    // были кликабельные заголовки таблицы, теперь список организаций не
-    // таблица, а карточки (см. renderOrganizations), поэтому сортировка
-    // вынесена в отдельную панель кнопок.
-    initPickerSort(toolbar, sortState, reload) {
-        if (!toolbar) return;
-        const buttons = Array.from(toolbar.querySelectorAll('.org-picker-sort-btn'));
+    showPicker(kind, focusSearch = false) {
+        this.tabs.forEach((tab) => {
+            const active = tab.dataset.picker === kind;
+            tab.classList.toggle('is-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        this.pickerPanels.forEach((panel) => {
+            panel.hidden = panel.dataset.pickerPanel !== kind;
+        });
+        if (focusSearch) {
+            (kind === 'approver' ? this.approverSearch : this.coordinatorSearch)?.focus();
+        }
+        // список только что стал видимым — догрузить, если он короче окна
+        if (kind === 'approver') {
+            this.fillIfShort(this.approverTbody, () => this.approverHasMore && !this.approverLoading, () => this.loadApprovers(false));
+        } else {
+            this.fillIfShort(this.coordinatorTbody, () => this.coordinatorHasMore && !this.coordinatorLoading, () => this.loadCoordinators(false));
+        }
+    }
 
-        buttons.forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const field = btn.dataset.field;
-                const direction = sortState.field === field && sortState.dir === 'asc' ? 'desc' : 'asc';
-                sortState.field = field;
-                sortState.dir = direction;
+    /* ---------- маршрут прошлого раза ---------- */
 
-                buttons.forEach((b) => b.classList.remove('org-picker-sort-btn--active', 'org-picker-sort-btn--desc'));
-                btn.classList.add('org-picker-sort-btn--active');
-                if (direction === 'desc') btn.classList.add('org-picker-sort-btn--desc');
+    // window.previousRoute (plan_bp._previous_route): kind 'this' — этот
+    // же план уже отправляли, маршрут подставляется сразу; 'previous' —
+    // маршрут другого плана организации, подставляется по кнопке.
+    initPrefill() {
+        const route = window.previousRoute;
+        const box = this.root.querySelector('#ps-prefill');
+        if (!route || !box) return;
+        const text = box.querySelector('#ps-prefill-text');
 
-                reload();
+        if (route.kind === 'this') this.applyRoute(route, false);
+
+        box.querySelector('#ps-prefill-apply')?.addEventListener('click', (e) => {
+            this.applyRoute(route);
+            if (text) text.textContent = `Маршрут из плана на ${route.year} год подставлен. Его можно изменить.`;
+            e.currentTarget.remove();
+        });
+        box.querySelector('#ps-prefill-clear')?.addEventListener('click', () => {
+            this.applyRoute(null);
+            box.remove();
+        });
+    }
+
+    applyRoute(route, render = true) {
+        this.selectedCoordinators = new Map((route?.coordinators || []).map((c) => [String(c.id), c.name]));
+        this.selectedApprover = route?.approver ? String(route.approver.id) : null;
+        this.selectedApproverName = route?.approver ? route.approver.name : '';
+        this.syncCheckboxes();
+        if (render) this.onSelectionChange();
+    }
+
+    // Отметки в уже загруженных списках — по текущему выбору.
+    syncCheckboxes() {
+        this.coordinatorTbody?.querySelectorAll('.org-picker-row').forEach((row) => {
+            const on = this.selectedCoordinators.has(String(row.dataset.id));
+            const cb = row.querySelector('.coordinator-checkbox');
+            if (cb) cb.checked = on;
+            row.classList.toggle('active-row', on);
+        });
+        this.approverTbody?.querySelectorAll('.org-picker-row').forEach((row) => {
+            const on = this.selectedApprover === String(row.dataset.id);
+            const cb = row.querySelector('.approver-checkbox');
+            if (cb) cb.checked = on;
+            row.classList.toggle('active-row', on);
+        });
+    }
+
+    /* ---------- сортировка ---------- */
+
+    // Выпадающий список «Сортировка» (.custom-dropdown, как фильтры в
+    // списке планов; позиционирование меню — base.js). Пункт «Без
+    // сортировки» возвращает подпись «Сортировка».
+    initSort() {
+        const dropdowns = Array.from(this.root.querySelectorAll('.ps-sort'));
+        const close = (dd) => {
+            dd.classList.remove('active');
+            dd.querySelector('.dropdown-toggle')?.setAttribute('aria-expanded', 'false');
+        };
+
+        dropdowns.forEach((dd) => {
+            const toggle = dd.querySelector('.dropdown-toggle');
+            const label = dd.querySelector('.selected-option');
+            const items = Array.from(dd.querySelectorAll('.dropdown-item'));
+            const isApprover = dd.dataset.sortFor === 'approver';
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = !dd.classList.contains('active');
+                dropdowns.forEach(close);
+                if (open) {
+                    dd.classList.add('active');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    (items.find((i) => i.classList.contains('is-selected')) || items[0])?.focus();
+                }
             });
+
+            items.forEach((item, idx) => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const field = item.dataset.value || null;
+                    const state = isApprover ? this.approverSort : this.coordinatorSort;
+                    items.forEach((i) => i.classList.toggle('is-selected', i === item && !!field));
+                    label.textContent = field ? item.textContent.trim() : label.dataset.placeholder;
+                    dd.classList.toggle('has-value', !!field);
+                    close(dd);
+                    toggle.focus();
+                    if (state.field === field) return;
+                    state.field = field;
+                    state.dir = 'asc';
+                    if (isApprover) this.loadApprovers(true);
+                    else this.loadCoordinators(true);
+                });
+                item.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(idx + 1, items.length - 1)].focus(); }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(idx - 1, 0)].focus(); }
+                    if (e.key === 'Escape') { close(dd); toggle.focus(); }
+                });
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            dropdowns.forEach((dd) => { if (!dd.contains(e.target)) close(dd); });
         });
     }
 
@@ -124,6 +221,8 @@ class PlanSendWizard {
         if (!sortState || !sortState.field) return '';
         return `&sort=${encodeURIComponent(sortState.field)}&order=${sortState.dir}`;
     }
+
+    /* ---------- загрузка списков ---------- */
 
     async loadCoordinators(reset = true) {
         if (this.coordinatorLoading) return;
@@ -148,14 +247,11 @@ class PlanSendWizard {
             const response = await fetch(url);
             const data = await response.json();
 
+            this.removeLoading(this.coordinatorTbody);
             if (data.error) {
                 console.error('Error loading coordinators:', data.error);
-                this.coordinatorLoading = false;
-                this.removeLoading(this.coordinatorTbody);
                 return;
             }
-
-            this.removeLoading(this.coordinatorTbody);
 
             if (data.organizations && data.organizations.length > 0) {
                 this.renderOrganizations(this.coordinatorTbody, data.organizations, 'coordinator');
@@ -171,6 +267,7 @@ class PlanSendWizard {
         } finally {
             this.coordinatorLoading = false;
         }
+        this.fillIfShort(this.coordinatorTbody, () => this.coordinatorHasMore, () => this.loadCoordinators(false));
     }
 
     async loadApprovers(reset = true) {
@@ -196,14 +293,11 @@ class PlanSendWizard {
             const response = await fetch(url);
             const data = await response.json();
 
+            this.removeLoading(this.approverTbody);
             if (data.error) {
                 console.error('Error loading approvers:', data.error);
-                this.approverLoading = false;
-                this.removeLoading(this.approverTbody);
                 return;
             }
-
-            this.removeLoading(this.approverTbody);
 
             if (data.organizations && data.organizations.length > 0) {
                 this.renderOrganizations(this.approverTbody, data.organizations, 'approver');
@@ -219,20 +313,28 @@ class PlanSendWizard {
         } finally {
             this.approverLoading = false;
         }
+        this.fillIfShort(this.approverTbody, () => this.approverHasMore, () => this.loadApprovers(false));
     }
 
-    renderOrganizations(tbody, organizations, type) {
-        if (!tbody) return;
-        if (!organizations || organizations.length === 0) return;
+    // Список теперь по высоте содержимого (до --ps-list-max): если порция
+    // поместилась без прокрутки, событие scroll не случится и остальные
+    // организации не подгрузятся — дозагружаем, пока список не заполнится.
+    // Скрытая вкладка (offsetParent === null) не меряется — догрузится при
+    // прокрутке после переключения.
+    fillIfShort(list, hasMore, load) {
+        if (!list || list.offsetParent === null || !hasMore()) return;
+        if (list.scrollHeight <= list.clientHeight + 4) load();
+    }
+
+    renderOrganizations(list, organizations, type) {
+        if (!list || !organizations || organizations.length === 0) return;
 
         organizations.forEach(org => {
             const isCoordinator = type === 'coordinator';
             const checkboxType = isCoordinator ? 'coordinator-checkbox' : 'approver-checkbox';
             const isChecked = isCoordinator ? this.selectedCoordinators.has(String(org.id)) : this.selectedApprover === String(org.id);
 
-            // <label> оборачивает чекбокс — клик по всей карточке уже
-            // переключает выбор нативно, без ручной обработки клика мимо
-            // инпута (как было раньше с <tr>).
+            // <label> оборачивает чекбокс — клик по всей строке переключает выбор.
             const row = document.createElement('label');
             row.className = 'org-picker-row';
             row.dataset.id = org.id;
@@ -251,7 +353,7 @@ class PlanSendWizard {
             `;
 
             if (isChecked) row.classList.add('active-row');
-            tbody.appendChild(row);
+            list.appendChild(row);
 
             if (isCoordinator) {
                 this.initCoordinatorRow(row, row.querySelector('.coordinator-checkbox'));
@@ -263,32 +365,23 @@ class PlanSendWizard {
 
     initCoordinatorRow(row, checkbox) {
         if (!checkbox) return;
-
         checkbox.addEventListener('change', (e) => {
             const id = e.target.value;
-            const name = e.target.dataset.name;
             if (e.target.checked) {
-                this.selectedCoordinators.set(id, name);
+                this.selectedCoordinators.set(id, e.target.dataset.name);
                 row.classList.add('active-row');
             } else {
                 this.selectedCoordinators.delete(id);
                 row.classList.remove('active-row');
             }
-            this.updateSelectedCoordinators();
-            this.updateButtonsState();
-            this.updateApprovalPath();
+            this.onSelectionChange();
         });
     }
 
     initApproverRow(row, checkbox) {
         if (!checkbox) return;
-
-        // Чекбокс визуально выглядит как радио (org-picker-list--radio,
-        // см. CSS) — переключаем в change остальные, чтобы фактически
-        // работал как единственный выбор.
+        // Визуально радио (org-picker-list--radio) — снимаем остальные.
         checkbox.addEventListener('change', (e) => {
-            const id = e.target.value;
-
             if (e.target.checked) {
                 this.approverTbody.querySelectorAll('.org-picker-row').forEach(r => {
                     const cb = r.querySelector('.approver-checkbox');
@@ -297,17 +390,32 @@ class PlanSendWizard {
                         r.classList.remove('active-row');
                     }
                 });
-                this.selectedApprover = id;
+                this.selectedApprover = e.target.value;
+                this.selectedApproverName = e.target.dataset.name;
                 row.classList.add('active-row');
             } else {
                 this.selectedApprover = null;
+                this.selectedApproverName = '';
                 row.classList.remove('active-row');
             }
-
-            this.updateSelectedApprover();
-            this.updateButtonsState();
-            this.updateApprovalPath();
+            this.onSelectionChange();
         });
+    }
+
+    onSelectionChange() {
+        this.updateCounts();
+        this.renderRoute();
+        this.updateButtonsState();
+    }
+
+    updateCounts() {
+        const setCount = (el, n) => {
+            if (!el) return;
+            el.textContent = n;
+            el.classList.toggle('is-zero', n === 0);
+        };
+        setCount(this.coordinatorCount, this.selectedCoordinators.size);
+        setCount(this.approverCount, this.selectedApprover ? 1 : 0);
     }
 
     showLoading(list) {
@@ -323,15 +431,11 @@ class PlanSendWizard {
     }
 
     removeLoading(list) {
-        if (!list) return;
-        const loadingRow = list.querySelector('.org-picker-loading-row');
-        if (loadingRow) loadingRow.remove();
+        list?.querySelector('.org-picker-loading-row')?.remove();
     }
 
     showEmptyMessage(list) {
-        if (!list) return;
-        if (list.querySelector('.org-picker-empty-row')) return;
-
+        if (!list || list.querySelector('.org-picker-empty-row')) return;
         const row = document.createElement('div');
         row.className = 'org-picker-empty-row';
         row.innerHTML = `
@@ -340,148 +444,201 @@ class PlanSendWizard {
                 <line x1="15.5" y1="15.5" x2="21" y2="21"></line>
                 <line x1="8" y1="10.5" x2="13" y2="10.5"></line>
             </svg>
-            <span>Организация не найдена</span>
+            <span>Организация не найдена. Проверьте название или введите УНП.</span>
         `;
         list.appendChild(row);
     }
 
     initScrollLoading() {
-        if (this.coordinatorTbody) {
-            this.coordinatorTbody.addEventListener('scroll', (e) => {
+        const bind = (list, isLoading, hasMore, load) => {
+            list?.addEventListener('scroll', (e) => {
                 const c = e.target;
-                if (c.scrollTop + c.clientHeight >= c.scrollHeight - 50 && !this.coordinatorLoading && this.coordinatorHasMore) {
-                    this.loadCoordinators(false);
-                }
+                if (c.scrollTop + c.clientHeight >= c.scrollHeight - 50 && !isLoading() && hasMore()) load();
             });
-        }
-
-        if (this.approverTbody) {
-            this.approverTbody.addEventListener('scroll', (e) => {
-                const c = e.target;
-                if (c.scrollTop + c.clientHeight >= c.scrollHeight - 50 && !this.approverLoading && this.approverHasMore) {
-                    this.loadApprovers(false);
-                }
-            });
-        }
-    }
-
-    initSliderDrag() {
-        const container = this.approvalSliderContainer;
-        if (!container) return;
-
-        let isDown = false;
-        let startX = 0;
-        let scrollLeft = 0;
-
-        container.addEventListener('mousedown', (e) => {
-            isDown = true;
-            container.style.cursor = 'grabbing';
-            startX = e.pageX - container.offsetLeft;
-            scrollLeft = container.scrollLeft;
-            container.style.userSelect = 'none';
-        });
-
-        container.addEventListener('mouseleave', () => {
-            if (isDown) {
-                isDown = false;
-                container.style.cursor = 'grab';
-                container.style.userSelect = '';
-            }
-        });
-
-        container.addEventListener('mouseup', () => {
-            isDown = false;
-            container.style.cursor = 'grab';
-            container.style.userSelect = '';
-        });
-
-        container.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX - container.offsetLeft;
-            const walk = (x - startX) * 1.5;
-            container.scrollLeft = scrollLeft - walk;
-        });
-
-        let touchStartX = 0;
-        let touchScrollLeft = 0;
-
-        container.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].pageX - container.offsetLeft;
-            touchScrollLeft = container.scrollLeft;
-        });
-
-        container.addEventListener('touchmove', (e) => {
-            const x = e.touches[0].pageX - container.offsetLeft;
-            const walk = (x - touchStartX) * 1.5;
-            container.scrollLeft = touchScrollLeft - walk;
-        });
+        };
+        bind(this.coordinatorTbody, () => this.coordinatorLoading, () => this.coordinatorHasMore, () => this.loadCoordinators(false));
+        bind(this.approverTbody, () => this.approverLoading, () => this.approverHasMore, () => this.loadApprovers(false));
     }
 
     initSearch() {
-        if (this.coordinatorSearch) {
-            this.coordinatorSearch.addEventListener('input', (e) => {
-                clearTimeout(this.coordinatorSearchTimeout);
-                this.coordinatorSearchTimeout = setTimeout(() => {
-                    const newQuery = e.target.value.trim();
-                    if (newQuery !== this.coordinatorSearchQuery) {
-                        this.coordinatorSearchQuery = newQuery;
-                        this.coordinatorHasMore = true;
-                        this.loadCoordinators(true);
-                    }
-                }, 300);
+        this.coordinatorSearch?.addEventListener('input', (e) => {
+            clearTimeout(this.coordinatorSearchTimeout);
+            this.coordinatorSearchTimeout = setTimeout(() => {
+                const q = e.target.value.trim();
+                if (q !== this.coordinatorSearchQuery) {
+                    this.coordinatorSearchQuery = q;
+                    this.loadCoordinators(true);
+                }
+            }, 300);
+        });
+
+        this.approverSearch?.addEventListener('input', (e) => {
+            clearTimeout(this.approverSearchTimeout);
+            this.approverSearchTimeout = setTimeout(() => {
+                const q = e.target.value.trim();
+                if (q !== this.approverSearchQuery) {
+                    this.approverSearchQuery = q;
+                    this.loadApprovers(true);
+                }
+            }, 300);
+        });
+    }
+
+    /* ---------- маршрут справа ---------- */
+
+    renderRoute() {
+        const list = this.routeList;
+        if (!list) return;
+        const items = [];
+
+        items.push({
+            kind: 'auto',
+            // полное название из базы (plan_send_page), запасной вариант — по номеру области
+            name: window.regionOrgName || this.regionNames[this.regionNumber] || 'Региональное управление по надзору за рациональным использованием ТЭР',
+            sub: 'Добавляется автоматически',
+        });
+
+        const coordinators = Array.from(this.selectedCoordinators.entries());
+        coordinators.forEach(([id, name], i) => {
+            items.push({ kind: 'coordinator', id, name, index: i, total: coordinators.length });
+        });
+        if (!coordinators.length) {
+            items.push({ kind: 'pick-coordinator' });
+        }
+
+        if (window.energyDepartmentName) {
+            items.push({
+                kind: 'auto',
+                name: window.energyDepartmentName,
+                sub: 'Добавлен автоматически: потребление от 25 тыс. т у.т.',
             });
         }
 
-        if (this.approverSearch) {
-            this.approverSearch.addEventListener('input', (e) => {
-                clearTimeout(this.approverSearchTimeout);
-                this.approverSearchTimeout = setTimeout(() => {
-                    const newQuery = e.target.value.trim();
-                    if (newQuery !== this.approverSearchQuery) {
-                        this.approverSearchQuery = newQuery;
-                        this.approverHasMore = true;
-                        this.loadApprovers(true);
-                    }
-                }, 300);
+        items.push(this.selectedApprover
+            ? { kind: 'approver', name: this.selectedApproverName || `ID ${this.selectedApprover}` }
+            : { kind: 'pick-approver' });
+
+        let number = 0;
+        list.innerHTML = '';
+        items.forEach((item) => {
+            const li = document.createElement('li');
+            li.className = 'ps-route-item';
+            const isStage = item.kind === 'auto' || item.kind === 'coordinator' || item.kind === 'approver';
+            if (isStage) number += 1;
+
+            if (item.kind === 'pick-coordinator') {
+                li.classList.add('ps-route-item--empty');
+                li.innerHTML = `
+                    <span class="ps-route-marker" aria-hidden="true">+</span>
+                    <div class="ps-route-body">
+                        <button type="button" class="ps-route-pick" data-pick="coordinator">Добавить согласующие организации</button>
+                        <span class="ps-route-sub">Необязательно</span>
+                    </div>`;
+            } else if (item.kind === 'pick-approver') {
+                li.classList.add('ps-route-item--empty', 'ps-route-item--approver');
+                li.innerHTML = `
+                    <span class="ps-route-marker" aria-hidden="true">${number + 1}</span>
+                    <div class="ps-route-body">
+                        <button type="button" class="ps-route-pick" data-pick="approver">Выбрать утверждающую организацию</button>
+                    </div>`;
+            } else {
+                li.classList.add(`ps-route-item--${item.kind}`);
+                const sub = item.kind === 'approver' ? 'Утверждает план' : (item.sub || '');
+                li.innerHTML = `
+                    <span class="ps-route-marker" aria-hidden="true">${number}</span>
+                    <div class="ps-route-body">
+                        <span class="ps-route-name">${this.escapeHtml(item.name)}</span>
+                        ${sub ? `<span class="ps-route-sub">${this.escapeHtml(sub)}</span>` : ''}
+                    </div>`;
+                if (item.kind === 'coordinator' || item.kind === 'approver') {
+                    li.appendChild(this.routeTools(item));
+                }
+            }
+            list.appendChild(li);
+        });
+
+        list.querySelectorAll('[data-pick]').forEach((btn) => {
+            btn.addEventListener('click', () => this.showPicker(btn.dataset.pick, true));
+        });
+    }
+
+    routeTools(item) {
+        const tools = document.createElement('div');
+        tools.className = 'ps-route-tools';
+        const icon = {
+            up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+            down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+            remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+        };
+        const add = (action, label, disabled = false) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'ps-route-tool';
+            b.title = label;
+            b.setAttribute('aria-label', `${label}: ${item.name}`);
+            b.disabled = disabled;
+            b.innerHTML = icon[action];
+            b.addEventListener('click', () => {
+                if (item.kind === 'approver') this.removeApprover();
+                else if (action === 'remove') this.removeCoordinator(item.id);
+                else this.moveCoordinator(item.id, action === 'up' ? -1 : 1);
             });
+            tools.appendChild(b);
+        };
+        if (item.kind === 'coordinator' && item.total > 1) {
+            add('up', 'Выше', item.index === 0);
+            add('down', 'Ниже', item.index === item.total - 1);
+        }
+        add('remove', 'Убрать из маршрута');
+        return tools;
+    }
+
+    moveCoordinator(id, delta) {
+        const entries = Array.from(this.selectedCoordinators.entries());
+        const i = entries.findIndex(([key]) => key === id);
+        const j = i + delta;
+        if (i < 0 || j < 0 || j >= entries.length) return;
+        [entries[i], entries[j]] = [entries[j], entries[i]];
+        this.selectedCoordinators = new Map(entries);
+        this.renderRoute();
+        // фокус остаётся на той же кнопке перемещённой организации
+        const btn = this.routeList.querySelectorAll('.ps-route-item--coordinator')[j]
+            ?.querySelector(`.ps-route-tool[title="${delta < 0 ? 'Выше' : 'Ниже'}"]`);
+        (btn && !btn.disabled ? btn : this.routeList.querySelectorAll('.ps-route-item--coordinator')[j]?.querySelector('.ps-route-tool'))?.focus();
+    }
+
+    removeCoordinator(id) {
+        const checkbox = this.coordinatorTbody?.querySelector(`.coordinator-checkbox[value="${id}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
+        } else {
+            this.selectedCoordinators.delete(id);
+            this.onSelectionChange();
         }
     }
 
+    removeApprover() {
+        const checkbox = this.approverTbody?.querySelector(`.approver-checkbox[value="${this.selectedApprover}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+            checkbox.dispatchEvent(new Event('change'));
+        } else {
+            this.selectedApprover = null;
+            this.selectedApproverName = '';
+            this.onSelectionChange();
+        }
+    }
+
+    /* ---------- руководитель и отправка ---------- */
+
     initNavigation() {
-        this.buttons.step1Next?.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (this.validateStep1()) this.nextStep();
-        });
-
-        this.buttons.step2Back?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.prevStep();
-        });
-
-        this.buttons.step2Next?.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (this.validateStep2()) this.nextStep();
-        });
-
-        this.buttons.step3Back?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.prevStep();
-        });
-
-        // Шаг 3 — предпросмотр финальных этапов (путь согласования),
-        // "Далее" просто переходит к последнему шагу с сертификатом.
-        this.buttons.step3Next?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.nextStep();
-        });
-
-        this.buttons.step4Back?.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.prevStep();
-        });
-
-        this.root.querySelector('#sentForm')?.addEventListener('submit', () => {
+        this.root.querySelector('#sentForm')?.addEventListener('submit', (e) => {
+            if (!this.selectedApprover || !this.signerSelect?.value) {
+                e.preventDefault();
+                this.updateButtonsState();
+                return;
+            }
             if (this.coordinatorIdsInput) {
                 this.coordinatorIdsInput.value = Array.from(this.selectedCoordinators.keys()).join(',');
             }
@@ -490,31 +647,16 @@ class PlanSendWizard {
             }
         });
 
-        // Шаг 4 — кнопка "Отправить на подпись" выключена, пока не выбран
-        // руководитель (реальная подпись — ЭЦП, пока мок — происходит
-        // отдельно, позже, самим руководителем в «Действиях с планом»,
-        // когда план дойдёт до него во «Входящих на подпись»).
-        const signerSelect = this.root.querySelector('#signer-select');
-        if (signerSelect && this.submitButton) {
-            const updateSubmitState = () => {
-                this.submitButton.disabled = !signerSelect.value;
-            };
-            signerSelect.addEventListener('change', updateSubmitState);
-            updateSubmitState();
-        }
+        const signerSelect = this.signerSelect;
+        signerSelect?.addEventListener('change', () => this.updateButtonsState());
 
-        // Свой контейнер вместо <select> для выбора подписанта — тот же
-        // паттерн открытия/закрытия, что у .custom-dropdown в шапке
-        // списка планов, плюс клик по пункту пишет id в скрытый
-        // #signer-select и бьёт синтетический 'change', чтобы логика
-        // выше (блокировка кнопки отправки) не знала о подмене <select>.
+        // Свой выпадающий список вместо <select> — клик по пункту пишет id
+        // в скрытый #signer-select и шлёт 'change'.
         const signerPicker = this.root.querySelector('#signer-picker');
         const signerToggle = this.root.querySelector('#signer-picker-toggle');
         const signerValue = this.root.querySelector('#signer-picker-value');
         const signerMenu = this.root.querySelector('#signer-picker-menu');
         if (signerPicker && signerToggle && signerValue && signerMenu && signerSelect) {
-            const placeholderText = signerValue.textContent;
-
             signerToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (signerToggle.disabled) return;
@@ -534,303 +676,44 @@ class PlanSendWizard {
             });
 
             document.addEventListener('click', (e) => {
-                if (!signerPicker.contains(e.target)) {
-                    signerPicker.classList.remove('active');
-                }
+                if (!signerPicker.contains(e.target)) signerPicker.classList.remove('active');
             });
 
-            if (!signerSelect.value) {
-                signerValue.textContent = placeholderText;
-            }
+            // Подписать может только один человек — выбираем его сразу.
+            const items = signerMenu.querySelectorAll('.signer-picker-item');
+            if (items.length === 1) items[0].click();
         }
     }
 
-    updateSelectedCoordinators() {
-        if (!this.selectedCoordinatorsContainer) return;
-        const container = this.selectedCoordinatorsContainer;
-        container.innerHTML = '';
-
-        if (this.coordinatorCount) this.coordinatorCount.textContent = this.selectedCoordinators.size;
-
-        if (this.selectedCoordinators.size === 0) {
-            container.innerHTML = this.emptyMessageHtml();
-            return;
+    // «Отправить на подпись» — когда выбраны утверждающая и руководитель
+    // (согласующие необязательны: региональное управление добавляется
+    // автоматически). Под кнопкой — чего ещё не хватает.
+    updateButtonsState() {
+        const hasApprover = !!this.selectedApprover;
+        const hasSigner = !!this.signerSelect?.value;
+        if (this.submitButton) this.submitButton.disabled = !(hasApprover && hasSigner);
+        if (this.routeNote) {
+            let note = '';
+            if (!hasApprover && !hasSigner) note = 'Выберите утверждающую организацию и руководителя.';
+            else if (!hasApprover) note = 'Выберите утверждающую организацию.';
+            else if (!hasSigner) note = 'Выберите руководителя, который подпишет план.';
+            this.routeNote.textContent = note;
+            this.routeNote.hidden = !note;
         }
-
-        let order = 0;
-        this.selectedCoordinators.forEach((name, id) => {
-            order += 1;
-            const row = document.createElement('div');
-            row.className = 'selected-org-row';
-            row.innerHTML = `
-                <span class="selected-org-order">${order}</span>
-                <span class="selected-org-name">${this.escapeHtml(name)}</span>
-                <button class="selected-org-remove" data-id="${id}" type="button" aria-label="Убрать">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            `;
-            row.querySelector('.selected-org-remove').addEventListener('click', (e) => {
-                e.stopPropagation();
-                const checkbox = this.coordinatorTbody?.querySelector(`.coordinator-checkbox[value="${id}"]`);
-                if (checkbox) {
-                    checkbox.checked = false;
-                    checkbox.dispatchEvent(new Event('change'));
-                } else {
-                    this.selectedCoordinators.delete(id);
-                    this.updateSelectedCoordinators();
-                    this.updateButtonsState();
-                    this.updateApprovalPath();
-                }
-            });
-            container.appendChild(row);
-        });
     }
 
-    updateSelectedApprover() {
-        if (!this.selectedApproverContainer) return;
-        const container = this.selectedApproverContainer;
-        container.innerHTML = '';
-
-        if (this.approverCount) this.approverCount.textContent = this.selectedApprover ? '1' : '0';
-
-        if (!this.selectedApprover) {
-            container.innerHTML = this.emptyMessageHtml();
-            return;
-        }
-
-        const orgRow = this.approverTbody?.querySelector(`.org-picker-row[data-id="${this.selectedApprover}"]`);
-        const name = orgRow ? orgRow.dataset.name : `ID: ${this.selectedApprover}`;
-        const row = document.createElement('div');
-        row.className = 'selected-org-row selected-org-row--approver';
-        row.innerHTML = `
-            <span class="selected-org-order selected-org-order--check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </span>
-            <span class="selected-org-name">${this.escapeHtml(name)}</span>
-            <button class="selected-org-remove" data-id="${this.selectedApprover}" type="button" aria-label="Убрать">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        `;
-        row.querySelector('.selected-org-remove').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const checkbox = this.approverTbody?.querySelector(`.approver-checkbox[value="${this.selectedApprover}"]`);
-            if (checkbox) {
-                checkbox.checked = false;
-                checkbox.dispatchEvent(new Event('change'));
-            }
-        });
-        container.appendChild(row);
-    }
-
-    updateApprovalPath() {
-        const container = this.approvalSliderContainer;
-        if (!container) return;
-
-        const coordinators = [];
-        const approver = this.selectedApprover;
-        const regionName = this.regionNames[this.regionNumber] || 'Регион';
-
-        this.selectedCoordinators.forEach((name) => coordinators.push(name));
-
-        let approverName = '';
-        if (approver) {
-            const row = this.approverTbody?.querySelector(`.org-picker-row[data-id="${approver}"]`);
-            if (row) approverName = row.dataset.name;
-        }
-
-        const allSteps = [regionName, ...coordinators];
-        const hasManualSelection = allSteps.length > 1 || !!approverName;
-
-        if (!hasManualSelection) {
-            container.innerHTML = `
-                <div class="approval-path-placeholder" style="text-align: center; padding: 20px; color: #999;">
-                    Выберите организацию/и для отображения пути согласования
-                </div>
-            `;
-            return;
-        }
-
-        // Департамент по энергоэффективности (если показатель 260 плана
-        // достиг порога 25000 т.у.т.) добавляется в маршрут автоматически,
-        // ПРЕДПОСЛЕДНИМ — перед утверждающим, если он выбран (иначе просто
-        // последним) — см. build_approval_chain/handle_sent_status. Он не
-        // заменяет выбор согласующих/утверждающего, поэтому добавляется
-        // только после того, как пользователь уже что-то выбрал сам
-        // (hasManualSelection проверено выше).
-        if (window.energyDepartmentName) allSteps.push(window.energyDepartmentName);
-        if (approverName) allSteps.push(approverName);
-
-        const totalSteps = allSteps.length;
-
-        const sliderDiv = document.createElement('div');
-        sliderDiv.className = 'enplans-approval-slider';
-
-        const stepsDiv = document.createElement('div');
-        stepsDiv.className = 'enplans-approval-slider-steps';
-
-        allSteps.forEach((name, index) => {
-            const isFirst = index === 0;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = `enplans-approval-step ${isFirst ? 'active' : 'pending'}`;
-
-            const iconDiv = document.createElement('div');
-            iconDiv.className = 'enplans-approval-step-icon';
-            iconDiv.innerHTML = this.getStepIcon(index, allSteps.length);
-            stepDiv.appendChild(iconDiv);
-
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'enplans-approval-step-name';
-            nameDiv.textContent = name;
-            nameDiv.title = name;
-            stepDiv.appendChild(nameDiv);
-
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'enplans-approval-step-time';
-            timeDiv.textContent = 'Ожидает';
-            stepDiv.appendChild(timeDiv);
-
-            stepsDiv.appendChild(stepDiv);
-        });
-
-        sliderDiv.appendChild(stepsDiv);
-
-        const progressContainer = document.createElement('div');
-        progressContainer.className = 'enplans-approval-progress-container';
-        const progressLine = document.createElement('div');
-        progressLine.className = 'enplans-approval-progress-line';
-        progressLine.style.width = '0%';
-        progressContainer.appendChild(progressLine);
-        sliderDiv.appendChild(progressContainer);
-
-        const progressText = document.createElement('div');
-        progressText.className = 'enplans-approval-progress-text';
-        progressText.innerHTML = `<span>0 из ${totalSteps} этапов (0%)</span>`;
-        sliderDiv.appendChild(progressText);
-
-        container.innerHTML = '';
-        container.appendChild(sliderDiv);
-    }
-
-    getStepIcon(index, total) {
-        const isFirst = index === 0;
-        const isLast = index === total - 1;
-        if (isFirst) return window.icons.icon_region;
-        if (isLast) return window.icons.icon_higher;
-        return window.icons.icon_municipal;
-    }
-
+    // Экранирует и для текста, и для атрибутов: textContent→innerHTML не
+    // трогает кавычки, а в названиях они почти всегда (ОАО "Лидское
+    // пиво") — в data-name="..." название обрывалось на первой кавычке, и
+    // в маршрут попадало только «ОАО».
     escapeHtml(text) {
         if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    emptyMessageHtml() {
-        return `
-            <div class="empty-message">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="3" width="16" height="18" rx="1"></rect>
-                    <line x1="8" y1="7.5" x2="8" y2="7.5"></line>
-                    <line x1="12" y1="7.5" x2="12" y2="7.5"></line>
-                    <line x1="16" y1="7.5" x2="16" y2="7.5"></line>
-                    <line x1="8" y1="11.5" x2="8" y2="11.5"></line>
-                    <line x1="12" y1="11.5" x2="12" y2="11.5"></line>
-                    <line x1="16" y1="11.5" x2="16" y2="11.5"></line>
-                    <path d="M9 21v-6h6v6"></path>
-                </svg>
-                <span>Ничего не выбрано</span>
-            </div>
-        `;
-    }
-
-    activeStepEl() {
-        return this.stepEls[this.currentStep - 1];
-    }
-
-    updateProgressBar() {
-        if (!this.progressBar) return;
-        this.progressBar.style.width = (this.currentStep / this.totalSteps) * 100 + '%';
-    }
-
-    updateStepper() {
-        this.stepperDots.forEach((dot) => {
-            const step = parseInt(dot.dataset.step, 10);
-            dot.classList.remove('active', 'completed');
-            if (step < this.currentStep) dot.classList.add('completed');
-            else if (step === this.currentStep) dot.classList.add('active');
-        });
-    }
-
-    nextStep() {
-        if (this.currentStep >= this.totalSteps) return;
-        this.activeStepEl().style.display = 'none';
-        this.currentStep++;
-        this.activeStepEl().style.display = 'block';
-        this.updateProgressBar();
-        this.updateStepper();
-        this.updateButtonsState();
-
-        if (this.currentStep === 2) {
-            const rows = this.approverTbody?.querySelectorAll('.org-picker-row') || [];
-            if (rows.length === 0) {
-                this.approverHasMore = true;
-                this.loadApprovers(true);
-            }
-        }
-
-        if (this.currentStep === 3) {
-            this.updateApprovalPath();
-            setTimeout(() => this.initSliderDrag(), 100);
-        }
-    }
-
-    prevStep() {
-        if (this.currentStep <= 1) return;
-        this.activeStepEl().style.display = 'none';
-        this.currentStep--;
-        this.activeStepEl().style.display = 'block';
-        this.updateProgressBar();
-        this.updateStepper();
-        this.updateButtonsState();
-    }
-
-    updateButtonsState() {
-        // Шаг 1 (согласующие) необязателен: региональное управление и так
-        // добавляется в путь согласования автоматически (см.
-        // handle_sent_status на бэкенде), поэтому пользователь может сразу
-        // перейти к выбору утверждающей организации, ничего не отмечая здесь.
-        if (this.buttons.step1Next) {
-            this.buttons.step1Next.disabled = false;
-        }
-        if (this.buttons.step2Next) {
-            this.buttons.step2Next.disabled = !this.selectedApprover;
-        }
-        // submitButton управляется отдельно — включается только когда
-        // пройдена проверка ЭЦП в модалке (см. EcpMockModal в bindEvents()).
-    }
-
-    validateStep1() {
-        // Согласующие организации необязательны — см. комментарий в
-        // updateButtonsState(). Шаг нужен только тем, кому действительно
-        // есть кого добавить помимо автоматического регионального управления.
-        return true;
-    }
-
-    validateStep2() {
-        if (!this.selectedApprover) {
-            alert('Пожалуйста, выберите организацию для утверждения');
-            return false;
-        }
-        return true;
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }
 

@@ -484,6 +484,11 @@ def create_ticket(token):
     if not current_path:
         return _error('Нет активных шагов для проверки')
 
+    from website.utils.plans import org_head_block_reason, ORG_HEAD_BLOCK_MESSAGES
+    block = org_head_block_reason(current_plan, current_path, current_user)
+    if block:
+        return _error(ORG_HEAD_BLOCK_MESSAGES[block])
+
     prev_path = PlanApprovalPath.query.filter(
         PlanApprovalPath.plan_id == current_plan.id,
         PlanApprovalPath.cycle == current_path.cycle,

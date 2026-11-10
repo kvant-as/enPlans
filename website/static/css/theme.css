@@ -175,12 +175,25 @@ html[data-theme] .fixed-header {
  * 6) var(--white)/var(--black) как ФОН — сам var не трогаем (см.
  *    правило 2 в шапке файла), поэтому эти места — точечно, по имени.
  * ------------------------------------------------------------ */
+/* наведение — зелёная подложка/рамка (base.css :: .svg-btn:hover) */
+:root[data-theme="dark"] .svg-btn:hover:not(:disabled):not(.delete-button):not(.send-button) {
+  background-color: var(--svg-btn-tint);
+}
 :root[data-theme="dark"] .svg-btn {
+  --svg-btn-tint: color-mix(in srgb, var(--green-main) 12%, #1c2027);
+  --svg-btn-tint-line: color-mix(in srgb, var(--green-main) 45%, #1c2027);
   background-color: #1c2027;
   color: #eef1f5;
   border-color: #2b313b;
 }
-:root[data-theme="dark"] .svg-btn:hover { background-color: #262c35; }
+:root[data-theme="dark"] .svg-btn:active:not(:disabled):not(.delete-button):not(.send-button) {
+  background-color: color-mix(in srgb, var(--green-main) 20%, #1c2027);
+}
+/* подсказка в тёмной теме — светлая, чтобы читалась на тёмном фоне */
+:root[data-theme="dark"] .tooltip-btn {
+  --tooltip-bg: #eef1f5;
+  --tooltip-fg: #12151a;
+}
 
 /* base.css :: раскрывающаяся карточка сотрудника («Что может эта роль») */
 :root[data-theme="dark"] .role-card:hover { border-color: var(--green-main); }
@@ -286,6 +299,38 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] .search-dropdown,
 :root[data-theme="dark"] .news-card-large {
   background-color: #1b2027;
+}
+
+/* base.css :: «Путь согласования» (.ps-*) — var(--white) как фон */
+/* зелёная панель маршрута — тот же оттенок на тёмном фоне */
+:root[data-theme="dark"] .ps-layout {
+  --ps-tint-bg: color-mix(in srgb, var(--green-main) 9%, #1b2027);
+  --ps-tint-line: color-mix(in srgb, var(--green-main) 35%, #1b2027);
+}
+:root[data-theme="dark"] .ps-route,
+:root[data-theme="dark"] .ps-layout .ps-tabs {
+  background-color: var(--ps-tint-bg);
+}
+:root[data-theme="dark"] .ps-route .ps-prefill {
+  background-color: #1b2027;
+}
+:root[data-theme="dark"] .ps-layout .org-picker,
+:root[data-theme="dark"] .ps-layout .org-picker-toolbar,
+:root[data-theme="dark"] .ps-layout .org-picker:has(.org-picker-list--radio) .org-picker-toolbar,
+:root[data-theme="dark"] .ps-route-marker,
+:root[data-theme="dark"] .ps-route-item--empty .ps-route-marker {
+  background-color: #1b2027;
+}
+:root[data-theme="dark"] .ps-tab.is-active {
+  background-color: #2a303a;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .ps-route-item--auto .ps-route-marker {
+  background-color: var(--background-grey);
+}
+:root[data-theme="dark"] .ps-route-item--approver .ps-route-marker {
+  background-color: var(--green-main);
+  color: #12151a;
 }
 
 :root[data-theme="dark"] .notif-popup,
@@ -470,10 +515,6 @@ html[data-theme] .fixed-header {
   border-top: 1px solid rgba(43, 49, 59, 0.2);
 }
 
-/* website/static/css/base.css :: .svg-btn:hover */
-:root[data-theme="dark"] .svg-btn:hover {
-  background-color: rgba(27, 32, 39, 0.98);
-}
 
 /* website/static/css/base.css :: .submit-button.loading::after */
 :root[data-theme="dark"] .submit-button.loading::after {
@@ -872,6 +913,20 @@ html[data-theme] .fixed-header {
   border-color: #7f3a3a;
 }
 :root[data-theme="dark"] .confirm-delete-hint { color: #9aa3af; }
+/* base.css :: .no-submit-button.red — общая тёмная группа .no-submit-button
+   перекрашивает текст/рамку; красной кнопке возвращаем вид .danger-zone-btn. */
+:root[data-theme="dark"] .no-submit-button.red {
+  color: #ffffff;
+  border-color: transparent;
+}
+:root[data-theme="dark"] .no-submit-button.red:focus-visible {
+  box-shadow: 0 0 0 3px var(--body-background), 0 0 0 5px rgba(232, 114, 114, 0.6);
+}
+:root[data-theme="dark"] .no-submit-button.red:disabled {
+  color: #7a5a5d;
+  background: #2a2125 !important;
+  border-color: #3a2a2e;
+}
 :root[data-theme="dark"] .danger-zone-btn:focus-visible {
   box-shadow: 0 0 0 3px var(--body-background), 0 0 0 5px rgba(232, 114, 114, 0.6);
 }

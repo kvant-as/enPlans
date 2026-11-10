@@ -324,17 +324,57 @@ def plan_send_page(token):
     # нужно показать в предпросмотре пути согласования, хотя пользователь
     # его не выбирал.
     from website.utils.plans import build_approval_chain
-    energy_dept_entry = next(
-        (org for step_type, org in build_approval_chain(
-            current_plan, coordinator_ids=[], approver_id=None, use_pending_fallback=False
-        ) if step_type == 'approver'),
-        None,
+    auto_chain = build_approval_chain(
+        current_plan, coordinator_ids=[], approver_id=None, use_pending_fallback=False
     )
+    energy_dept_entry = next((org for step_type, org in auto_chain if org.is_energy_department), None)
+    # Региональное управление — первое в маршруте; полное название из базы
+    # (в plan_send.js раньше было только зашитое по номеру области).
+    region_org = next((org for step_type, org in auto_chain if step_type == 'region'), None)
 
     return render_template(
         'plan_send.html', plan=current_plan, signer_candidates=signer_candidates,
         energy_department_org=energy_dept_entry,
+        region_org=region_org,
+        previous_route=_previous_route(current_plan),
     )
+
+
+def _previous_route(plan):
+    """Маршрут, который можно подставить на странице отправки, чтобы не
+    собирать его заново:
+    - 'this' — этот же план уже отправляли (возврат на доработку, отмена
+      отправки): pending_coordinator_ids/pending_approver_id на нём
+      сохраняются (см. handle_sent_status) — подставляется сразу;
+    - 'previous' — последний другой план организации, где маршрут
+      выбирали, — предлагается одной кнопкой.
+    Только выбранные пользователем организации: региональное управление и
+    Департамент добавляются автоматически и здесь не нужны. Организации,
+    которых больше нет или которые неактивны, пропускаются."""
+    source, kind = plan, 'this'
+    if not plan.pending_approver_id:
+        kind = 'previous'
+        source = Plan.query.filter(
+            Plan.org_id == plan.org_id, Plan.id != plan.id,
+            Plan.snapshot_of_plan_id.is_(None), Plan.pending_approver_id.isnot(None),
+        ).order_by(Plan.id.desc()).first()
+    if not source or not source.pending_approver_id:
+        return None
+
+    coordinator_ids = [int(x) for x in (source.pending_coordinator_ids or '').split(',') if x.strip().isdigit()]
+    orgs = {o.id: o for o in Organization.query.filter(
+        Organization.id.in_(coordinator_ids + [source.pending_approver_id]),
+        Organization.is_active == True,
+    ).all()}
+    approver = orgs.get(source.pending_approver_id)
+    if not approver:
+        return None
+    return {
+        'kind': kind,
+        'year': source.year,
+        'coordinators': [{'id': str(i), 'name': orgs[i].full_name} for i in coordinator_ids if i in orgs],
+        'approver': {'id': str(approver.id), 'name': approver.full_name},
+    }
 
 
 @plan_bp.route('/submit-for-signature/<token>', methods=['POST'])
@@ -761,6 +801,14 @@ def step_submit_for_signature(token):
         or current_plan.is_error or current_path.pending_signer_user_id
     ):
         flash('Этап недоступен для рассмотрения', 'error')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
+
+    # Руководитель организации не выносит решение сам, пока исполнитель или
+    # руководитель подразделения не рассмотрел план и не направил ему.
+    from website.utils.plans import org_head_block_reason, ORG_HEAD_BLOCK_MESSAGES
+    block = org_head_block_reason(current_plan, current_path, current_user)
+    if block:
+        flash(ORG_HEAD_BLOCK_MESSAGES[block], 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
     is_approver_step = current_path.step_type == 'approver'

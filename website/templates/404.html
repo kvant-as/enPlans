@@ -9,11 +9,15 @@
     // Та же логика, что в base.html — подхватываем тему пользователя (по
     // умолчанию светлая), чтобы страница не мигала не тем цветом при заходе
     // "в никуда".
+    // Пока тёмная тема выключена (DARK_THEME_ENABLED) — всегда светлая.
     (function () {
+      var darkEnabled = {{ 'true' if config.DARK_THEME_ENABLED else 'false' }};
       try {
-        var saved = localStorage.getItem('enplans-theme');
+        var saved = darkEnabled ? localStorage.getItem('enplans-theme') : null;
         document.documentElement.setAttribute('data-theme', saved || 'light');
-      } catch (e) {}
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
     })();
   </script>
 

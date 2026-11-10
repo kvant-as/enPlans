@@ -128,7 +128,7 @@
         {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
       >
         {{ icons.icon_send() }}
-        <span class="plan-action-tile-title">{{ _('Путь согласования') }}</span>
+        <span class="plan-action-tile-title">{{ _('Отправить на подпись') }}</span>
         <span class="plan-action-tile-sub">{{ _('Выбрать маршрут и направить план на подпись руководителю') }}</span>
       </button>
       {% endif %}
@@ -215,6 +215,47 @@
         {{ icons.icon_cancel() }}
         <span class="plan-action-tile-title">{{ _('Не согласовать и отправить на подпись') }}</span>
         <span class="plan-action-tile-sub">{{ _('Указать ошибки, приложить файл и направить руководителю') }}</span>
+      </button>
+      {% endif %}
+    </div>
+    {% elif org_head_waits %}
+    {#  Руководитель организации: план сначала рассматривает исполнитель
+        или руководитель подразделения и направляет решение ему на подпись
+        (utils/plans.py::org_head_waits_for_staff) — до этого кнопки
+        заблокированы, сервер такие запросы тоже отклоняет. #}
+    {% if org_head_block == 'no_staff' %}
+    {% set waits_hint = _('Сначала нужен исполнитель или руководитель структурного подразделения — он рассмотрит план и направит решение вам') %}
+    {% else %}
+    {% set waits_hint = _('Станет доступно, когда исполнитель или руководитель структурного подразделения направит решение вам на подпись') %}
+    {% endif %}
+    {% if org_head_block == 'no_staff' %}
+    {#  В организации только руководитель — решение вынести некому. #}
+    <div class="plan-send-warning plan-actions-staff-warning">
+      {{ icons.error_icon() }}
+      <div>
+        <p class="plan-send-warning-title">{{ _('Некому рассмотреть план') }}</p>
+        <p>
+          {{ _('Решение по плану выносит исполнитель или руководитель структурного подразделения, а вы его подписываете. В вашей организации таких сотрудников нет.') }}
+          {% if current_user.org_role == 'org_head' %}
+          <a href="{{ url_for('views.profile') }}?profileTabs=org" class="plan-actions-staff-link">{{ _('Добавить сотрудника в профиле организации') }}</a>
+          {% else %}
+          {{ _('Попросите руководителя организации добавить такого сотрудника в профиле.') }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    {% endif %}
+    <div class="plan-actions-grid plan-actions-grid-status">
+      <button type="button" class="plan-action-tile" disabled title="{{ waits_hint }}">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Утвердить') if is_approver_step else _('Согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ waits_hint }}</span>
+      </button>
+      {% if not is_approver_step %}
+      <button type="button" class="plan-action-tile plan-action-tile-danger" disabled title="{{ waits_hint }}">
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Не согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ waits_hint }}</span>
       </button>
       {% endif %}
     </div>

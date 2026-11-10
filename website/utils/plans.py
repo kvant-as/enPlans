@@ -265,6 +265,23 @@ def get_plans_by_okpo():
         func.substr(Organization.okpo, func.length(Organization.okpo) - 3, 1) == okpo_digit
     ).order_by(Plan.year.asc())
 
+def _own_awaiting_approval(plan, org_id):
+    """Свой план организации дошёл до этапа утверждения В НЕЙ ЖЕ (ТЗ п.5,
+    Вариант А): отправлен, текущий (первый непройденный в последнем
+    цикле) внешний этап — 'approver' этой организации. Для руководителя
+    организации такой план — «На рассмотрении» (утверждает он), для
+    остальных сотрудников — «На согласовании» (см. status_plan)."""
+    if not plan.is_sent or plan.org_id != org_id:
+        return False
+    external = [p for p in plan.approval_paths if not p.is_internal]
+    if not external:
+        return False
+    latest = max(p.cycle for p in external)
+    current = next((p for p in sorted(external, key=lambda p: p.step_order)
+                    if p.cycle == latest and not p.is_viewed), None)
+    return bool(current and current.step_type == 'approver' and current.organization_id == org_id)
+
+
 def get_filtered_plans(user, status_filter="all", year_filter="all", search_name="", search_ynp="", region_id=None, search_approver_org="", page=1, per_page=5):
     try:
         # current_app.logger.debug(f'get_filtered_plans called with region_id={region_id}')
@@ -342,6 +359,11 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
         # только напрямую по собственному token со страницы плана (свитчер
         # версий — component.plan_version_switcher).
         base_query = base_query.filter(Plan.snapshot_of_plan_id.is_(None))
+
+        # Руководитель гибридной организации (сама разрабатывает и
+        # утверждает) — свои планы на ЕГО утверждении показываем как «На
+        # рассмотрении» (см. _own_awaiting_approval).
+        manager_reviews_own = bool(is_hybrid_org and auditor_org_ids and getattr(user, 'is_org_manager', False))
 
         needs_join = bool(search_name or search_ynp or region_id)
         
@@ -432,6 +454,11 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                         matching_ids.append(p.id)
                 elif not my_path.is_viewed and _is_queued_for_org(p, auditor_org_ids) == (status_filter == 'in_transit'):
                     matching_ids.append(p.id)
+            # Руководителю «На рассмотрении» — ещё и свои планы, ждущие его
+            # утверждения (Вариант А).
+            if status_filter == 'review' and manager_reviews_own:
+                own_sent = filtered_query.filter(Plan.is_sent == True, Plan.org_id == user.organization_id).distinct().all()
+                matching_ids += [p.id for p in own_sent if _own_awaiting_approval(p, user.organization_id)]
             filtered_query = Plan.query.filter(Plan.id.in_(matching_ids))
         elif status_filter != 'all' and status_filter in status_filters:
             filtered_query = filtered_query.filter(status_filters[status_filter])
@@ -451,6 +478,13 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                     )).distinct()
                 else:
                     filtered_query = filtered_query.filter(Plan.org_id == user.organization_id)
+                    # у руководителя свой план на его утверждении — во
+                    # «На рассмотрении», а не в «На согласовании»
+                    if status_filter == 'sent' and manager_reviews_own:
+                        own_ids = [p.id for p in filtered_query.distinct().all()
+                                   if _own_awaiting_approval(p, user.organization_id)]
+                        if own_ids:
+                            filtered_query = filtered_query.filter(~Plan.id.in_(own_ids))
 
         if year_filter != 'all':
             filtered_query = filtered_query.filter(Plan.year == int(year_filter))
@@ -557,6 +591,16 @@ def get_filtered_plans(user, status_filter="all", year_filter="all", search_name
                         status_counts['in_transit'] += 1
                     else:
                         status_counts['review'] += 1
+
+                # руководителю свои планы на его утверждении — из «На
+                # согласовании» в «На рассмотрении»
+                if manager_reviews_own:
+                    own_waiting = sum(
+                        1 for p in own_count_query.filter(Plan.is_sent == True).all()
+                        if _own_awaiting_approval(p, user.organization_id)
+                    )
+                    status_counts['sent'] -= own_waiting
+                    status_counts['review'] += own_waiting
         
         return plans, total_count, status_counts
         
@@ -1333,7 +1377,9 @@ def build_signature_print_rows(plan, cycles):
             else:
                 date_str = '—'
 
-            remark = path.ticket.note if path.ticket else '—'
+            # замечание этапа — только при подписанном «Не согласован»
+            # (как в «Подписях», components.html::plan_signatures_page)
+            remark = path.ticket.note if (is_rejected_step and path.ticket) else '—'
 
             rows.append(('data', [
                 action_label,
@@ -1430,6 +1476,51 @@ def get_current_review_path(plan, current_user):
     return current_path
 
 
+STAFF_REVIEW_ROLES = ('executor', 'dept_head')
+
+
+def org_head_block_reason(plan, current_path, user):
+    """Почему руководитель организации (org_head/org_head_deputy) на этапе
+    своей организации пока ничего не может сделать с планом, или None.
+
+    План сначала рассматривает исполнитель или руководитель структурного
+    подразделения и направляет решение руководителю на подпись
+    (step_submit_for_signature / step_forward_signature). Пока решение не
+    направлено (pending_signer пуст) — кнопки руководителя заблокированы:
+    - 'waiting'  — такие сотрудники в организации есть, ждём их;
+    - 'no_staff' — их нет вовсе (руководитель — единственный аккаунт):
+      решение вынести некому, их нужно добавить в профиле организации.
+
+    Исключение — Вариант А (утверждающая организация утверждает
+    собственный план): там действует только руководитель, напрямую."""
+    if not current_path or not getattr(user, 'is_org_manager', False):
+        return None
+    if current_path.pending_signer_user_id:
+        return None
+    if current_path.step_type == 'approver' and plan.org_id == current_path.organization_id:
+        return None
+    from common_models import get_current_application_id
+    staff = User.query.filter(
+        User.organization_id == current_path.organization_id,
+        User.application_id == get_current_application_id(),
+        User.org_role.in_(STAFF_REVIEW_ROLES),
+        User.is_verified == True,
+        User.id != user.id,
+    ).first()
+    return 'waiting' if staff else 'no_staff'
+
+
+def org_head_waits_for_staff(plan, current_path, user):
+    """True — руководитель пока не может вынести решение (см. org_head_block_reason)."""
+    return org_head_block_reason(plan, current_path, user) is not None
+
+
+ORG_HEAD_BLOCK_MESSAGES = {
+    'waiting': 'План сначала рассматривает исполнитель или руководитель структурного подразделения и направляет решение вам на подпись',
+    'no_staff': 'В организации нет исполнителя или руководителя структурного подразделения: решение по плану выносят они, а вы подписываете. Добавьте такого сотрудника в профиле организации',
+}
+
+
 def get_audit_context(plan, current_user):
     """Весь контекст, нужный вкладке «Действия с планом» (plan_actions.html): какой
     этап сейчас "ваш", можно ли писать/менять статус/отменять изменения,
@@ -1463,6 +1554,12 @@ def get_audit_context(plan, current_user):
         bool(current_path) and plan.is_sent and not plan.is_approved and not plan.is_error
         and not current_path.pending_signer_user_id
     )
+    # Руководитель ждёт, пока сотрудники рассмотрят план и направят ему
+    # решение на подпись — до этого его кнопки заблокированы.
+    org_head_block = org_head_block_reason(plan, current_path, current_user) if can_audit else None
+    org_head_waits = bool(org_head_block)
+    if org_head_waits:
+        can_audit = False
 
     approve_label = 'Согласовать'
     if current_path:
@@ -1524,6 +1621,8 @@ def get_audit_context(plan, current_user):
         'step_pending_decision': current_path.pending_decision if current_path else None,
         'is_approver_step': is_approver_step,
         'step_direct_approve': step_direct_approve,
+        'org_head_waits': org_head_waits,
+        'org_head_block': org_head_block,
     }
 
 
@@ -1631,7 +1730,11 @@ def build_approval_chain(plan, coordinator_ids=None, approver_id=None, use_pendi
     if total_consumption >= 25000:
         energy_dept_org = Organization.query.filter_by(is_energy_department=True).first()
         if energy_dept_org:
-            chain.append(('approver', energy_dept_org))
+            # Департамент — СОГЛАСУЮЩАЯ организация (последняя перед
+            # утверждающей), не утверждающая: на его этапе обычные правила
+            # согласования («Не согласовать» доступно), а в экспорте он не
+            # попадает в строку утверждающей организации.
+            chain.append(('coordinator', energy_dept_org))
 
     if approver_id:
         approver_org = Organization.query.get(int(approver_id))

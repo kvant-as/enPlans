@@ -155,6 +155,8 @@ site.register(
 
 # Добавление организации по УНП с подстановкой из ЕГР (routes/admin_org.py)
 site.link("Добавить организацию по УНП", "admin_org.by_unp", group="Основные")
+# Тестовые пользователи маршрута согласования (routes/admin_test_users.py)
+site.link("Тестовые пользователи", "admin_test_users.index", group="Вспомогательные")
 
 site.register(
     Region, name="Регионы", group="Основные",

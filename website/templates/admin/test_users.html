@@ -1,0 +1,53 @@
+{% extends "cm_admin/base.html" %}
+{% block title %}{{ site.brand }} · Тестовые пользователи{% endblock %}
+
+{% block content %}
+  <div class="cm-section-head">
+    <h1 class="cm-h1">Тестовые пользователи</h1>
+    <a class="cm-link" href="{{ url_for('cm_admin.list_view', key='user') }}">← к пользователям</a>
+  </div>
+
+  <p class="cm-muted test-users-intro">
+    Девять аккаунтов для проверки маршрута согласования: исполнитель, руководитель структурного подразделения и руководитель
+    организации — в организации-разработчике, согласующей и утверждающей. Уже существующие аккаунты не пересоздаются:
+    у них обновятся ФИО, должность, телефон, организация, роль и пароль. Пароль у всех — <b>{{ password }}</b>.
+  </p>
+
+  {% if missing_orgs %}
+  <div class="cm-flash cm-flash--error">Не найдены организации: {{ missing_orgs|join(', ') }}. Сначала добавьте их.</div>
+  {% endif %}
+
+  <form method="post" class="test-users-form"
+        onsubmit="return confirm('Создать или обновить тестовых пользователей?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <button type="submit" class="cm-btn" {{ 'disabled' if missing_orgs }}>Создать / обновить тестовых пользователей</button>
+  </form>
+
+  <div class="cm-rows">
+    {% for row in rows %}
+      <div class="cm-row">
+        <div class="cm-row-main">
+          <span class="cm-row-title">{{ row.fio }}</span>
+          {% if row.user %}<span class="cm-badge">есть</span>{% else %}<span class="cm-badge test-users-new">будет создан</span>{% endif %}
+          <span class="cm-row-cells">
+            <span class="cm-cell"><i>Email:</i> {{ row.email }}</span>
+            <span class="cm-cell"><i>Организация:</i> {{ row.org_label }}{% if not row.org %} — не найдена{% endif %}</span>
+            <span class="cm-cell"><i>Роль:</i> {{ row.role_label }}</span>
+            <span class="cm-cell"><i>Должность:</i> {{ row.post }}</span>
+          </span>
+        </div>
+        {% if row.user %}
+        <div class="cm-row-actions">
+          <a class="cm-link" href="{{ url_for('cm_admin.edit_view', key='user', pk=row.user.id) }}">Открыть</a>
+        </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <style>
+    .test-users-intro { max-width: 760px; line-height: 1.5; }
+    .test-users-form { margin: 16px 0 20px; }
+    .test-users-new { opacity: 0.75; }
+  </style>
+{% endblock %}

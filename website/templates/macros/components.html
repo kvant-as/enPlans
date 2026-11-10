@@ -153,7 +153,11 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
     {% set is_queued = earlier_pending|length > 0 %}
   {% endif %}
   {#  Свой план на шаге утверждения В СВОЕЙ ЖЕ организации (ТЗ п.5,
-      Вариант А) — «На утверждении», а не общее «На согласовании». #}
+      Вариант А): утверждает руководитель организации (или заместитель) —
+      для него это «На рассмотрении» (его очередь действовать), для
+      исполнителя и руководителя структурного подразделения — обычное
+      «На согласовании». Так же разложены плитки-фильтры на /plans
+      (utils/plans.py::_own_awaiting_approval). #}
   {% set current_step = external_paths|selectattr('cycle', 'equalto', latest_cycle)|rejectattr('is_viewed')|sort(attribute='step_order')|first if external_paths else none %}
   {% set own_approval_step = is_own and plan.is_sent and current_step and current_step.step_type == 'approver' and current_step.organization_id == current_user.organization_id %}
 <a
@@ -178,7 +182,7 @@ is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or
   {% else %} {{ icons.pending_icon() }}
   <span>{{ _('На рассмотрении') }}</span>
   {% endif %} {% elif own_approval_step %} {{ icons.pending_icon() }}
-  <span>{{ _('На утверждении') }}</span>
+  <span>{{ _('На рассмотрении') if current_user.is_org_manager else _('На согласовании') }}</span>
   {% elif plan.is_sent %} {{ icons.pending_icon() }}
   <span>{{ _('На согласовании') }}</span>
   {% elif plan.is_approved %} {{ icons.approved_icon() }}
@@ -1106,13 +1110,14 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             {% else %}—{% endif %}
           </td>
           <td>
-            {#  path.ticket — единственное замечание этого этапа (прямая FK,
-                см. PlanApprovalPath.ticket), проставляется в
-                step_internal_return/handle_error_status. Не зависит от
-                is_rejected_step — причина "Вернуть на повторное
-                рассмотрение" (Шаг 2, этап не отклонён, просто возвращён)
-                тоже должна здесь показываться. #}
-            {% if path.ticket %}
+            {#  Замечание в итоговой строке этапа — только когда этап
+                завершён подписью ЭЦП с решением «Не согласован»
+                (is_rejected_step: handle_error_status проставил rejected_at).
+                Пока решение не подписано, на path.ticket может лежать и
+                причина «Вернуть на повторное рассмотрение» или ещё не
+                подписанное «Не согласовать» — они видны в подэтапах, а здесь
+                «—». #}
+            {% if is_rejected_step and path.ticket %}
               {{ path.ticket.note }}
               {% if path.ticket.attachment_filename %}
               <button
@@ -1703,28 +1708,19 @@ selected_status='all', selected_year='all') %}
     />
   </div>
 </div>
-{% endmacro %} {% macro stat_split_column(top, bottom) %}
-{#  Один столбец из двух половинок с общей точкой под ними — для пар
-    статусов, которые стоят на одном шаге пути: «В ожидании / На
-    рассмотрении» (план у проверяющей организации — до или в её очереди)
-    и «Утвержденные / Есть ошибки» (два конечных исхода). Линия прогресса
-    (plan-status.js) доходит до общей точки и окрашивается цветом статуса
-    плана. Каждая половинка — обычный .stat-and-dot со своим data-value,
-    поэтому клик-фильтр и счётчики (plan.js) работают как у остальных
-    плиток. top/bottom — (data-value, класс счётчика, id счётчика, подпись). #}
-<div class="stat-column">
-  <div class="stat-split">
-    {% for value, number_class, number_id, label in [top, bottom] %}
-    <div class="stat-and-dot" data-value="{{ value }}">
-      <div class="stat stat-half">
-        <a class="{{ number_class }}" id="{{ number_id }}">-</a>
-        <a class="word-numb">{{ label }}</a>
-      </div>
-    </div>
-    {% endfor %}
+{% endmacro %} {% macro stat_tiles(tiles) %}
+{#  Отдельные плитки статусов, у каждой своя точка под ней (линия прогресса
+    plan-status.js доходит до точки своего статуса). tiles — список
+    (data-value, класс счётчика, id счётчика, подпись). #}
+{% for value, number_class, number_id, label in tiles %}
+<div class="stat-and-dot" data-value="{{ value }}">
+  <div class="stat">
+    <a class="{{ number_class }}" id="{{ number_id }}">-</a>
+    <a class="word-numb">{{ label }}</a>
   </div>
   <div class="status-dot"></div>
 </div>
+{% endfor %}
 {% endmacro %} {% macro plan_count(current_user) %}
 {% set is_reviewer = current_user.has_auditor_access or current_user.has_approver_access %}
 {#  «Согласованные» — только у согласующей организации (в т.ч.
@@ -1748,9 +1744,9 @@ selected_status='all', selected_year='all') %}
        чужие, ТЗ п.5 Вариант А) — видит полный набор, включая "На
        подписании": ей он действительно нужен для СВОИХ планов. #}
     {% if is_reviewer and not (current_user.organization and current_user.organization.is_regular) %}
-    {{ stat_split_column(
+    {{ stat_tiles([
         ('in_transit', 'stat-number-transit', 'stat-in-transit', _('В ожидании')),
-        ('sent', 'stat-number-sent', 'stat-sent', _('На рассмотрении'))) }}
+        ('sent', 'stat-number-sent', 'stat-sent', _('На рассмотрении'))]) }}
     {% if is_coord_org %}
     <div class="stat-and-dot" data-value="sogl">
       <div class="stat">
@@ -1793,9 +1789,9 @@ selected_status='all', selected_year='all') %}
         про ЧУЖИЕ планы в её очереди (см. get_filtered_plans: 'in_transit'
         / 'review'). «На согласовании» выше — только её собственные. #}
     {% if is_reviewer %}
-    {{ stat_split_column(
+    {{ stat_tiles([
         ('in_transit', 'stat-number-transit', 'stat-in-transit', _('В ожидании')),
-        ('review', 'stat-number-review', 'stat-review', _('На рассмотрении'))) }}
+        ('review', 'stat-number-review', 'stat-review', _('На рассмотрении'))]) }}
     {% if is_coord_org %}
     <div class="stat-and-dot" data-value="sogl">
       <div class="stat">
@@ -1807,9 +1803,13 @@ selected_status='all', selected_year='all') %}
     {% endif %}
     {% endif %}
     {% endif %}
-    {{ stat_split_column(
-        ('approved', 'stat-number-sub', 'stat-approved', _('Утвержденные')),
-        ('error', 'stat-number-eror', 'stat-error', _('Есть ошибки'))) }}
+    {#  «Есть ошибки» перед «Утвержденными»: утверждение — последний шаг
+        пути. Линия прогресса (plan-status.js) ищет точку по data-value,
+        так что порядок плиток на неё не влияет — она доходит до точки
+        своей плитки своим цветом (красным / зелёным). #}
+    {{ stat_tiles([
+        ('error', 'stat-number-eror', 'stat-error', _('Есть ошибки')),
+        ('approved', 'stat-number-sub', 'stat-approved', _('Утвержденные'))]) }}
   </div>
   <div class="progress-line-container">
     <div class="progress-line-background"></div>

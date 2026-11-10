@@ -21,10 +21,6 @@ function initStatusProgress() {
     // статус. Вместо номера — data-value тайла, которому принадлежит
     // точка; реальный индекс среди statusDots ищем на лету ниже, так что
     // порядок тайлов в разметке можно менять не трогая этот файл.
-    //
-    // «Утвержденные» и «Есть ошибки» — две половинки ОДНОГО столбца с общей
-    // точкой (components.html::stat_final_column): линия доходит до этой
-    // точки, а цвет (color ниже) — по статусу: зелёный / красный.
     let statusConfig;
 
     if (isAuditor) {
@@ -32,7 +28,7 @@ function initStatusProgress() {
             'plan-cont-sent': { width: '33%', color: 'var(--color-sented)', dataValue: 'sent' },
             'plan-cont-transit': { width: '50%', color: '#35a6d0', dataValue: 'in_transit' },
             'plan-cont-sogl': { width: '66%', color: 'var(--color-sogl)', dataValue: 'sogl' },
-            'plan-cont-eror': { width: '100%', color: 'var(--color-erorsed)', dataValue: 'error' },
+            'plan-cont-eror': { width: '83%', color: 'var(--color-erorsed)', dataValue: 'error' },
             'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dataValue: 'approved' }
         };
     } else {
@@ -47,7 +43,7 @@ function initStatusProgress() {
             'plan-cont-transit': { width: '75%', color: '#35a6d0', dataValue: 'in_transit' },
             // …и «Согласованные» — у той, что ещё и согласует чужие планы.
             'plan-cont-sogl': { width: '85%', color: 'var(--color-sogl)', dataValue: 'sogl' },
-            'plan-cont-eror': { width: '100%', color: 'var(--color-erorsed)', dataValue: 'error' },
+            'plan-cont-eror': { width: '92%', color: 'var(--color-erorsed)', dataValue: 'error' },
             'plan-cont-sub': { width: '100%', color: 'var(--color-submited)', dataValue: 'approved' }
         };
     }
@@ -55,9 +51,7 @@ function initStatusProgress() {
     function dotIndexFor(dataValue) {
         const tile = document.querySelector('.stat-and-dot[data-value="' + dataValue + '"]');
         if (!tile) return -1;
-        // У половинок общего столбца своей точки нет — точка у столбца.
-        const dot = tile.querySelector('.status-dot') ||
-                    tile.closest('.stat-column')?.querySelector(':scope > .status-dot');
+        const dot = tile.querySelector('.status-dot');
         if (!dot) return -1;
         return Array.prototype.indexOf.call(statusDots, dot);
     }

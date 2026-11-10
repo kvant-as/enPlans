@@ -5,7 +5,7 @@
     max-width: 1280px;
     margin: 0 auto;
     margin-top: 100px;
-    padding: 0 20px;
+    padding: 0 var(--space-20);
 }
 
 .news_filters {
@@ -13,9 +13,9 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 40px;
-    padding: 8px;
+    gap: var(--space-20);
+    margin-bottom: var(--space-40);
+    padding: var(--space-8);
     background: var(--background-grey);
     border-radius: 20px;
     border: 1px solid var(--border-color);
@@ -23,14 +23,14 @@
 
 .filter_group {
     display: flex;
-    gap: 4px;
+    gap: var(--space-4);
     background: var(--background-grey1);
-    padding: 4px;
+    padding: var(--space-4);
     border-radius: 16px;
 }
 
 .filter_btn {
-    padding: 10px 24px;
+    padding: var(--space-10) var(--space-24);
     background: transparent;
     border: none;
     color: var(--text-subtitle);
@@ -53,14 +53,14 @@
 
 .filter_sort {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .sort_btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: var(--space-6);
+    padding: var(--space-8) var(--space-16);
     background: white;
     border: 1px solid var(--border-color);
     color: var(--text-subtitle);
@@ -85,8 +85,8 @@
 .news_grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
-    margin-bottom: 48px;
+    gap: var(--space-24);
+    margin-bottom: var(--space-48);
 }
 
 .news_card {
@@ -156,14 +156,14 @@
 }
 
 .news_card_content {
-    padding: 20px;
+    padding: var(--space-20);
 }
 
 .news_card_meta {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--space-12);
+    margin-bottom: var(--space-12);
     font-size: 12px;
     color: var(--text-subtitle);
 }
@@ -171,14 +171,14 @@
 .news_card_date {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-4);
 }
 
 .news_card_title {
     font-size: 18px;
     font-weight: 700;
     line-height: 1.4;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-12);
     color: var(--text-title);
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -194,27 +194,27 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-16);
 }
 
 .news_card_footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 16px;
+    padding-top: var(--space-16);
     border-top: 1px solid var(--border-color);
 }
 
 .news_card_stats {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-16);
 }
 
 .news_stat {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-4);
     font-size: 12px;
     color: var(--text-subtitle);
 }
@@ -222,7 +222,7 @@
 .read_more {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-6);
     font-size: 13px;
     font-weight: 600;
     color: var(--green-light);
@@ -230,16 +230,16 @@
 }
 
 .read_more:hover {
-    gap: 10px;
+    gap: var(--space-10);
 }
 
 .news_pagination {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 12px;
-    margin-top: 24px;
-    padding: 20px 0;
+    gap: var(--space-12);
+    margin-top: var(--space-24);
+    padding: var(--space-20) 0;
 }
 
 .page_btn {
@@ -268,7 +268,7 @@
 
 .page_numbers {
     display: flex;
-    gap: 8px;
+    gap: var(--space-8);
 }
 
 .page_number {
@@ -304,7 +304,7 @@
     align-items: center;
     justify-content: center;
     padding: 80px;
-    gap: 20px;
+    gap: var(--space-20);
 }
 
 .loading_spinner {
@@ -328,13 +328,13 @@
     width: 80px;
     height: 80px;
     color: var(--text-subtitle);
-    margin-bottom: 20px;
+    margin-bottom: var(--space-20);
 }
 
 .empty_state h3 {
     font-size: 20px;
     color: var(--text-title);
-    margin-bottom: 8px;
+    margin-bottom: var(--space-8);
 }
 
 .empty_state p {
@@ -349,12 +349,12 @@
 .news_portal {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 40px 20px;
+    padding: var(--space-40) var(--space-20);
     margin-top: 60px;
 }
 
 .nav_flow {
-    margin-bottom: 40px;
+    margin-bottom: var(--space-40);
     position: relative;
 }
 
@@ -374,13 +374,13 @@
 .back_orbital {
     display: inline-flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-12);
     color: var(--text-title);
     text-decoration: none;
     font-weight: 600;
     font-size: 15px;
     letter-spacing: 0.5px;
-    padding: 12px 24px;
+    padding: var(--space-12) var(--space-24);
     border-radius: 50px;
     background: rgba(0, 39, 98, 0.05);
     border: 1px solid rgba(0, 39, 98, 0.1);
@@ -392,7 +392,7 @@
     background: rgba(0, 39, 98, 0.1);
     transform: translateX(-8px);
     border-color: rgba(0, 39, 98, 0.2);
-    gap: 16px;
+    gap: var(--space-16);
 }
 
 .headline_aurora h1 {
@@ -402,20 +402,20 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     line-height: 1.2;
-    margin: 0 0 20px 0;
-    padding-bottom: 24px;
+    margin: 0 0 var(--space-20) 0;
+    padding-bottom: var(--space-24);
     position: relative;
 }
 
 
 
 .article_crystal {
-    padding: 48px;
+    padding: var(--space-48);
 }
 
 .content_hologram {
     display: grid;
-    gap: 48px;
+    gap: var(--space-48);
 }
 
 .media_illuminate {
@@ -444,7 +444,7 @@
 }
 
 .text_spectrum p {
-    margin-bottom: 24px;
+    margin-bottom: var(--space-24);
 }
 
 .text_spectrum p:first-child {
@@ -455,26 +455,26 @@
 
 .article_footer {
     margin-top: 60px;
-    padding-top: 30px;
+    padding-top: var(--space-32);
     border-top: 1px solid var(--border-color);
 }
 
 .meta_tags {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: var(--space-20);
     flex-wrap: wrap;
 }
 
 .time_pulse {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-8);
     border: 1px solid var(--border-color);
     color: var(--text-subtitle2);
     font-size: 14px;
     font-weight: 500;
-    padding: 8px 16px;
+    padding: var(--space-8) var(--space-16);
     background: var(--background-grey);
     border-radius: 50px;
 }
@@ -482,8 +482,8 @@
 .tag_bubble {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 20px;
+    gap: var(--space-6);
+    padding: var(--space-8) var(--space-20);
     background: var(--background-grey);
     color: var(--text-subtitle2);
     font-size: 14px;
@@ -496,7 +496,7 @@
 @media (max-width: 768px) {
     .news_page {
         margin-top: 100px;
-        padding: 0 16px;
+        padding: 0 var(--space-16);
     }
     
     .news_filters {
@@ -514,7 +514,7 @@
     
     .news_grid {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: var(--space-16);
     }
     
     .page_btn,
@@ -525,18 +525,18 @@
     
     .news_portal {
         margin-top: 100px;
-        padding: 20px 16px;
+        padding: var(--space-20) var(--space-16);
     }
     
     .article_crystal {
-        padding: 32px 24px;
+        padding: var(--space-32) var(--space-24);
         border-radius: 20px;
     }
     
     .headline_aurora h1 {
         font-size: 32px;
-        margin-bottom: 32px;
-        padding-bottom: 20px;
+        margin-bottom: var(--space-32);
+        padding-bottom: var(--space-20);
     }
     
     .text_spectrum {
@@ -545,18 +545,18 @@
     }
     
     .content_hologram {
-        gap: 32px;
+        gap: var(--space-32);
     }
     
     .back_orbital {
-        padding: 10px 20px;
+        padding: var(--space-10) var(--space-20);
         font-size: 14px;
     }
 }
 
 @media (max-width: 480px) {
     .article_crystal {
-        padding: 24px 16px;
+        padding: var(--space-24) var(--space-16);
         border-radius: 16px;
     }
     
@@ -569,12 +569,12 @@
     }
     
     .meta_tags {
-        gap: 12px;
+        gap: var(--space-12);
     }
     
     .time_pulse,
     .tag_bubble {
-        padding: 6px 14px;
+        padding: var(--space-6) var(--space-12);
         font-size: 13px;
     }
 }
