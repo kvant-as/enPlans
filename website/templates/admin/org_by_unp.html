@@ -1,0 +1,118 @@
+{% extends "cm_admin/base.html" %}
+{% block title %}{{ site.brand }} · Добавить организацию по УНП{% endblock %}
+
+{% block content %}
+  <div class="cm-section-head">
+    <h1 class="cm-h1">Добавить организацию по УНП</h1>
+    <a class="cm-link" href="{{ url_for('cm_admin.list_view', key='organization') }}">← к организациям</a>
+  </div>
+
+  {% if error %}<div class="cm-flash cm-flash--error">{{ error }}</div>{% endif %}
+
+  {# Шаг 1 — УНП и поиск в ЕГР #}
+  <form class="cm-form org-unp-lookup" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <input type="hidden" name="action" value="lookup">
+    <div class="cm-field">
+      <label for="f_unp">УНП *</label>
+      <input type="text" id="f_unp" name="unp" value="{{ unp }}" inputmode="numeric" maxlength="9"
+             pattern="\d{9}" placeholder="9 цифр" autocomplete="off" required autofocus>
+      <div class="cm-help">Наименование, область, юридический адрес и состояние подставятся из ЕГР (egr.gov.by).</div>
+    </div>
+    <div class="cm-form-actions">
+      <button type="submit" class="cm-btn">Найти в ЕГР</button>
+    </div>
+  </form>
+
+  {% if existing %}
+  <div class="cm-flash cm-flash--error">
+    Организация с УНП {{ unp }} уже есть в базе: «{{ existing.full_name }}».
+    <a class="cm-link" href="{{ url_for('cm_admin.edit_view', key='organization', pk=existing.id) }}">Открыть</a>
+  </div>
+  {% endif %}
+
+  {# Шаг 2 — данные из ЕГР, правка, ОКПО и роли #}
+  {% if egr %}
+  {% set kind = egr.status_kind %}
+  <hr class="org-unp-sep">
+  <h2 class="org-unp-h2">Данные из ЕГР</h2>
+
+  {% if kind in inactive_kinds %}
+  <div class="cm-flash cm-flash--error">
+    По данным ЕГР организация — {{ status_labels.get(kind, egr.status)|lower }}{% if egr.status %} («{{ egr.status }}»){% endif %}.
+    Добавить можно, но её сотрудникам будет доступен только просмотр.
+  </div>
+  {% elif kind == 'active' %}
+  <div class="cm-flash cm-flash--success">По данным ЕГР организация действующая{% if egr.status %} («{{ egr.status }}»){% endif %}.</div>
+  {% endif %}
+
+  <form class="cm-form" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="unp" value="{{ unp }}">
+    <input type="hidden" name="status" value="{{ egr.status or '' }}">
+    <input type="hidden" name="status_kind" value="{{ egr.status_kind or '' }}">
+
+    <div class="cm-field">
+      <label for="f_full_name">Полное наименование *</label>
+      <input type="text" id="f_full_name" name="full_name" value="{{ egr.full_name or '' }}" required>
+    </div>
+    <div class="cm-field">
+      <label for="f_short_name">Сокращённое наименование</label>
+      <input type="text" id="f_short_name" name="short_name" value="{{ egr.short_name or '' }}">
+    </div>
+    <div class="cm-field">
+      <label for="f_region">Область</label>
+      <select id="f_region" name="region_id">
+        <option value="">—</option>
+        {% for r in regions %}
+        <option value="{{ r.id }}" {{ 'selected' if egr.region_id == r.id }}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="cm-help">{% if egr.region_id %}Определена по коду СОАТО из адреса в ЕГР.{% else %}В ЕГР не удалось определить — выберите вручную.{% endif %}</div>
+    </div>
+    <div class="cm-field">
+      <label for="f_legal_address">Юридический адрес</label>
+      <input type="text" id="f_legal_address" name="legal_address" value="{{ egr.legal_address or '' }}">
+    </div>
+    <div class="cm-field">
+      <label for="f_okpo">ОКПО</label>
+      <input type="text" id="f_okpo" name="okpo" value="{{ form.get('okpo', '') }}" inputmode="numeric" autocomplete="off">
+      <div class="cm-help">В ЕГР ОКПО нет — укажите, если известен.</div>
+    </div>
+    <div class="cm-field">
+      <label for="f_ministry">Министерство</label>
+      <select id="f_ministry" name="ministry_id">
+        <option value="">—</option>
+        {% for m in ministries %}
+        <option value="{{ m.id }}" {{ 'selected' if form.get('ministry_id')|string == m.id|string }}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="cm-field">
+      <label>Роли организации</label>
+      <div class="org-unp-roles">
+        {% for name, label in role_fields %}
+        <label class="org-unp-role">
+          <input type="checkbox" name="{{ name }}" {{ 'checked' if form.get(name) or (not form and name == 'is_regular') }}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="cm-form-actions">
+      <button type="submit" class="cm-btn">Добавить организацию</button>
+      <a class="cm-link" href="{{ url_for('admin_org.by_unp') }}">Отмена</a>
+    </div>
+  </form>
+  {% endif %}
+
+  <style>
+    .org-unp-lookup { margin-bottom: 8px; }
+    .org-unp-sep { border: 0; border-top: 1px solid var(--line); margin: 28px 0 22px; }
+    .org-unp-h2 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+    .org-unp-roles { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+    .org-unp-role { display: inline-flex; align-items: center; gap: 10px; font-weight: 400; cursor: pointer; }
+  </style>
+{% endblock %}

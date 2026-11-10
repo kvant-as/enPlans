@@ -82,7 +82,9 @@ const Notifications = {
     markAllBtn: null,
     loadMoreBtn: null,
     page: 1,
-    perPage: 3,
+    // Строки списка компактнее прежних карточек — на первом экране
+    // помещается больше.
+    perPage: 6,
     hasMore: true,
     isLoading: false,
     unreadTotal: 0,
@@ -164,6 +166,29 @@ const Notifications = {
         return div.innerHTML;
     },
 
+    // Тип уведомления — по тексту (у Notification нет отдельного поля
+    // типа): от него зависит иконка и её цвет в списке.
+    // Порядок важен: первое совпадение побеждает (ошибки/отмены проверяются
+    // раньше «успеха», иначе «Подтверждение … отменено» стало бы зелёным).
+    NOTIF_KINDS: [
+        { kind: 'sign',    re: /подпис/i },
+        { kind: 'error',   re: /ошибк|доработк|отклон|не согласован/i },
+        { kind: 'warning', re: /отмен|возвращен|повторное рассмотрение/i },
+        { kind: 'success', re: /утвержд|подтвержд|согласован(?!ия)/i },
+    ],
+    NOTIF_ICONS: {
+        sign:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+        error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+        info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+    },
+
+    notifKind(message) {
+        const found = this.NOTIF_KINDS.find(k => k.re.test(message || ''));
+        return found ? found.kind : 'info';
+    },
+
     buildNotifNode(n) {
         const notif = document.createElement("div");
         notif.classList.add("notif");
@@ -172,11 +197,16 @@ const Notifications = {
             notif.classList.add("unread");
         }
 
+        const kind = this.notifKind(n.message);
         const formattedTime = this.formatNotificationTime(n.created_at);
 
         notif.innerHTML = `
-            <div class="notif-message">${this.escapeHtml(n.message)}</div>
-            <div class="notif-time">${formattedTime}</div>
+            <span class="notif-icon notif-icon-${kind}" aria-hidden="true">${this.NOTIF_ICONS[kind]}</span>
+            <div class="notif-content">
+                <div class="notif-message">${this.escapeHtml(n.message)}</div>
+                <div class="notif-time">${formattedTime}</div>
+            </div>
+            <span class="notif-dot" aria-hidden="true"></span>
         `;
 
         notif.addEventListener('click', () => {
@@ -193,8 +223,10 @@ const Notifications = {
 
         if (!data || data.length === 0) {
             this.notifListEl.innerHTML = `
-                <div class='empty-state'>
-                    <h1>Нет уведомлений</h1>
+                <div class="notif-empty">
+                    <span class="notif-empty-icon">${this.NOTIF_ICONS.info}</span>
+                    <div class="notif-empty-title">Уведомлений пока нет</div>
+                    <div class="notif-empty-text">Здесь появятся события по вашим планам</div>
                 </div>
             `;
             return;
@@ -299,6 +331,14 @@ const Notifications = {
 
     updateCounter(count) {
         this.unreadTotal = count;
+        // Счётчик непрочитанных и в шапке попапа (рядом с заголовком);
+        // кнопка «Прочитать все» неактивна, когда читать нечего.
+        const headerCount = document.getElementById("notifHeaderCount");
+        if (headerCount) {
+            headerCount.textContent = count > 99 ? '99+' : count;
+            headerCount.style.display = count > 0 ? "inline-flex" : "none";
+        }
+        if (this.markAllBtn) this.markAllBtn.disabled = count === 0;
         if (count > 0) {
             this.notifCountEl.innerText = count > 99 ? '99+' : count;
             this.notifCountEl.style.display = "flex";
@@ -383,6 +423,7 @@ const activationCode = {
             });
 
             inputs[Math.min(pasteData.length - 1, inputs.length - 1)].focus();
+            inputs[0].dispatchEvent(new Event('change', { bubbles: true }));
         });
   }
 };
@@ -640,7 +681,11 @@ const formSteps = {
 // func to show modals
 function handleModal(modalElement, openLink, closeLink) {
     openLink.addEventListener('click', function(event) {
-        if (openLink.style.opacity === '0.5') {
+        // .btn-disabled (погашенная кнопка панели таблицы — напр.
+        // «Редактировать» на «Январь-Декабрь» или на ещё закрытом периоде)
+        // гасит кнопку классом, а не inline-стилем — без этой проверки
+        // модалка всё равно открывалась пустой.
+        if (openLink.style.opacity === '0.5' || openLink.classList.contains('btn-disabled')) {
             event.preventDefault();
         } else {
             modalElement.classList.add('active');
@@ -1241,7 +1286,7 @@ class MultiTypeSearchManager {
         switch(this.selectedItemType) {
             case 'organization':
                 headersHTML += `
-                    <th>Наименование предприятия</th>
+                    <th>Наименование организации</th>
                     <th style="text-align: center;">УНП</th>
                     <th style="text-align: center;">ОКПО</th>
                 `;
@@ -1853,12 +1898,15 @@ class MultiStepForm {
             step1Selector: '.auth-step-1',
             step2Selector: '.auth-step-2',
             step3Selector: '.auth-step-3',
+            step4Selector: '.auth-step-4',
             formSelector: '#registration-form',
             nextBtn1Id: 'next-btn-1',
             nextBtn2Id: 'next-btn-2',
             prevBtn2Id: 'prev-btn-2',
             prevBtn3Id: 'prev-btn-3',
+            prevBtn4Id: 'prev-btn-4',
             submitBtnId: 'submit-btn',
+            ecpVerifyBtnId: 'ecp-verify-btn',
             minSearchLength: 2,
             debounceDelay: 300,
             perPage: 10,
@@ -1867,6 +1915,8 @@ class MultiStepForm {
 
         this.currentEntityType = 'respondent';
         this.selectedItem = null;
+        this.currentStep = 1;
+        this.totalSteps = 4;
         this.searchData = {
             page: 1,
             query: '',
@@ -1878,6 +1928,13 @@ class MultiStepForm {
     }
 
     init() {
+        // MultiStepForm инстанцируется безусловно на КАЖДОЙ странице (см.
+        // низ файла) — без этой проверки document.getElementById('submit-btn')
+        // в getElementReferences() подхватывал чужую кнопку с тем же id на
+        // не связанных страницах (например "Создать план" в create_plan.html)
+        // и вешал на неё обработчик визарда регистрации.
+        if (!document.getElementById(this.config.formSelector.replace('#', ''))) return;
+
         this.elements = {};
         this.getElementReferences();
         this.bindEvents();
@@ -1893,14 +1950,19 @@ class MultiStepForm {
         this.elements.step1 = document.querySelector(this.config.step1Selector);
         this.elements.step2 = document.querySelector(this.config.step2Selector);
         this.elements.step3 = document.querySelector(this.config.step3Selector);
+        this.elements.step4 = document.querySelector(this.config.step4Selector);
         this.elements.form = document.querySelector(this.config.formSelector);
-        
+
         this.elements.nextBtn1 = document.getElementById(this.config.nextBtn1Id);
         this.elements.nextBtn2 = document.getElementById(this.config.nextBtn2Id);
         this.elements.prevBtn2 = document.getElementById(this.config.prevBtn2Id);
         this.elements.prevBtn3 = document.getElementById(this.config.prevBtn3Id);
+        this.elements.prevBtn4 = document.getElementById(this.config.prevBtn4Id);
         this.elements.submitBtn = document.getElementById(this.config.submitBtnId);
+        this.elements.ecpVerifyBtn = document.getElementById(this.config.ecpVerifyBtnId);
         this.elements.entityTypeInput = document.getElementById('entity_type');
+
+        this.stepperDots = Array.from(document.querySelectorAll('#registrationStepper .plan-send-step-dot'));
 
         this.elements.entityTypeRadioInputs = document.querySelectorAll('input[name="entity_type"]');
         
@@ -1934,7 +1996,33 @@ class MultiStepForm {
         if (this.elements.prevBtn3) {
             this.elements.prevBtn3.addEventListener('click', () => this.goToStep(2));
         }
-        
+
+        if (this.elements.prevBtn4) {
+            this.elements.prevBtn4.addEventListener('click', () => this.goToStep(3));
+        }
+
+        if (this.elements.submitBtn) {
+            this.elements.submitBtn.addEventListener('click', () => {
+                if (!this.validateForm()) {
+                    alert('Пожалуйста, заполните все обязательные поля и выберите организацию');
+                    return;
+                }
+                this.goToStep(4);
+            });
+        }
+
+        if (this.elements.ecpVerifyBtn) {
+            this.elements.ecpVerifyBtn.addEventListener('click', () => {
+                if (typeof EcpMockModal === 'undefined') return;
+                const ecpModal = new EcpMockModal({
+                    modalId: 'ecpRegisterModal',
+                    certCheckUrl: '/verify-certificate',
+                    onSuccess: () => this.submitRegistrationForm(),
+                });
+                ecpModal.open();
+            });
+        }
+
         if (this.elements.entityTypeRadioInputs) {
             this.elements.entityTypeRadioInputs.forEach(input => {
                 input.addEventListener('change', (e) => this.handleEntityTypeChange(e));
@@ -1953,9 +2041,13 @@ class MultiStepForm {
         }
 
         if (this.elements.form) {
-            this.elements.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+            // Единственный текстовый инпут в форме (поиск организации) мог
+            // бы неявно отправить форму по Enter — реальная отправка
+            // разрешена только после успешной проверки ЭЦП (шаг 4), см.
+            // submitRegistrationForm().
+            this.elements.form.addEventListener('submit', (e) => e.preventDefault());
         }
-        
+
         document.addEventListener('click', (e) => this.handleDocumentClick(e));
         
         this.setupStep1Validation();
@@ -2046,20 +2138,19 @@ class MultiStepForm {
         this.selectedItem = item;
     }
 
-    handleFormSubmit(e) {
-        e.preventDefault();
-        
-        if (!this.validateForm()) {
-            alert('Пожалуйста, заполните все обязательные поля и выберите организацию');
-            return;
+    submitRegistrationForm() {
+        // Вызывается только из onSuccess ЭЦП-модалки (шаг 4) — к этому
+        // моменту validateForm() уже гарантированно true (submit-btn на
+        // шаге 3 пускает на шаг 4 только после проверки, см. bindEvents).
+        const btn = this.elements.ecpVerifyBtn;
+        const originalText = btn ? btn.querySelector('.btn-text').textContent : null;
+        if (btn) {
+            btn.querySelector('.btn-text').textContent = 'Отправка...';
+            btn.disabled = true;
         }
-        
-        const originalText = this.elements.submitBtn.querySelector('.btn-text').textContent;
-        this.elements.submitBtn.querySelector('.btn-text').textContent = 'Отправка...';
-        this.elements.submitBtn.disabled = true;
-        
+
         const formData = new FormData(this.elements.form);
-        
+
         fetch(this.elements.form.action, {
             method: 'POST',
             body: formData,
@@ -2092,8 +2183,10 @@ class MultiStepForm {
             alert(`Ошибка при отправке формы: ${error.message}`);
         })
         .finally(() => {
-            this.elements.submitBtn.querySelector('.btn-text').textContent = originalText;
-            this.elements.submitBtn.disabled = false;
+            if (btn) {
+                btn.querySelector('.btn-text').textContent = originalText;
+                btn.disabled = false;
+            }
         });
     }
 
@@ -2107,7 +2200,10 @@ class MultiStepForm {
     }
 
     setupStep1Validation() {
-        const requiredFields = ['#name', '#secondname', '#patronymic'];
+        // Баг: поле "Должность" (#post) не слушалось — если заполнить его
+        // последним, updateNextButtonState() никогда не перевызывался и
+        // кнопка "Далее" оставалась disabled, хотя все поля уже заполнены.
+        const requiredFields = ['#name', '#secondname', '#patronymic', '#post'];
         requiredFields.forEach(selector => {
             const input = document.querySelector(selector);
             if (input) {
@@ -2144,23 +2240,27 @@ class MultiStepForm {
         if (this.elements.step1) this.elements.step1.style.display = 'none';
         if (this.elements.step2) this.elements.step2.style.display = 'none';
         if (this.elements.step3) this.elements.step3.style.display = 'none';
-        
+        if (this.elements.step4) this.elements.step4.style.display = 'none';
+
+        const allSteps = [this.elements.step1, this.elements.step2, this.elements.step3, this.elements.step4];
+        const clearActive = () => allSteps.forEach((el) => el && el.classList.remove('active'));
+
         switch(stepNumber) {
             case 1:
                 if (this.elements.step1) {
                     this.elements.step1.style.display = 'block';
+                    clearActive();
                     this.elements.step1.classList.add('active');
-                    if (this.elements.step2) this.elements.step2.classList.remove('active');
-                    if (this.elements.step3) this.elements.step3.classList.remove('active');
+                    this.currentStep = 1;
                 }
                 break;
             case 2:
                 if (this.validateStep1()) {
                     if (this.elements.step2) {
                         this.elements.step2.style.display = 'block';
-                        if (this.elements.step1) this.elements.step1.classList.remove('active');
+                        clearActive();
                         this.elements.step2.classList.add('active');
-                        if (this.elements.step3) this.elements.step3.classList.remove('active');
+                        this.currentStep = 2;
                     }
                 } else {
                     alert('Пожалуйста, заполните все обязательные поля');
@@ -2172,12 +2272,31 @@ class MultiStepForm {
             case 3:
                 if (this.elements.step3) {
                     this.elements.step3.style.display = 'block';
-                    if (this.elements.step1) this.elements.step1.classList.remove('active');
-                    if (this.elements.step2) this.elements.step2.classList.remove('active');
+                    clearActive();
                     this.elements.step3.classList.add('active');
+                    this.currentStep = 3;
+                }
+                break;
+            case 4:
+                if (this.elements.step4) {
+                    this.elements.step4.style.display = 'block';
+                    clearActive();
+                    this.elements.step4.classList.add('active');
+                    this.currentStep = 4;
                 }
                 break;
         }
+
+        this.updateStepper();
+    }
+
+    updateStepper() {
+        this.stepperDots.forEach((dot) => {
+            const step = parseInt(dot.dataset.step, 10);
+            dot.classList.remove('active', 'completed');
+            if (step < this.currentStep) dot.classList.add('completed');
+            else if (step === this.currentStep) dot.classList.add('active');
+        });
     }
 
     handleSearchInput(e) {
@@ -2843,7 +2962,15 @@ function initProfileTabs() {
         if (!container) return;
         const tabPanels = container.querySelectorAll(':scope > .profile-tab-panel');
 
-        function activateTab(tabName) {
+        // Вкладка отражается в URL query-параметром с именем самого блока
+        // вкладок (id) — так несколько независимых групп вкладок на одной
+        // странице (например, профиль и "Действия с планом") не конфликтуют
+        // друг с другом, а ссылку на конкретную вкладку можно сохранить/
+        // переслать. replaceState, а не pushState — переключение вкладок не
+        // должно засорять историю браузера (кнопка "назад").
+        const urlKey = tabsEl.id || null;
+
+        function activateTab(tabName, updateUrl) {
             tabButtons.forEach((btn) => {
                 const isActive = btn.dataset.tab === tabName;
                 btn.classList.toggle('active', isActive);
@@ -2852,14 +2979,50 @@ function initProfileTabs() {
             tabPanels.forEach((panel) => {
                 panel.classList.toggle('active', panel.dataset.tabPanel === tabName);
             });
+            if (updateUrl && urlKey) {
+                const url = new URL(window.location.href);
+                url.searchParams.set(urlKey, tabName);
+                window.history.replaceState(null, '', url);
+            }
         }
 
         tabButtons.forEach((btn) => {
-            btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+            btn.addEventListener('click', () => activateTab(btn.dataset.tab, true));
         });
+
+        if (urlKey) {
+            const requestedTab = new URLSearchParams(window.location.search).get(urlKey);
+            if (requestedTab && tabsEl.querySelector(`.profile-tab[data-tab="${requestedTab}"]`)) {
+                activateTab(requestedTab, false);
+            }
+        }
     });
 }
 document.addEventListener('DOMContentLoaded', initProfileTabs);
+
+// Переключатель версий плана (component.plan_version_switcher,
+// macros/components.html) — тот же .signer-picker, что и выбор
+// подписанта (plan_send.html/plan_actions.html), но рендерится в
+// plan_header_bar почти на каждой странице плана, поэтому обработчик
+// здесь, делегированием на document, а не точечной инициализацией на
+// конкретной странице (как у сигнер-пикеров форм, которых там всего
+// один-два на страницу). Пункты — обычные <a href>, открытие/закрытие —
+// просто класс .active (та же видимость через CSS, что у .signer-picker).
+document.addEventListener('click', function (e) {
+    const toggle = e.target.closest('.plan-version-switcher .signer-picker-toggle');
+    if (toggle) {
+        e.stopPropagation();
+        const dropdown = toggle.closest('.plan-version-switcher');
+        document.querySelectorAll('.plan-version-switcher.active').forEach(function (d) {
+            if (d !== dropdown) d.classList.remove('active');
+        });
+        dropdown.classList.toggle('active');
+        return;
+    }
+    document.querySelectorAll('.plan-version-switcher.active').forEach(function (d) {
+        if (!d.contains(e.target)) d.classList.remove('active');
+    });
+});
 
 if (document.getElementById('dots-profile-org')) {
     initDropdownMenu('dots-profile-org', 'menu-profile-org');
@@ -3107,3 +3270,50 @@ document.addEventListener('click', (e) => {
 
     window.TeoViewer.open(url, name, url);
 });
+// Кнопка отправки auth-форм неактивна, пока обязательные поля не заполнены.
+// <form data-require-valid>; поле пароля-подтверждения сверяется через data-cm-pwmatch.
+(function () {
+    function isAutofilled(el) {
+        try { return el.matches(':-webkit-autofill') || el.matches(':autofill'); } catch (e) { return false; }
+    }
+
+    function fieldOk(el) {
+        if (el.disabled || el.type === 'hidden') return true;
+        if (el.required && !el.value.trim() && !isAutofilled(el)) return false;
+        if (el.value && el.minLength > 0 && el.value.length < el.minLength) return false;
+        if (el.value && !el.checkValidity()) return false;
+        return true;
+    }
+
+    function setup(form) {
+        var submit = form.querySelector('button[type="submit"]');
+        if (!submit) return;
+        var match = form.querySelector('[data-cm-pwmatch]');
+
+        function update() {
+            var ok = Array.prototype.every.call(form.querySelectorAll('input, select, textarea'), fieldOk);
+            if (ok && match) {
+                var a = document.querySelector(match.getAttribute('data-password'));
+                var b = document.querySelector(match.getAttribute('data-confirm'));
+                ok = !!(a && b && a.value === b.value);
+            }
+            submit.disabled = !ok;
+        }
+
+        form.addEventListener('input', update);
+        form.addEventListener('change', update);
+        form.addEventListener('submit', function (e) {
+            update();
+            if (submit.disabled) e.preventDefault();
+        });
+        // автозаполнение браузера не всегда шлёт input
+        form.addEventListener('animationstart', update);
+        update();
+        setTimeout(update, 0);
+        setTimeout(update, 600);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[data-require-valid]').forEach(setup);
+    });
+})();

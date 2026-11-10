@@ -12,7 +12,7 @@ from io import BytesIO
 from flask import send_file
 import os
 
-from website.routes.views import owner_only, reader_forbidden
+from website.routes.views import owner_only, reader_forbidden, historical_forbidden
 from website.sessions import session_required
 from common_models import current_utc_time
 from website.models import Plan, PlanTicket, PlanApprovalPath
@@ -314,6 +314,7 @@ TICKET_EDIT_WINDOW_MINUTES = 5
 @login_required
 @owner_only
 @session_required
+@historical_forbidden
 @reader_forbidden
 def edit_ticket(token):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -445,6 +446,7 @@ def get_ticket_attachment(token, ticket_id):
 @login_required
 @owner_only
 @session_required
+@historical_forbidden
 @reader_forbidden
 def create_ticket(token):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -471,34 +473,33 @@ def create_ticket(token):
     if current_plan.is_approved or current_plan.is_error:
         return _error('План уже обработан')
 
-    # approval_paths больше не чистятся при повторной отправке (см. cycle) —
-    # искать "текущий" этап нужно строго в последнем цикле, иначе можно
-    # найти брошенный непройденный этап из отменённого старого цикла.
-    latest_cycle = db.session.query(db.func.max(PlanApprovalPath.cycle)).filter(
-        PlanApprovalPath.plan_id == current_plan.id
-    ).scalar() or 1
-
-    current_path = PlanApprovalPath.query.filter_by(
-        plan_id=current_plan.id,
-        cycle=latest_cycle,
-        is_viewed=False
-    ).order_by(PlanApprovalPath.step_order).first()
+    # get_current_review_path уже учитывает последний цикл отправки,
+    # исключает внутренние (is_internal) строки и — для утверждающей
+    # организации (step_type='approver', ТЗ п.5) — ограничивает доступ
+    # только org_head/org_head_deputy; раньше здесь была своя отдельная
+    # копия этого запроса без двух последних проверок.
+    from website.utils.plans import get_current_review_path
+    current_path = get_current_review_path(current_plan, current_user)
 
     if not current_path:
         return _error('Нет активных шагов для проверки')
 
-    if current_path.organization_id != current_user.organization_id:
-        return _error('У вас нет прав на отправку сообщения для этого этапа')
+    from website.utils.plans import org_head_block_reason, ORG_HEAD_BLOCK_MESSAGES
+    block = org_head_block_reason(current_plan, current_path, current_user)
+    if block:
+        return _error(ORG_HEAD_BLOCK_MESSAGES[block])
 
     prev_path = PlanApprovalPath.query.filter(
         PlanApprovalPath.plan_id == current_plan.id,
-        PlanApprovalPath.cycle == latest_cycle,
+        PlanApprovalPath.cycle == current_path.cycle,
         PlanApprovalPath.step_order == current_path.step_order - 1
     ).first()
 
     if prev_path and not prev_path.is_viewed:
         return _error('Предыдущий этап еще не пройден')
 
+    # ТЗ п.4.1: замечание — обязательный текст, файл к нему — по желанию
+    # (раньше файл требовался всегда).
     attachment_file = request.files.get('attachment')
     if attachment_file and attachment_file.filename:
         from website.utils.ticket_attachment import validate_ticket_attachment
@@ -510,7 +511,6 @@ def create_ticket(token):
 
     new_ticket = PlanTicket(
         note=note.strip(),
-        luck=False,
         plan_id=current_plan.id,
         user_id=current_user.id,
         is_system=(current_user.id == current_plan.user_id),

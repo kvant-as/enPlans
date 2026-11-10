@@ -88,6 +88,28 @@ def save_teo_file(event, file_storage):
         _remove_file(folder, old_filename)
 
 
+def copy_teo_file(src_filename):
+    """Физически дублирует уже сохранённый файл ТЭО под новым сгенерированным
+    именем — используется при снимке плана (create_plan_snapshot в
+    utils/plans.py), чтобы у замороженной копии мероприятия было СВОЁ
+    файловое имя: save_teo_file/delete_teo_file на живой Event-строке
+    удаляют старый файл с диска при следующей правке, и без собственной
+    копии снимок молча лишился бы приложения. Возвращает новое имя файла
+    (на диске, без исходного/отображаемого имени — то остаётся прежним)
+    или None, если исходного файла не существует."""
+    if not src_filename:
+        return None
+
+    folder = current_app.config['TEO_UPLOAD_FOLDER']
+    src_path = os.path.join(folder, src_filename)
+    if not os.path.isfile(src_path):
+        return None
+
+    new_filename = f'{uuid.uuid4().hex}{_ext(src_filename)}'
+    shutil.copy2(src_path, os.path.join(folder, new_filename))
+    return new_filename
+
+
 def delete_teo_file(event):
     """Удаляет прикреплённый файл ТЭО у мероприятия (с диска и из БД)."""
     if not event.teo_filename:

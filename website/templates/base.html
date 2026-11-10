@@ -9,11 +9,17 @@
       // Применяем тему до отрисовки страницы, чтобы не было "мигания".
       // По умолчанию — светлая тема, независимо от системных настроек;
       // тёмная включается только явным выбором пользователя (переключатель).
+      // Пока тёмная тема выключена (DARK_THEME_ENABLED), всегда светлая —
+      // сохранённый ранее выбор не применяется.
       (function () {
+        var darkEnabled = {{ 'true' if config.DARK_THEME_ENABLED else 'false' }};
         try {
-          var saved = localStorage.getItem('enplans-theme');
+          var saved = darkEnabled ? localStorage.getItem('enplans-theme') : null;
           document.documentElement.setAttribute('data-theme', saved || 'light');
-        } catch (e) {}
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+        window.ENPLANS_DARK_THEME_ENABLED = darkEnabled;
       })();
     </script>
 
@@ -24,6 +30,9 @@
     <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Regular.woff2') }}" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-Medium.woff2') }}" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="{{ url_for('static', filename='fonts/Montserrat-SemiBold.woff2') }}" crossorigin>
+
+    <!-- Токены (отступы, уровни карточек) — на всех страницах, вне extra_css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
 
     {% block extra_css %}
         <link rel="stylesheet" href="{{ url_for('cm_assets.static', filename='css/message-flash.css') }}">
@@ -48,7 +57,7 @@
             <div class="header-aside" onclick="window.location.href='/'">
                 <div class="logo-wrapper {% if current_user and current_user.is_authenticated %}
                         {% if current_user.is_admin %}red-shadow
-                        {% elif current_user.is_auditor %}green-shadow
+                        {% elif current_user.has_auditor_access %}green-shadow
                         {% endif %}
                     {% endif %}">
                     <img src="{{ url_for('static', filename='img/logo.svg') }}"
@@ -68,41 +77,46 @@
                     </button>
                 {% else %}
                     <div class="notif-wrapper">
-                        <button type="button" class="svg-btn tooltip-btn" id="notifBtn" style="margin: 0; position: relative;">
+                        <button type="button" class="svg-btn tooltip-btn" id="notifBtn">
                             {{ icons.icon_notif() }} 
                             <span class="tooltip-text">{{ _('Уведомления') }}</span>
                             <span id="notifCount" class="notif-count" style="display: none;">0</span>
                         </button>
                         <div id="notifPopup" class="notif-popup">
                             <div class="notif-header">
-                                <span>{{ _('Уведомления') }}</span>
-                                <button id="markAllRead" type="button" class="svg-btn tooltip-btn">
+                                <div class="notif-header-title">
+                                    <span>{{ _('Уведомления') }}</span>
+                                    <span class="notif-header-count" id="notifHeaderCount" style="display: none;">0</span>
+                                </div>
+                                <button id="markAllRead" type="button" class="notif-read-all">
                                     {{ icons.icon_read_all() }}
-                                    <span class="tooltip-text">{{ _('Прочитать') }}</span>
+                                    <span>{{ _('Прочитать все') }}</span>
                                 </button>
                             </div>
                             <div class="notif-body" id="notifList"></div>
                         </div>
                     </div>
-                    <button type="button" class="svg-btn tooltip-btn helper" style="margin: 0;" onclick="ChatModule.toggleChat()">
-                        {{ icons.icon_helper() }} 
+                    <button type="button" class="svg-btn tooltip-btn helper" onclick="ChatModule.toggleChat()">
+                        {{ icons.icon_helper() }}
                         <span class="tooltip-text">{{ _('Консультант') }}</span>
                     </button>
                 {% endif %}
-                <button type="button" class="svg-btn tooltip-btn help" style="margin: 0;" onclick="window.location.href='/FAQ'">
+                <button type="button" class="svg-btn tooltip-btn help" onclick="window.location.href='/FAQ'">
                     {{ icons.icon_help() }} 
                     <span class="tooltip-text">{{ _('Помощь') }}</span>
                 </button>
-                <button type="button" class="svg-btn tooltip-btn news" style="margin: 0;" onclick="window.location.href='/news'">
+                <button type="button" class="svg-btn tooltip-btn news" onclick="window.location.href='/news'">
                     {{ icons.icon_news() }}
                     <span class="tooltip-text">{{ _('Новости') }}</span>
                 </button>
-                <button type="button" class="svg-btn tooltip-btn theme-toggle" id="themeToggle" style="margin: 0;">
+                {% if config.DARK_THEME_ENABLED %}
+                <button type="button" class="svg-btn tooltip-btn theme-toggle" id="themeToggle">
                     {{ icons.icon_theme_sun() }}
                     {{ icons.icon_theme_moon() }}
                     <span class="tooltip-text">{{ _('Тема оформления') }}</span>
                 </button>
-                
+                {% endif %}
+
 
                 {#
                 <button type="button" class="svg-btn tooltip-btn" onclick="window.location.href='{{ url_for('auth.login') }}'">
@@ -131,9 +145,22 @@
                 <div class="user-profile-panel" id="user-profile-panel">
                     <div class="nav-menu-list">
                         {% if current_user.is_authenticated %}
-                            <button type="button" class="nav-menu-item" onclick="window.location.href='/profile'">
-                                {{ icons.icon_profile() }}
-                                <span>{{ _('Мой профиль') }}</span>
+                            {% set account_role_label = {
+                                'org_head': _('Руководитель организации'),
+                                'dept_head': _('Руководитель структурного подразделения'),
+                                'executor': _('Исполнитель'),
+                            }.get(current_user.org_role) %}
+                            <button type="button" class="nav-menu-item account-info-item" onclick="window.location.href='/profile'">
+                                <div class="account-info-avatar">
+                                    {{ current_user.first_name[:1] | upper if current_user.first_name else 'U' }}{{ current_user.last_name[:1] | upper if current_user.last_name else 'S' }}
+                                </div>
+                                <div class="account-info-body">
+                                   
+                                    <span class="account-info-meta">{{ account_role_label or _('Мой профиль') }}</span>
+                                    {% if current_user.organization %}
+                                    <span class="account-info-org">{{ current_user.organization.full_name }}</span>
+                                    {% endif %}
+                                </div>
                             </button>
                             <hr>
                         {% endif %}
@@ -249,8 +276,8 @@
     </div>
     {% endif %}
 
-    {% if context_menu %}
-        {% set is_disabled = plan.is_sent or plan.is_approved or (plan.user_id != current_user.id)%}
+    {% if context_menu and current_user and current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
+        {% set is_disabled = plan.is_sent or plan.is_approved or plan.pending_signer_user_id or (plan.org_id != current_user.organization_id)%}
         <div id="MenuMainTable" class="white-panel" style="display:none;">
             <button {% if is_disabled %}disabled{% endif %}  id="contextEditButton">
                 {{ icons.icon_edit() }}
@@ -260,16 +287,16 @@
                 <button type="button" {% if is_disabled %}disabled{% endif %} id="contextDeleteButton">
                     {{ icons.icon_delete() }}
                     <span>{{ _('Удалить') }}</span>
-                </button> 
+                </button>
             </form>
-        </div>  
+        </div>
     {% endif %}
 
     {% if change_orgUser_modal %}
         <div id="orgUserModal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h1 id="modal-title">{{ _('Выберите предприятие') }}</h1>
+                    <h1 id="modal-title">{{ _('Выберите Организация') }}</h1>
                     {{ icons.icon_close() }}  
                 </div>
                 
@@ -502,8 +529,18 @@
         </div>
     </div>
 
-    <main> 
+    <main>
     <div id="flash-container"></div>
+
+    {#  Организация не действующая по ЕГР — только просмотр (сервер
+        отклоняет любые изменения, см. block_inactive_organization в
+        website/__init__.py). #}
+    {% if inactive_org_notice %}
+    <div class="inactive-org-banner" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span>{{ inactive_org_notice }}</span>
+    </div>
+    {% endif %}
 
       {% block content %} 
       {% endblock %}

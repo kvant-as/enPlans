@@ -11,7 +11,29 @@
  */
 class EcpMockModal {
     constructor(options = {}) {
-        this.modalId = options.modalId || 'ecpMockModal';
+        const modalId = options.modalId || 'ecpMockModal';
+
+        // Вызывающий код (plan_actions.html и т.п.) создаёт `new EcpMockModal(...)`
+        // заново при КАЖДОМ клике на кнопку, открывающую проверку — если
+        // пользователь откроет модалку, не завершив проверку, и кликнет
+        // кнопку ещё раз, на тот же DOM-элемент модалки навешивался бы ещё
+        // один независимый набор обработчиков (_bindCertSlide и т.д.). Один
+        // реальный успешный проход тогда вызывал бы onSuccess дважды —
+        // именно так дублировались шаги маршрута согласования (handle_sent_status
+        // вызывался параллельно дважды). Поэтому здесь — синглтон на
+        // modalId: повторное создание не перепривязывает слушатели, а
+        // просто обновляет certCheckUrl/onSuccess у уже существующего
+        // инстанса и возвращает его.
+        EcpMockModal._instances = EcpMockModal._instances || new Map();
+        const existing = EcpMockModal._instances.get(modalId);
+        if (existing) {
+            existing.onSuccess = typeof options.onSuccess === 'function' ? options.onSuccess : function () {};
+            existing.certCheckUrl = options.certCheckUrl || null;
+            if (options.closeOnOverlay !== undefined) existing.overlayCloseEnabled = options.closeOnOverlay !== false;
+            return existing;
+        }
+
+        this.modalId = modalId;
         this.modal = document.getElementById(this.modalId);
         this.onSuccess = typeof options.onSuccess === 'function' ? options.onSuccess : function () {};
         this.certCheckUrl = options.certCheckUrl || null;
@@ -29,6 +51,8 @@ class EcpMockModal {
         this._bindCertSlide();
         this._bindBack();
         this._bindClose();
+
+        EcpMockModal._instances.set(modalId, this);
     }
 
     open() {

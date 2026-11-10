@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Завершение регистрации') }} - EnPlans{% endblock %}
+{% block content %}
+
+<div class="auth-page">
+  <div class="auth-text-upper">
+    <div class="auth-title" onclick="window.location.href = '/login'">
+      <img src="/static/img/logo.svg" alt="" />
+      <a>EnPlans</a>
+    </div>
+    <p class="auth-subtitle">
+      {{ _('Вас пригласили как сотрудника организации — осталось указать свои данные') }}
+    </p>
+  </div>
+
+  <form class="steps-wrapper" method="POST" action="{{ url_for('auth.complete_profile') }}" id="complete-profile-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="step auth-step-1 active auth-container">
+      <div class="auth-choose" style="justify-content: center" role="tablist">
+        <a class="auth-tab active wave-effect" role="tab" style="width: 100%" aria-selected="true">
+          {{ _('Ввод персональных данных') }}
+        </a>
+      </div>
+      <div class="auth-form" id="form-part-1">
+        <div class="row-form-group">
+          <div class="form-group">
+            <label>{{ _('Фамилия') }} <span class="required-star">*</span></label>
+            <input type="text" name="last_name" id="secondname" maxlength="15" placeholder="{{ _('Введите фамилию') }}" class="auth-input" required />
+          </div>
+          <div class="form-group">
+            <label>{{ _('Имя') }} <span class="required-star">*</span></label>
+            <input type="text" name="first_name" id="name" maxlength="15" placeholder="{{ _('Введите имя') }}" class="auth-input" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>{{ _('Отчество') }} <span class="required-star">*</span></label>
+          <input type="text" name="patronymic_name" id="patronymic" maxlength="15" placeholder="{{ _('Введите отчество') }}" class="auth-input" required />
+        </div>
+        <div class="form-group">
+          <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+          <div class="phone-group-list" id="complete-phone-group-list" data-existing-phones=""></div>
+          <button type="button" class="phone-row-add" id="complete-add-phone-row">
+            {{ icons.icon_plus() }}
+            <span>{{ _('Добавить номер телефона') }}</span>
+          </button>
+          <div class="phone-hint">{{ _('Номер должен содержать 12 цифр вместе с кодом (+375). Можно указать не более 2 номеров') }}</div>
+          <input type="hidden" name="telephone" id="complete-telephone" required />
+        </div>
+        <div class="form-group">
+          <label>{{ _('Должность') }} <span class="required-star">*</span></label>
+          <input type="text" name="post" id="post" maxlength="35" placeholder="{{ _('Введите должность') }}" class="auth-input" required />
+        </div>
+        <div class="button-auth-area">
+          <button type="submit" class="main-btn main-btn-primary" id="complete-profile-submit" disabled>
+            {{ icons.icon_login() }}
+            <span class="btn-text">{{ _('Зарегистрироваться') }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var phoneList = document.getElementById('complete-phone-group-list');
+    if (!phoneList) return;
+    var phoneHidden = document.getElementById('complete-telephone');
+    var addPhoneBtn = document.getElementById('complete-add-phone-row');
+    var submitBtn = document.getElementById('complete-profile-submit');
+
+    var phoneInput = new PhoneGroupInput(phoneList, phoneHidden, addPhoneBtn, {
+      maxCount: 2,
+      inputClass: 'auth-input',
+      onChange: updateSubmitState
+    });
+
+    var form = document.getElementById('complete-profile-form');
+    function updateSubmitState() {
+      var phoneOk = phoneInput.validate();
+      var textFieldsOk = Array.from(form.querySelectorAll('input[required][type="text"]'))
+        .every(function (el) { return el.value.trim().length > 0; });
+      submitBtn.disabled = !(phoneOk && textFieldsOk);
+    }
+
+    form.addEventListener('input', updateSubmitState);
+    updateSubmitState();
+  });
+</script>
+
+{% endblock %}

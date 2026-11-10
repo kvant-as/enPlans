@@ -10,10 +10,10 @@
    переписки только для чтения; у текущего проверяющего (can_audit) — чат
    с полем ввода и кнопками смены статуса; плитка «Отменить изменения»
    видна только проверяющему, уже подтвердившему свой этап (can_cancel). #}
-{% set is_owner = plan.user_id == current_user.id %}
+{% set is_owner = plan.org_id == current_user.organization_id %}
 
 <div class="pers-page">
-  {{ component.back_header(plan, current_user) }}
+  {{ component.plan_header_bar(plan, current_user) }}
   {{ component.plan_navigation_header('actions', plan, current_user) }}
 
   <div class="personal-acc-conteiner planed">
@@ -24,69 +24,35 @@
       </div>
     </div>
 
+    <!-- {% if is_owner and last_internal_return_ticket %}
+    <div class="plan-send-warning" style="margin-bottom: 16px;">
+      {{ icons.error_icon() }}
+      <div>
+        <p class="plan-send-warning-title">{{ _('План возвращён на доработку') }}</p>
+        <p>{{ last_internal_return_ticket.note }}</p>
+      </div>
+    </div>
+    {% endif %} -->
+
+
+    {#  Две отдельные сетки: в первой — действия, не меняющие статус плана
+        (информационные/печать/редактирование содержимого), во второй —
+        действия, которые двигают план по циклу согласования (контроль,
+        отправка, подпись, отмена, возврат) — у второй сетки свой отступ
+        сверху (plan-actions-grid-status), чтобы визуально отделить её от
+        первой, как группу совсем другого назначения. #}
     <div class="plan-actions-grid">
       {% if is_owner %}
-      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <input type="hidden" name="status" value="control" />
-        <button
-          id="controlPlanButton"
-          type="submit"
-          class="plan-action-tile"
-          {% if not plan.is_draft or current_user.is_reader %}disabled{% endif %}
-        >
-          {{ icons.control_icon() }}
-          <span class="plan-action-tile-title">{{ _('Пройти контроль') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Проверить план на ошибки перед отправкой') }}</span>
-        </button>
-      </form>
-
       <button
         type="button"
+        id="developerInfoBtn"
         class="plan-action-tile"
-        onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or current_user.is_reader %}disabled{% endif %}
-      >
-        {{ icons.icon_send() }}
-        <span class="plan-action-tile-title">{{ _('Отправить на согласование') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Выбрать согласующие/утверждающую организации и отправить') }}</span>
-      </button>
 
-      <button
-        type="button"
-        id="cancelSendBtn"
-        class="plan-action-tile"
-        {% if not plan.is_sent or current_user.is_reader %}disabled{% endif %}
       >
-        {{ icons.icon_cancel() }}
-        <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Вернуть план в статус «В редакции»') }}</span>
+        {{ icons.icon_profile() }}
+        <span class="plan-action-tile-title">{{ _('Разработчик плана') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Кто фактически готовил план') }}</span>
       </button>
-
-      <button
-        type="button"
-        class="plan-action-tile"
-        onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
-        {% if plan.is_sent or plan.is_approved or plan.is_error or current_user.is_reader %}disabled{% endif %}
-      >
-        {{ icons.icon_edit() }}
-        <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
-        <span class="plan-action-tile-sub">{{ _('Изменить год и целевые показатели плана') }}</span>
-      </button>
-
-      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button
-          type="submit"
-          data-modal-trigger="deletePlan"
-          class="plan-action-tile plan-action-tile-danger"
-          {% if plan.is_sent or plan.is_approved or current_user.is_reader %}disabled{% endif %}
-        >
-          {{ icons.icon_delete() }}
-          <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
-          <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
-        </button>
-      </form>
       {% endif %}
 
       {% if not is_owner %}
@@ -108,16 +74,268 @@
           <span class="plan-action-tile-sub">{{ _('Путь согласования плана в печатную форму') }}</span>
         </button>
       </form>
+
+      {% if is_owner and current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
+      <button
+        type="button"
+        class="plan-action-tile"
+        onclick="window.location.href='/plans/plan-edit/{{plan.token}}'"
+        {% if plan.is_sent or plan.is_approved or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+      >
+        {{ icons.icon_edit() }}
+        <span class="plan-action-tile-title">{{ _('Редактировать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Изменить год и целевые показатели плана') }}</span>
+      </button>
+
+      <form data-modal-form="deletePlan" action="{{ url_for('views.delete_plan', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button
+          type="submit"
+          data-modal-trigger="deletePlan"
+          class="plan-action-tile plan-action-tile-danger"
+          {% if plan.is_sent or plan.is_approved or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+        >
+          {{ icons.icon_delete() }}
+          <span class="plan-action-tile-title">{{ _('Удалить') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Безвозвратно удалить этот план') }}</span>
+        </button>
+      </form>
+      {% endif %}
     </div>
 
-    {% if not is_owner and (plan.is_sent or plan.tickets or can_audit) %}
-    <hr />
-    <h1 class="name">{{ _('Проверка плана') if can_audit else _('Сообщения по согласованию') }}</h1>
+    {% if is_owner %}
+    <div class="plan-actions-grid plan-actions-grid-status">
+      {% if current_user.org_role in ('executor', 'dept_head') and current_user.organization and current_user.organization.is_regular %}
+      <form id="controlPlanForm" data-plan-type="{{ plan.plan_type }}" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="status" value="control" />
+        <button
+          id="controlPlanButton"
+          type="submit"
+          class="plan-action-tile"
+          {% if not plan.is_draft or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+        >
+          {{ icons.control_icon() }}
+          <span class="plan-action-tile-title">{{ _('Пройти контроль') }}</span>
+          <span class="plan-action-tile-sub">{{ _('Проверить план на ошибки перед отправкой') }}</span>
+        </button>
+      </form>
 
-    {{ component.tickets_container(plan, current_user, can_audit, has_remarks, approve_label, can_cancel) }}
+      <button
+        type="button"
+        class="plan-action-tile"
+        onclick="window.location.href='{{ url_for('plan_bp.plan_send_page', token=plan.token) }}'"
+        {% if plan.is_sent or plan.is_approved or plan.is_draft or plan.is_error or plan.pending_signer_user_id or plan.is_historical %}disabled{% endif %}
+      >
+        {{ icons.icon_send() }}
+        <span class="plan-action-tile-title">{{ _('Отправить на подпись') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Выбрать маршрут и направить план на подпись руководителю') }}</span>
+      </button>
+      {% endif %}
 
-    <div id="planReviewFooterWrap">
-      {{ component.plan_review_footer(plan, current_user, can_audit, has_remarks, approve_label) }}
+      {% if not current_user.is_reader and current_user.org_role != 'executor' %}
+      <button
+        type="button"
+        id="cancelSendBtn"
+        class="plan-action-tile"
+        data-sent-at="{{ plan.sent_time.isoformat() if plan.sent_time else '' }}"
+        {% if not plan.is_sent or plan.is_historical or cancel_send_deadline_passed %}disabled{% endif %}
+      >
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Отменить отправку') }}</span>
+        <span class="plan-action-tile-sub" id="cancelSendBtnSub">{{ _('Доступно первые 5 минут — откат к подписанию, без следов в «Подписях»') }}</span>
+      </button>
+      {% endif %}
+
+      {% if plan.pending_signer_user_id and plan.pending_signer_user_id != current_user.id and plan.internal_signed_by_user_id != current_user.id %}
+      <div class="plan-action-tile plan-action-tile-info">
+        {{ icons.icon_clock() }}
+        <span class="plan-action-tile-title">
+          {% if not plan.is_signed %}{{ _('Ожидает подписи') }}{% else %}{{ _('Подписан, ожидает отправки') }}{% endif %}
+        </span>
+        <span class="plan-action-tile-sub">
+          {% if plan.is_signed %}
+            {{ _('Подписал(а)') }}: {{ plan.internal_signed_by.last_name }} {{ plan.internal_signed_by.first_name }}
+          {% elif plan.pending_signer %}
+            {{ _('Ожидает подписи') }}: {{ plan.pending_signer.last_name }} {{ plan.pending_signer.first_name }}
+          {% endif %}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if not plan.is_signed and plan.pending_signer_user_id == current_user.id %}
+      <button type="button" id="internalSignBtn" class="plan-action-tile">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Подписать и отправить') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Подписать план ЭЦП и отправить по выбранному маршруту') }}</span>
+      </button>
+
+      {% if plan_forward_candidates %}
+      <button type="button" id="planForwardSignBtn" class="plan-action-tile">
+        {{ icons.icon_add() }}
+        <span class="plan-action-tile-title">{{ _('Направить на подпись') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Руководителю организации или его заместителю — он подпишет и отправит сам') }}</span>
+      </button>
+      {% endif %}
+
+      <button type="button" id="internalReturnBtn" class="plan-action-tile plan-action-tile-danger">
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Вернуть на внутреннюю доработку') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Отправить план обратно с указанием причины') }}</span>
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# Вариант А утверждающей организации (ТЗ п.5): plan.org_id совпадает с
+       organization_id утверждающего этапа, is_owner для неё тоже True —
+       но ей всё равно нужен этот раздел (там "Одобрить" у org_head/deputy,
+       см. step_direct_approve), поэтому not is_owner здесь ослаблено. #}
+    {% if (not is_owner or step_direct_approve) and (plan.is_sent or plan.tickets or can_audit) %}
+
+    {#  Решение проверяющего по своему этапу — отдельный слой плиток вместо
+        бывшего блока «Проверка плана» (чат + кнопки под ним). Обе плитки
+        только НАПРАВЛЯЮТ решение руководителю на подпись (step_submit_for_
+        signature), сама смена статуса — при подписи (step_internal_sign).
+        «Не согласовать» доступна сразу, без предварительного сообщения в
+        чате: текст ошибки и файл вводятся прямо в её модалке
+        (stepRejectModal). На этапе утверждающей организации (ТЗ п.5)
+        вердикта «Есть ошибки» нет — только «Утвердить». Вариант А
+        (step_direct_approve) — своя единственная плитка «Одобрить» ниже. #}
+    {% if can_audit and not step_direct_approve %}
+    <div class="plan-actions-grid plan-actions-grid-status">
+      <button type="button" class="plan-action-tile" data-open-step-signer-modal="approved">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Утвердить') if is_approver_step else _('Согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Направить решение руководителю на подпись') }}</span>
+      </button>
+
+      {% if not is_approver_step %}
+      <button type="button" id="stepRejectBtn" class="plan-action-tile plan-action-tile-danger">
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Не согласовать и отправить на подпись') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Указать ошибки, приложить файл и направить руководителю') }}</span>
+      </button>
+      {% endif %}
+    </div>
+    {% elif org_head_waits %}
+    {#  Руководитель организации: план сначала рассматривает исполнитель
+        или руководитель подразделения и направляет решение ему на подпись
+        (utils/plans.py::org_head_waits_for_staff) — до этого кнопки
+        заблокированы, сервер такие запросы тоже отклоняет. #}
+    {% if org_head_block == 'no_staff' %}
+    {% set waits_hint = _('Сначала нужен исполнитель или руководитель структурного подразделения — он рассмотрит план и направит решение вам') %}
+    {% else %}
+    {% set waits_hint = _('Станет доступно, когда исполнитель или руководитель структурного подразделения направит решение вам на подпись') %}
+    {% endif %}
+    {% if org_head_block == 'no_staff' %}
+    {#  В организации только руководитель — решение вынести некому. #}
+    <div class="plan-send-warning plan-actions-staff-warning">
+      {{ icons.error_icon() }}
+      <div>
+        <p class="plan-send-warning-title">{{ _('Некому рассмотреть план') }}</p>
+        <p>
+          {{ _('Решение по плану выносит исполнитель или руководитель структурного подразделения, а вы его подписываете. В вашей организации таких сотрудников нет.') }}
+          {% if current_user.org_role == 'org_head' %}
+          <a href="{{ url_for('views.profile') }}?profileTabs=org" class="plan-actions-staff-link">{{ _('Добавить сотрудника в профиле организации') }}</a>
+          {% else %}
+          {{ _('Попросите руководителя организации добавить такого сотрудника в профиле.') }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    {% endif %}
+    <div class="plan-actions-grid plan-actions-grid-status">
+      <button type="button" class="plan-action-tile" disabled title="{{ waits_hint }}">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Утвердить') if is_approver_step else _('Согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ waits_hint }}</span>
+      </button>
+      {% if not is_approver_step %}
+      <button type="button" class="plan-action-tile plan-action-tile-danger" disabled title="{{ waits_hint }}">
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Не согласовать') }}</span>
+        <span class="plan-action-tile-sub">{{ waits_hint }}</span>
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {# "Шаг 2" внутреннего подписания — РЕШЕНИЕ этого этапа (не плана)
+       направлено на подпись руководителю организации этапа. Виден
+       НЕЗАВИСИМО от can_audit (который как раз false всё это время —
+       см. get_audit_context), как и аналогичный блок "Шага 1" выше для
+       is_owner. #}
+    {% if current_path and current_path.pending_signer_user_id and current_path.pending_signer_user_id != current_user.id %}
+    <div class="plan-action-tile plan-action-tile-info" style="margin-top: 12px;">
+      {{ icons.icon_clock() }}
+      <span class="plan-action-tile-title">
+        {% if step_is_signed %}{{ _('Подписано, ожидает отправки') }}{% else %}{{ _('Решение ожидает подписи') }}{% endif %}
+      </span>
+      <span class="plan-action-tile-sub">
+        {% if step_is_signed and current_path.signed_by %}
+          {{ _('Подписал(а)') }}: {{ current_path.signed_by.last_name }} {{ current_path.signed_by.first_name }}
+        {% elif current_path.pending_signer %}
+          {{ _('Ожидает подписи') }}: {{ current_path.pending_signer.last_name }} {{ current_path.pending_signer.first_name }}
+        {% endif %}
+      </span>
+    </div>
+    {% endif %}
+
+    {# Утверждающая организация, Вариант Б (ТЗ п.5): dept_head план только
+       направляет руководителю/заместителю, своего решения не выносит —
+       "Подписать"/"Вернуть" ему здесь не показываем вовсе, в отличие от
+       региона/согласующей, где dept_head подписывает сам. #}
+    {% set dept_head_forward_only = is_approver_step and current_user.org_role == 'dept_head' %}
+    {# step_internal_sign теперь сразу финализирует решение (подпись =
+       отправка дальше/«Есть ошибки» одним кликом) — отдельной кнопки
+       [Отправить] после уже подписанного решения больше нет: как только
+       is_signed становится True, этот блок в тот же запрос снова
+       перестаёт быть актуальным current_path (шаг уже пройден/отклонён). #}
+    {% if current_path and current_path.pending_signer_user_id == current_user.id and not step_is_signed %}
+    <div class="plan-actions-grid" style="margin-top: 12px;">
+      {% if not dept_head_forward_only %}
+      <button type="button" id="stepInternalSignBtn" class="plan-action-tile">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Подписать') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Подписать решение электронной цифровой подписью и отправить') }}</span>
+      </button>
+
+      {#  Этап утверждения — только положительное решение («Утвердить»):
+          вернуть его на повторное рассмотрение нельзя. #}
+      <button type="button" id="stepInternalReturnBtn" class="plan-action-tile plan-action-tile-danger"
+              {% if is_approver_step %}disabled title="{{ _('На этапе утверждения решение только положительное') }}"{% endif %}>
+        {{ icons.icon_cancel() }}
+        <span class="plan-action-tile-title">{{ _('Вернуть на повторное рассмотрение') }}</span>
+        <span class="plan-action-tile-sub">
+          {% if is_approver_step %}{{ _('Недоступно на этапе утверждения') }}{% else %}{{ _('Отправить решение обратно с указанием причины') }}{% endif %}
+        </span>
+      </button>
+      {% endif %}
+
+      {% if current_user.org_role == 'dept_head' %}
+      <button type="button" id="stepForwardSignBtn" class="plan-action-tile">
+        {{ icons.icon_send() }}
+        <span class="plan-action-tile-title">{{ _('Отправить на подпись') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Направить руководителю организации, не подписывая самому') }}</span>
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {# Утверждающая организация, Вариант А (ТЗ п.5) — план создан ею самой:
+       никакого направления нет, org_head/org_head_deputy сразу видят
+       единственное действие «Одобрить» (ЭЦП). Переиспользуем id кнопки и
+       JS-обвязку "Шага 2" (stepInternalSignBtn/ecpStepSignModal выше) —
+       серверный роут (step_internal_sign) сам различает этот случай. #}
+    {% if step_direct_approve %}
+    <div class="plan-actions-grid" style="margin-top: 12px;">
+      <button type="button" id="stepInternalSignBtn" class="plan-action-tile">
+        {{ icons.icon_confirm() }}
+        <span class="plan-action-tile-title">{{ _('Одобрить') }}</span>
+        <span class="plan-action-tile-sub">{{ _('Утвердить план электронной цифровой подписью') }}</span>
+      </button>
     </div>
     {% endif %}
 
@@ -127,7 +345,7 @@
     <div class="profile-tabs" id="planActionsInfoTabs" role="tablist">
       <button type="button" class="profile-tab active" data-tab="org" role="tab" aria-selected="true">
         {{ icons.icon_org() }}
-        <span>{{ _('Предприятие') }}</span>
+        <span>{{ _('Организация') }}</span>
       </button>
       <button type="button" class="profile-tab" data-tab="respondent" role="tab" aria-selected="false">
         {{ icons.icon_profile() }}
@@ -136,50 +354,68 @@
     </div>
 
     <div class="profile-tab-panel active" data-tab-panel="org">
-      {{ component.organization_view_card(plan.organization, plan.user) }}
+      {{ component.organization_view_card(plan.organization, plan.user, viewer=current_user) }}
     </div>
 
     <div class="profile-tab-panel" data-tab-panel="respondent">
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Фамилия') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.last_name if plan.user else '' }}" class="app-input" />
+      <div class="org-roles-note">
+        <p>{{ _('Изменить данные сотрудника (должность, телефон, email) можно в личном кабинете, в разделе «Профиль». В списке может быть до 2 ответственных исполнителей.') }}</p>
+      </div>
+      {% set can_edit_executors = is_owner and not plan.is_historical and not plan.is_sent %}
+      {% set plan_executors_list = plan.executors %}
+      <div class="plan-executors-list">
+        {% if not plan_executors_list and plan.user %}
+        <div class="plan-executor-card">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">{{ plan.user.last_name }} {{ plan.user.first_name }} {{ plan.user.patronymic_name or '' }}</span>
+            <span class="plan-executor-card-meta">
+              {{ plan.user.post or '—' }}{% if plan.user.telephone %}, {{ _('тел.') }}: {{ plan.user.telephone }}{% endif %}{% if plan.user.email %}, {{ plan.user.email }}{% endif %}
+            </span>
           </div>
         </div>
-        <div class="app-group">
-          <label>{{ _('Имя') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.first_name if plan.user else '' }}" class="app-input" />
+        {% else %}
+        {% for ex in plan_executors_list %}
+        <div class="plan-executor-card">
+          <div class="plan-executor-card-icon">{{ icons.icon_profile() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">{{ ex.user.last_name }} {{ ex.user.first_name }} {{ ex.user.patronymic_name or '' }}</span>
+            <span class="plan-executor-card-meta">
+              {{ ex.user.post or '—' }}{% if ex.user.telephone %}, {{ _('тел.') }}: {{ ex.user.telephone }}{% endif %}{% if ex.user.email %}, {{ ex.user.email }}{% endif %}
+            </span>
           </div>
+          {% if can_edit_executors and plan_executors_list|length > 1 %}
+          <form action="{{ url_for('plan_bp.remove_plan_executor', token=plan.token) }}" method="POST" class="plan-executor-card-remove-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="user_id" value="{{ ex.user_id }}" />
+            <button type="submit" class="plan-executor-card-remove" title="{{ _('Убрать из списка') }}">&times;</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if can_edit_executors and plan_executors_list|length < 2 and plan_executor_candidates %}
+      <div class="signer-picker plan-executor-picker" id="executorPicker">
+        <button type="button" class="signer-picker-toggle" id="executorPickerToggle">
+          <span class="signer-picker-value">{{ _('Добавить сотрудника') }}</span>
+          {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="signer-picker-menu" id="executorPickerMenu">
+          {% for c in plan_executor_candidates %}
+          <div class="signer-picker-item" data-user-id="{{ c.id }}">
+            <span class="signer-picker-item-name">{{ c.last_name }} {{ c.first_name }} {{ c.patronymic_name or '' }}</span>
+            <span class="signer-picker-item-role">{{ c.post or (_('Руководитель структурного подразделения') if c.org_role == 'dept_head' else _('Исполнитель')) }}</span>
+          </div>
+          {% endfor %}
         </div>
       </div>
-      <div class="app-group">
-        <label>{{ _('Отчество') }}</label>
-        <div class="input-with-icon">
-          {{ icons.icon_profile() }}
-          <input type="text" value="{{ plan.user.patronymic_name if plan.user else '' }}" class="app-input" />
-        </div>
-      </div>
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Email') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_email() }}
-            <input type="text" value="{{ plan.user.email if plan.user else '' }}" class="app-input" />
-          </div>
-        </div>
-        <div class="app-group">
-          <label>{{ _('Должность') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input type="text" value="{{ plan.user.post or '' if plan.user else '' }}" class="app-input" />
-          </div>
-        </div>
-      </div>
-      {{ component.phone_display_group(plan.user.telephone if plan.user else '') }}
+      <form id="addExecutorForm" action="{{ url_for('plan_bp.add_plan_executor', token=plan.token) }}" method="POST" style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="user_id" id="addExecutorUserId" />
+      </form>
+      {% endif %}
     </div>
 
     <hr />
@@ -244,28 +480,22 @@
       <a id="modal-title">{{ _('Отменить отправку') }}</a>
       {{ icons.icon_close() }}
     </div>
+    {#  «Отменить отправку» — просто откат последнего действия («Подписать и
+        отправить»): причина не нужна, в «Подписях» ничего не остаётся
+        (см. status_plan.handle_draft_status). #}
     <form id="cancelSendForm" action="{{ url_for('plan_bp.api_change_plan_status', token=plan.token) }}" method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="status" value="draft" />
-      <div class="app-group">
-        <label>{{ _('Причина отмены отправки') }} <span class="required-star">*</span></label>
-        <textarea
-          name="reason"
-          id="cancelSendReason"
-          class="cancel-reason-textarea"
-          rows="5"
-          maxlength="500"
-          required
-          placeholder="{{ _('Укажите, почему план возвращается в редакцию') }}"
-        ></textarea>
-      </div>
+      <p class="cancel-send-text">
+        {{ _('Отправка будет отменена, как будто её не было: план вернётся к вам на подпись по тому же маршруту, а в «Подписях» не останется никаких записей об этой отправке.') }}
+      </p>
       <div class="button-auth-area">
-        <button type="submit" id="cancelSendSubmit" class="no-submit-button blue" disabled>
-          {{ icons.icon_confirm() }}
-          <span class="btn-text">{{ _('Подтвердить отмену') }}</span>
+        <button type="submit" id="cancelSendSubmit" class="no-submit-button blue">
+          {{ icons.icon_cancel() }}
+          <span class="btn-text">{{ _('Отменить отправку') }}</span>
         </button>
         <button type="button" class="svg-btn" data-close-modal-btn="cancelSendModal">
-          <span class="btn-text">{{ _('Отмена') }}</span>
+          <span class="btn-text">{{ _('Не отменять') }}</span>
         </button>
       </div>
     </form>
@@ -307,6 +537,337 @@
 </div>
 
 {{ component.ecp_mock_modal('ecpApproveModal') }}
+{{ component.ecp_mock_modal('ecpInternalSignModal') }}
+{{ component.ecp_mock_modal('ecpStepSignModal') }}
+
+<div id="stepSignerModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw; min-height: 480px">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Выберите руководителя для подписания решения') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="stepSignerForm" action="{{ url_for('plan_bp.step_submit_for_signature', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="decision" id="stepSignerDecision" value="" />
+      <div class="app-group">
+        <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
+        <div class="signer-picker" id="stepSignerPicker">
+          <button type="button" class="signer-picker-toggle" id="stepSignerPickerToggle" {% if not step_signer_candidates %}disabled{% endif %}>
+            <span class="signer-picker-value" id="stepSignerPickerValue">{{ _('Выберите руководителя') }}</span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="signer-picker-menu" id="stepSignerPickerMenu">
+            {% for candidate in step_signer_candidates %}
+            <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+              <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+              <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения'))) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <input type="hidden" name="signer_user_id" id="stepSignerValue" value="" />
+      </div>
+      {% if not step_signer_candidates %}
+      <div class="plan-send-warning">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Некому подписать') }}</p>
+          <p>{{ _('В организации не назначен ни руководитель структурного подразделения, ни руководитель организации.') }}</p>
+        </div>
+      </div>
+      {% endif %}
+      <div class="button-auth-area">
+        <button type="submit" id="stepSignerSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Подтвердить отправку') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="stepSignerModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="forwardSignerModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw; min-height: 480px">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Выберите руководителя организации') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="forwardSignerForm" action="{{ url_for('plan_bp.step_forward_signature', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="app-group">
+        <label>{{ _('Руководитель организации') }} <span class="required-star">*</span></label>
+        <div class="signer-picker" id="forwardSignerPicker">
+          <button type="button" class="signer-picker-toggle" id="forwardSignerPickerToggle" {% if not step_org_head_candidates %}disabled{% endif %}>
+            <span class="signer-picker-value" id="forwardSignerPickerValue">{{ _('Выберите руководителя') }}</span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="signer-picker-menu" id="forwardSignerPickerMenu">
+            {% for candidate in step_org_head_candidates %}
+            <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+              <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+              <span class="signer-picker-item-role">{{ candidate.post or _('Руководитель организации') }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <input type="hidden" name="signer_user_id" id="forwardSignerValue" value="" />
+      </div>
+      {% if not step_org_head_candidates %}
+      <div class="plan-send-warning">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Некому подписать') }}</p>
+          <p>{{ _('В организации не назначен руководитель организации.') }}</p>
+        </div>
+      </div>
+      {% endif %}
+      <div class="button-auth-area">
+        <button type="submit" id="forwardSignerSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Подтвердить отправку') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="forwardSignerModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="planForwardSignerModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw; min-height: 480px">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Выберите, кому направить план на подпись') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="planForwardSignerForm" action="{{ url_for('plan_bp.forward_internal_signature', token=plan.token) }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="app-group">
+        <label>{{ _('Кому направить') }} <span class="required-star">*</span></label>
+        <div class="signer-picker" id="planForwardSignerPicker">
+          <button type="button" class="signer-picker-toggle" id="planForwardSignerPickerToggle" {% if not plan_forward_candidates %}disabled{% endif %}>
+            <span class="signer-picker-value" id="planForwardSignerPickerValue">{{ _('Выберите руководителя') }}</span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="signer-picker-menu" id="planForwardSignerPickerMenu">
+            {% for candidate in plan_forward_candidates %}
+            <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+              <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+              <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else _('Руководитель организации')) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <input type="hidden" name="target_user_id" id="planForwardTargetValue" value="" />
+      </div>
+      {% if not plan_forward_candidates %}
+      <div class="plan-send-warning">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Некому направить') }}</p>
+          <p>{{ _('В организации не назначен руководитель организации или его заместитель.') }}</p>
+        </div>
+      </div>
+      {% endif %}
+      <div class="button-auth-area">
+        <button type="submit" id="planForwardSignerSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Направить') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="planForwardSignerModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="stepReturnModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Вернуть на повторное рассмотрение') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="stepReturnForm" action="{{ url_for('plan_bp.step_internal_return', token=plan.token) }}" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="app-group">
+        <label>{{ _('Причина возврата') }} <span class="required-star">*</span></label>
+        <div class="chat-attach-preview" id="stepReturnAttachPreview" style="display:none;">
+          <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
+          <span class="chat-attach-preview-name" id="stepReturnAttachPreviewName"></span>
+          <button type="button" class="chat-attach-remove" id="stepReturnAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
+        </div>
+        <div class="bottom_tickets_arrea">
+          <div class="textarea-wrapper">
+            <textarea
+              name="note"
+              id="stepReturnNote"
+              class="sent-textarea"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="{{ _('Укажите, что нужно пересмотреть') }}"
+            ></textarea>
+            <span class="char-counter" id="stepReturnCharCounter">0/500</span>
+          </div>
+          <label class="chat-attach-btn" id="stepReturnAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
+            {{ icons.icon_paperclip() }}
+            <input type="file" name="attachment" id="stepReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx" />
+          </label>
+          <button type="submit" id="stepReturnSubmit" class="chat-btn" disabled>
+            <span class="btn-spinner" aria-hidden="true"></span>
+            {{ icons.icon_send() }}
+            <span class="btn-text">{{ _('Подтвердить возврат') }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="button-auth-area">
+        <div></div>
+        <button type="button" class="svg-btn" data-close-modal-btn="stepReturnModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="internalReturnModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Вернуть на внутреннюю доработку') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="internalReturnForm" action="{{ url_for('plan_bp.internal_return', token=plan.token) }}" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="app-group">
+        <label>{{ _('Причина возврата') }} <span class="required-star">*</span></label>
+        <div class="chat-attach-preview" id="internalReturnAttachPreview" style="display:none;">
+          <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
+          <span class="chat-attach-preview-name" id="internalReturnAttachPreviewName"></span>
+          <button type="button" class="chat-attach-remove" id="internalReturnAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
+        </div>
+        <div class="bottom_tickets_arrea">
+          <div class="textarea-wrapper">
+            <textarea
+              name="note"
+              id="internalReturnNote"
+              class="sent-textarea"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="{{ _('Укажите, что нужно исправить') }}"
+            ></textarea>
+            <span class="char-counter" id="internalReturnCharCounter">0/500</span>
+          </div>
+          <label class="chat-attach-btn" id="internalReturnAttachBtn" title="{{ _('Прикрепить файл (до 20 МБ)') }}">
+            {{ icons.icon_paperclip() }}
+            <input type="file" name="attachment" id="internalReturnAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx" />
+          </label>
+          <button type="submit" id="internalReturnSubmit" class="chat-btn" disabled>
+            <span class="btn-spinner" aria-hidden="true"></span>
+            {{ icons.icon_send() }}
+            <span class="btn-text">{{ _('Подтвердить возврат') }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="button-auth-area">
+        <div></div>
+        <button type="button" class="svg-btn" data-close-modal-btn="internalReturnModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{#  «Не согласовать и отправить на подпись» — то же оформление, что у
+    internalReturnModal, плюс выбор руководителя. Текст ошибки И файл
+    обязательны (проверяются и здесь, и на сервере — step_submit_for_signature
+    сам создаёт замечание этапа из этих полей). #}
+<div id="stepRejectModal" class="modal">
+  <div class="modal-content" style="width: 520px; max-width: 90vw">
+    <div class="modal-header">
+      <a id="modal-title">{{ _('Не согласовать и отправить на подпись') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="stepRejectForm" action="{{ url_for('plan_bp.step_submit_for_signature', token=plan.token) }}" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="decision" value="error" />
+      <div class="plan-send-warning" style="margin-bottom: 12px;">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Чтобы не согласовать план') }}</p>
+          <p>{{ _('Необходимо написать текст ошибки и прикрепить файл с замечаниями — оба поля обязательны.') }}</p>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Текст ошибки') }} <span class="required-star">*</span></label>
+        <div class="chat-attach-preview" id="stepRejectAttachPreview" style="display:none;">
+          <span class="chat-attach-preview-icon">{{ icons.icon_paperclip() }}</span>
+          <span class="chat-attach-preview-name" id="stepRejectAttachPreviewName"></span>
+          <button type="button" class="chat-attach-remove" id="stepRejectAttachRemoveBtn" aria-label="{{ _('Убрать файл') }}">&times;</button>
+        </div>
+        <div class="bottom_tickets_arrea">
+          <div class="textarea-wrapper">
+            <textarea
+              name="note"
+              id="stepRejectNote"
+              class="sent-textarea"
+              rows="3"
+              maxlength="500"
+              required
+              placeholder="{{ _('Укажите, какие ошибки нужно исправить') }}"
+            ></textarea>
+            <span class="char-counter" id="stepRejectCharCounter">0/500</span>
+          </div>
+          <label class="chat-attach-btn" id="stepRejectAttachBtn" title="{{ _('Прикрепите файл с замечаниями (до 20 МБ) — обязательно') }}">
+            {{ icons.icon_paperclip() }}
+            <input type="file" name="attachment" id="stepRejectAttachmentInput" class="chat-attach-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+          </label>
+        </div>
+      </div>
+      <div class="app-group">
+        <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
+        <div class="signer-picker" id="stepRejectSignerPicker">
+          <button type="button" class="signer-picker-toggle" id="stepRejectSignerPickerToggle" {% if not step_signer_candidates %}disabled{% endif %}>
+            <span class="signer-picker-value" id="stepRejectSignerPickerValue">{{ _('Выберите руководителя') }}</span>
+            {{ icons.dropdown_arrow() }}
+          </button>
+          <div class="signer-picker-menu" id="stepRejectSignerPickerMenu">
+            {% for candidate in step_signer_candidates %}
+            <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
+              <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
+              <span class="signer-picker-item-role">{{ candidate.post or (_('Заместитель руководителя организации') if candidate.org_role == 'org_head_deputy' else (_('Руководитель организации') if candidate.org_role == 'org_head' else _('Руководитель структурного подразделения'))) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <input type="hidden" name="signer_user_id" id="stepRejectSignerValue" value="" />
+      </div>
+      {% if not step_signer_candidates %}
+      <div class="plan-send-warning">
+        {{ icons.error_icon() }}
+        <div>
+          <p class="plan-send-warning-title">{{ _('Некому подписать') }}</p>
+          <p>{{ _('В организации не назначен ни руководитель структурного подразделения, ни руководитель организации.') }}</p>
+        </div>
+      </div>
+      {% endif %}
+      <div class="button-auth-area">
+        <button type="submit" id="stepRejectSubmit" class="no-submit-button blue" disabled>
+          {{ icons.icon_send() }}
+          <span class="btn-text">{{ _('Отправить на подпись') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-close-modal-btn="stepRejectModal">
+          <span class="btn-text">{{ _('Отмена') }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script src="{{ url_for('static', filename='js/teo-viewer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ecp-mock-modal.js') }}"></script>
@@ -322,20 +883,400 @@
     if (modal) modal.classList.remove("active");
   });
 
+  // Крестик (svg.close из icons.icon_close) в шапке ЛЮБОЙ модалки этой
+  // страницы. Раньше закрытие по нему навешивал только handleModal — а
+  // модалки, которые открываются напрямую через classList.add("active")
+  // (stepSignerModal, forwardSignerModal, planForwardSignerModal), так и
+  // оставались без обработчика крестика и не закрывались.
+  document.addEventListener("click", function (e) {
+    var closeIcon = e.target.closest(".modal .modal-header .close");
+    if (!closeIcon) return;
+    var modal = closeIcon.closest(".modal");
+    if (modal) modal.classList.remove("active");
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Кнопка "Разработчик плана" раньше открывала модалку с отдельной
+    // формой — теперь просто ведёт к уже существующей вкладке "Ответственный
+    // исполнитель" ниже на этой же странице (плавный скролл + переключение
+    // вкладки), без отдельного попапа.
+    var btn = document.getElementById("developerInfoBtn");
+    var tabsEl = document.getElementById("planActionsInfoTabs");
+    if (!btn || !tabsEl) return;
+    btn.addEventListener("click", function () {
+      var respondentTabBtn = tabsEl.querySelector('.profile-tab[data-tab="respondent"]');
+      if (respondentTabBtn) respondentTabBtn.click();
+      tabsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
     var modal = document.getElementById("cancelSendModal");
     var btn = document.getElementById("cancelSendBtn");
-    var reasonInput = document.getElementById("cancelSendReason");
-    var submitBtn = document.getElementById("cancelSendSubmit");
     if (!modal || !btn) return;
 
     handleModal(modal, btn, modal.querySelector(".close"));
 
-    function toggleSubmit() {
-      submitBtn.disabled = !reasonInput.value.trim();
+    // «Отменить отправку» активна только первые 5 минут после реальной
+    // отправки (plan.sent_time, data-sent-at) — сервер и так отказывает
+    // по истечении (api_change_plan_status), здесь просто отключаем
+    // кнопку без перезагрузки страницы и закрываем модалку, если она
+    // успела открыться до истечения.
+    var sentAt = btn.dataset.sentAt;
+    if (sentAt && !btn.disabled) {
+      var deadline = new Date(sentAt).getTime() + 5 * 60 * 1000;
+      var subEl = document.getElementById("cancelSendBtnSub");
+      var timer = setInterval(function () {
+        var remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) {
+          btn.disabled = true;
+          modal.classList.remove("active");
+          if (subEl) subEl.textContent = "{{ _('Время на отмену отправки истекло') }}";
+          clearInterval(timer);
+          return;
+        }
+        if (subEl) {
+          var remainingMin = Math.floor(remainingMs / 60000);
+          var remainingSec = Math.floor((remainingMs % 60000) / 1000);
+          subEl.textContent = "{{ _('Доступно ещё') }} " + remainingMin + ":" + (remainingSec < 10 ? "0" : "") + remainingSec;
+        }
+      }, 1000);
     }
-    reasonInput.addEventListener("input", toggleSubmit);
-    toggleSubmit();
+  });
+
+  // Общая разметка/логика для модалок "Вернуть на..." (internalReturnModal,
+  // stepReturnModal) — тот же визуальный стиль, что у формы отправки
+  // тикета (plan_review_footer): счётчик символов, автовысота, кнопка
+  // прикрепления файла с превью. В отличие от живого чата — без режима
+  // редактирования (каждая отправка тут всегда новое сообщение) и без
+  // AJAX (после возврата план меняет статус целиком, нужна перезагрузка).
+  function setupTicketStyleForm(cfg) {
+    const textarea = document.getElementById(cfg.textareaId);
+    const counter = document.getElementById(cfg.counterId);
+    const submitBtn = document.getElementById(cfg.submitId);
+    if (!textarea || !counter || !submitBtn) return;
+
+    const maxLength = parseInt(textarea.getAttribute("maxlength")) || 500;
+
+    // cfg.canSubmit — доп. условие сверх "есть текст" (stepRejectModal:
+    // ещё обязательный файл и выбранный руководитель).
+    function updateButtonState() {
+      const hasText = textarea.value.trim().length > 0;
+      submitBtn.disabled = !(hasText && (!cfg.canSubmit || cfg.canSubmit()));
+    }
+
+    function updateCounter() {
+      const currentLength = textarea.value.length;
+      counter.textContent = currentLength + "/" + maxLength;
+      counter.classList.remove("warning", "danger", "limit");
+      if (currentLength === maxLength) counter.classList.add("limit");
+      else if (currentLength > maxLength * 0.9) counter.classList.add("danger");
+      else if (currentLength > maxLength * 0.7) counter.classList.add("warning");
+    }
+
+    function autoResize() {
+      textarea.style.height = "auto";
+      textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
+    }
+
+    textarea.addEventListener("input", function () {
+      updateCounter();
+      autoResize();
+      updateButtonState();
+    });
+    textarea.addEventListener("focus", autoResize);
+
+    updateCounter();
+    autoResize();
+    updateButtonState();
+
+    const attachmentInput = document.getElementById(cfg.attachInputId);
+    const attachPreview = document.getElementById(cfg.attachPreviewId);
+    const attachPreviewName = document.getElementById(cfg.attachPreviewNameId);
+    const attachRemoveBtn = document.getElementById(cfg.attachRemoveBtnId);
+    const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+
+    function clearAttachment() {
+      if (attachmentInput) attachmentInput.value = "";
+      if (attachPreview) attachPreview.style.display = "none";
+      if (attachPreviewName) attachPreviewName.textContent = "";
+      updateButtonState();
+    }
+
+    if (attachmentInput) {
+      attachmentInput.addEventListener("change", function () {
+        const file = attachmentInput.files[0];
+        if (!file) {
+          clearAttachment();
+          return;
+        }
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+          if (typeof messageFlash !== "undefined") {
+            messageFlash.addMessage("Файл слишком большой (максимум 20 МБ)", "error");
+          }
+          clearAttachment();
+          return;
+        }
+        if (attachPreviewName) attachPreviewName.textContent = file.name;
+        if (attachPreview) attachPreview.style.display = "flex";
+        updateButtonState();
+      });
+    }
+
+    if (attachRemoveBtn) {
+      attachRemoveBtn.addEventListener("click", clearAttachment);
+    }
+
+    return { updateButtonState: updateButtonState };
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // «Не согласовать и отправить на подпись» — модалка открывается сразу
+    // (без предварительного сообщения в чате); отправка активна, только
+    // когда есть текст ошибки, прикреплён файл и выбран руководитель.
+    var modal = document.getElementById("stepRejectModal");
+    var btn = document.getElementById("stepRejectBtn");
+    if (!modal || !btn) return;
+
+    handleModal(modal, btn, modal.querySelector(".close"));
+
+    var attachInput = document.getElementById("stepRejectAttachmentInput");
+    var signerValue = document.getElementById("stepRejectSignerValue");
+    var form = setupTicketStyleForm({
+      textareaId: "stepRejectNote",
+      counterId: "stepRejectCharCounter",
+      submitId: "stepRejectSubmit",
+      attachInputId: "stepRejectAttachmentInput",
+      attachPreviewId: "stepRejectAttachPreview",
+      attachPreviewNameId: "stepRejectAttachPreviewName",
+      attachRemoveBtnId: "stepRejectAttachRemoveBtn",
+      canSubmit: function () {
+        return !!(attachInput && attachInput.files && attachInput.files.length > 0 && signerValue && signerValue.value);
+      },
+    });
+
+    // initSignerPicker сам включил бы кнопку при выборе руководителя (без
+    // учёта текста/файла) — поэтому submitId ему не передаём, а после
+    // выбора просто пересчитываем общее условие (capture — пункты меню
+    // сами делают stopPropagation, до bubble-слушателя клик не дошёл бы;
+    // setTimeout — hidden.value к этому моменту ещё не записан).
+    initSignerPicker("stepRejectSignerPicker", "stepRejectSignerPickerToggle", "stepRejectSignerPickerValue", "stepRejectSignerPickerMenu", "stepRejectSignerValue", null);
+    var menu = document.getElementById("stepRejectSignerPickerMenu");
+    if (menu && form) {
+      menu.addEventListener("click", function () {
+        setTimeout(form.updateButtonState, 0);
+      }, true);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var modal = document.getElementById("internalReturnModal");
+    var btn = document.getElementById("internalReturnBtn");
+    if (!modal || !btn) return;
+
+    handleModal(modal, btn, modal.querySelector(".close"));
+
+    setupTicketStyleForm({
+      textareaId: "internalReturnNote",
+      counterId: "internalReturnCharCounter",
+      submitId: "internalReturnSubmit",
+      attachInputId: "internalReturnAttachmentInput",
+      attachPreviewId: "internalReturnAttachPreview",
+      attachPreviewNameId: "internalReturnAttachPreviewName",
+      attachRemoveBtnId: "internalReturnAttachRemoveBtn",
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Кнопка [Подписать и отправить] — та же мок-ЭЦП модалка, что и на
+    // согласовании/отправке, просто отдельный экземпляр
+    // (ecpInternalSignModal), чтобы не конфликтовать с ecpApproveModal на
+    // той же странице. После успеха ЭЦП — ОДИН запрос internal_sign: он
+    // подписывает и сразу отправляет по сохранённому на шаге 4 маршруту
+    // одной транзакцией (см. plan_bp.internal_sign/handle_sent_status), затем
+    // перезагрузка страницы.
+    var signBtn = document.getElementById("internalSignBtn");
+    if (signBtn && window.EcpMockModal) {
+      signBtn.addEventListener("click", function () {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
+        var ecpModal = new EcpMockModal({
+          modalId: "ecpInternalSignModal",
+          certCheckUrl: "{{ url_for('plan_bp.api_verify_certificate', token=plan.token) }}",
+          onSuccess: function () {
+            fetch("{{ url_for('plan_bp.internal_sign', token=plan.token) }}", {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrfToken,
+              },
+            }).then(function (signResp) {
+              return signResp.json().then(function (signData) {
+                if (!signResp.ok || signData.success === false) {
+                  throw new Error(signData.error || "Не удалось подписать и отправить план");
+                }
+                window.location.reload();
+              });
+            }).catch(function (error) {
+              if (typeof messageFlash !== "undefined") {
+                messageFlash.addMessage(error.message || "Не удалось подписать и отправить план", "error");
+              }
+            });
+          },
+        });
+        ecpModal.open();
+      });
+    }
+
+    // [Направить на подпись] — открывает planForwardSignerModal (пикер +
+    // обычный POST, тот же паттерн, что forwardSignerModal у "Шага 2",
+    // см. ниже initSignerPicker). Не подпись — просто передаёт
+    // pending_signer_user_id выбранному адресату (forward_internal_signature).
+    var planForwardBtn = document.getElementById("planForwardSignBtn");
+    var planForwardSignerModal = document.getElementById("planForwardSignerModal");
+    if (planForwardBtn && planForwardSignerModal) {
+      planForwardBtn.addEventListener("click", function () {
+        planForwardSignerModal.classList.add("active");
+      });
+    }
+  });
+
+  // "Шаг 2" внутреннего подписания — свой контейнер выбора подписанта
+  // (как .signer-picker на шаге 4 отправки плана, plan_send.html), здесь
+  // переиспользован ещё дважды (решение/пересылка руководителю
+  // организации). pickerId/toggleId/menuId/valueId/hiddenId — id из
+  // разметки stepSignerModal/forwardSignerModal выше; submitId — кнопка
+  // подтверждения, которая включается только после выбора.
+  function initSignerPicker(pickerId, toggleId, valueId, menuId, hiddenId, submitId) {
+    var picker = document.getElementById(pickerId);
+    var toggle = document.getElementById(toggleId);
+    var valueEl = document.getElementById(valueId);
+    var menu = document.getElementById(menuId);
+    var hidden = document.getElementById(hiddenId);
+    var submitBtn = document.getElementById(submitId);
+    if (!picker || !toggle || !valueEl || !menu || !hidden) return;
+
+    toggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (toggle.disabled) return;
+      picker.classList.toggle("active");
+    });
+
+    menu.querySelectorAll(".signer-picker-item").forEach(function (item) {
+      item.addEventListener("click", function (e) {
+        e.stopPropagation();
+        menu.querySelectorAll(".signer-picker-item").forEach(function (i) {
+          i.classList.remove("is-selected");
+        });
+        item.classList.add("is-selected");
+        valueEl.textContent = item.dataset.name.trim();
+        hidden.value = item.dataset.id;
+        if (submitBtn) submitBtn.disabled = false;
+        picker.classList.remove("active");
+      });
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!picker.contains(e.target)) picker.classList.remove("active");
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initSignerPicker("stepSignerPicker", "stepSignerPickerToggle", "stepSignerPickerValue", "stepSignerPickerMenu", "stepSignerValue", "stepSignerSubmit");
+    initSignerPicker("forwardSignerPicker", "forwardSignerPickerToggle", "forwardSignerPickerValue", "forwardSignerPickerMenu", "forwardSignerValue", "forwardSignerSubmit");
+    initSignerPicker("planForwardSignerPicker", "planForwardSignerPickerToggle", "planForwardSignerPickerValue", "planForwardSignerPickerMenu", "planForwardTargetValue", "planForwardSignerSubmit");
+
+    // Добавление сотрудника в список "Ответственных исполнителей"
+    // (вкладка "Ответственный исполнитель", до 2 человек) — клик по
+    // пункту сразу добавляет (без отдельной кнопки "Подтвердить", как у
+    // сигнер-пикеров выше — тут нечего уточнять, просто выбор одного из
+    // оставшихся кандидатов организации).
+    var executorPicker = document.getElementById("executorPicker");
+    var executorPickerToggle = document.getElementById("executorPickerToggle");
+    var executorPickerMenu = document.getElementById("executorPickerMenu");
+    var addExecutorUserId = document.getElementById("addExecutorUserId");
+    var addExecutorForm = document.getElementById("addExecutorForm");
+    if (executorPicker && executorPickerToggle && executorPickerMenu && addExecutorUserId && addExecutorForm) {
+      executorPickerToggle.addEventListener("click", function (e) {
+        e.stopPropagation();
+        executorPicker.classList.toggle("active");
+      });
+      executorPickerMenu.querySelectorAll(".signer-picker-item").forEach(function (item) {
+        item.addEventListener("click", function () {
+          addExecutorUserId.value = item.dataset.userId;
+          addExecutorForm.submit();
+        });
+      });
+      document.addEventListener("click", function (e) {
+        if (!executorPicker.contains(e.target)) executorPicker.classList.remove("active");
+      });
+    }
+
+    // Плитка «Согласовать»/«Утвердить» (слой решения проверяющего) просто
+    // открывает stepSignerModal с решением approved — делегировано на
+    // document (data-open-step-signer-modal). «Не согласовать» — своя
+    // модалка stepRejectModal (текст + файл + руководитель), см. выше.
+    var stepSignerModal = document.getElementById("stepSignerModal");
+    var stepSignerDecision = document.getElementById("stepSignerDecision");
+    if (stepSignerModal && stepSignerDecision) {
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-open-step-signer-modal]");
+        if (!btn) return;
+        stepSignerDecision.value = btn.dataset.openStepSignerModal;
+        stepSignerModal.classList.add("active");
+      });
+    }
+
+    var stepForwardBtn = document.getElementById("stepForwardSignBtn");
+    var forwardSignerModal = document.getElementById("forwardSignerModal");
+    if (stepForwardBtn && forwardSignerModal) {
+      stepForwardBtn.addEventListener("click", function () {
+        forwardSignerModal.classList.add("active");
+      });
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    var modal = document.getElementById("stepReturnModal");
+    var btn = document.getElementById("stepInternalReturnBtn");
+    if (!modal || !btn) return;
+
+    handleModal(modal, btn, modal.querySelector(".close"));
+
+    setupTicketStyleForm({
+      textareaId: "stepReturnNote",
+      counterId: "stepReturnCharCounter",
+      submitId: "stepReturnSubmit",
+      attachInputId: "stepReturnAttachmentInput",
+      attachPreviewId: "stepReturnAttachPreview",
+      attachPreviewNameId: "stepReturnAttachPreviewName",
+      attachRemoveBtnId: "stepReturnAttachRemoveBtn",
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Кнопка [Подписать] решения этапа (та же мок-ЭЦП схема, что и у
+    // internalSignBtn выше, отдельный экземпляр модалки — ecpStepSignModal).
+    var signBtn = document.getElementById("stepInternalSignBtn");
+    if (signBtn && window.EcpMockModal) {
+      signBtn.addEventListener("click", function () {
+        var ecpModal = new EcpMockModal({
+          modalId: "ecpStepSignModal",
+          certCheckUrl: "{{ url_for('plan_bp.api_verify_certificate', token=plan.token) }}",
+          onSuccess: function () {
+            fetch("{{ url_for('plan_bp.step_internal_sign', token=plan.token) }}", {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || "",
+              },
+            }).then(function () {
+              window.location.reload();
+            });
+          },
+        });
+        ecpModal.open();
+      });
+    }
   });
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -508,10 +1449,17 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    const textarea = document.querySelector(".sent-textarea");
+    // Скоуп на #chatFooterArea обязателен — модалки "Вернуть на..." ниже
+    // тоже используют классы .sent-textarea/.char-counter (тот же стиль
+    // формы тикета), просто document.querySelector() без скоупа подхватил
+    // бы первый попавшийся элемент в DOM, а не живой чат.
+    const chatFooter = document.getElementById("chatFooterArea");
+    if (!chatFooter) return;
+
+    const textarea = chatFooter.querySelector(".sent-textarea");
     if (!textarea) return;
 
-    const counter = document.querySelector(".char-counter");
+    const counter = chatFooter.querySelector(".char-counter");
     if (!counter) return;
 
     const sendButton = document.getElementById("sent_mesPlanButton");
@@ -519,6 +1467,9 @@
 
     const maxLength = parseInt(textarea.getAttribute("maxlength")) || 500;
 
+    // Замечание — обязательный текст, файл по желанию (ТЗ п.4.1, см.
+    // audit_bp.create_ticket) — кнопка "Отправить" активна, как только
+    // введён текст.
     function updateButtonState() {
       const hasText = textarea.value.trim().length > 0;
       if (hasText) {
@@ -601,6 +1552,7 @@
       }
       if (attachPreviewName) attachPreviewName.textContent = "";
       if (removeAttachmentFlag) removeAttachmentFlag.value = markRemoval ? "1" : "0";
+      updateButtonState();
     }
 
     if (attachmentInput) {
@@ -623,6 +1575,7 @@
           delete attachPreview.dataset.existing;
         }
         if (removeAttachmentFlag) removeAttachmentFlag.value = "0";
+        updateButtonState();
       });
     }
 

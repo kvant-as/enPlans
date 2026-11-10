@@ -4,7 +4,7 @@ from flask import current_app, g, request, jsonify, Blueprint, render_template_s
 from flask_login import current_user, login_required
 from sqlalchemy.orm import contains_eager, joinedload
 
-from website.routes.auth import user_with_all_params
+from website.routes.auth import user_with_all_params, login_or_registration_required
 from website.routes.views import owner_only
 from website.sessions import session_required, set_session_cookie, build_session_info
 from common_models import current_utc_time
@@ -149,16 +149,16 @@ def api_news_post(id):
             'id': post.id,
             'title': post.title,
             'content': post.text,
-            'image_url': post.image_url,
-            'published_at': post.published_at.isoformat() if post.published_at else post.created_at.isoformat(),
-            'created_at': post.created_at.isoformat(),
+            'image_url': post.img_name,
+            'published_at': post.published_at.isoformat() if post.published_at else post.created_time.isoformat(),
+            'created_at': post.created_time.isoformat(),
             'views_count': post.views_count or 0,
             'is_published': post.published_at is not None and post.published_at <= current_time
         }
     })
 
 @api_bp.route('/organizations')
-@login_required
+@login_or_registration_required
 def get_organizations_api():
     try:
         page = request.args.get("page", 1, type=int)
@@ -180,15 +180,32 @@ def get_organizations_api():
             # организация вполне может иметь отдельный аккаунт в erespondentN,
             # это не должно мешать регистрации в enPlans, поэтому дубль
             # проверяется только среди аккаунтов ЭТОГО приложения.
+            #
+            # Организация считается занятой только если на ней есть
+            # ВЕРИФИЦИРОВАННЫЙ (прошедший проверку ЭЦП на последнем шаге
+            # регистрации, см. website.user.add_param) аккаунт — организация
+            # с только неверифицированными "самозванцами" снова появляется
+            # в поиске, чтобы её можно было легитимно забрать через ЭЦП.
+            #
+            # Исключение — сотрудник, приглашённый руководителем организации
+            # (views.invite_employee): у него organization_id уже проставлен
+            # заранее на ту же организацию, у которой уже есть аккаунт
+            # (самого руководителя) — иначе он не найдёт свою же организацию
+            # в этом поиске на шаге /param.
             from common_models import get_current_application_id
-            query = query.filter(
-                ~Organization.id.in_(
-                    db.session.query(User.organization_id).filter(
-                        User.organization_id.isnot(None),
-                        User.application_id == get_current_application_id()
-                    )
-                )
+            registered_orgs = db.session.query(User.organization_id).filter(
+                User.organization_id.isnot(None),
+                User.application_id == get_current_application_id(),
+                User.is_verified == True
             )
+            # current_user может быть и анонимным — регистрант без аккаунта
+            # на шаге /param (аккаунт создаётся после ЭЦП).
+            own_org_id = getattr(current_user, 'organization_id', None)
+            if own_org_id:
+                registered_orgs = registered_orgs.filter(
+                    User.organization_id != own_org_id
+                )
+            query = query.filter(~Organization.id.in_(registered_orgs))
 
         # Показываем только организации с хотя бы одной ролью в цепочке
         # согласования — без этого в списке попадались "пустые" организации
@@ -202,7 +219,10 @@ def get_organizations_api():
         )
 
         if hide_region_management:
-            query = query.filter(Organization.is_region_management == False)
+            query = query.filter(
+                Organization.is_region_management == False,
+                Organization.is_energy_department == False,
+            )
 
         if org_type == 'respondent':
             query = query.filter(Organization.is_regular == True)
@@ -570,6 +590,21 @@ def get_plan_rates(token):
         'cost_per_toe_usd': float(plan.cost_per_toe_usd) if plan.cost_per_toe_usd else None
     })
 
+@api_bp.route('/egr/lookup', methods=['GET'])
+@login_required
+def egr_lookup():
+    """Подстановка данных организации по УНП (для форм, где УНП вводят
+    вручную): официальное наименование, регион, состояние, юр. адрес из
+    ЕГР. Только чтение — в базу ничего не пишет."""
+    from website.utils.egr import EgrError, fetch_organization, STATUS_LABELS
+    try:
+        data = fetch_organization(request.args.get('unp'))
+    except EgrError as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 400 if 'УНП' in str(exc) and '9 цифр' in str(exc) else 502
+    data['status_label'] = STATUS_LABELS.get(data['status_kind'])
+    return jsonify({'success': True, 'data': data})
+
+
 @api_bp.route('/refresh-plan-rates/<token>', methods=['POST'])
 @login_required
 def refresh_plan_rates(token):
@@ -579,7 +614,16 @@ def refresh_plan_rates(token):
     plan = Plan.query.filter_by(token=token).first()
     if not plan:
         return jsonify({'success': False, 'error': 'Plan not found'}), 404
-    
+
+    # Меняет данные плана — те же права и блокировки, что у любой правки
+    # содержимого (раньше проверки не было вовсе: любой вошедший мог
+    # переписать курс чужого, в т.ч. отправленного/утверждённого плана).
+    from flask_login import current_user
+    from website.utils.plans import plan_edit_denial
+    denial = plan_edit_denial(current_user, plan)
+    if denial:
+        return jsonify({'success': False, 'error': denial}), 403
+
     usd_rate, error = fetch_usd_rate_from_belarusbank()
     
     if usd_rate is None:
