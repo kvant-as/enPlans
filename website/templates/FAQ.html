@@ -61,10 +61,10 @@
             </div>
             <div class="questions-list-modern">
               <a href="#change-email" class="question-link-modern">
-                Смена электронного адреса
+                Изменение электронного адреса
               </a>
               <a href="#change-password" class="question-link-modern">
-                Смена пароля
+                Изменение пароля
               </a>
             </div>
           </div>
@@ -466,7 +466,7 @@
         <div class="answer-body-modern">
           <div class="answer-text">
             <p>
-              Смена пароля происходит через ссылку, отправленную на вашу почту — так же, как и восстановление забытого пароля.
+              Изменение пароля происходит через ссылку, отправленную на вашу почту — так же, как и восстановление забытого пароля.
             </p>
           </div>
 
@@ -705,9 +705,9 @@
                     </div>
                   </div>
                   <p>
-                    В утверждающей организации решение только положительное: вместо «Согласовать» — <strong>«Утвердить»</strong>, а «Не согласовать» недоступно.
+                    В утверждающей организации план проверяет исполнитель, и решение только положительное: вместо «Согласовать» — <strong>«Утвердить»</strong>, а «Не согласовать» недоступно.
                   </p>
-                  <div class="faq-image-wrapper">
+                  <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/plan-verdict.png" alt="Вынесение решения" class="faq-image faq-image-md">
                   </div>
                 </div>
@@ -861,14 +861,15 @@
                 <text class="rd-note" x="356" y="380">Каждая организация маршрута — по очереди</text>
 
                 <g class="rd-node rd-plain">
-                  <rect x="190" y="390" width="300" height="60" rx="10" />
-                  <text class="rd-t" x="340" y="414">Исполнитель</text>
-                  <text class="rd-s" x="340" y="433">«Согласовать» или «Не согласовать»</text>
+                  <rect x="170" y="388" width="340" height="74" rx="10" />
+                  <text class="rd-t" x="340" y="410">Исполнитель или рук. подразделения</text>
+                  <text class="rd-s" x="340" y="429">«Согласовать» или «Не согласовать»</text>
+                  <text class="rd-s" x="340" y="446">и выбирает, кто подпишет</text>
                 </g>
                 <g class="rd-node rd-coord">
                   <rect x="50" y="500" width="240" height="60" rx="10" />
                   <text class="rd-t" x="170" y="524">Рук. подразделения</text>
-                  <text class="rd-s" x="170" y="543">Подписывает или направляет</text>
+                  <text class="rd-s" x="170" y="543">Подписывает, если решение не его</text>
                 </g>
                 <g class="rd-node rd-coord">
                   <rect x="390" y="500" width="240" height="60" rx="10" />
@@ -876,12 +877,12 @@
                   <text class="rd-s" x="510" y="543">Подписывает решение</text>
                 </g>
 
-                <path class="rd-line" d="M340 450V474M170 474H510" />
-                <path class="rd-line" d="M170 474V496" marker-end="url(#rdArrow)" />
-                <path class="rd-line" d="M510 474V496" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M340 462V478M170 478H510" />
+                <path class="rd-line" d="M170 478V496" marker-end="url(#rdArrow)" />
+                <path class="rd-line" d="M510 478V496" marker-end="url(#rdArrow)" />
                 <path class="rd-dash" d="M290 530H386" marker-end="url(#rdArrow)" />
-                <path class="rd-ret" d="M50 530H28V420H186" marker-end="url(#rdArrowRed)" />
-                <path class="rd-ret" d="M630 530H652V420H494" marker-end="url(#rdArrowRed)" />
+                <path class="rd-ret" d="M50 530H28V420H166" marker-end="url(#rdArrowRed)" />
+                <path class="rd-ret" d="M630 530H652V420H514" marker-end="url(#rdArrowRed)" />
 
                 <g class="rd-node rd-plain">
                   <rect x="200" y="600" width="280" height="48" rx="10" />
@@ -967,7 +968,7 @@
                 <div class="step-content">
                   <h4>Согласующие организации</h4>
                   <p>
-                    План сначала рассматривает исполнитель и выбирает «Согласовать» или «Не согласовать» (с текстом ошибки и файлом). Решение подписывает ЭЦП руководитель подразделения или руководитель организации — он может и вернуть решение исполнителю с пояснением. Сам руководитель организации решение первым не выносит: ему его направляют сотрудники.
+                    План рассматривает исполнитель или руководитель структурного подразделения и выбирает «Согласовать» или «Не согласовать» (с текстом ошибки и файлом). Решение подписывает ЭЦП руководитель подразделения или руководитель организации — он может и вернуть решение исполнителю с пояснением. Сам руководитель организации решение первым не выносит: ему его направляют сотрудники.
                   </p>
                 </div>
               </div>
@@ -2153,7 +2154,7 @@
                     Организации можно искать по УНП или наименованию и упорядочить через список <strong>«Сортировка»</strong>: по названию, региону, УНП или ОКПО.
                   </p>
                   <div class="faq-image-wrapper ogr">
-                    <img src="/static/img/faq/send-step2.png" alt="Выбор утверждающей организации" class="faq-image">
+                    <img src="/static/img/faq/send-step-1.png" alt="Выбор утверждающей организации" class="faq-image">
                   </div>
                 </div>
               </div>
@@ -2172,7 +2173,7 @@
                     </div>
                   </div>
                   <div class="faq-image-wrapper ogr">
-                    <img src="/static/img/faq/send-step1.png" alt="Выбор согласующих организаций" class="faq-image">
+                    <img src="/static/img/faq/send-step-2.png" alt="Выбор согласующих организаций" class="faq-image">
                   </div>
                 </div>
               </div>
@@ -2185,8 +2186,8 @@
                     Справа, в блоке <strong>«Маршрут плана»</strong>, показан итоговый порядок организаций. Если план уже отправлялся, маршрут подставится из прошлой отправки; можно также взять маршрут из плана прошлого года.
                     В блоке <strong>«Кто подпишет»</strong> выберите руководителя структурного подразделения или руководителя организации и нажмите <strong>«Отправить на подпись»</strong>. План получит статус <strong>«На подписании»</strong>.
                   </p>
-                  <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/send-step3.png" alt="Маршрут плана" class="faq-image">
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-step-3.png" alt="Маршрут плана" class="faq-image">
                   </div>
                 </div>
               </div>
@@ -2203,6 +2204,10 @@
                     <li><strong>«Направить на подпись»</strong> — передать план руководителю организации или его заместителю</li>
                     <li><strong>«Вернуть на внутреннюю доработку»</strong> — вернуть план исполнителю с указанием причины</li>
                   </ul>
+                  
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-choose-head.png" alt="Выбор руководителя" class="faq-image">
+                  </div>
                 </div>
               </div>
 
