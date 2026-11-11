@@ -170,7 +170,7 @@ def sign():
 @auth.route('/code', methods=['POST', 'GET'])
 def code():
     if request.method == 'GET':
-        return render_template('code.html')
+        return render_template('code.html', email=(session.get('temp_user') or {}).get('email'))
     elif request.method == 'POST':
         from ..user import activate_account
     return activate_account()

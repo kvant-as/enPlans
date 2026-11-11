@@ -303,6 +303,7 @@ const ChatModule = (function () {
       _state.pendingMessages.push(tempId);
 
       input.value = "";
+      input.style.height = "";
 
       _showTypingIndicator();
 
@@ -685,7 +686,22 @@ const ChatModule = (function () {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-
+  // Поле ввода растёт вместе с текстом (до 120px), после отправки — снова
+  // в одну строку. Обработчик вешается один раз, сколько бы раз чат ни
+  // открывали; раньше вызов был, а самой функции не было — чат падал.
+  function _initTextarea() {
+    const input = document.getElementById("messageInput");
+    if (!input) return;
+    const fit = () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    };
+    if (!input.dataset.autosize) {
+      input.dataset.autosize = "1";
+      input.addEventListener("input", fit);
+    }
+    fit();
+  }
 
 return {
     init: async function (userId) {

@@ -9,6 +9,13 @@
 </svg>
 {% endmacro %}
 
+{% macro review_icon() %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+</svg>
+{% endmacro %}
+
 {% macro sparkle_icon() %}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
     <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
@@ -104,7 +111,7 @@
 
           <div class="category-modern">
             <div class="category-header-modern">
-              <h3>ЭЦП</h3>
+              <h3>Цифровая подпись</h3>
             </div>
             <div class="questions-list-modern">
               <a href="#ecp-obtain" class="question-link-modern">
@@ -170,6 +177,10 @@
                   <h4>Согласовывающих организаций</h4>
                   <p>анализ планов и принятие решения</p>
                 </div>
+                <div class="feature-card">
+                  <h4>Утверждающих организаций</h4>
+                  <p>анализ планов и утверждение решения</p>
+                </div>
               </div>
             </div>
 
@@ -202,6 +213,7 @@
                 <h4>Регистрация</h4>
                 <p>
                   Укажите электронную почту, придумайте пароль и подтвердите его.
+                  Кнопка <strong>«Зарегистрироваться»</strong> станет активной, когда все поля заполнены верно.
                   На указанную почту придет код подтверждения.
                 </p>
                 <div class="faq-image-wrapper ogr">
@@ -228,7 +240,7 @@
               <div class="step-content">
                 <h4>Ввод персональных данных</h4>
                 <p>
-                  Заполните личные данные: ФИО, номер телефона и должность.
+                  Заполните личные данные: ФИО, номер телефона (можно добавить несколько) и должность, затем нажмите <strong>«Далее»</strong>.
                 </p>
                 <div class="faq-image-wrapper ogr">
                   <img src="/static/img/faq/register-step3.png" alt="персональные данные" class="faq-image">
@@ -239,15 +251,33 @@
             <div class="step-item">
               <div class="step-number">4</div>
               <div class="step-content">
-                <h4>Выбор типа пользователя</h4>
+                <h4>Выбор роли в системе</h4>
                 <p>
-                  Выберите один из вариантов:
+                  Выберите, кем является ваша организация в системе:
                 </p>
-                <ul class="detail-list">
-                  <li><strong>Организация-разработчик</strong> — создает и заполняет планы</li>
-                  <li><strong>Согласовывающая организация</strong> — проверяет планы</li>
-                  <li><strong>Утверждающая организация</strong> — утверждает планы</li>
-                </ul>
+                <div class="role-flow">
+                  <div class="role-flow-card role-flow-card--dev">
+                    <span class="role-flow-icon">{{ icons.icon_edit() }}</span>
+                    <h5 class="role-flow-title">Организация-разработчик</h5>
+                    <p class="role-flow-text">Создает и заполняет планы, проходит контроль и отправляет план по маршруту</p>
+                  </div>
+                  <span class="role-flow-arrow" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </span>
+                  <div class="role-flow-card role-flow-card--coord">
+                    <span class="role-flow-icon">{{ review_icon() }}</span>
+                    <h5 class="role-flow-title">Согласовывающая организация</h5>
+                    <p class="role-flow-text">Проверяет план и согласовывает его или возвращает с замечаниями</p>
+                  </div>
+                  <span class="role-flow-arrow" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </span>
+                  <div class="role-flow-card role-flow-card--approve">
+                    <span class="role-flow-icon">{{ icons.approved_icon() }}</span>
+                    <h5 class="role-flow-title">Утверждающая организация</h5>
+                    <p class="role-flow-text">Последняя в маршруте — утверждает план</p>
+                  </div>
+                </div>
                 <div class="faq-image-wrapper ogr">
                   <img src="/static/img/faq/register-step4.png" alt="Выбор типа пользователя" class="faq-image">
                 </div>
@@ -259,7 +289,9 @@
               <div class="step-content">
                 <h4>Поиск и выбор организации</h4>
                 <p>
-                  Используйте поиск, чтобы найти свою организацию по названию, УНП или ОКПО. Затем нажмите «Зарегистрироваться».
+                  Найдите свою организацию по наименованию или УНП и нажмите <strong>«Далее»</strong>.
+                  Организации, которые уже зарегистрированы в системе, в поиске не показываются.
+                  Если вашей организации нет в списке, воспользуйтесь ссылкой <strong>«Нет организации?»</strong>.
                 </p>
                 <div class="faq-image-wrapper ogr">
                   <img src="/static/img/faq/register-step5.png" alt="Поиск организации" class="faq-image">
@@ -270,12 +302,34 @@
             <div class="step-item">
               <div class="step-number">6</div>
               <div class="step-content">
-                <h4>Переход в профиль</h4>
+                <h4>Проверка ЭЦП и переход в профиль</h4>
                 <p>
-                  После выбора организации и нажатия кнопки «Зарегистрироваться» вы будете автоматически перенаправлены на страницу профиля.
+                  Нажмите <strong>«Пройти проверку ЭЦП»</strong> и загрузите файл сертификата (см. <a href="#ecp-check" class="faq-inline-link">«Проверка ЭЦП»</a>).
+                  Аккаунт создается только после успешной проверки — вы становитесь руководителем организации и автоматически переходите на страницу профиля.
                 </p>
-                <div class="faq-image-wrapper">
+                <div class="faq-image-wrapper ogr">
                   <img src="/static/img/faq/register-step6.png" alt="Переход в профиль" class="faq-image">
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">7</div>
+              <div class="step-content">
+                <h4>Добавление сотрудников</h4>
+                <p>
+                  Руководитель организации добавляет сотрудников в профиле организации кнопкой <strong>«Добавить сотрудника»</strong>: указывает email и роль —
+                  исполнитель, руководитель структурного подразделения или заместитель руководителя организации.
+                  Сотрудник получает письмо со ссылкой (действует 1 час), задает пароль и при первом входе заполняет ФИО, телефон и должность — проходить проверку ЭЦП ему не нужно.
+                </p>
+                <div class="faq-image-wrapper ogr">
+                  <img src="/static/img/faq/register-step7.jpg" alt="Добавление сотрудников" class="faq-image">
+                </div>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p>Без исполнителя или руководителя структурного подразделения план нельзя создать, отправить на подпись или рассмотреть: руководитель организации только подписывает решения, которые подготовили сотрудники.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -298,11 +352,19 @@
               </label>
               <label class="checklist-item">
                 <input type="checkbox" />
-                <span>Выбран тип пользователя</span>
+                <span>Выбрана роль в системе</span>
               </label>
               <label class="checklist-item">
                 <input type="checkbox" />
                 <span>Выбрана организация</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Пройдена проверка ЭЦП</span>
+              </label>
+              <label class="checklist-item">
+                <input type="checkbox" />
+                <span>Добавлены исполнитель и руководитель структурного подразделения</span>
               </label>
               <label class="checklist-item">
                 <input type="checkbox" />
@@ -480,7 +542,7 @@
                 <div class="step-content">
                   <h4>Переход к созданию плана</h4>
                   <p>
-                    Нажмите на кнопку <strong>«Создать»</strong> на странице <strong>Планы</strong>.
+                    Нажмите на кнопку <strong>«Создать план»</strong> на странице <strong>Планы</strong>. Кнопка доступна исполнителю и руководителю структурного подразделения организации-разработчика.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/create-plan-step1.png" alt="Переход к созданию плана" class="faq-image">
@@ -493,9 +555,9 @@
                 <div class="step-content">
                   <h4>Заполнение титульной страницы</h4>
                   <p>
-                    Укажите параметры: год, показатель
-                    энергосбережения, задания по экономии ТЭР, долю местных ТЭР
-                    и ВИЭ. После чего нажмите на <strong>«Создать план»</strong>.
+                    Выберите год и укажите целевые показатели: энергосбережения (только отрицательное значение или 0),
+                    экономии ТЭР, доли местных ТЭР и доли ВИЭ в КПТ. После чего нажмите на <strong>«Создать план»</strong>.
+                    Годы, на которые у организации уже есть план, выбрать нельзя.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/create-plan-step2.png" alt="Заполнение титульной страницы" class="faq-image">
@@ -508,7 +570,7 @@
                 <div class="step-content">
                   <h4>Открытие плана</h4>
                   <p>
-                    После заполнения титульной страницы вы будете перенаправлены на страницу с планами. Нажмите <strong>«Просмотр»</strong> для открытия плана.
+                    После создания вы будете перенаправлены на страницу с планами — новый план появится в статусе <strong>«В редакции»</strong>. Нажмите <strong>«Просмотр»</strong> для открытия плана.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/open-plan.png" alt="Открытие плана" class="faq-image">
@@ -521,7 +583,7 @@
                 <div class="step-content">
                   <h4>Выбор типа плана</h4>
                   <p>
-                    Определите категорию организации по объему суммарного потребления топливно-энергетических ресурсов:
+                    При первом открытии плана появится окно выбора категории организации по объему суммарного потребления топливно-энергетических ресурсов. Выберите подходящую и нажмите <strong>«Подтвердить»</strong>:
                   </p>
 
                   <div class="plan-type-cards">
@@ -550,7 +612,7 @@
               <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
               <div class="callout-body">
                 <p class="callout-title">Важно</p>
-                <p>Все изменения фиксируются в системе автоматически после нажатия кнопок <strong>«Применить изменения»</strong> или <strong>«Добавить»</strong>.</p>
+                <p>Изменения сохраняются после нажатия кнопки в окне: <strong>«Добавить показатель»</strong>, <strong>«Добавить мероприятие»</strong>, <strong>«Сохранить изменения»</strong> или <strong>«Применить изменения»</strong>.</p>
               </div>
             </div>
 
@@ -576,7 +638,9 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Согласование и утверждение планов в EnPlans выполняется специально назначенными согласовывающими и утверждающими организациями. Процесс проверки включает несколько этапов.
+                Согласование и утверждение планов выполняют организации из маршрута, который разработчик выбрал при отправке.
+                Внутри каждой организации план рассматривает исполнитель или руководитель структурного подразделения, а решение подписывает ЭЦП руководитель.
+                Общая схема — в разделе <a href="#approval-route" class="faq-inline-link">«Путь согласования плана»</a>.
               </p>
             </div>
 
@@ -586,7 +650,8 @@
                 <div class="step-content">
                   <h4>Получение плана</h4>
                   <p>
-                    Изначальный статус плана — <strong>«На рассмотрении»</strong>.
+                    Пока план проходит предыдущие организации маршрута, он виден на вкладке <strong>«В ожидании»</strong>.
+                    Когда очередь доходит до вашей организации, план переходит на вкладку <strong>«На рассмотрении»</strong>.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/plan-unviewed.png" alt="Статус На рассмотрении" class="faq-image faq-image-md">
@@ -599,12 +664,12 @@
                 <div class="step-content">
                   <h4>Проверка данных</h4>
                   <p>
-                    Последовательная проверка данных:
+                    Исполнитель или руководитель структурного подразделения открывает план кнопкой <strong>«Просмотр»</strong> и проверяет:
                   </p>
                   <ul class="detail-list">
-                    <li>основные показатели (энергосбережение, доля местных ТЭР и ВИЭ)</li>
-                    <li>мероприятия по экономии и увеличению ТЭР</li>
-                    <li>показатели ТЭР</li>
+                    <li>задания на титульном листе (энергосбережение, экономия ТЭР, доля местных ТЭР и ВИЭ)</li>
+                    <li>Часть 1 — показатели использования ТЭР</li>
+                    <li>Часть 2 и Часть 3 — мероприятия по экономии и по увеличению использования местных ТЭР</li>
                   </ul>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/plan-check.png" alt="Проверка плана" class="faq-image faq-image-md">
@@ -615,75 +680,84 @@
               <div class="step-item">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <h4>Вынесение вердикта</h4>
+                  <h4>Решение и направление на подпись</h4>
                   <p>
-                    По результатам проверки согласовывающая организация выбирает один из вариантов:
+                    На вкладке <strong>«Действия»</strong> сотрудник выбирает решение и руководителя, который его подпишет:
                   </p>
                   <div class="options-container">
-                    <div class="option-card error">
-                      <span class="option-indicator"></span>
-                      <div class="option-content">
-                        <div class="option-title">Есть ошибки</div>
-                        <div class="option-description">
-                          Указываются конкретные ошибки, план возвращается на доработку
-                        </div>
-                      </div>
-                    </div>
                     <div class="option-card success">
                       <span class="option-indicator"></span>
                       <div class="option-content">
-                        <div class="option-title">Одобрить</div>
+                        <div class="option-title">Согласовать</div>
                         <div class="option-description">
-                          План соответствует требованиям, переводится в статус «Согласован»
+                          План соответствует требованиям — решение направляется руководителю на подпись
                         </div>
                       </div>
                     </div>
-                    <div class="option-card cancel">
+                    <div class="option-card error">
                       <span class="option-indicator"></span>
                       <div class="option-content">
-                        <div class="option-title">Отменить</div>
+                        <div class="option-title">Не согласовать и отправить на подпись</div>
                         <div class="option-description">
-                          План переходит в изначальное состояние «На рассмотрении»
+                          Обязательно укажите текст ошибки и приложите файл с замечаниями (до 20 МБ)
                         </div>
                       </div>
                     </div>
                   </div>
                   <p>
-                    При выборе <strong>«Есть ошибки»</strong> или <strong>«Одобрить»</strong> открывается окно подтверждения с проверкой ЭЦП — такое же, как при отправке плана. Решение вступает в силу только после успешного прохождения проверки; без неё статус плана не изменится.
+                    В утверждающей организации решение только положительное: вместо «Согласовать» — <strong>«Утвердить»</strong>, а «Не согласовать» недоступно.
                   </p>
                   <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/plan-verdict.png" alt="Вынесение вердикта" class="faq-image faq-image-md">
+                    <img src="/static/img/faq/plan-verdict.png" alt="Вынесение решения" class="faq-image faq-image-md">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <h4>Подпись решения</h4>
+                  <p>
+                    Руководитель, которому направлено решение, нажимает <strong>«Подписать»</strong> и проходит <a href="#ecp-check" class="faq-inline-link">проверку ЭЦП</a> — только после этого решение вступает в силу.
+                    Вместо подписи он может <strong>«Вернуть на повторное рассмотрение»</strong> с указанием причины (на этапе утверждения недоступно),
+                    а руководитель структурного подразделения — <strong>«Отправить на подпись»</strong> руководителю организации, не подписывая сам.
+                  </p>
+                  <div class="callout callout--neutral">
+                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                    <div class="callout-body">
+                      <p>Руководитель организации не выносит решение первым: кнопки станут доступны, когда исполнитель или руководитель структурного подразделения направит ему решение. Если таких сотрудников в организации нет, их нужно добавить в профиле организации.</p>
+                    </div>
                   </div>
                   <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/plan-signatures.png" alt="Вынесение вердикта" class="faq-image faq-image-md">
+                    <img src="/static/img/faq/plan-signatures.png" alt="Подписи согласования" class="faq-image faq-image-md">
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="after-inspection">
-              <h3>Что происходит после проверки?</h3>
+              <h3>Что происходит после подписи?</h3>
               <div class="inspection-outcomes">
                 <div class="outcomes-grid">
-                  <div class="outcome-item outcome-error">
-                    <div class="outcome-icon">{{ icons.error_icon() }}</div>
-                    <h4 class="outcome-title">Если есть ошибки</h4>
-                    <p class="outcome-description">
-                      План возвращается организации-разработчику с комментариями. Статус меняется на <strong>«Есть ошибки»</strong>
-                    </p>
-                  </div>
                   <div class="outcome-item outcome-approved">
                     <div class="outcome-icon">{{ icons.approved_icon() }}</div>
                     <h4 class="outcome-title">Если согласовано</h4>
                     <p class="outcome-description">
-                      План переводится в статус <strong>«Согласован»</strong> и считается официально принятым на этом этапе
+                      План уходит следующей организации маршрута, у вас он остается на вкладке <strong>«Согласованные»</strong>. После подписи утверждающей организации план получает статус <strong>«Утвержден»</strong>
+                    </p>
+                  </div>
+                  <div class="outcome-item outcome-error">
+                    <div class="outcome-icon">{{ icons.error_icon() }}</div>
+                    <h4 class="outcome-title">Если не согласовано</h4>
+                    <p class="outcome-description">
+                      План возвращается разработчику со статусом <strong>«Есть ошибки»</strong>, замечания и файл видны на вкладке «Подписи». После исправления план снова проходит весь маршрут
                     </p>
                   </div>
                   <div class="outcome-item outcome-canceled">
                     <div class="outcome-icon">{{ undo_icon() }}</div>
-                    <h4 class="outcome-title">Если отменено</h4>
+                    <h4 class="outcome-title">Если решение вернули</h4>
                     <p class="outcome-description">
-                      Статус плана возвращается к изначальному <strong>«На рассмотрении»</strong>
+                      Решение возвращается сотруднику с причиной, план остается <strong>«На рассмотрении»</strong> в вашей организации
                     </p>
                   </div>
                 </div>
@@ -694,7 +768,7 @@
               <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
               <div class="callout-body">
                 <p class="callout-title">Важно</p>
-                <p>Все изменения статуса плана автоматически фиксируются в системе и отображаются в истории изменений.</p>
+                <p>Все решения и подписи сохраняются на вкладке <strong>«Подписи»</strong> плана: по каждой организации видно, кто рассмотрел план, кто подписал и с каким результатом.</p>
               </div>
             </div>
 
@@ -854,7 +928,7 @@
                 <g class="rd-node rd-appr">
                   <rect x="380" y="1050" width="270" height="56" rx="10" />
                   <text class="rd-t" x="515" y="1072">Рук. организации / заместитель</text>
-                  <text class="rd-s" x="515" y="1090">Только «Одобрить»</text>
+                  <text class="rd-s" x="515" y="1090">Утверждает с подписью ЭЦП</text>
                 </g>
                 <path class="rd-dash" d="M170 1016V1046" marker-end="url(#rdArrow)" />
                 <path class="rd-dash" d="M290 1078H376" marker-end="url(#rdArrow)" />
@@ -902,7 +976,7 @@
                 <div class="step-content">
                   <h4>Утверждающая организация</h4>
                   <p>
-                    Если план создан другой организацией, исполнитель проверяет его и направляет дальше, руководитель подразделения только передаёт, а руководитель организации (или заместитель) нажимает «Одобрить» и подписывает ЭЦП. Если план создан самой утверждающей организацией — его сразу утверждает её руководитель.
+                    Если план создан другой организацией, исполнитель проверяет его, нажимает «Утвердить» и направляет решение на подпись; руководитель подразделения только передаёт его руководителю организации, а руководитель организации (или заместитель) подписывает ЭЦП. Если план создан самой утверждающей организацией — её руководитель сразу утверждает его кнопкой «Одобрить» с подписью ЭЦП.
                   </p>
                 </div>
               </div>
@@ -948,7 +1022,7 @@
                 <div class="step-content">
                   <h4>Переход к экспорту</h4>
                   <p>
-                    В меню плана выберите <strong>«Экспорт»</strong>.
+                    Откройте вкладку <strong>«Экспорт»</strong> в главном меню (рядом с «Кабинет» и «Планы»). Чтобы быстро выгрузить один план в Excel, используйте кнопку <strong>«Экспорт в Excel»</strong> в панели над таблицами плана.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/export-step1.png" alt="Переход к экспорту" class="faq-image">
@@ -1032,6 +1106,10 @@
             </h1>
           </div>
           <div class="answer-body-modern">
+            <div class="answer-text">
+              <p>Набор вкладок на странице «Планы» зависит от роли организации.</p>
+            </div>
+            <h3>Планы своей организации</h3>
             <div class="status-grid">
               <div class="status-grid-container">
                 <div class="status-card status-draft">
@@ -1041,7 +1119,7 @@
                   </div>
                   <h4 class="status-title">В процессе редактирования</h4>
                   <p class="status-description">
-                    План создан, но еще не отправлен на проверку.
+                    План создан и заполняется. Также в этот статус попадает новая версия плана после возврата с ошибками.
                   </p>
                 </div>
                 <div class="status-card status-control">
@@ -1051,8 +1129,17 @@
                   </div>
                   <h4 class="status-title">Проверка программой</h4>
                   <p class="status-description">
-                    Редактируемый план прошел автоматическую проверку правильности
-                    заполненных данных.
+                    План прошел автоматическую проверку заполнения — его можно отправить на подпись.
+                  </p>
+                </div>
+                <div class="status-card status-signing">
+                  <div class="status-header">
+                    <div class="status-icon">{{ icons.icon_sign() }}</div>
+                    <span class="status-badge">На подписании</span>
+                  </div>
+                  <h4 class="status-title">Подпись внутри организации</h4>
+                  <p class="status-description">
+                    План направлен на подпись руководителю внутри своей организации. Пока он не подписан ЭЦП, редактирование недоступно.
                   </p>
                 </div>
                 <div class="status-card status-sent">
@@ -1060,9 +1147,9 @@
                     <div class="status-icon">{{ icons.pending_icon() }}</div>
                     <span class="status-badge">На согласовании</span>
                   </div>
-                  <h4 class="status-title">На проверке у согласовывающей организации</h4>
+                  <h4 class="status-title">Проходит маршрут</h4>
                   <p class="status-description">
-                    План отправлен на официальную проверку.
+                    План подписан и по очереди проходит организации маршрута. Где он сейчас — видно на вкладке «Подписи».
                   </p>
                 </div>
                 <div class="status-card status-error">
@@ -1070,9 +1157,9 @@
                     <div class="status-icon">{{ icons.error_icon() }}</div>
                     <span class="status-badge">Есть ошибки</span>
                   </div>
-                  <h4 class="status-title">Есть ошибки</h4>
+                  <h4 class="status-title">Не согласован</h4>
                   <p class="status-description">
-                    Согласовывающая организация обнаружила ошибки. План возвращен для исправления.
+                    Одна из организаций маршрута не согласовала план. Замечания и файл — на вкладке «Подписи».
                   </p>
                 </div>
                 <div class="status-card status-approved">
@@ -1080,12 +1167,50 @@
                     <div class="status-icon">{{ icons.approved_icon() }}</div>
                     <span class="status-badge">Утвержден</span>
                   </div>
-                  <h4 class="status-title">Проверка пройдена</h4>
+                  <h4 class="status-title">Маршрут пройден</h4>
                   <p class="status-description">
-                    План успешно прошел согласование и официально утвержден.
+                    Утверждающая организация подписала план — он официально утвержден.
                   </p>
                 </div>
               </div>
+            </div>
+            <h3>Планы на согласовании и утверждении</h3>
+            <div class="status-grid">
+              <div class="status-grid-container">
+                <div class="status-card status-transit">
+                  <div class="status-header">
+                    <div class="status-icon">{{ icons.icon_clock() }}</div>
+                    <span class="status-badge">В ожидании</span>
+                  </div>
+                  <h4 class="status-title">Очередь еще не дошла</h4>
+                  <p class="status-description">
+                    План проходит предыдущие организации маршрута. Его можно открыть, но решение пока недоступно.
+                  </p>
+                </div>
+                <div class="status-card status-sent">
+                  <div class="status-header">
+                    <div class="status-icon">{{ review_icon() }}</div>
+                    <span class="status-badge">На рассмотрении</span>
+                  </div>
+                  <h4 class="status-title">Ждет вашего решения</h4>
+                  <p class="status-description">
+                    Очередь дошла до вашей организации: сотрудники проверяют план и направляют решение руководителю на подпись.
+                  </p>
+                </div>
+                <div class="status-card status-sogl">
+                  <div class="status-header">
+                    <div class="status-icon">{{ icons.icon_confirm() }}</div>
+                    <span class="status-badge">Согласованные</span>
+                  </div>
+                  <h4 class="status-title">Ваш этап пройден</h4>
+                  <p class="status-description">
+                    Ваша организация согласовала план, и он ушел дальше по маршруту. Вкладка есть только у согласующих организаций.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="answer-text status-grid-note">
+              <p>Организация, которая сама разрабатывает планы и при этом согласует или утверждает чужие, видит обе группы вкладок.</p>
             </div>
             <h3>Типы планов по объему потребления</h3>
 
@@ -1095,7 +1220,7 @@
                 <div class="consumption-type-body">
                   <span class="consumption-type-value">До 25 тыс. т у.т.</span>
                   <span class="consumption-type-label">Малые организации</span>
-                  <p class="consumption-type-desc">Упрощённая форма отчётности</p>
+                  <p class="consumption-type-desc">Региональное управление, выбранные согласующие и утверждающая организации</p>
                 </div>
               </div>
               <div class="consumption-type">
@@ -1103,7 +1228,7 @@
                 <div class="consumption-type-body">
                   <span class="consumption-type-value">Более 25 тыс. т у.т.</span>
                   <span class="consumption-type-label">Крупные организации</span>
-                  <p class="consumption-type-desc">Расширенная форма с детальными расчётами</p>
+                  <p class="consumption-type-desc">Перед утверждающей организацией в маршрут автоматически добавляется Департамент по энергоэффективности — по строке «Суммарное потребление ТЭР» на год плана</p>
                 </div>
               </div>
             </div>
@@ -1113,23 +1238,23 @@
               <div class="features-grid">
                 <div class="feature-card">
                   <div class="feature-icon">{{ icons.icon_stats() }}</div>
-                  <h4>Панель управления</h4>
+                  <h4>Вкладки статусов</h4>
                   <p>
-                    Обзор всех планов с цветовой индикацией статусов
+                    Счетчики планов по статусам на странице «Планы» и фильтры по году, региону и организации
                   </p>
                 </div>
                 <div class="feature-card">
                   <div class="feature-icon">{{ icons.icon_notif() }}</div>
                   <h4>Уведомления</h4>
                   <p>
-                    Автоматические оповещения при изменении статуса плана
+                    Оповещения, когда план ждет вашей подписи, возвращен, не согласован или утвержден
                   </p>
                 </div>
                 <div class="feature-card">
                   <div class="feature-icon">{{ icons.icon_plans() }}</div>
-                  <h4>История изменений</h4>
+                  <h4>Вкладка «Подписи»</h4>
                   <p>
-                    Подробный лог всех переходов между статусами
+                    Все этапы маршрута: кто рассмотрел и подписал план, когда и с каким решением
                   </p>
                 </div>
               </div>
@@ -1367,7 +1492,7 @@
                 <div class="step-content">
                   <h4>Добавление показателей</h4>
                   <p>
-                    Для добавления показателя нажмите кнопку <strong>«Добавить»</strong> в левом верхнем углу страницы.
+                    Для добавления показателя нажмите кнопку <strong>«Добавить»</strong> в панели над таблицей.
                   </p>
                   <div class="faq-image-wrapper">
                     <img src="/static/img/faq/add-indicator.png" alt="Добавление показателя" class="faq-image">
@@ -1380,7 +1505,7 @@
                 <div class="step-content">
                   <h4>Выбор показателя из справочника</h4>
                   <p>
-                    В открывшемся окне выберите необходимый показатель, кликнув по нему левой кнопкой мыши.
+                    В открывшемся окне найдите показатель по коду или наименованию, выберите его щелчком по строке и нажмите <strong>«Далее»</strong>. Показатели, которые уже есть в плане, в списке не отображаются.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/select-indicator.png" alt="Выбор показателя" class="faq-image">
@@ -1448,7 +1573,7 @@
                 <div class="step-content">
                   <h4>Редактирование и удаление показателей</h4>
                   <p>
-                    Кликните правой кнопкой мыши по строке показателя — откроется контекстное меню с пунктами <strong>«Редактировать»</strong> и <strong>«Удалить»</strong>.
+                    Выделите строку показателя и нажмите <strong>«Редактировать»</strong> или <strong>«Удалить»</strong> в панели над таблицей. То же доступно в контекстном меню по правой кнопке мыши. После правки нажмите <strong>«Сохранить изменения»</strong>.
                   </p>
                   <div class="callout callout--warning">
                     <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
@@ -1504,7 +1629,7 @@
                 <div class="step-content">
                   <h4>Выбор направления</h4>
                   <p>
-                    В открывшемся окне выберите направление энергосбережения из справочника, кликнув по строке, и нажмите на «Далее».
+                    В открывшемся окне найдите направление энергосбережения по коду или наименованию, выберите его щелчком по строке и нажмите <strong>«Далее»</strong>.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/choose-economy-event.png" alt="Выбор направления" class="faq-image">
@@ -1516,7 +1641,7 @@
                 <div class="step-number">3</div>
                 <div class="step-content">
                   <h4>Заполнение данных мероприятия</h4>
-                  <p>Необходимо выбрать тип мероприятия мероприятия: <strong>Первоначальная редакция</strong> или <strong>Включенные в план при внесении в него изменений</strong>.</p>
+                  <p>Необходимо выбрать тип мероприятия: <strong>Первоначальная редакция</strong> или <strong>Включенные в план при внесении в него изменений</strong>.</p>
                   <div class="callout">
                     <span class="icon-badge">{{ info_icon() }}</span>
                     <div class="callout-body">
@@ -1639,7 +1764,7 @@
                 <div class="step-content">
                   <h4>Поквартальная разбивка</h4>
                   <p>После добавления всех необходимых мероприятий по строкам <strong>«январь-март»</strong>, <strong>«январь-июнь»</strong> и <strong>«январь-сентябрь»</strong> необходимо ввести данные.
-                    Для этого нажмите правой кнопкой мыши по нужной ячейке и выберите <strong>«Редактировать»</strong>.
+                    Для этого нажмите правой кнопкой мыши по нужной строке и выберите <strong>«Редактировать»</strong>. Периоды заполняются по нарастающей: «январь-июнь» становится доступен, когда заполнен «январь-март», а «январь-сентябрь» — когда заполнен «январь-июнь».
                   </p>
                   
                   <div class="faq-image-wrapper ogr">
@@ -1649,7 +1774,7 @@
                   <div class="callout">
                     <span class="icon-badge">{{ info_icon() }}</span>
                     <div class="callout-body">
-                      <p>Данные по строке <strong>«январь-декабрь»</strong> заполняются автоматически, в отличии от остальных квартальных периодов.</p>
+                      <p>Данные по строке <strong>«январь-декабрь»</strong> заполняются автоматически, в отличие от остальных квартальных периодов.</p>
                     </div>
                   </div>
                 </div>
@@ -1689,7 +1814,7 @@
                 <div class="step-content">
                   <h4>Выбор направления</h4>
                   <p>
-                    В открывшемся окне выберите направление энергосбережения из справочника, кликнув по строке, и нажмите на «Далее».
+                    В открывшемся окне найдите направление энергосбережения по коду или наименованию, выберите его щелчком по строке и нажмите <strong>«Далее»</strong>.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/choose-local-event.png" alt="Выбор направления для местных ТЭР" class="faq-image">
@@ -1703,7 +1828,7 @@
                   <h4>Заполнение данных мероприятия</h4>
                   
 
-                  <p>Необходимо выбрать тип мероприятия мероприятия: <strong>Первоначальная редакция</strong> или <strong>Включенные в план при внесении в него изменений</strong>.</p>
+                  <p>Необходимо выбрать тип мероприятия: <strong>Первоначальная редакция</strong> или <strong>Включенные в план при внесении в него изменений</strong>.</p>
                   <div class="callout">
                     <span class="icon-badge">{{ info_icon() }}</span>
                     <div class="callout-body">
@@ -1792,7 +1917,7 @@
               <div class="step-content">
                 <h4>Поквартальная разбивка</h4>
                 <p>После добавления всех необходимых мероприятий по строкам <strong>«январь-март»</strong>, <strong>«январь-июнь»</strong> и <strong>«январь-сентябрь»</strong> необходимо ввести данные.
-                  Для этого нажмите правой кнопкой мыши по нужной ячейке и выберите <strong>«Редактировать»</strong>.
+                  Для этого нажмите правой кнопкой мыши по нужной строке и выберите <strong>«Редактировать»</strong>. Периоды заполняются по нарастающей: «январь-июнь» становится доступен, когда заполнен «январь-март», а «январь-сентябрь» — когда заполнен «январь-июнь».
                 </p>
                 
                 <div class="faq-image-wrapper ogr">
@@ -1802,7 +1927,7 @@
                 <div class="callout">
                   <span class="icon-badge">{{ info_icon() }}</span>
                   <div class="callout-body">
-                    <p>Данные по строке <strong>«январь-декабрь»</strong> заполняются автоматически, в отличии от остальных квартальных периодов.</p>
+                    <p>Данные по строке <strong>«январь-декабрь»</strong> заполняются автоматически, в отличие от остальных квартальных периодов.</p>
                   </div>
                 </div>
               </div>
@@ -1812,7 +1937,7 @@
               <span class="icon-badge">{{ info_icon() }}</span>
               <div class="callout-body">
                 <p class="callout-title">Важно</p>
-                <p>Все изменения в таблицах фиксируются в системе автоматически после нажатия кнопок <strong>«Применить изменения»</strong> или <strong>«Добавить»</strong>.</p>
+                <p>Изменения сохраняются после нажатия кнопки в окне: <strong>«Добавить показатель»</strong>, <strong>«Добавить мероприятие»</strong>, <strong>«Сохранить изменения»</strong> или <strong>«Применить изменения»</strong>.</p>
                 <p>Перед отправкой плана на согласование система проводит автоматический контроль заполнения всех разделов.</p>
               </div>
             </div>
@@ -1877,7 +2002,7 @@
                 <div class="control-flow-step-icon">{{ icons.icon_confirm() }}</div>
                 <div class="control-flow-step-text">
                   <strong>2. Нажмите «Пройти контроль»</strong>
-                  <span>Кнопка находится на странице с «Действия с планом»</span>
+                  <span>Кнопка находится на вкладке «Действия» плана</span>
                 </div>
               </div>
               <div class="faq-image-wrapper ogr">
@@ -1905,7 +2030,7 @@
                   <div class="control-flow-outcome-icon">✅</div>
                   <div class="control-flow-outcome-title">Всё верно</div>
                   <div class="control-flow-outcome-desc">
-                    Статус плана меняется на <strong>«Контроль пройден»</strong>. План готов — можно нажимать «Отправить план» и переходить к согласованию.
+                    Статус плана меняется на <strong>«Контроль пройден»</strong>. План готов — можно нажимать «Отправить на подпись» и переходить к согласованию.
                   </div>
                 </div>
                 <div class="control-flow-outcome control-flow-outcome--error">
@@ -2000,7 +2125,8 @@
             <h3 id="plan-control-submit">Отправка плана на согласование</h3>
             <div class="answer-text">
               <p>
-                После успешного прохождения контроля план можно отправить на согласование и утверждение. Нажатие кнопки <strong>«Отправить план»</strong> открывает отдельную страницу с пошаговым мастером отправки из 4 этапов: <strong>Согласующие → Утверждающая организация → Проверка → Подпись</strong>.
+                После успешного прохождения контроля исполнитель или руководитель структурного подразделения выбирает маршрут плана и руководителя, который подпишет план ЭЦП.
+                Все делается на одной странице: слева — выбор организаций, справа — итоговый маршрут и выбор подписывающего.
               </p>
             </div>
 
@@ -2008,9 +2134,9 @@
               <div class="step-item">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <h4>Отправить план</h4>
+                  <h4>Отправить на подпись</h4>
                   <p>
-                    На странице с заданиями плана необходимо выбрать <strong>«Отправить план»</strong> — откроется страница отправки плана.
+                    На вкладке <strong>«Действия»</strong> нажмите <strong>«Отправить на подпись»</strong> — откроется страница отправки плана.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/send-plan-btn.png" alt="Кнопка отправки плана" class="faq-image">
@@ -2021,31 +2147,10 @@
               <div class="step-item">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <h4>Шаг «Согласующие» — выбор организаций для согласования</h4>
+                  <h4>Вкладка «Утверждающая»</h4>
                   <p>
-                    Выберите одну или несколько организаций, которые будут согласовывать план. Список организаций можно искать по названию, УНП, ОКПО или региону и сортировать по этим же параметрам.
-                  </p>
-                  <div class="callout callout--neutral">
-                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
-                    <div class="callout-body">
-                      <p><strong>Автоматический выбор:</strong> первая организация для согласования автоматически определяется как региональное управление по надзору за рациональным использованием ТЭР.</p>
-                    </div>
-                  </div>
-                  <p>
-                    Выбранные организации отображаются отдельным списком с порядковым номером — план будет передаваться между ними именно в этом порядке.
-                  </p>
-                  <div class="faq-image-wrapper ogr">
-                    <img src="/static/img/faq/send-step1.png" alt="Выбор согласующих организаций" class="faq-image">
-                  </div>
-                </div>
-              </div>
-
-              <div class="step-item">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h4>Шаг «Утверждающая организация» — выбор утверждающей организации</h4>
-                  <p>
-                    Выберите организацию, которая будет утверждать план. Можно выбрать только одну организацию.
+                    Выберите организацию, которая утвердит план. Можно выбрать только одну — она будет последней в маршруте.
+                    Организации можно искать по УНП или наименованию и упорядочить через список <strong>«Сортировка»</strong>: по названию, региону, УНП или ОКПО.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/send-step2.png" alt="Выбор утверждающей организации" class="faq-image">
@@ -2054,15 +2159,34 @@
               </div>
 
               <div class="step-item">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <h4>Вкладка «Согласующие»</h4>
+                  <p>
+                    Если план должны согласовать еще какие-то организации, отметьте их. Они получат план по очереди, порядок можно поменять в маршруте справа.
+                  </p>
+                  <div class="callout callout--neutral">
+                    <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                    <div class="callout-body">
+                      <p><strong>Добавляются автоматически:</strong> региональное управление по надзору за рациональным использованием ТЭР — всегда первым, и Департамент по энергоэффективности — перед утверждающей организацией, если суммарное потребление ТЭР от 25 тыс. т у.т.</p>
+                    </div>
+                  </div>
+                  <div class="faq-image-wrapper ogr">
+                    <img src="/static/img/faq/send-step1.png" alt="Выбор согласующих организаций" class="faq-image">
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-item">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <h4>Шаг «Проверка» — путь согласования</h4>
+                  <h4>Маршрут плана и выбор подписывающего</h4>
                   <p>
-                    Перед подписанием система показывает итоговый путь согласования — по каким организациям и в каком порядке пройдёт план. Проверьте выбранные организации и подтвердите отправку, нажав <strong>«Далее»</strong>.
+                    Справа, в блоке <strong>«Маршрут плана»</strong>, показан итоговый порядок организаций. Если план уже отправлялся, маршрут подставится из прошлой отправки; можно также взять маршрут из плана прошлого года.
+                    В блоке <strong>«Кто подпишет»</strong> выберите руководителя структурного подразделения или руководителя организации и нажмите <strong>«Отправить на подпись»</strong>. План получит статус <strong>«На подписании»</strong>.
                   </p>
-
                   <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/send-step3.png" alt="Путь согласования" class="faq-image">
+                    <img src="/static/img/faq/send-step3.png" alt="Маршрут плана" class="faq-image">
                   </div>
                 </div>
               </div>
@@ -2070,9 +2194,24 @@
               <div class="step-item">
                 <div class="step-number">5</div>
                 <div class="step-content">
-                  <h4>Шаг «Подпись»</h4>
+                  <h4>Подпись руководителя</h4>
                   <p>
-                    Нажмите <strong>«Пройти проверку ЭЦП»</strong> — откроется окно выбора способа подписания: аппаратный ключ ЭЦП (отметка «Скоро», пока недоступен) или сертификат ЭЦП (.cer). Подробнее о том, как проходит проверка — см. <a href="#ecp-check" class="faq-inline-link">«Проверка ЭЦП»</a>.
+                    Выбранный руководитель на вкладке <strong>«Действия»</strong> может:
+                  </p>
+                  <ul class="detail-list">
+                    <li><strong>«Подписать и отправить»</strong> — подписать план ЭЦП, после чего он уходит по маршруту (см. <a href="#ecp-check" class="faq-inline-link">«Проверка ЭЦП»</a>)</li>
+                    <li><strong>«Направить на подпись»</strong> — передать план руководителю организации или его заместителю</li>
+                    <li><strong>«Вернуть на внутреннюю доработку»</strong> — вернуть план исполнителю с указанием причины</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="step-item">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                  <h4>Отмена отправки</h4>
+                  <p>
+                    В течение 5 минут после подписи руководитель может нажать <strong>«Отменить отправку»</strong>: план вернется к нему на подпись по тому же маршруту, а в «Подписях» не останется записей об этой отправке.
                   </p>
                 </div>
               </div>
@@ -2082,9 +2221,9 @@
               <span class="icon-badge">{{ info_icon() }}</span>
               <div class="callout-body">
                 <p class="callout-title">Примечание</p>
-                <p>Ошибки при заполнении плана отображаются в интерфейсе с пояснением (раздел замечания), что именно требуется исправить.</p>
+                <p>Ход согласования виден на вкладке <strong>«Подписи»</strong>. Если какая-то организация не согласовала план, там же отображаются ее замечания и приложенный файл.</p>
                 <div class="faq-image-wrapper">
-                    <img src="/static/img/faq/signatures.png" alt="signatures" class="faq-image">
+                    <img src="/static/img/faq/signatures.png" alt="Подписи согласования" class="faq-image">
                   </div>
               </div>
             </div>
@@ -2194,7 +2333,7 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Проверка электронной цифровой подписи (ЭЦП) используется, чтобы подтвердить отправителя действия в двух местах системы: при <strong>отправке плана</strong> на согласование (шаг «Подпись», см. <a href="#plan-control-send" class="faq-inline-link">«Контроль и отправка плана»</a>) и при вынесении вердикта согласовывающей организацией — кнопки <strong>«Есть ошибки»</strong> и <strong>«Одобрить»</strong> (см. <a href="#audit-data" class="faq-inline-link">«Согласование планов»</a>). В обоих случаях открывается одно и то же окно проверки. Если у вас ещё нет файла сертификата — см. <a href="#ecp-obtain" class="faq-inline-link">«Как получить сертификат ЭЦП?»</a>.
+                Проверка электронной цифровой подписи (ЭЦП) подтверждает, кто совершает действие. Она нужна в трех случаях: на последнем шаге <strong>регистрации</strong> (см. <a href="#getting-started" class="faq-inline-link">«Как начать работу с системой?»</a>), когда руководитель <strong>подписывает план</strong> перед отправкой по маршруту (см. <a href="#plan-control-send" class="faq-inline-link">«Контроль и отправка плана»</a>) и когда руководитель согласующей или утверждающей организации <strong>подписывает решение</strong> по плану (см. <a href="#audit-data" class="faq-inline-link">«Согласование планов»</a>). Во всех случаях открывается одно и то же окно проверки. Если у вас еще нет файла сертификата — см. <a href="#ecp-obtain" class="faq-inline-link">«Как получить сертификат ЭЦП?»</a>.
               </p>
             </div>
 
@@ -2240,7 +2379,7 @@
                 <div class="step-content">
                   <h4>Результат проверки</h4>
                   <p>
-                    При успешной проверке окно закрывается, и действие (отправка плана или вынесение вердикта) становится доступным. Если сертификат не прошёл проверку — например, истёк срок его действия — отображается сообщение об ошибке с кнопкой <strong>«Попробовать ещё раз»</strong>, которая позволяет загрузить другой сертификат.
+                    При успешной проверке окно закрывается, и действие (регистрация, отправка плана или подпись решения) становится доступным. Если сертификат не прошёл проверку — например, истёк срок его действия — отображается сообщение об ошибке с кнопкой <strong>«Попробовать ещё раз»</strong>, которая позволяет загрузить другой сертификат.
                   </p>
                   <div class="faq-image-wrapper ogr">
                     <img src="/static/img/faq/ecp-check-step3.png" alt="Результат проверки ЭЦП" class="faq-image">
