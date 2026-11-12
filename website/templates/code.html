@@ -24,6 +24,17 @@ EnPlans{% endblock %} {% block content %}
       >
     </div>
 
+    {% if email %}
+    <div class="code-recipient">
+      <span class="code-recipient-icon">{{ icons.icon_email() }}</span>
+      <div class="code-recipient-text">
+        <span class="code-recipient-label">{{ _('Код отправлен на почту') }}</span>
+        {% set email_parts = email.rsplit('@', 1) %}
+        <span class="code-recipient-email">{{ email_parts[0] }}{% if email_parts|length > 1 %}<wbr>@{{ email_parts[1] }}{% endif %}</span>
+      </div>
+    </div>
+    {% endif %}
+
     <form class="auth-form" method="POST" action="{{ url_for('auth.code') }}" data-require-valid>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="activation-code-container">
