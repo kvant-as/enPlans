@@ -151,8 +151,9 @@
                     </div>
                     <div class="nav-menu-list">
                         {% if current_user.is_authenticated %}
-                            {% set account_role_label = {
+                            {% set account_role_label = _('Администратор') if current_user.is_admin else {
                                 'org_head': _('Руководитель организации'),
+                                'org_head_deputy': _('Заместитель руководителя организации'),
                                 'dept_head': _('Руководитель структурного подразделения'),
                                 'executor': _('Исполнитель'),
                             }.get(current_user.org_role) %}

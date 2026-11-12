@@ -71,6 +71,20 @@
 
           <div class="category-modern">
             <div class="category-header-modern">
+              <h3>Организация</h3>
+            </div>
+            <div class="questions-list-modern">
+              <a href="#org-roles" class="question-link-modern">
+                Роли сотрудников
+              </a>
+              <a href="#org-egr" class="question-link-modern">
+                Обновление данных организации
+              </a>
+            </div>
+          </div>
+
+          <div class="category-modern">
+            <div class="category-header-modern">
               <h3>Разработка плана</h3>
             </div>
             <div class="questions-list-modern">
@@ -521,6 +535,204 @@
               {{ icons.back_icon() }}
               <span>Предыдущий вопрос</span>
             </a>
+            <a href="#org-roles" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+<article class="answer-active-modern" id="org-roles">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Роли сотрудников организации</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              У каждого сотрудника организации одна роль — от нее зависит, какие кнопки ему доступны.
+              Руководителем организации становится тот, кто зарегистрировал организацию с проверкой ЭЦП.
+              Остальных сотрудников он добавляет в профиле организации кнопкой <strong>«Добавить сотрудника»</strong>.
+            </p>
+          </div>
+
+          <div class="org-roles">
+                <div class="org-role-card org-role-card--ex">
+                  <div class="org-role-head">
+                    <span class="org-role-icon">{{ icons.icon_edit() }}</span>
+                    <div>
+                      <h4 class="org-role-title">Исполнитель</h4>
+                      <p class="org-role-note">Готовит план и решения, не подписывает</p>
+                    </div>
+                  </div>
+                  <ul class="org-role-list">
+                    <li>Создает план, заполняет титульный лист и таблицы, проходит контроль</li>
+                    <li>Выбирает маршрут и направляет план на подпись руководителю</li>
+                    <li>В согласующей организации проверяет поступившие планы и готовит решение: «Согласовать» или «Не согласовать» с текстом ошибки и файлом</li>
+                    <li>В утверждающей организации проверяет план и направляет решение «Утвердить» на подпись</li>
+                    <li>Подписывать ЭЦП не может</li>
+                  </ul>
+                </div>
+                <div class="org-role-card org-role-card--dh">
+                  <div class="org-role-head">
+                    <span class="org-role-icon">{{ icons.icon_profile() }}</span>
+                    <div>
+                      <h4 class="org-role-title">Руководитель структурного подразделения</h4>
+                      <p class="org-role-note">Готовит и подписывает</p>
+                    </div>
+                  </div>
+                  <ul class="org-role-list">
+                    <li>Может все, что исполнитель</li>
+                    <li>Подписывает ЭЦП план, направленный ему, и отправляет по маршруту — или передает руководителю организации либо возвращает на внутреннюю доработку</li>
+                    <li>В согласующей организации подписывает решение, подготовленное другим сотрудником, передает его руководителю организации или возвращает на повторное рассмотрение. Свое решение не подписывает</li>
+                    <li>В утверждающей организации только передает решение руководителю организации</li>
+                    <li>В течение 5 минут после подписи может отменить отправку плана</li>
+                  </ul>
+                </div>
+                <div class="org-role-card org-role-card--oh">
+                  <div class="org-role-head">
+                    <span class="org-role-icon">{{ icons.icon_org() }}</span>
+                    <div>
+                      <h4 class="org-role-title">Руководитель организации</h4>
+                      <p class="org-role-note">Подписывает и управляет организацией</p>
+                    </div>
+                  </div>
+                  <ul class="org-role-list">
+                    <li>Подписывает ЭЦП планы и решения, которые ему направили сотрудники, или возвращает их с пояснением</li>
+                    <li>Не создает планы и не выносит решение первым — сначала план должен рассмотреть исполнитель или руководитель подразделения</li>
+                    <li>Утверждает план кнопкой «Одобрить», если план создан его же утверждающей организацией</li>
+                    <li>Приглашает и удаляет сотрудников, назначает им роли</li>
+                    <li>Обновляет данные организации из ЕГР</li>
+                  </ul>
+                </div>
+                <div class="org-role-card org-role-card--dp">
+                  <div class="org-role-head">
+                    <span class="org-role-icon">{{ icons.icon_sign() }}</span>
+                    <div>
+                      <h4 class="org-role-title">Заместитель руководителя организации</h4>
+                      <p class="org-role-note">Подписывает вместо руководителя</p>
+                    </div>
+                  </div>
+                  <ul class="org-role-list">
+                    <li>Подписывает и утверждает планы и решения так же, как руководитель организации</li>
+                    <li>Не управляет сотрудниками и не обновляет данные организации из ЕГР</li>
+                  </ul>
+                </div>
+          </div>
+
+          <div class="callout callout--neutral">
+            <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+            <div class="callout-body">
+              <p>В организации может быть до 7 сотрудников. Руководитель организации и его заместитель — по одному, исполнителей и руководителей подразделений может быть несколько.</p>
+              <p>Отдельно от ролей у каждого плана есть <strong>ответственные исполнители</strong> (до двух человек) — их ФИО и контакты видны на вкладке «Подписи». Создатель плана добавляется автоматически, второго можно добавить на вкладке «Действия».</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#change-password" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#org-egr" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <article class="answer-active-modern" id="org-egr">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как обновить данные организации?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Данные организации загружаются из Единого государственного регистра юридических лиц и индивидуальных предпринимателей (ЕГР) по УНП организации.
+              Вручную их редактировать не нужно — достаточно запросить актуальные сведения из ЕГР.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте карточку организации</h4>
+                <p>
+                  В профиле перейдите на вкладку <strong>«Организация»</strong>, нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> справа и выберите <strong>«Обновить данные организации»</strong>.
+                </p>
+                <p>
+                  Кнопка доступна руководителю организации. У остальных сотрудников она неактивна, а если у организации не указан УНП — неактивна у всех.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Дождитесь ответа ЕГР</h4>
+                <p>
+                  Система отправляет запрос в ЕГР и сохраняет полученные данные. Появится сообщение со списком изменившихся полей
+                  или <strong>«Данные совпадают с ЕГР — изменений нет»</strong>. Под карточкой организации отображается дата и время последней сверки — <strong>«Сверено с ЕГР»</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Какие данные берутся из ЕГР</h3>
+          <div class="feature-card table-card">
+            <table class="example-table egr-table">
+              <thead>
+                <tr>
+                  <th>Поле</th>
+                  <th>Что загружается</th>
+                </tr>
+              </thead>
+              <tbody>
+                  <tr>
+                    <td>Полное наименование</td>
+                    <td>Наименование юридического лица</td>
+                  </tr>
+                  <tr>
+                    <td>Сокращенное наименование</td>
+                    <td>Краткое наименование</td>
+                  </tr>
+                  <tr>
+                    <td>Юридический адрес</td>
+                    <td>Индекс, область, район, населенный пункт, улица, дом, корпус, помещение</td>
+                  </tr>
+                  <tr>
+                    <td>Регион</td>
+                    <td>Определяется по коду СОАТО населенного пункта из юридического адреса</td>
+                  </tr>
+                  <tr>
+                    <td>Состояние в ЕГР</td>
+                    <td>Действующая, в процессе ликвидации, ликвидирована или банкротство</td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="answer-text egr-note">
+            <p>
+              УНП, ОКПО и роль организации в системе (разработчик, согласующая, утверждающая) из ЕГР не меняются — при ошибке в них обратитесь к администратору.
+              ФИО руководителя ЕГР не передает. Если поле в ЕГР пустое, в карточке остается прежнее значение.
+            </p>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>Перед отправкой плана по маршруту («Подписать и отправить») система сама сверяет организацию с ЕГР. Если ЕГР не отвечает, план остается на подписи — отправку можно повторить позже.</p>
+              <p>Если по данным ЕГР организация в процессе ликвидации, ликвидирована или признана банкротом, ее сотрудникам доступен только просмотр, а отправка планов невозможна.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#org-roles" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
             <a href="#create-plan" class="nav-btn next">
               <span>Следующий вопрос</span>
               {{ icons.next_icon() }}
@@ -617,7 +829,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#change-password" class="nav-btn prev">
+              <a href="#org-egr" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
