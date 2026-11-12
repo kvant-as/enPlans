@@ -42,9 +42,10 @@
     {% endblock %}
 
     <!-- Тёмная тема — подключается последней, чтобы её переопределения всегда побеждали -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 
-    <title>{% block title %}{{ _('EnPlans - Формирование планов мероприятий по энергосбережению') }}{% endblock %}</title>
+    <title>{% block title %}{{ _('EnPlans') }}{% endblock %}</title>
     <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   </head>
   <body>
@@ -65,7 +66,6 @@
                 </div>
                 <div class="header-aside-text">
                     <a class="title">EnPlans</a>
-                    {#<span class="subtitle">{{ _('Формирование планов мероприятий по энергосбережению') }}</span>#}
                 </div>
             </div>
             
@@ -142,11 +142,18 @@
                     <span class="chevron-icon">›</span>
                 </div>
 
-                <div class="user-profile-panel" id="user-profile-panel">
+                <div class="user-profile-panel" id="user-profile-panel" role="dialog" aria-modal="true" aria-label="{{ _('Меню') }}" tabindex="-1">
+                    <div class="user-profile-panel-head">
+                        <span class="user-profile-panel-title">{{ _('Меню') }}</span>
+                        <button type="button" class="user-profile-panel-close" id="user-profile-panel-close" aria-label="{{ _('Закрыть меню') }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                     <div class="nav-menu-list">
                         {% if current_user.is_authenticated %}
-                            {% set account_role_label = {
+                            {% set account_role_label = _('Администратор') if current_user.is_admin else {
                                 'org_head': _('Руководитель организации'),
+                                'org_head_deputy': _('Заместитель руководителя организации'),
                                 'dept_head': _('Руководитель структурного подразделения'),
                                 'executor': _('Исполнитель'),
                             }.get(current_user.org_role) %}

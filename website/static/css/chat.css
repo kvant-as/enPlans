@@ -1,14 +1,3 @@
-
-/* ============================================
-   CHAT
-   ============================================ */
-.chat-widget {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-}
 .chat-toggle {
   background: #007bff;
   color: var(--white);
@@ -27,7 +16,6 @@
   background: #0056b3;
   transform: scale(1.05);
 }
-
 .chat-container {
   position: fixed !important;
   bottom: 20px;
@@ -82,7 +70,6 @@
   color: #999;
   margin-top: var(--space-4);
 }
-
 .chat-page {
   display: none;
   flex-direction: column;
@@ -93,7 +80,6 @@
 .chat-page.active {
   display: flex;
 }
-
 .welcome-message .message {
   max-width: 100%;
 }
@@ -105,7 +91,6 @@
 .message-text strong {
   color: #198754;
 }
-
 .chat-type-selection {
   margin: var(--space-10) 0;
   display: flex;
@@ -138,10 +123,6 @@
   color: var(--white);
   text-align: center;
 }
-
-/* Кнопки-чипы быстрого ответа под сообщением бота (сценарий "Изменить
-   данные организации" и другие автоматические сценарии) — см. извлечение
-   маркера [[QUICK_REPLIES:...]] в chat.js. */
 .chat-quick-replies {
   display: flex;
   flex-wrap: wrap;
@@ -163,7 +144,6 @@
   background: var(--green-main);
   color: var(--white);
 }
-
 #messagesContainer {
   display: none;
   gap: var(--space-10);
@@ -171,7 +151,6 @@
 #chatInputArea {
   display: none;
 }
-
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -182,7 +161,6 @@
   background: #f8f9fa;
   scroll-behavior: smooth;
 }
-
 .message {
   display: flex;
   align-items: flex-start;
@@ -277,10 +255,18 @@
   color: #1a1a1a;
   font-weight: 600;
 }
-.message.bot .message-text h1 { font-size: 20px; }
-.message.bot .message-text h2 { font-size: 18px; }
-.message.bot .message-text h3 { font-size: 16px; }
-.message.bot .message-text h4 { font-size: 15px; }
+.message.bot .message-text h1 {
+  font-size: 20px;
+}
+.message.bot .message-text h2 {
+  font-size: 18px;
+}
+.message.bot .message-text h3 {
+  font-size: 16px;
+}
+.message.bot .message-text h4 {
+  font-size: 15px;
+}
 .message.bot .message-text .highlight {
   background: #fff3cd;
   color: #856404;
@@ -305,7 +291,6 @@
   margin-top: var(--space-6);
   text-align: right;
 }
-
 .avatar {
   width: 30px;
   height: 30px;
@@ -322,7 +307,6 @@
   border: 1px solid var(--border-color);
   background: var(--chat-avatar-user-back);
 }
-
 .chat-message-content {
   padding: var(--space-10) var(--space-12);
   border-radius: 12px;
@@ -331,11 +315,9 @@
   word-wrap: break-word;
   color: var(--black);
 }
-
 .chat-footer {
   padding: var(--space-10);
   background: var(--white);
-  /* border-top: 1px solid #dee2e6; */
 }
 .chat-input {
   position: relative;
@@ -345,7 +327,6 @@
 }
 .chat-footer textarea {
   flex: 1;
-  /* border: 1px solid var(--border-color); */
   border-radius: 8px;
   padding: var(--space-10) 100px var(--space-10) var(--space-16);
   resize: none;
@@ -372,29 +353,25 @@
   animation: shake 0.5s ease;
   border-color: #ff4444 !important;
 }
-
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
 }
-
-.validation-hint {
-  font-size: 11px;
-  color: #ff4444;
-  margin-top: var(--space-4);
-  display: none;
-}
-.validation-hint.show {
-  display: block;
-  animation: fadeInArea 0.3s ease;
-}
-
-@keyframes fadeInArea {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .button-group {
   position: absolute;
   right: 8px;
@@ -404,7 +381,6 @@
   gap: var(--space-4);
   align-items: center;
 }
-
 .chat-btn-back {
   position: absolute;
   z-index: 10;
@@ -449,7 +425,6 @@
   height: 18px;
   filter: brightness(0) invert(1);
 }
-
 .chat-btn {
   border: none;
   border-radius: 100px;
@@ -490,18 +465,13 @@
 .chat-btn svg {
   width: 18px;
   height: 18px;
-  /* fill: var(--white); */
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 }
 .chat-btn:hover svg {
-  /* fill: var(--white); */
 }
 .chat-btn:hover .btn-text {
   color: var(--white);
 }
-
-/* Состояние отправки (см. plan_actions.html) — иконка прячется, вместо неё
-   крутится спиннер, пока AJAX-запрос не вернулся. */
 .chat-btn .btn-spinner {
   display: none;
   width: 16px;
@@ -521,7 +491,6 @@
 .chat-btn.is-checking .btn-spinner {
   display: block;
 }
-
 .typing-indicator {
   display: flex;
   gap: var(--space-4);
@@ -543,9 +512,10 @@
 .typing-indicator span:nth-child(3) {
   animation-delay: 0.4s;
 }
-
 @keyframes typing {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.6;
   }
@@ -554,7 +524,6 @@
     opacity: 1;
   }
 }
-
 .sending-indicator {
   width: 20px;
   height: 20px;
@@ -564,30 +533,16 @@
   animation: spin 0.8s linear infinite, pulse 1s ease infinite;
 }
 @keyframes pulse {
-  0% { opacity: 0.8; }
-  50% { opacity: 1; }
-  100% { opacity: 0.8; }
+  0% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.8;
+  }
 }
-
-.sending-message {
-  opacity: 0.7;
-  pointer-events: none;
-  position: relative;
-}
-.sending-message::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -24px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(0, 123, 255, 0.2);
-  border-top-color: #007bff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 .temp-message {
   opacity: 0.8;
 }
@@ -598,34 +553,6 @@
 .temp-message .chat-message-content {
   background: #e3f2fd;
 }
-
-.message-error {
-  background-color: #fff0f0 !important;
-}
-.message-error .message-time {
-  color: #ff4444 !important;
-}
-.message-error .chat-message-content {
-  background: #ffebee !important;
-}
-
-.typing-effect {
-  position: relative;
-  display: inline-block;
-}
-.typing-effect::after {
-  content: '|';
-  display: inline-block;
-  animation: blink 1s infinite;
-  margin-left: var(--space-2);
-  font-weight: 300;
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
 .back-to-type-btn {
   width: 100%;
   padding: var(--space-4) var(--space-10);
@@ -648,13 +575,6 @@
 .back-to-type-btn svg {
   stroke: var(--white);
 }
-
-.chat-info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
-}
-
 @media (max-width: 480px) {
   .chat-container {
     width: 100%;
@@ -689,7 +609,6 @@
     font-size: 12px;
   }
 }
-
 @keyframes slideInLeft {
   from {
     opacity: 0;

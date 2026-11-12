@@ -18,6 +18,7 @@ SUBJECTS = {
     "registration": "Добро пожаловать в EnPlans",
     "notification": "Уведомление от EnPlans",
     "employee_invite": "Приглашение в организацию — EnPlans",
+    "admin_invite": "Приглашение администратором — EnPlans",
 }
 
 

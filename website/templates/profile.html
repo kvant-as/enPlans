@@ -12,9 +12,11 @@
       <div class="employee-card">
         <div class="employee-name-row">
           <a class="employee-name">{{ current_user.first_name}} {{ current_user.last_name}}</a>
-          {% if current_user.org_role %}
+          {% if current_user.is_admin %}
+          <span class="employee-role">{{ _('Администратор') }}</span>
+          {% elif current_user.org_role %}
           <span class="employee-role">
-            {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+            {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации'), 'org_head_deputy': _('Заместитель руководителя организации')}.get(current_user.org_role, current_user.org_role) }}
           </span>
           {% endif %}
         </div>
@@ -34,6 +36,12 @@
         {{ icons.icon_org() }}
         <span>{{ _('Организация') }}</span>
       </button>
+      {% if current_user.is_admin %}
+      <button type="button" class="profile-tab" data-tab="admins" role="tab" aria-selected="false">
+        {{ icons.icon_settings() }}
+        <span>{{ _('Администраторы') }}</span>
+      </button>
+      {% endif %}
       <button type="button" class="profile-tab" data-tab="sessions" role="tab" aria-selected="false">
         {{ icons.icon_clock() }}
         <span>{{ _('Сессия') }}</span>
@@ -154,16 +162,16 @@
               </div>
             </div>
           </div>
-          {% if current_user.org_role %}
+          {% if current_user.is_admin or current_user.org_role %}
           <div class="date-item">
             <div class="date-icon">
-              {{ icons.icon_org() }}
+              {{ icons.icon_settings() if current_user.is_admin else icons.icon_org() }}
             </div>
             <div class="date-content">
               <div class="date-info">
-                <span class="date-label">{{ _('Роль в организации') }}</span>
+                <span class="date-label">{{ _('Роль в системе') if current_user.is_admin else _('Роль в организации') }}</span>
                 <span class="date-day">
-                  {{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации')}.get(current_user.org_role, current_user.org_role) }}
+                  {% if current_user.is_admin %}{{ _('Администратор') }}{% else %}{{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации'), 'org_head_deputy': _('Заместитель руководителя организации')}.get(current_user.org_role, current_user.org_role) }}{% endif %}
                 </span>
               </div>
             </div>
@@ -201,17 +209,8 @@
                               {% if egr_allowed %}data-egr-refresh-url="{{ url_for('views.egr_refresh_organization', org_id=egr_org.id) }}"{% else %}disabled{% endif %}
                               title="{% if not egr_org or not egr_org.ynp %}{{ _('У организации не указан УНП') }}{% elif not egr_allowed %}{{ _('Доступно руководителю организации') }}{% else %}{{ _('Наименование, регион, юр. адрес и состояние — по УНП из ЕГР') }}{% endif %}">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-                          <span>{{ _('Обновить из ЕГР') }}</span>
+                          <span>{{ _('Обновить данные организации') }}</span>
                       </button>
-                      <button class="nav-menu-item" disabled>
-                          {{ icons.icon_edit() }}
-                          <span>{{ _('Запросить изменение данных') }}</span>
-                      </button>{#
-                      <button class="nav-menu-item" disabled>
-                          {{ icons.icon_add() }}
-                          <span>{{ _('Выбрать ещё одну') }}</span>
-                      </button>#}
-
                     </div>
                 </div>
             </div>
@@ -256,7 +255,7 @@
         })();
       </script>
 
-      {% if current_user.org_role %}
+      {% if current_user.org_role and not current_user.is_admin %}
       {# Приглашать/удалять сотрудников может только сам (оригинальный)
          руководитель организации — не заместитель (у него те же права
          везде в приложении, кроме управления составом организации). #}
@@ -667,6 +666,181 @@
       </div>
     </div>
 
+    {% if current_user.is_admin %}
+    <div class="profile-tab-panel" data-tab-panel="admins">
+      <div class="employees-header">
+        <div class="employees-header-text">
+          <h1 class="name">{{ _('Администраторы системы') }}</h1>
+        </div>
+      </div>
+      <div class="org-roles-note">
+        <p>{{ _('Администраторы видят все планы и управляют системой. Ролей внутри организации у администратора нет — пригласить можно только другого администратора.') }}</p>
+      </div>
+
+      <div class="plan-executors-list">
+        {% for admin_user in admins %}
+        {% set registered = admin_user.last_name or admin_user.first_name or admin_user.patronymic_name %}
+        <div class="plan-executor-card{% if admin_user.id == current_user.id %} plan-executor-card-self{% endif %}{% if not registered %} plan-executor-card-pending{% endif %}">
+          <div class="plan-executor-card-icon">{{ icons.icon_settings() }}</div>
+          <div class="plan-executor-card-body">
+            <span class="plan-executor-card-name">
+              {% if registered %}
+                {{ admin_user.last_name }} {{ admin_user.first_name }} {{ admin_user.patronymic_name }}
+              {% else %}
+                {{ admin_user.email }}
+              {% endif %}
+              {% if admin_user.id == current_user.id %}<span class="employee-badge employee-badge-self">{{ _('Вы') }}</span>{% endif %}
+              {% if not registered %}<span class="employee-badge employee-badge-pending">{{ _('Ожидает регистрации') }}</span>{% endif %}
+            </span>
+            <span class="plan-executor-card-meta">{% if registered %}{{ admin_user.email }}{% else %}{{ _('Приглашение отправлено') }}{% endif %}</span>
+          </div>
+          {% if admin_user.id != current_user.id %}
+          <button type="button" class="plan-executor-card-remove" title="{{ _('Удалить администратора') }}"
+                  data-remove-admin-id="{{ admin_user.id }}"
+                  data-remove-admin-name="{{ (admin_user.last_name ~ ' ' ~ admin_user.first_name) if registered else admin_user.email }}">&times;</button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="main-btn main-btn-primary employees-invite-btn" data-open-admin-invite>
+        {{ icons.icon_add() }}
+        <span class="btn-text">{{ _('Пригласить администратора') }}</span>
+      </button>
+
+      <div id="inviteAdminModal" class="modal">
+        <div class="modal-content invite-modal">
+          <div class="modal-header">
+            <a id="modal-title">{{ _('Пригласить администратора') }}</a>
+            {{ icons.icon_close() }}
+          </div>
+          <form action="{{ url_for('views.invite_admin') }}" method="POST" id="inviteAdminForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="app-group">
+              <label for="inviteAdminEmail">{{ _('Email администратора') }} <span class="required-star">*</span></label>
+              <div class="input-with-icon">
+                {{ icons.icon_email() }}
+                <input type="email" name="email" id="inviteAdminEmail" class="app-input" placeholder="name@company.by" autocomplete="off" required />
+              </div>
+              <span class="invite-field-error" id="inviteAdminEmailError">{{ _('Введите корректный email') }}</span>
+            </div>
+            <div class="invite-modal-note">
+              {{ icons.icon_info() }}
+              <span>{{ _('На email придёт ссылка для входа — администратор задаст пароль и заполнит ФИО и телефон сам. Ссылка действует 1 час.') }}</span>
+            </div>
+            <div class="button-auth-area">
+              <button type="submit" class="main-btn main-btn-primary" id="inviteAdminSubmit" disabled>
+                <span class="btn-spinner" aria-hidden="true"></span>
+                {{ icons.icon_send() }}
+                <span class="btn-text">{{ _('Отправить приглашение') }}</span>
+              </button>
+              <button type="button" class="svg-btn" data-close-admin-invite>
+                <span class="btn-text">{{ _('Отмена') }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <script>
+        (function () {
+          var modal = document.getElementById('inviteAdminModal');
+          if (!modal) return;
+          var form = document.getElementById('inviteAdminForm');
+          var email = document.getElementById('inviteAdminEmail');
+          var emailError = document.getElementById('inviteAdminEmailError');
+          var submit = document.getElementById('inviteAdminSubmit');
+          var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          function isValid() { return EMAIL_RE.test(email.value.trim()); }
+          function update() { submit.disabled = !isValid(); }
+          function open() {
+            form.reset();
+            emailError.classList.remove('visible');
+            email.classList.remove('is-invalid');
+            submit.classList.remove('is-checking');
+            update();
+            modal.classList.add('active');
+            setTimeout(function () { email.focus(); }, 50);
+          }
+          function close() { modal.classList.remove('active'); }
+          document.querySelectorAll('[data-open-admin-invite]').forEach(function (btn) {
+            btn.addEventListener('click', open);
+          });
+          modal.querySelector('.modal-header .close').addEventListener('click', close);
+          modal.querySelector('[data-close-admin-invite]').addEventListener('click', close);
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) close();
+          });
+          email.addEventListener('input', function () {
+            update();
+            if (isValid()) {
+              emailError.classList.remove('visible');
+              email.classList.remove('is-invalid');
+            }
+          });
+          email.addEventListener('blur', function () {
+            var bad = email.value.trim() && !isValid();
+            emailError.classList.toggle('visible', !!bad);
+            email.classList.toggle('is-invalid', !!bad);
+          });
+          form.addEventListener('submit', function (e) {
+            if (!isValid()) {
+              e.preventDefault();
+              emailError.classList.add('visible');
+              email.classList.add('is-invalid');
+              return;
+            }
+            submit.classList.add('is-checking');
+            submit.disabled = true;
+          });
+        })();
+        (function () {
+          var modal = document.getElementById('confirmModal');
+          var yesBtn = document.getElementById('confirmYes');
+          var noBtn = document.getElementById('confirmNo');
+          var textEl = document.getElementById('modal-text');
+          var textSecondEl = document.getElementById('modal-text-second');
+          if (!modal || !yesBtn || !noBtn) return;
+          var pendingId = null;
+          var csrfToken = "{{ csrf_token() }}";
+          document.querySelectorAll('[data-remove-admin-id]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              pendingId = btn.dataset.removeAdminId;
+              modal._currentForm = null;
+              modal._removeAdminMode = true;
+              if (textEl) textEl.textContent = "{{ _('Удалить администратора') }} " + (btn.dataset.removeAdminName || '').trim() + "?";
+              if (textSecondEl) textSecondEl.textContent = "{{ _('Доступно только если у него нет данных в системе (планов, подписей, сообщений).') }}";
+              modal.classList.add('active');
+            });
+          });
+          yesBtn.addEventListener('click', function () {
+            if (!modal._removeAdminMode || !pendingId) return;
+            var id = pendingId;
+            pendingId = null;
+            modal._removeAdminMode = false;
+            modal.classList.remove('active');
+            fetch('/remove-admin/' + id, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            })
+              .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+              .then(function (res) {
+                if (res.ok && res.data.success) {
+                  window.location.reload();
+                } else {
+                  alert((res.data && res.data.error) || "{{ _('Не удалось удалить администратора') }}");
+                }
+              })
+              .catch(function () { alert("{{ _('Ошибка сети') }}"); });
+          });
+          noBtn.addEventListener('click', function () {
+            modal._removeAdminMode = false;
+            pendingId = null;
+          });
+        })();
+      </script>
+    </div>
+    {% endif %}
+
     <div class="profile-tab-panel" data-tab-panel="sessions">
       <div class="header-content">
         <div class="header-content-left">
@@ -791,7 +965,7 @@
           </div>
         </div>
       </div>
-      <p class="session-timer-hint" style="margin: -8px 0 20px;">{{ _('Смена пароля происходит по ссылке, отправленной на вашу почту.') }}</p>
+      <p class="session-timer-hint" style="margin: -8px 0 20px;">{{ _('Изменение пароля происходит по ссылке, отправленной на вашу почту.') }}</p>
 
       <hr/>
       <div class="header-content">

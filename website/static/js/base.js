@@ -3050,25 +3050,68 @@ if (document.getElementById('menuDotsBtn')) {
 
 const triggerSideBar = document.getElementById("user-profile-panel-trigger");
 const sidebarUser = document.getElementById("user-profile-panel");
-const sidebarOverlay = document.getElementById("sidebar-overlay");
+// Подложка объявлена в конце <body>, после этого скрипта — ищем её при открытии.
+const getSidebarOverlay = () => document.getElementById("sidebar-overlay");
+const sidebarClose = document.getElementById("user-profile-panel-close");
+
+// Панель профиля: на телефоне — выезжающая сбоку на всю высоту (стили в
+// mobile.css), на остальных экранах — обычное выпадающее меню под аватаром.
+// Для выезжающей панель переносится в <body>: у шапки есть transform, и
+// position:fixed внутри неё отсчитывался бы от шапки, а не от окна.
+const drawerMedia = window.matchMedia("(max-width: 768px)");
+const sidebarHome = sidebarUser ? { parent: sidebarUser.parentElement, next: sidebarUser.nextSibling } : null;
+
+function placeSidebar() {
+    if (!sidebarUser) return;
+    closeSidebar();
+    if (drawerMedia.matches) {
+        if (sidebarUser.parentElement !== document.body) document.body.appendChild(sidebarUser);
+    } else if (sidebarUser.parentElement !== sidebarHome.parent) {
+        sidebarHome.parent.insertBefore(sidebarUser, sidebarHome.next);
+    }
+}
+
+if (triggerSideBar) {
+    triggerSideBar.setAttribute("aria-expanded", "false");
+}
 
 function closeSidebar() {
-    if (sidebarUser) {
-        sidebarUser.classList.remove("show");
-    }
-    if (sidebarOverlay) {
-        sidebarOverlay.classList.remove("show");
-    }
+    if (!sidebarUser || !sidebarUser.classList.contains("show")) return;
+    sidebarUser.classList.remove("show");
+    const overlay = getSidebarOverlay();
+    if (overlay) overlay.classList.remove("show");
+    document.body.classList.remove("drawer-open");
+    if (triggerSideBar) triggerSideBar.setAttribute("aria-expanded", "false");
 }
 
 function openSidebar() {
-    if (sidebarUser) {
-        sidebarUser.classList.add("show");
-    }
-    if (sidebarOverlay) {
-        sidebarOverlay.classList.add("show");
+    if (!sidebarUser) return;
+    sidebarUser.classList.add("show");
+    if (triggerSideBar) triggerSideBar.setAttribute("aria-expanded", "true");
+    if (drawerMedia.matches) {
+        const overlay = getSidebarOverlay();
+        if (overlay) overlay.classList.add("show");
+        document.body.classList.add("drawer-open");
+        sidebarUser.focus({ preventScroll: true });
     }
 }
+
+placeSidebar();
+drawerMedia.addEventListener("change", placeSidebar);
+
+if (sidebarClose) {
+    sidebarClose.addEventListener("click", closeSidebar);
+}
+
+if (sidebarUser) {
+    sidebarUser.querySelectorAll(".nav-menu-item:not(#logoutButton)").forEach((item) => {
+        item.addEventListener("click", closeSidebar);
+    });
+}
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeSidebar();
+});
 
 if (triggerSideBar && sidebarUser) {
     triggerSideBar.addEventListener("click", (e) => {
@@ -3081,9 +3124,6 @@ if (triggerSideBar && sidebarUser) {
     });
 }
 
-if (sidebarOverlay) {
-    sidebarOverlay.addEventListener("click", closeSidebar);
-}
 
 document.addEventListener("click", (e) => {
     if (sidebarUser && sidebarUser.classList.contains("show")) {

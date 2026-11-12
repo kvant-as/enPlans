@@ -3,6 +3,7 @@ from flask import (
 )
 
 import logging
+import re
 
 import uuid
 import threading
@@ -17,7 +18,7 @@ from flask_login import (
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import generate_password_hash
 
-from common_models import current_utc_time, db, UserAppActivity, get_current_application_id
+from common_models import current_utc_time, db, UserAppActivity, get_current_application_id, Role
 from website.utils.currency_rates import fetch_usd_rate_from_any_source
 from website.utils.plans import get_column_configs_for_plan, to_decimal_1, to_decimal_2, update_ChangeTimePlan
 from website.sessions import session_required, get_or_refresh_session, build_session_info, set_session_cookie
@@ -177,12 +178,22 @@ def profile():
     # Список коллег по организации видят все роли (исполнитель/рук.
     # подразделения/рук. организации) — приглашать и удалять может только
     # руководитель организации (см. can_change_modal и шаблон).
+    # Администратор видит все планы и в организации не работает — вместо
+    # сотрудников с внутренними ролями ему показывается список
+    # администраторов системы (приглашает он только других администраторов).
     org_employees = []
-    if current_user.org_role and current_user.organization_id:
+    admins = []
+    if current_user.is_admin:
+        admins = User.query.join(User.roles).filter(
+            Role.code == 'admin',
+            User.application_id == get_current_application_id(),
+        ).order_by(User.begin_time).all()
+    elif current_user.org_role and current_user.organization_id:
         org_employees = User.query.filter(
             User.organization_id == current_user.organization_id,
             User.application_id == get_current_application_id(),
-            User.id != current_user.id
+            User.id != current_user.id,
+            User.org_role.isnot(None),
         ).order_by(User.begin_time.desc()).all()
 
     response = make_response(render_template('profile.html',
@@ -191,7 +202,8 @@ def profile():
                         current_user=current_user,
                         change_orgUser_modal = True,
                         session_info = session_info,
-                        org_employees = org_employees
+                        org_employees = org_employees,
+                        admins = admins
                            ))
     return set_session_cookie(response, token)
 
@@ -247,6 +259,7 @@ def invite_employee():
     employees_count = User.query.filter(
         User.organization_id == current_user.organization_id,
         User.application_id == get_current_application_id(),
+        User.org_role.isnot(None),
     ).count()
     if employees_count >= ORG_EMPLOYEES_MAX:
         flash(f'В организации не может быть больше {ORG_EMPLOYEES_MAX} сотрудников', 'error')
@@ -348,6 +361,81 @@ def remove_employee(user_id):
     db.session.commit()
 
     return jsonify({'success': True})
+
+@views.route('/invite-admin', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def invite_admin():
+    """Приглашение нового администратора — только администратором. Аккаунт
+    создаётся с ролью admin и без роли в организации; организация — та же,
+    что у пригласившего (без неё профиль считается незаполненным). ФИО и
+    телефон новый администратор вводит сам при первом входе."""
+    if not current_user.is_admin:
+        flash('Приглашать администраторов может только администратор', 'error')
+        return redirect(url_for('views.profile'))
+
+    email = (request.form.get('email') or '').strip()
+    if not email or not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$', email):
+        flash('Укажите корректный email', 'error')
+        return redirect(url_for('views.profile', profileTabs='admins'))
+
+    existing_user = User.query.filter(
+        func.lower(User.email) == func.lower(email),
+        User.application_id == get_current_application_id()
+    ).first()
+    if existing_user:
+        flash('Пользователь с таким email уже зарегистрирован', 'error')
+        return redirect(url_for('views.profile', profileTabs='admins'))
+
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    token = serializer.dumps(email, salt='password-reset-salt')
+
+    new_admin = User(
+        email=email,
+        organization_id=current_user.organization_id,
+        application_id=get_current_application_id(),
+        password=generate_password_hash(uuid.uuid4().hex),
+        reset_password_token=token,
+        reset_password_expires=datetime.utcnow() + timedelta(hours=1),
+    )
+    new_admin.is_admin = True
+    db.session.add(new_admin)
+    db.session.commit()
+
+    invite_url = url_for('auth.reset_password', token=token, _external=True)
+    send_email(invite_url, email, 'admin_invite')
+
+    flash(f'Приглашение отправлено на {email}', 'success')
+    return redirect(url_for('views.profile', profileTabs='admins'))
+
+
+@views.route('/remove-admin/<int:user_id>', methods=['POST'])
+@user_with_all_params()
+@login_required
+@session_required
+def remove_admin(user_id):
+    """Удаление администратора — AJAX, только администратором и не себя.
+    Аккаунт удаляется, только если у него нет данных в системе (как и у
+    сотрудников, см. _employee_has_any_data)."""
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Удалять администраторов может только администратор'}), 403
+
+    target = User.query.filter(
+        User.id == user_id,
+        User.application_id == get_current_application_id(),
+    ).first()
+    if not target or not target.is_admin:
+        return jsonify({'success': False, 'error': 'Администратор не найден'}), 404
+    if target.id == current_user.id:
+        return jsonify({'success': False, 'error': 'Невозможно удалить самого себя'}), 400
+    if _employee_has_any_data(target.id):
+        return jsonify({'success': False, 'error': 'У администратора есть данные в системе (планы, подписи, сообщения) — удаление невозможно'}), 400
+
+    db.session.delete(target)
+    db.session.commit()
+    return jsonify({'success': True})
+
 
 @views.route('/profile/edit', methods = ['POST', 'GET'])
 @user_with_all_params()

@@ -27,6 +27,10 @@
       var row = btn.closest('.track-stage');
       if (row) row.classList.add('has-substeps');
     });
+    // Пустые ячейки («—») — в мобильной карточке строки не показываем.
+    document.querySelectorAll('.track-row td').forEach(function (td) {
+      if (td.textContent.trim() === '—') td.classList.add('is-empty');
+    });
     document.addEventListener('click', function (e) {
       var row = e.target.closest('.track-stage.has-substeps');
       if (!row) return;

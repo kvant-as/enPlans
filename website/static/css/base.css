@@ -1,6 +1,3 @@
-/* ============================================
-   FONTS
-   ============================================ */
 @font-face {
   font-family: 'Montserrat';
   src: url('../fonts/Montserrat-Regular.woff2') format('woff2'),
@@ -145,21 +142,10 @@
   font-style: italic;
   font-display: swap;
 }
-
-/* ============================================
-   ROOT VARIABLES — ALL COLORS
-   ============================================ */
 :root {
-  /* Отступы и уровни поверхностей (--space-*, --card-*, --panel-*) —
-     в tokens.css: он подключается на всех страницах, включая новости,
-     где base.css не грузится. */
-
-  /* ----- Base Colors ----- */
   --white: #ffffff;
   --black: #000000;
   --transparent: transparent;
-
-  /* ----- Status Colors ----- */
   --color-redaced: #8974FF;
   --color-controled: #2ee3af;
   --color-sented: #83B4FF;
@@ -168,8 +154,6 @@
   --color-submited: #8BFF97;
   --color-transit: #FFC168;
   --color-readonly: rgba(0, 0, 0, 0.6);
-
-  /* ----- Background Status ----- */
   --background-redaced: #E1DBFF;
   --background-controled: #a6f5dc;
   --background-sented: #CFE2FF;
@@ -179,8 +163,6 @@
   --background-warning: #f9ffd8;
   --background-edited: #50cdff75;
   --status-redaced: rgba(162, 146, 255, 0.3);
-
-  /* ----- Green Theme ----- */
   --green-main: #00798f;
   --green-main-dark: #005564;
   --green-light: #009bb6;
@@ -193,8 +175,6 @@
   --color-green-text-main: #005867;
   --color-green-text-main-hover: #007c92;
   --color-control: #004d36;
-
-  /* ----- Blue Theme ----- */
   --color1: #ffffff;
   --color2: rgba(216, 235, 255, 0.6);
   --color3: #0085f1;
@@ -202,8 +182,6 @@
   --telegram-blue: #0088cc;
   --telegram-blue-light: #E8F6FF;
   --telegram-success: #34B7F1;
-
-  /* ----- Gray Scale ----- */
   --border-color: #D9D9D9;
   --border-color-tin: #e4e4e4;
   --border-color-th: #eff4f8;
@@ -227,37 +205,22 @@
   --telegram-other-bg: #FFFFFF;
   --telegram-owner-bg: #E8F6FF;
   --icon-back-gray: rgb(136, 136, 136);
-
-  /* ----- Primary Colors -----
-     The app's actual brand accent is the green theme above
-     (--green-main); --primary used to be an unrelated neutral
-     gray even though it drives borders/links/glows app-wide. */
   --primary: var(--green-main-dark);
   --primary-dark: #003b45;
   --secondary: var(--green-main);
-
-  /* ----- Active Row ----- */
   --active-row-color: #e3fbff;
   --active-row-color-apr: #e3fff8;
-
-  /* ----- Glass & Blur ----- */
   --blur1: rgba(255, 255, 255, 0.25);
   --blur2: rgba(117, 117, 117, 0.1);
   --blur3: rgba(185, 185, 185, 0.4);
   --glass: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
-
-  /* ----- Liquid Glass Surface (green-tinted, see .glass-surface) ----- */
   --glass-tint-1: rgba(0, 121, 143, 0.35);
   --glass-tint-2: rgba(0, 155, 182, 0.22);
   --glass-surface-bg: rgba(255, 255, 255, 0.55);
   --glass-surface-border: var(--glass-border);
-
-  /* ----- Shadows ----- */
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   --glow: 0 0 10px rgba(0, 0, 0, 0.15);
-
-  /* ----- Gradients ----- */
   --delete-color: linear-gradient(135deg, #8f0000 0%, #ff0000 100%);
   --delete-color-hover: linear-gradient(135deg, #d40000 0%, #ff6a6a 100%);
   --send-color: linear-gradient(135deg, #006eff 0%, #00a2ff 100%);
@@ -265,20 +228,14 @@
   --chat-btn: linear-gradient(135deg, #5c5c5c 0%, #06B6D4 100%);
   --chat-header-back-hover: linear-gradient(135deg, #868686 0%, #31e0ff 100%);
   --chat-message-user-back: linear-gradient(135deg, #f3f9ff, #dfefff);
-
-  /* ----- Chat ----- */
   --chat-header-back: #00798f;
   --chat-avatar-back: #63aebb;
   --chat-avatar-user-back: hsl(202, 100%, 88%);
-
-  /* ----- Date ----- */
   --date-empty: #9ca3af;
   --date-label: #6b7280;
   --date-day: #1f2937;
   --date-border: #e5e7eb;
   --date-icon-bg: rgba(59, 130, 246, 0.1);
-
-  /* ----- Misc ----- */
   --text: #000000;
   --text-secondary: #4a5557;
   --border: rgba(148, 184, 182, 0.2);
@@ -289,8 +246,6 @@
   --remarksclr: rgba(255, 186, 96, 0.705);
   --odobrclr: rgba(96, 255, 122, 0.705);
   --text-redaced: #7057ff;
-
-  /* ----- Bubble Header ----- */
   --bubble-bg-color: rgba(233, 250, 252, 0.55);
   --bubble-blur-amount: 20px;
   --bubble-border: 1px solid rgba(0, 0, 0, 0.08);
@@ -299,8 +254,6 @@
   --default-blur: 0px;
   --default-border: none;
   --default-shadow: none;
-
-  /* ----- Sizes ----- */
   --animation-speed: 0.5s;
   --animation-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --default-padding-x: 40px;
@@ -312,29 +265,23 @@
   --bubble-border-radius: 30px;
   --bubble-top: 8px;
 }
-
-/* ============================================
-   BASE RESET
-   ============================================ */
 * {
   margin: 0;
   padding: 0;
   font-family: 'Montserrat', sans-serif;
   scrollbar-width: thin;
 }
-
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   overflow: visible;
 }
-
 html {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
   scroll-behavior: smooth;
 }
-
 ::-webkit-scrollbar {
   width: 3px;
   height: 3px;
@@ -349,11 +296,9 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
-
 a {
   text-decoration: none;
 }
-
 label {
   display: block;
   margin-bottom: 0.5rem;
@@ -361,17 +306,11 @@ label {
   color: var(--black);
   font-weight: 500;
 }
-
 body {
   background-color: var(--body-background);
   min-height: 100vh;
   overflow-x: hidden;
 }
-
-/* ============================================
-   HEADER
-   ============================================ */
-
 .fixed-header {
   display: flex;
   flex-wrap: nowrap;
@@ -399,32 +338,14 @@ body {
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
 }
-
-/* On scroll: заднее стекло, бордер и тень плавно проявляются — как
-   "bubble"-эффект в erespondentN, только через CSS-transition, а не
-   keyframe-анимацию (transition сам симметрично отыгрывает исчезание
-   назад, без JS-таймеров на реверс). Токены --glass-surface-bg/-border —
-   те же, что у остальных "стеклянных" карточек в приложении, поэтому тема
-   (светлая/тёмная) подхватывается автоматически.
-   Base .fixed-header above sets explicit zero/transparent values for
-   backdrop-filter, box-shadow and border-color (not "none"/absent) so the
-   transition has something to interpolate from — otherwise the blur/
-   shadow/border would just pop in instead of fading in smoothly. */
 .fixed-header.scrolled {
   background: var(--glass-surface-bg);
   border-color: var(--glass-surface-border);
-  /* Высота шапки — 60px, значит видимое скругление упирается в потолок уже
-     на 30px (половина высоты); дальше и до 100px форма визуально не
-     меняется. С учётом плавного (ease) перехода это "съедало" почти всё
-     время анимации впустую и превращало скругление в мгновенный скачок.
-     30px — тот же итоговый вид (полная "таблетка"), но вся 0.5s-анимация
-     теперь реально видна. */
   border-radius: 30px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 24px rgba(0, 0, 0, 0.06);
 }
-
 .fixed-header nav {
   width: 100%;
   height: 100%;
@@ -432,7 +353,6 @@ body {
   flex-direction: row;
   justify-content: space-between;
 }
-
 .header-aside {
   display: flex;
   flex-direction: row;
@@ -441,13 +361,11 @@ body {
   gap: var(--space-16);
   align-items: center;
 }
-
 .header-aside-logo {
   width: 42px;
   height: 42px;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
 }
-
 .logo-wrapper {
   display: inline-flex;
   align-items: center;
@@ -455,7 +373,6 @@ body {
   position: relative;
   text-align: center;
 }
-
 .header-aside-text {
   display: flex;
   flex-direction: column;
@@ -464,37 +381,31 @@ body {
   position: relative;
   min-width: 200px;
 }
-
 .header-aside-text .title {
   font-weight: 500;
   font-size: 17px;
 }
-
 .header-aside-text .subtitle {
   font-weight: 400;
   font-size: 13px;
   white-space: nowrap;
 }
-
 .header-bside {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-12);
 }
-
 .divider {
   width: 1px;
   height: 100%;
   background-color: var(--background-grey1);
 }
-
 @media screen and (max-width: 768px) {
   .fixed-header {
     width: calc(100% - 10px);
     padding: 0 var(--space-20);
   }
-
   .header-aside {
     display: flex;
     width: fit-content;
@@ -502,79 +413,57 @@ body {
     gap: var(--space-8);
     min-width: 0;
   }
-
   .header-aside-logo {
     width: 40px;
     height: 40px;
   }
-
   .header-aside-text {
     min-width: 0;
   }
-
   .header-aside-text .title {
     font-size: 15px;
     white-space: nowrap;
   }
-
   .header-aside-text .subtitle {
     font-size: 11px;
     white-space: nowrap;
   }
-
   .header-bside {
     gap: var(--space-8);
   }
-
   .divider {
     display: none;
   }
 }
-
 @media screen and (max-width: 500px) {
   .svg-btn.tooltip-btn.helper,
   .svg-btn.tooltip-btn.news,
   .svg-btn.tooltip-btn.help,
-  .svg-btn.tooltip-btn.contacts{
+  .svg-btn.tooltip-btn.contacts {
     display: none;
   }
-
   .header-bside {
-      gap: var(--space-10);
+    gap: var(--space-10);
   }
-
   .header-aside-text .subtitle {
     display: none;
   }
 }
-
 @media screen and (max-width: 480px) {
   .header-aside-text {
     min-width: 0;
   }
-
   .header-aside .title {
     display: none;
   }
-
   .header-bside .divider {
     display: none;
   }
 }
-
-/* ============================================
-   NOTIFICATIONS
-   ============================================ */
-
 .notif-wrapper {
   position: relative;
   display: inline-block;
 }
-
-/* Попап уведомлений — компактный список событий (иконка типа + текст +
-   время + точка «не прочитано»), в духе остальных панелей приложения:
-   плотный светлый фон вместо полупрозрачного стекла (через стекло
-   просвечивал контент страницы — на скриншоте «Экспорт» за заголовком). */
 .notif-popup {
   position: absolute;
   top: 100%;
@@ -597,24 +486,18 @@ body {
   pointer-events: none;
   transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .notif-popup::before {
   content: '';
   position: absolute;
   inset: -40%;
   z-index: -1;
-  /* background:
-    radial-gradient(circle at 15% 10%, var(--glass-tint-1), transparent 55%),
-    radial-gradient(circle at 90% 90%, var(--glass-tint-2), transparent 55%); */
   filter: blur(30px);
 }
-
 .notif-popup.show {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }
-
 .notif-header {
   padding: var(--space-12) var(--space-16) var(--space-12);
   display: flex;
@@ -673,13 +556,11 @@ body {
   opacity: 0.6;
   cursor: default;
 }
-
 .notif-body {
   max-height: 380px;
   overflow-y: auto;
   padding: var(--space-6);
 }
-
 .notif-body::-webkit-scrollbar {
   width: 6px;
 }
@@ -690,8 +571,6 @@ body {
   background: var(--border-color);
   border-radius: 6px;
 }
-
-/* Пустое состояние */
 .notif-empty {
   display: flex;
   flex-direction: column;
@@ -724,8 +603,6 @@ body {
   font-size: 12px;
   color: var(--text-subtitle, #7f8c8d);
 }
-
-/* Строка уведомления */
 .notif {
   position: relative;
   display: flex;
@@ -749,7 +626,6 @@ body {
 .notif.unread:hover {
   background: rgba(0, 121, 143, 0.08);
 }
-
 .notif-icon {
   flex-shrink: 0;
   width: 34px;
@@ -763,12 +639,26 @@ body {
   width: 17px;
   height: 17px;
 }
-.notif-icon-sign    { background: #e6f7fa; color: #00798f; }
-.notif-icon-success { background: #e7f8ef; color: #0f9d58; }
-.notif-icon-error   { background: #fdecec; color: #dc2626; }
-.notif-icon-warning { background: #fff4e0; color: #c27803; }
-.notif-icon-info    { background: #eef2f7; color: #5d6b7c; }
-
+.notif-icon-sign {
+  background: #e6f7fa;
+  color: #00798f;
+}
+.notif-icon-success {
+  background: #e7f8ef;
+  color: #0f9d58;
+}
+.notif-icon-error {
+  background: #fdecec;
+  color: #dc2626;
+}
+.notif-icon-warning {
+  background: #fff4e0;
+  color: #c27803;
+}
+.notif-icon-info {
+  background: #eef2f7;
+  color: #5d6b7c;
+}
 .notif-content {
   flex: 1;
   min-width: 0;
@@ -798,8 +688,6 @@ body {
 .notif.unread .notif-time {
   color: var(--green-main, #00798f);
 }
-
-/* Точка «не прочитано» справа — исчезает с анимацией при прочтении */
 .notif-dot {
   position: absolute;
   top: 50%;
@@ -818,10 +706,6 @@ body {
   opacity: 1;
   transform: scale(1);
 }
-
-/* Кнопка "Загрузить предыдущие" в попапе уведомлений — раньше не имела
-   вообще никакой стилизации и выглядела как обычная браузерная кнопка
-   поверх стеклянного попапа. */
 .load-more-notifications {
   display: flex;
   align-items: center;
@@ -848,7 +732,6 @@ body {
   color: var(--text-subtitle);
   cursor: default;
 }
-
 .notif-count {
   position: absolute;
   top: -6px;
@@ -875,14 +758,6 @@ body {
   visibility: visible;
   transform: scale(1);
 }
-
-/* Flash-уведомления (#flash-container, .custom-alert и т.д.) теперь в
-   общем common_models/static_assets/css/message-flash.css — подключается
-   отдельным <link> в base.html. */
-/* ============================================
-   USER PROFILE PANEL
-   ============================================ */
-
 .sidebar-overlay {
   position: fixed;
   top: 0;
@@ -897,7 +772,6 @@ body {
   pointer-events: none;
   transition: all 0.3s ease;
 }
-
 .sidebar-overlay.show {
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(0);
@@ -905,7 +779,6 @@ body {
   opacity: 1;
   pointer-events: auto;
 }
-
 .user-profile-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -926,121 +799,31 @@ body {
   transform: translateY(-10px);
   transition: all 0.2s ease;
 }
-
 .user-profile-panel::before {
   content: '';
   position: absolute;
 }
-
 .user-profile-panel.show {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
-
-.user-profile-panel.align-left {
-  right: auto;
-  left: 0;
+.user-profile-panel-head {
+  display: none;
 }
-
-.profile-panel-content {
-  padding: var(--space-8);
-}
-
-.user-avatar-container {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  margin-bottom: var(--space-20);
-}
-
-.user-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #2d9cdb, #0066cc);
-  color: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 600;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-fullname {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1a1e2b;
-  display: block;
-  margin-bottom: var(--space-4);
-  line-height: 1.3;
-}
-
-.user-position {
-  font-size: 13px;
-  color: #6b7280;
-  display: block;
-  line-height: 1.3;
-}
-
-.info-field {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12) var(--space-12);
-  background: #f8f9fc;
-  border-radius: 14px;
-  margin-top: var(--space-10);
-  transition: background 0.15s ease;
-}
-
-.info-field:hover {
-  background: #f1f3f8;
-}
-
-.info-field svg,
-.info-field img {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: #8b92a8;
-  opacity: 0.8;
-}
-
-.info-field input {
-  border: none;
-  background: var(--transparent);
-  font-size: 13px;
-  color: #1a1e2b;
-  width: 100%;
-  padding: 0;
-  font-family: inherit;
-  cursor: default;
-}
-
-.info-field input:focus {
+.user-profile-panel:focus {
   outline: none;
 }
-
 .nav-menu-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-8);
 }
-
 .nav-menu-list hr {
   margin: var(--space-4) 0;
   border: none;
 }
-
 .nav-menu-item {
   border: none;
   border-radius: 12px;
@@ -1059,7 +842,6 @@ body {
   position: relative;
   overflow: hidden;
 }
-
 .nav-menu-item::before {
   content: '';
   position: absolute;
@@ -1074,23 +856,19 @@ body {
 .nav-menu-item:hover::before {
   width: 100%;
 }
-
 .nav-menu-item svg {
   width: 19px;
   height: 19px;
   color: #64748b;
   transition: all 0.2s ease;
 }
-
 .nav-menu-item:hover svg {
   color: var(--green-light);
   transform: translateX(2px);
 }
-
 .nav-menu-item:active {
   transform: scale(0.98);
 }
-
 .account-info-item {
   align-items: flex-start;
   padding: var(--space-10) var(--space-12);
@@ -1115,14 +893,6 @@ body {
   min-width: 0;
   overflow: hidden;
 }
-.account-info-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .account-info-meta {
   font-size: 12px;
   font-weight: 500;
@@ -1139,93 +909,30 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .nav-menu-item.red {
   color: #dc2626;
 }
-
 .nav-menu-item.red svg {
   color: #dc2626;
 }
-
 .nav-menu-item.red::before {
   background-color: #fee2e2;
 }
-
 .nav-menu-item.red:hover svg {
   color: #b91c1c;
 }
-
 .nav-menu-item.green {
   color: var(--green-light);
 }
-
 .nav-menu-item.green svg {
   color: var(--green-light);
 }
-
 .nav-menu-item.green::before {
   linear-gradient: var(--green-back-gradient);
 }
-
 .nav-menu-item.green:hover svg {
   color: var(--green-);
 }
-
-.nav-menu-item-divider {
-  height: 1px;
-  background: linear-gradient(90deg, var(--transparent), #e2e8f0, var(--transparent));
-  margin: var(--space-4) 0;
-}
-
-.info-user .fio,
-.info-user .org {
-  font-weight: 500;
-  font-size: 13px;
-}
-
-.user-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.dop-menu-btn {
-  display: flex;
-  justify-content: center;
-  width: fit-content;
-  gap: var(--space-12);
-  padding: var(--space-4) var(--space-8);
-  padding-left: var(--space-10) !important;
-  background: #ffffff00;
-  color: var(--black) !important;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  background-color: var(--white);
-  font-size: 13px;
-  transition: all 0.3s ease-in-out;
-}
-.dop-menu-btn svg {
-  width: 15px;
-  height: 15px;
-  object-fit: contain;
-}
-.dop-menu-btn.non {
-  opacity: 0.6;
-  background-color: #f8f9fa;
-  border-color: #dee2e6;
-  pointer-events: none;
-}
-.dop-menu-btn.non:hover {
-  transform: none;
-  box-shadow: none;
-}
-.dop-menu-btn:hover {
-  background-color: var(--button-grey-hover);
-}
-
 .user-container {
   position: relative;
   display: inline-flex;
@@ -1242,32 +949,27 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
   border-radius: 24px;
 }
-
-/* Hover feedback only for devices that actually hover with a pointer —
-   on touch, a tap would otherwise leave the "hovered" look stuck until
-   the next tap elsewhere. Kept deliberately subtle: a data-entry app
-   shouldn't bounce its chrome around on every interaction. */
 @media (hover: hover) and (pointer: fine) {
   .user-container:hover {
     border-color: var(--primary);
     box-shadow: var(--glow);
   }
 }
-
 .user-container:active {
   transform: scale(0.98);
   transition: transform 0.1s ease;
 }
-
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
-
 .avatar-wrapper {
   position: relative;
 }
-
 .avatar-circle {
   background-color: var(--background-grey);
   border-radius: 50%;
@@ -1284,7 +986,6 @@ body {
   line-height: 1;
   text-transform: uppercase;
 }
-
 .avatar-circle .no-user svg {
   width: 17px;
   height: 17px;
@@ -1294,7 +995,6 @@ body {
   margin-right: var(--space-2);
   color: var(--green-light);
 }
-
 .chevron-icon {
   color: #4b635f;
   font-size: 22px;
@@ -1310,7 +1010,6 @@ body {
   border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.5);
 }
-
 @media (hover: hover) and (pointer: fine) {
   .user-container:hover .chevron-icon {
     color: var(--green-light);
@@ -1318,7 +1017,6 @@ body {
     border-color: var(--green-light);
   }
 }
-
 .circle-fi {
   background-color: var(--background-grey);
   border: 1px solid var(--border-color);
@@ -1329,7 +1027,6 @@ body {
   justify-content: center;
   font-weight: 500;
 }
-
 .employee-card {
   display: flex;
   flex-direction: column;
@@ -1339,14 +1036,12 @@ body {
   width: fit-content;
   scrollbar-width: none;
 }
-
 .employee-name-row {
   display: flex;
   align-items: center;
   gap: var(--space-10);
   flex-wrap: wrap;
 }
-
 .employee-name {
   font-weight: 500;
   overflow-x: auto;
@@ -1355,7 +1050,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .employee-role {
   font-weight: 500;
   font-size: 13px;
@@ -1364,7 +1058,6 @@ body {
   width: fit-content;
   white-space: nowrap;
 }
-
 .employee-company {
   font-weight: 500;
   padding: var(--space-4) var(--space-8);
@@ -1380,180 +1073,18 @@ body {
   text-overflow: ellipsis;
   vertical-align: middle;
 }
-
 .short-acc-info {
   display: flex;
   flex-direction: row;
   gap: var(--space-24);
   align-items: center;
 }
-
-/* ============================================
-   ORG ROLES (profile.html :: карточки ролей сотрудников)
-   ============================================ */
 .org-roles-note {
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-subtitle, #7f8c8d);
   margin-top: var(--space-4);
 }
-
-.org-roles-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--space-16);
-  margin-top: var(--space-16);
-}
-
-.org-role-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  padding: var(--space-20);
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
-  background: var(--white);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-.org-role-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
-}
-
-.org-role-card.is-filled {
-  border-color: var(--green-light, #009bb6);
-  background: linear-gradient(180deg, var(--green-light-back, #e9fcff) 0%, var(--white) 65%);
-}
-
-.org-role-card.is-vacant {
-  border-style: dashed;
-  background: var(--background-grey, #fafbfc);
-}
-.org-role-card.is-vacant:hover {
-  border-color: var(--green-main, #00798f);
-}
-
-.org-role-card-icon {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--background-grey);
-  color: var(--text-subtitle, #7f8c8d);
-  flex-shrink: 0;
-}
-.org-role-card.is-filled .org-role-card-icon {
-  background: var(--white);
-  color: var(--green-main, #00798f);
-  box-shadow: 0 2px 6px rgba(0, 121, 143, 0.18);
-}
-.org-role-card-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.org-role-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.org-role-card-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--black);
-  letter-spacing: -0.01em;
-}
-
-.org-role-card-hint {
-  font-size: 12.5px;
-  color: var(--text-subtitle, #7f8c8d);
-  margin-bottom: var(--space-6);
-  line-height: 1.4;
-}
-
-.org-role-card-occupant-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding-top: var(--space-12);
-  border-top: 1px solid rgba(0, 121, 143, 0.14);
-}
-
-.org-role-card-occupant {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--black);
-}
-
-.org-role-card-pending {
-  color: var(--text-subtitle, #7f8c8d);
-  font-weight: 400;
-  font-style: italic;
-}
-
-.org-role-card-email {
-  font-size: 12.5px;
-  color: var(--text-subtitle, #7f8c8d);
-}
-
-.org-role-card-invite-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-6);
-  padding: var(--space-8) var(--space-12);
-  margin-top: var(--space-2);
-  border-radius: 10px;
-  border: 1px dashed var(--green-main, #00798f);
-  background: transparent;
-  color: var(--green-main, #00798f);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, border-style 0.2s ease;
-}
-.org-role-card-invite-btn:hover {
-  background: var(--green-light-back, #e9fcff);
-  border-style: solid;
-}
-.org-role-card-invite-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.org-role-invite-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  margin-top: var(--space-2);
-}
-.org-role-invite-form .input-with-icon {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.org-role-card-vacant-label {
-  align-self: flex-start;
-  margin-top: var(--space-2);
-  padding: var(--space-4) var(--space-10);
-  border-radius: 999px;
-  background: var(--border-color);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text-subtitle, #7f8c8d);
-}
-
-/* "Ответственный исполнитель" (plan_actions.html) — список сотрудников,
-   фактически заполнявших план (PlanExecutor), с возможностью добавить
-   ещё одного (исполнителя/рук. структурного подразделения своей
-   организации) через .signer-picker (переиспользуем тот же компонент,
-   что и выбор подписанта/переключатель версий, просто компактный). */
 .plan-executors-list {
   display: flex;
   flex-direction: column;
@@ -1574,7 +1105,6 @@ body {
 }
 .plan-executor-card-self .plan-executor-card-icon {
   background: var(--green-light-back);
-
 }
 .plan-executor-card-icon {
   width: 36px;
@@ -1677,7 +1207,6 @@ body {
   background: var(--green-light-back);
   border-color: var(--green-main, #00798f);
 }
-
 .plan-executor-picker.signer-picker {
   width: auto;
   margin-top: var(--space-10);
@@ -1693,11 +1222,6 @@ body {
   width: max-content;
   min-width: 240px;
 }
-
-/* Тот же .plan-executor-card ещё раз — "Сотрудники организации" в
-   профиле (profile.html), роль пустует: пунктирная рамка + кнопка
-   "Пригласить" (или просто бейдж "Вакантно", если приглашать не может
-   текущий пользователь) на месте кнопки "Убрать" у заполненной карточки. */
 .plan-executor-card-vacant {
   border-style: dashed;
   background: var(--background-grey, #fafbfc);
@@ -1741,12 +1265,6 @@ body {
   text-transform: uppercase;
   color: var(--text-subtitle, #7f8c8d);
 }
-
-/* ============================================
-   «Сотрудники организации» (profile.html) — шапка со счётчиком мест,
-   бейджи «Вы»/«Ожидает регистрации» и модалка «Пригласить сотрудника»
-   с выбором роли карточками.
-   ============================================ */
 .employees-header {
   display: flex;
   align-items: center;
@@ -1800,9 +1318,6 @@ body {
   width: 16px;
   height: 16px;
 }
-
-/* Раскрывающаяся карточка сотрудника (profile.html, [data-role-card]):
-   по клику снизу плавно выезжает «Что может эта роль». */
 .role-card {
   flex-wrap: wrap;
   cursor: pointer;
@@ -1841,8 +1356,6 @@ body {
   transform: rotate(180deg);
   color: var(--green-main, #00798f);
 }
-
-/* Плавное раскрытие без замера высоты в JS: 0fr -> 1fr */
 .role-details {
   flex-basis: 100%;
   display: grid;
@@ -1857,9 +1370,6 @@ body {
   overflow: hidden;
   min-height: 0;
 }
-/* Текст внутри — те же .plan-executor-card-hint, что были в карточке
-   раньше (курсив, мелкий, «Разработка плана:» жирным в строку), просто
-   выровнены под текстом карточки (отступ = иконка 36px + gap 12px). */
 .role-details-content {
   display: flex;
   flex-direction: column;
@@ -1870,8 +1380,6 @@ body {
 .role-card.is-open .role-details-content {
   opacity: 1;
 }
-
-/* Плашка «организация не действующая по ЕГР — только просмотр» (base.html) */
 .inactive-org-banner {
   display: flex;
   align-items: center;
@@ -1894,7 +1402,9 @@ body {
   height: 18px;
 }
 @media (max-width: 768px) {
-  .inactive-org-banner { margin: var(--space-10) var(--space-12) 0; }
+  .inactive-org-banner {
+    margin: var(--space-10) var(--space-12) 0;
+  }
 }
 :root[data-theme="dark"] .inactive-org-banner {
   background: rgba(232, 114, 114, 0.1);
@@ -1902,9 +1412,6 @@ body {
   border-left-color: #e87272;
   color: #f19a9a;
 }
-
-/* Карточка организации: данные из ЕГР — состояние, юр. адрес, кнопка
-   «Обновить из ЕГР» (components.html::organization_view_card). */
 .org-egr-status-dot {
   width: 8px;
   height: 8px;
@@ -1912,10 +1419,18 @@ body {
   background: var(--border-color, #d9d9d9);
   flex-shrink: 0;
 }
-.org-egr-status-active .org-egr-status-dot      { background: #10b981; }
-.org-egr-status-liquidating .org-egr-status-dot { background: #f59e0b; }
-.org-egr-status-liquidated .org-egr-status-dot  { background: #dc2626; }
-.org-egr-status-bankrupt .org-egr-status-dot    { background: #dc2626; }
+.org-egr-status-active .org-egr-status-dot {
+  background: #10b981;
+}
+.org-egr-status-liquidating .org-egr-status-dot {
+  background: #f59e0b;
+}
+.org-egr-status-liquidated .org-egr-status-dot {
+  background: #dc2626;
+}
+.org-egr-status-bankrupt .org-egr-status-dot {
+  background: #dc2626;
+}
 .org-egr-status-liquidated .org-code-value,
 .org-egr-status-bankrupt .org-code-value {
   color: #b91c1c;
@@ -1929,56 +1444,11 @@ body {
 .org-card-address span {
   color: var(--text-subtitle, #7f8c8d);
 }
-.org-card-egr {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-10) var(--space-12);
-  margin-top: var(--space-12);
-}
-.org-egr-refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  border: 1px solid var(--border-color-tin, #e4e4e4);
-  border-radius: 10px;
-  background: var(--white);
-  color: var(--green-main, #00798f);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.org-egr-refresh-btn svg {
-  width: 16px;
-  height: 16px;
-}
-.org-egr-refresh-btn:hover:not(:disabled) {
-  background: var(--green-light-back, #e9fcff);
-  border-color: var(--green-main, #00798f);
-}
-.org-egr-refresh-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 121, 143, 0.25);
-}
-.org-egr-refresh-btn:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-.org-egr-refresh-btn.is-loading svg {
-  animation: spin 0.9s linear infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .org-egr-refresh-btn.is-loading svg { animation: none; }
-}
 .org-egr-checked {
   margin: var(--space-8) 0 0;
   font-size: 12px;
   color: var(--text-subtitle, #7f8c8d);
 }
-/* Пункт меню «Обновить из ЕГР» (профиль → Действия с организацией) —
-   иконка крутится, пока идёт запрос. */
 #egrRefreshBtn svg {
   width: 18px;
   height: 18px;
@@ -1988,23 +1458,17 @@ body {
   animation: spin 0.9s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  #egrRefreshBtn.is-loading svg { animation: none; }
+  #egrRefreshBtn.is-loading svg {
+    animation: none;
+  }
 }
-:root[data-theme="dark"] .org-card-address { color: #b8c0cb; }
-:root[data-theme="dark"] .org-egr-refresh-btn {
-  background: #1b2027;
-  border-color: #2b313b;
-  color: #7fdcec;
-}
-:root[data-theme="dark"] .org-egr-refresh-btn:hover:not(:disabled) {
-  background: rgba(28, 171, 196, 0.12);
-  border-color: var(--green-main);
+:root[data-theme="dark"] .org-card-address {
+  color: #b8c0cb;
 }
 :root[data-theme="dark"] .org-egr-status-liquidated .org-code-value,
-:root[data-theme="dark"] .org-egr-status-bankrupt .org-code-value { color: #f19a9a; }
-
-/* Карточка организации: пояснение для организации с несколькими
-   функциями (разработчик + согласующая/утверждающая). */
+:root[data-theme="dark"] .org-egr-status-bankrupt .org-code-value {
+  color: #f19a9a;
+}
 .org-card-roles-note {
   margin: var(--space-10) 0 0;
   font-size: 12.5px;
@@ -2014,8 +1478,6 @@ body {
 :root[data-theme="dark"] .org-card-roles-note {
   color: #9aa3af;
 }
-
-/* «Подписи»: финальная строка попытки «План отправлен на доработку» */
 .track-row-rework td {
   color: var(--text-subtitle, #7f8c8d);
 }
@@ -2027,8 +1489,6 @@ body {
 :root[data-theme="dark"] .track-row-rework .track-row-rework-label {
   color: #f19a9a;
 }
-
-/* Текст подтверждения в модалке «Отменить отправку» (plan_actions.html) */
 .cancel-send-text {
   margin: var(--space-4) 0 var(--space-16);
   font-size: 13.5px;
@@ -2038,9 +1498,6 @@ body {
 :root[data-theme="dark"] .cancel-send-text {
   color: #b8c0cb;
 }
-
-/* Подпись функции организации перед описанием роли («Согласование:»,
-   «Утверждение:») — только у организаций с несколькими функциями. */
 .role-hint-function {
   font-style: normal;
   font-weight: 600;
@@ -2049,7 +1506,6 @@ body {
 .plan-executor-card-hint + .plan-executor-card-hint {
   margin-top: var(--space-2);
 }
-
 .employee-badge {
   display: inline-flex;
   align-items: center;
@@ -2074,7 +1530,6 @@ body {
   background: #fff4dc;
   color: #c08000;
 }
-
 .invite-modal.modal-content {
   width: 540px;
   max-width: calc(100vw - 32px);
@@ -2101,7 +1556,6 @@ body {
 .invite-field-error.visible {
   display: block;
 }
-
 .invite-role-options {
   display: flex;
   flex-direction: column;
@@ -2172,7 +1626,6 @@ body {
 .invite-role-option:has(input:focus-visible) {
   box-shadow: 0 0 0 3px rgba(0, 121, 143, 0.25);
 }
-
 .invite-modal-note {
   display: flex;
   align-items: flex-start;
@@ -2192,23 +1645,17 @@ body {
   margin-top: 1px;
   color: var(--green-main, #00798f);
 }
-
 @media (max-width: 600px) {
   .employees-invite-btn.main-btn {
     width: 100%;
   }
 }
-
 hr {
   height: 1px;
   background-color: var(--border-color);
   border: none;
   margin: var(--space-32) 0;
 }
-
-/* ============================================
-   FOOTER
-   ============================================ */
 .footer {
   background-color: var(--green-main);
   padding: 60px 0 var(--space-32) 0;
@@ -2314,7 +1761,6 @@ hr {
 .contact-item:hover span {
   color: var(--white);
 }
-
 .social-links {
   display: flex;
   gap: var(--space-16);
@@ -2338,7 +1784,6 @@ hr {
   color: var(--green-main);
   transform: translateY(-5px);
 }
-
 .footer-org {
   text-align: center;
   padding-top: var(--space-32);
@@ -2357,7 +1802,6 @@ hr {
   color: var(--white);
   transform: translateY(-2px);
 }
-
 @media (max-width: 768px) {
   .footer {
     padding: var(--space-40) 0 var(--space-20) 0;
@@ -2394,14 +1838,6 @@ hr {
     justify-content: center;
   }
 }
-
-/* ============================================
-   BUTTONS
-   ============================================ */
-/* Обычная кнопка с иконкой (и, возможно, текстом). Наведение — лёгкая
-   зелёная подложка и рамка вместо серого «свечения»; нажатие —
-   вдавливание; с клавиатуры — зелёное кольцо фокуса. Анимируются только
-   цвета/фон/рамка (не all — без подёргиваний размеров). */
 .svg-btn {
   --svg-btn-tint: color-mix(in srgb, var(--green-main) 8%, var(--white));
   --svg-btn-tint-line: color-mix(in srgb, var(--green-main) 35%, var(--white));
@@ -2461,25 +1897,10 @@ hr {
   background: var(--delete-color-hover);
   color: var(--white);
 }
-.svg-btn.send-button {
-  background: var(--send-color);
-  color: var(--white);
-}
-.svg-btn.send-button:hover {
-  background: var(--send-color-hover);
-  color: var(--white);
-}
-
-/* Иконки в шапке — обычный размер .svg-btn; отступ снаружи убран здесь,
-   а не style="margin: 0" в разметке. */
 .header-bside .svg-btn.tooltip-btn {
   margin: 0;
   flex-shrink: 0;
 }
-
-/* Подсказка под кнопкой. Появляется с задержкой 0,3 с (не мигает, когда
-   ведёшь мышью по ряду иконок) и исчезает сразу; показывается и при
-   фокусе с клавиатуры. Стоит на 8px ниже кнопки при любой её высоте. */
 .tooltip-btn {
   --tooltip-bg: #1f2a33;
   --tooltip-fg: #ffffff;
@@ -2531,7 +1952,6 @@ hr {
     transform: translate(-50%, 0);
   }
 }
-
 .submit-button {
   display: inline-flex;
   align-items: center;
@@ -2567,14 +1987,6 @@ hr {
 .submit-button.sent {
   padding: var(--space-8) var(--space-16);
   background: linear-gradient(135deg, #006da0 0%, #0084ff 100%) !important;
-}
-.submit-button.novisib {
-  padding: var(--space-8) var(--space-16);
-  background: var(--transparent) !important;
-  box-shadow: none;
-}
-.submit-button.novisib::after {
-  background: linear-gradient(135deg, #ffffff 0%, #1cacff 100%) !important;
 }
 .submit-button.sent::after {
   background: linear-gradient(135deg, #0089c9 0%, #4ba8ff 100%) !important;
@@ -2657,7 +2069,6 @@ hr {
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-
 @keyframes shine {
   0% {
     opacity: 0;
@@ -2671,7 +2082,6 @@ hr {
     transform: rotate(45deg) translate(50%, 50%);
   }
 }
-
 @keyframes buttonPop {
   0% {
     transform: scale(0.95);
@@ -2682,7 +2092,6 @@ hr {
     opacity: 1;
   }
 }
-
 .no-submit-button {
   display: inline-flex;
   align-items: center;
@@ -2707,9 +2116,6 @@ hr {
   height: 17px;
   object-fit: contain;
 }
-/* Красная (подтверждение опасного действия) — тот же вид, что у кнопки
-   удаления аккаунта в профиле (.danger-zone-btn): мягкий вертикальный
-   градиент, красная тень, подъём при наведении, кольцо фокуса. */
 .no-submit-button.red {
   gap: var(--space-8);
   padding: var(--space-10) var(--space-20);
@@ -2748,11 +2154,6 @@ hr {
   box-shadow: none;
   transform: none;
 }
-/* Основная (primary) кнопка — плоский мягкий градиент без "свечения"
-   2010-х, цветная тень вместо серой, лёгкий подъём при наведении и
-   нажатие при клике, видимое кольцо фокуса с клавиатуры. Неактивное
-   состояние — не полупрозрачный градиент, а спокойная плоская заливка
-   (в модалках кнопка изначально disabled, пока не выбран руководитель). */
 .no-submit-button.blue {
   --nsb-blue: #1677ff;
   --nsb-blue-hover: #3b8bff;
@@ -2832,10 +2233,6 @@ hr {
     0 8px 20px -4px rgba(220, 38, 38, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
-
-/* ============================================
-   AUTH PAGES
-   ============================================ */
 .auth-page {
   position: relative;
   min-height: calc(100vh - 71px);
@@ -2892,7 +2289,6 @@ hr {
 .auth-step-3.has-results {
   max-width: 920px;
 }
-
 .auth-step3-layout {
   display: flex;
   align-items: flex-start;
@@ -2987,11 +2383,9 @@ hr {
   font-size: 13px;
   color: var(--text-secondary);
 }
-.org-results-panel .search-loading,
-.org-results-panel .search-more {
+.org-results-panel .search-loading {
   border-top: 1px solid var(--border-color);
 }
-
 @media (max-width: 860px) {
   .auth-step-3.has-results {
     max-width: 500px;
@@ -3035,16 +2429,19 @@ hr {
   -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.7) inset !important;
   -webkit-text-fill-color: var(--black) !important;
 }
-
 input::placeholder {
   color: var(--placeholder-color);
 }
-
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-
 .auth-choose {
   display: flex;
   justify-content: space-between;
@@ -3062,7 +2459,6 @@ input::placeholder {
   border: 1px solid var(--border-color);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
 }
-
 .auth-tab {
   padding: var(--space-10) var(--space-24);
   cursor: pointer;
@@ -3093,7 +2489,6 @@ input::placeholder {
 .auth-tab.active svg {
   color: var(--green-light);
 }
-
 .selected-role-display {
   margin-bottom: var(--space-20);
   padding: var(--space-16);
@@ -3143,19 +2538,6 @@ input::placeholder {
   margin-top: var(--space-4);
   opacity: 1;
 }
-
-@keyframes modernWave {
-  0% {
-    transform: translateX(-100%) skewX(-15deg);
-  }
-  70% {
-    transform: translateX(100%) skewX(-15deg);
-  }
-  100% {
-    transform: translateX(100%) skewX(-15deg);
-  }
-}
-
 .auth-form {
   width: 100%;
   margin: 0 auto;
@@ -3163,11 +2545,9 @@ input::placeholder {
 .auth-form .main-btn.main-btn-primary {
   width: 100%;
 }
-
 .form-group {
   margin-bottom: var(--space-20);
 }
-
 .phone-group-list {
   display: flex;
   flex-direction: column;
@@ -3328,13 +2708,11 @@ input::placeholder {
   font-size: 12px;
   color: var(--text-secondary);
 }
-
 .row-form-group {
   display: flex;
   flex-direction: row;
   gap: var(--space-16);
 }
-
 .password-input-wrapper {
   position: relative;
 }
@@ -3361,7 +2739,6 @@ input::placeholder {
 .eye-hidden {
   display: none;
 }
-
 .button-auth-area {
   margin-top: var(--space-10);
   width: 100%;
@@ -3370,7 +2747,6 @@ input::placeholder {
   justify-content: space-between;
   gap: var(--space-10);
 }
-
 .currency-info {
   margin-bottom: var(--space-20);
   transition: all 0.3s ease;
@@ -3430,52 +2806,12 @@ input::placeholder {
   color: var(--text-subtitle2);
   font-weight: 500;
 }
-.currency-status {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-4);
-}
-.rate-source {
-  font-size: 11px;
-  font-weight: 500;
-  color: #2e7d32;
-  background: #e8f5e9;
-  padding: var(--space-4) var(--space-12);
-  border-radius: 20px;
-  letter-spacing: 0.3px;
-}
-.rate-source.error {
-  background: #ffebee;
-  color: #c62828;
-}
-.rate-time {
-  font-size: 10px;
-  color: var(--text-subtitle);
-  opacity: 0.7;
-}
 .currency-divider {
   width: 1px;
   height: 40px;
   background: linear-gradient(180deg, var(--transparent), var(--border-color), var(--transparent));
   margin: 0 var(--space-10);
 }
-
-@keyframes currencyPulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
-}
-.currency-updating {
-  animation: currencyPulse 0.5s ease-in-out;
-}
-.currency-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: var(--space-6);
-  vertical-align: middle;
-}
-
 @media (max-width: 768px) {
   .currency-info-content {
     flex-direction: column;
@@ -3493,13 +2829,6 @@ input::placeholder {
   .currency-divider {
     display: none;
   }
-  .currency-status {
-    align-items: flex-start;
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
 }
 @media (max-width: 480px) {
   .currency-label {
@@ -3508,15 +2837,7 @@ input::placeholder {
   .currency-value {
     font-size: 16px;
   }
-  .rate-source {
-    font-size: 10px;
-    padding: var(--space-4) var(--space-8);
-  }
-  .rate-time {
-    font-size: 9px;
-  }
 }
-
 .auth-footer {
   text-align: center;
   margin-top: var(--space-12);
@@ -3531,7 +2852,46 @@ input::placeholder {
   color: var(--black);
   text-decoration: underline;
 }
-
+.code-recipient {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  margin-top: var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 121, 143, 0.15);
+  border-radius: 12px;
+}
+.code-recipient-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(0, 121, 143, 0.08);
+  color: var(--green-main);
+}
+.code-recipient-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.code-recipient-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.code-recipient-label {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+.code-recipient-email {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f1f1f;
+  overflow-wrap: anywhere;
+}
 .activation-code-container {
   display: flex;
   gap: var(--space-10);
@@ -3552,70 +2912,6 @@ input::placeholder {
   outline: none;
   font-size: 17px;
 }
-
-.log_reg_form input::-webkit-input-placeholder {
-  color: var(--black);
-}
-
-.organization-search-container {
-  position: relative;
-}
-.organizations-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--white);
-  border: 1px solid #ddd;
-  border-top: none;
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.organization-item {
-  padding: var(--space-10) var(--space-16);
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.organization-item:hover {
-  background-color: #f5f5f5;
-}
-.organization-item.selected {
-  background-color: var(--active-row-color);
-}
-.organization-name {
-  font-weight: 500;
-  flex: 1;
-}
-.organization-okpo {
-  color: #666;
-  font-size: 0.9em;
-  margin-left: var(--space-10);
-}
-.organizations-loading,
-.organizations-more {
-  padding: var(--space-10);
-  text-align: center;
-  border-top: 1px solid #f0f0f0;
-}
-#load-more-organizations {
-  background: none;
-  border: none;
-  color: #007bff;
-  cursor: pointer;
-  text-decoration: underline;
-}
-#load-more-organizations:hover {
-  color: #0056b3;
-}
-
-/* ============================================
-   NAVIGATION (second header)
-   ============================================ */
 .navigation-container {
   background: var(--blur2);
   backdrop-filter: blur(10px);
@@ -3633,7 +2929,6 @@ input::placeholder {
   box-sizing: border-box;
   z-index: 80;
 }
-
 .nav-item {
   display: flex;
   align-items: center;
@@ -3651,65 +2946,38 @@ input::placeholder {
   min-height: 25px;
   z-index: 1;
 }
-
-/* крайние вкладки — без внешнего отступа, вплотную к краям контейнера */
 .navigation-container .nav-item:first-child {
   margin-left: 0;
 }
 .navigation-container .nav-item:last-child {
   margin-right: 0;
 }
-
 .nav-item.active {
   font-weight: 600;
   background-color: var(--white);
   color: var(--green-light);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-
 .nav-item.active .nav-text {
   font-size: 15px;
 }
-
 .nav-item.active svg {
   color: var(--green-light);
   width: 22px;
   height: 22px;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
-
 .nav-item.active .active-indicator {
   opacity: 1;
 }
-
 .nav-item.disabled-tab {
   opacity: 0.5;
   pointer-events: none;
   cursor: not-allowed;
 }
-
-/* На странице плана вкладок может быть до 7 в одной "таблетке". Каждая
-   вкладка (включая активную) занимает ровно столько места, сколько нужно
-   её содержимому (flex: 0 0 auto) — раньше неактивные вкладки делили
-   оставшееся место ПОРОВНУ (flex: 1 1 0), из-за чего короткие подписи
-   («Подписи», «Задания») растягивались до ширины самой длинной соседней
-   вкладки и получали огромные пустые поля слева/справа от текста. Теперь
-   вкладки просто группируются по центру контейнера (justify-content:
-   center на .navigation-container), а текст обрезается многоточием
-   только если всем вкладкам вместе не хватает места по ширине (flex-shrink
-   на :not(.active), не flex-grow). Скоуп только на .header-cont.planed И
-   на десктопную ширину — общая навигация сайта (/plans, /export, /profile)
-   с 3-4 пунктами в этом не нуждается: там каждый пункт должен быть
-   статичной равной ширины (flex: 1 у всех, включая активный — см. базовое
-   правило .nav-item ниже), чтобы при переключении между страницами
-   остальные пункты не "скакали"/не меняли размер. На мобильном же оба
-   варианта специально сделаны одинаковыми (см. @media max-width: 1080px
-   ниже) — там разница в ширине неактуальна, а кнопки итак icon-only. */
 @media (min-width: 1081px) {
   .header-cont.planed .navigation-container {
     width: 100%;
-    /* space-between: крайние вкладки вплотную к краям «таблетки»
-       (space-around оставлял по бокам пустые половинки промежутков) */
     justify-content: space-between;
   }
   .header-cont.planed .nav-item {
@@ -3726,12 +2994,6 @@ input::placeholder {
   .header-cont.planed .nav-item:not(.active) .nav-icon-wrapper {
     flex-shrink: 0;
   }
-  /* Неактивные вкладки показывают короткое название (nav-text-mobile —
-     те же подписи, что раньше были только для мобильного icon-only вида,
-     например "Часть 1" вместо "Часть 1. Показатели использования ТЭР"),
-     а не обрезанное многоточием полное — так понятнее, какая вкладка
-     есть что, даже когда она не раскрыта. Полное название остаётся
-     только у активной вкладки (см. .nav-item.active .nav-text ниже). */
   .header-cont.planed .nav-item:not(.active) .nav-text {
     display: none;
   }
@@ -3752,7 +3014,6 @@ input::placeholder {
     display: none;
   }
 }
-
 .nav-icon-wrapper {
   position: relative;
   display: flex;
@@ -3761,13 +3022,11 @@ input::placeholder {
   margin: 0 var(--space-8);
   z-index: 2;
 }
-
 .nav-icon-wrapper svg {
   width: 20px;
   height: 20px;
   transition: transform 0.3s ease;
 }
-
 .nav-text {
   font-size: 14px;
   position: relative;
@@ -3778,7 +3037,6 @@ input::placeholder {
   line-height: 1.3;
   max-width: 200px;
 }
-
 .nav-text-mobile {
   display: none;
   font-size: 10px;
@@ -3787,36 +3045,29 @@ input::placeholder {
   position: relative;
   z-index: 2;
 }
-
 .nav-text.long-text {
-
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
 }
-
 .nav-item.active .nav-text.long-text {
-
   font-weight: 600;
   max-width: none;
   white-space: nowrap;
   line-height: 1.3;
   text-align: center;
 }
-
 @media (max-width: 1200px) {
   .nav-text.long-text {
     max-width: 140px;
   }
 }
-
 @media (max-width: 992px) {
   .nav-text.long-text {
     max-width: 120px;
   }
 }
-
 @media (max-width: 768px) {
   .nav-text.long-text {
     display: none;
@@ -3825,7 +3076,6 @@ input::placeholder {
     display: none;
   }
 }
-
 .active-indicator {
   position: absolute;
   bottom: -5px;
@@ -3837,21 +3087,10 @@ input::placeholder {
   background: var(--green-light);
   opacity: 0;
 }
-
-.nav-item:not(.disabled-tab):hover .nav-icon {
-  transform: translateY(-2px);
-}
-
 .nav-item:not(.disabled-tab):active {
   transform: scale(0.98);
 }
-
 @media (min-width: 769px) {
-  /* .nav-item {
-    flex-direction: row;
-    padding: 8px 35px;
-    margin: 0;
-  } */
   .nav-text {
     display: inline;
   }
@@ -3861,48 +3100,7 @@ input::placeholder {
   .active-indicator {
     display: none;
   }
-  .active-drop {
-    display: block;
-    animation: dropMove 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), liquidSplash 0.8s ease-out;
-  }
-  .nav-item:nth-child(1).active ~ .active-drop {
-    left: 4px;
-    width: calc(20% - 8px);
-  }
-  .nav-item:nth-child(2).active ~ .active-drop {
-    left: calc(20% + 4px);
-    width: calc(20% - 8px);
-  }
-  .nav-item:nth-child(3).active ~ .active-drop {
-    left: calc(40% + 4px);
-    width: calc(20% - 8px);
-  }
-  .nav-item:nth-child(4).active ~ .active-drop {
-    left: calc(60% + 4px);
-    width: calc(20% - 8px);
-  }
-  .nav-item:nth-child(5).active ~ .active-drop {
-    left: calc(80% + 4px);
-    width: calc(20% - 8px);
-  }
-  .navigation-container:has(.nav-item:nth-child(2).disabled-tab) .nav-item:nth-child(3).active ~ .active-drop {
-    left: calc(25% + 4px);
-    width: calc(25% - 8px);
-  }
-  .navigation-container:has(.nav-item:nth-child(2).disabled-tab) .nav-item:nth-child(4).active ~ .active-drop {
-    left: calc(50% + 4px);
-    width: calc(25% - 8px);
-  }
-  .navigation-container:has(.nav-item:nth-child(2).disabled-tab) .nav-item:nth-child(5).active ~ .active-drop {
-    left: calc(75% + 4px);
-    width: calc(25% - 8px);
-  }
 }
-
-/* ============================================
-   PERSONAL ACCOUNT CONTAINER
-   ============================================ */
-
 .header-cont-for-back {
   position: fixed;
   display: flex;
@@ -3915,7 +3113,6 @@ input::placeholder {
   max-width: var(--content-max-width);
   text-align: center;
 }
-
 .header-cont {
   position: fixed;
   width: 100%;
@@ -3928,12 +3125,10 @@ input::placeholder {
   z-index: 90;
   max-width: var(--content-max-width);
 }
-
-.header-cont.planed{
+.header-cont.planed {
   top: 120px;
   max-width: var(--content-max-width);
 }
-
 .pers-page {
   display: flex;
   flex-direction: column;
@@ -3944,7 +3139,6 @@ input::placeholder {
   width: 100%;
   box-sizing: border-box;
 }
-
 .pers-page-with-table {
   display: flex;
   flex-direction: column;
@@ -3955,7 +3149,6 @@ input::placeholder {
   width: 100%;
   box-sizing: border-box;
 }
-
 .personal-acc-conteiner {
   margin-top: 150px;
   border-radius: var(--card-radius);
@@ -3971,23 +3164,16 @@ input::placeholder {
   animation: fadeInUpCont 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1);
   box-sizing: border-box;
 }
-
-.personal-acc-conteiner.planed{
+.personal-acc-conteiner.planed {
   margin-top: 200px;
 }
-
-.personal-acc-conteiner.signatured{
+.personal-acc-conteiner.signatured {
   margin-top: 200px;
   padding: 0;
 }
-
-/* Вкладка «Подписи»: рельса слева + таблица — чуть шире стандартной
-   карточки, но без бокового сайдбара хватает скромной прибавки. */
-
-.personal-acc-conteiner.edit-page{
+.personal-acc-conteiner.edit-page {
   margin-top: 125px;
 }
-
 .personal-plan-conteiner {
   border-radius: 8px;
   border-bottom: none;
@@ -4004,7 +3190,6 @@ input::placeholder {
   padding-bottom: 90px;
   margin-top: 200px;
 }
-
 @keyframes fadeInUpCont {
   from {
     opacity: 0;
@@ -4015,7 +3200,6 @@ input::placeholder {
     transform: translateY(0);
   }
 }
-
 .personal-acc-conteiner .name,
 .personal-plan-conteiner .name {
   font-weight: 500;
@@ -4024,15 +3208,6 @@ input::placeholder {
   color: rgb(0, 27, 0);
   text-shadow: 2px 2px 14px rgba(0, 32, 37, 0.3);
 }
-
-/* ============================================
-   PROFILE TABS — секции личного кабинета
-   Намеренно НЕ капсульный стиль .navigation-container:
-   строгая линия подчёркивания вместо "таблетки" с тенью,
-   минимум скругления (только верхние углы плашки при
-   наведении/активности). position: static — обычная
-   внутристраничная навигация, а не плавающий бар.
-   ============================================ */
 .profile-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -4040,7 +3215,6 @@ input::placeholder {
   margin-bottom: var(--space-24);
   border-bottom: 1px solid var(--border-color);
 }
-
 .profile-tab {
   display: flex;
   align-items: center;
@@ -4059,33 +3233,27 @@ input::placeholder {
   transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   white-space: nowrap;
 }
-
 .profile-tab svg {
   width: 17px;
   height: 17px;
   flex-shrink: 0;
 }
-
 .profile-tab:hover {
   color: var(--black);
   background: var(--background-grey);
 }
-
 .profile-tab.active {
   color: var(--green-main-dark, var(--green-main));
   border-bottom-color: var(--green-main);
   font-weight: 600;
 }
-
 .profile-tab-panel {
   display: none;
   animation: fadeIn 0.25s ease;
 }
-
 .profile-tab-panel.active {
   display: block;
 }
-
 @media (max-width: 640px) {
   .profile-tabs {
     flex-wrap: nowrap;
@@ -4102,7 +3270,6 @@ input::placeholder {
     font-size: 11px;
   }
 }
-
 .header-content {
   font-weight: 500;
   font-size: 16px;
@@ -4114,7 +3281,6 @@ input::placeholder {
   gap: var(--space-16);
   margin-bottom: var(--space-16);
 }
-
 .header-content-left {
   display: flex;
   flex-direction: row;
@@ -4123,12 +3289,10 @@ input::placeholder {
   overflow: visible !important;
   position: relative;
 }
-
 .dropdown-menu-container {
   position: relative;
   display: inline-block;
 }
-
 .dots-btn {
   background: none;
   border: none;
@@ -4140,18 +3304,15 @@ input::placeholder {
   justify-content: center;
   position: relative;
 }
-
 .dots-btn:hover {
   border-radius: 100px;
   background-color: rgba(0, 0, 0, 0.05);
   box-shadow: none;
   transform: scale(1.1);
 }
-
 .dots-btn[data-tooltip] {
   position: relative;
 }
-
 .dots-btn[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -4167,7 +3328,6 @@ input::placeholder {
   z-index: 1000;
   pointer-events: none;
 }
-
 .dropdown-menu {
   position: absolute;
   top: 30px;
@@ -4185,26 +3345,22 @@ input::placeholder {
   overflow: hidden;
   border: 1px solid var(--border-color);
 }
-
 .dropdown-menu.show {
   opacity: 1;
   visibility: visible;
 }
-
 .dropdown-menu .nav-menu-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-8);
 }
-
 .dropdown-menu .nav-menu-list hr {
   margin: var(--space-4) 0;
   border: none;
   height: 1px;
   background: linear-gradient(90deg, var(--transparent), #e2e8f0, var(--transparent));
 }
-
 .dropdown-menu .nav-menu-item {
   border: none;
   border-radius: 12px;
@@ -4224,7 +3380,6 @@ input::placeholder {
   overflow: hidden;
   background: var(--transparent);
 }
-
 .dropdown-menu .nav-menu-item::before {
   content: '';
   position: absolute;
@@ -4236,11 +3391,9 @@ input::placeholder {
   transition: width 0.2s ease;
   z-index: -1;
 }
-
 .dropdown-menu .nav-menu-item:hover::before {
   width: 100%;
 }
-
 .dropdown-menu .nav-menu-item svg {
   width: 18px;
   height: 18px;
@@ -4248,87 +3401,23 @@ input::placeholder {
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
-
 .dropdown-menu .nav-menu-item:hover svg {
   color: var(--green-light, #10b981);
   transform: translateX(2px);
 }
-
 .dropdown-menu .nav-menu-item:active {
   transform: scale(0.98);
 }
-
-.dropdown-menu .nav-menu-item.delete-item {
-  color: #dc2626;
-}
-
-.dropdown-menu .nav-menu-item.delete-item svg {
-  color: #dc2626;
-}
-
-.dropdown-menu .nav-menu-item.delete-item::before {
-  background-color: #fee2e2;
-}
-
-.dropdown-menu .nav-menu-item.delete-item:hover {
-  color: #b91c1c;
-}
-
-.dropdown-menu .nav-menu-item.delete-item:hover svg {
-  color: #b91c1c;
-}
-
 .dropdown-menu .nav-menu-item.disabled,
 .dropdown-menu .nav-menu-item:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
 }
-
 .dropdown-menu .nav-menu-item.disabled:hover::before,
 .dropdown-menu .nav-menu-item:disabled:hover::before {
   width: 0;
 }
-
-.support-txt-cont {
-  display: flex;
-  flex-direction: column;
-  font-size: 14px;
-  margin-bottom: var(--space-20);
-  padding: var(--space-10) var(--space-16);
-  padding-left: 0px;
-  gap: var(--space-4);
-  border-radius: 17px;
-  width: fit-content;
-}
-
-.support-txt-cont .row {
-  align-items: center;
-  gap: var(--space-4);
-  color: rgb(56, 56, 56);
-  text-shadow: 1px 1px 10px rgba(0, 0, 0, 0.3);
-}
-
-.support-text {
-  font-size: 14px;
-  font-weight: 500;
-  padding: var(--space-4) var(--space-16);
-  background-color: var(--background-grey);
-  border-radius: 8px;
-  overflow-x: auto;
-  width: fit-content;
-  display: inline-block;
-  margin-bottom: var(--space-20);
-}
-
-.support-text.non {
-  margin-bottom: 0;
-}
-
-/* ============================================
-   INPUTS
-   ============================================ */
-   
 .row-app-group {
   display: flex;
   flex-direction: row;
@@ -4338,14 +3427,6 @@ input::placeholder {
   margin-bottom: var(--space-12);
   width: 100%;
 }
-.app-group .year-place {
-  background-color: var(--black);
-  color: var(--white);
-  padding: var(--space-2) var(--space-8);
-  border-radius: 8px;
-  border: none;
-}
-
 .error-message-modern {
   display: none;
   background: linear-gradient(135deg, #fff5f5 0%, #fee 100%);
@@ -4374,7 +3455,6 @@ input::placeholder {
     padding: var(--space-6) var(--space-10);
   }
 }
-
 .selected-indicator-display {
   background: var(--chat-btn);
   border-radius: 12px;
@@ -4384,101 +3464,20 @@ input::placeholder {
   gap: var(--space-16);
   color: var(--white);
 }
-.selected-indicator-icon {
-  font-size: 32px;
-}
 .selected-indicator-info {
   flex: 1;
 }
-
 .selected-indicator-label {
   font-size: 12px;
   opacity: 0.8;
   margin-bottom: var(--space-4);
 }
-
 .selected-indicator-name {
   font-size: 14px;
   font-weight: 600;
 }
-
-.coeff-type-selector {
-  display: flex;
-  flex-direction: row;
-  gap: var(--space-10);
-}
-.coeff-option-desc {
-  font-size: 12px;
-}
-
-.coeff-section {
-  border-radius: 12px;
-  padding: var(--space-10) 0;
-}
-.coeff-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: var(--space-16);
-}
-.coeff-options {
-  display: flex;
-  gap: var(--space-16);
-}
-.coeff-option {
-  flex: 1;
-  cursor: pointer;
-}
-.coeff-option input[type="radio"] {
-  display: none;
-}
-.coeff-option-content {
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  padding: var(--space-16);
-  transition: all 0.3s ease;
-  background: var(--white);
-  height: 100%;
-  box-sizing: border-box;
-}
-.coeff-option input[type="radio"]:checked + .coeff-option-content {
-  border-color: var(--green-light);
-  background: linear-gradient(135deg, rgba(76, 175, 153, 0.05) 0%, rgba(76, 160, 175, 0.1) 100%);
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
-}
-.coeff-option-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #3b3b3b;
-  margin-bottom: var(--space-8);
-}
-.coeff-option-value {
-  font-size: 20px;
-  font-weight: bold;
-  color: #333;
-}
-.standard-option .coeff-option-value {
-  color: var(--green-main);
-}
-.custom-coeff-input {
-  width: 100%;
-  padding: var(--space-8) var(--space-12) !important;
-  border: 1px solid #ddd;
-  background-color: var(--white) !important;
-  outline: none;
-  box-sizing: border-box;
-  font-size: 14px;
-  font-weight: 500;
-  transition: border-color 0.3s;
-}
-
 .values-section {
   margin: var(--space-16) 0;
-}
-.values-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
 }
 .values-grid {
   display: grid;
@@ -4498,20 +3497,6 @@ input::placeholder {
   color: #555;
   margin-bottom: var(--space-10);
 }
-.value-input-wrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 0 var(--space-12);
-  margin-bottom: var(--space-8);
-}
-.value-input-wrapper svg {
-  width: 18px;
-  height: 18px;
-  color: #999;
-}
 .value-unit {
   padding-top: var(--space-4);
   font-weight: 500;
@@ -4519,32 +3504,10 @@ input::placeholder {
   color: #999;
   text-align: center;
 }
-
-.secondary-btn {
-  background: #f0f0f0;
-  border: none;
-  padding: var(--space-12) var(--space-24);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-.secondary-btn:hover {
-  background: #e0e0e0;
-}
-
 @media (max-width: 768px) {
-  .coeff-options {
-    flex-direction: column;
-  }
   .values-grid {
     grid-template-columns: 1fr;
   }
-}
-
-.prediction-container {
-  position: relative;
-  display: flex;
-  align-items: center;
 }
 .name-section input {
   padding: var(--space-8) var(--space-16);
@@ -4573,7 +3536,6 @@ input::placeholder {
 .name-options input {
   box-sizing: border-box;
 }
-
 .category-section {
   display: flex;
   flex-direction: column;
@@ -4583,12 +3545,6 @@ input::placeholder {
   border: none;
   height: 1px;
   background: linear-gradient(90deg, var(--transparent), #e5e7eb 20%, #e5e7eb 80%, var(--transparent));
-}
-.category-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: var(--space-16);
 }
 .category-options {
   display: flex;
@@ -4632,11 +3588,6 @@ input::placeholder {
   font-size: 11px;
   color: #666;
 }
-
-.prediction-container .app-numeric-input {
-  padding-right: 70px;
-}
-
 .result-tut {
   margin-top: var(--space-8);
   padding-top: var(--space-8);
@@ -4646,7 +3597,6 @@ input::placeholder {
   text-align: center;
   border-top: 1px dashed #e0e0e0;
 }
-
 .app-input,
 .app-numeric-input,
 .app-numeric-input-coeff,
@@ -4666,18 +3616,9 @@ input::placeholder {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.app-input.danger-input{
+.app-input.danger-input {
   background-color: white;
 }
-
-.mes-input {
-  padding-right: 50px;
-}
-
-/* Причина отмены (отправки/согласования) — отдельный стиль, не .app-input:
-   у .app-input padding слева под иконку (.input-with-icon) и nowrap/ellipsis,
-   которые для многострочного поля не подходят. */
 .cancel-reason-textarea {
   display: block;
   width: 100%;
@@ -4705,7 +3646,6 @@ input::placeholder {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: var(--white);
 }
-
 .app-input:focus:not(.readonly):not(.disabled),
 .app-numeric-input:focus:not(.readonly):not(.disabled),
 .app-numeric-input-negative:focus:not(.readonly):not(.disabled),
@@ -4713,7 +3653,7 @@ input::placeholder {
 .app-numeric-input-negative-one-decimal:focus:not(.readonly):not(.disabled),
 .app-numeric-input-integer:focus:not(.readonly):not(.disabled) {
   outline: none;
-    border: 1px solid var(--green-light);
+  border: 1px solid var(--green-light);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: var(--white);
 }
@@ -4733,7 +3673,6 @@ input::placeholder {
   color: var(--color-readonly);
   cursor: not-allowed;
 }
-
 .app-input[readonly] ~ svg,
 .app-numeric-input[readonly] ~ svg,
 .app-numeric-input-negative[readonly] ~ svg,
@@ -4760,7 +3699,6 @@ input::placeholder {
 .input-with-icon:has(.app-numeric-input-integer.disabled) svg {
   opacity: 0.6;
 }
-
 .app-input:active,
 .app-numeric-input:active,
 .app-numeric-input-negative:active,
@@ -4770,7 +3708,6 @@ input::placeholder {
   background-color: var(--background-light);
   border: 1px solid var(--green-light);
 }
-
 .app-input:focus-visible,
 .app-numeric-input:focus-visible,
 .app-numeric-input-negative:focus-visible,
@@ -4780,16 +3717,11 @@ input::placeholder {
   background-color: var(--white);
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
 }
-
 .input-with-icon {
   position: relative;
   display: flex;
   align-items: center;
 }
-/* .input-with-icon + .input-with-icon {
-  margin-top: 8px;
-} */
-
 .input-with-icon svg,
 .input-with-icon img {
   position: absolute;
@@ -4800,212 +3732,102 @@ input::placeholder {
   height: 16px;
   color: var(--black);
 }
-
 .input-with-icon .search-input {
   padding-left: var(--space-40);
   width: 100%;
 }
-
-.input-mes {
-  position: absolute;
-  right: 5px;
-  display: flex;
-  width: fit-content;
-  height: 16px;
-  pointer-events: none;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  background-color: var(--white);
-  padding: var(--space-4) var(--space-12);
-  border-radius: 55px;
-}
-
-.input-mes svg {
-  left: 5px !important;
-  width: 16px !important;
-  height: 16px !important;
-}
-
-.input-mes a {
-  padding-left: var(--space-4);
-}
-
-.input-mes-test {
-  display: flex;
-  width: fit-content;
-  height: 16px;
-  pointer-events: none;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--border-color);
-  background-color: var(--white);
-  padding: var(--space-4) var(--space-10);
-  border-radius: 55px;
-}
-
-.input-mes-test img {
-  width: 16px;
-  height: 16px;
-}
-
-.input-mes-test a {
-  padding-left: var(--space-4);
-}
-
 .quarter-selector-wrapper {
-    position: relative;
+  position: relative;
 }
-
 .quarter-input {
   cursor: pointer;
   background-color: var(--background-grey) !important;
   color: black !important;
 }
-
-.quarter-selector-wrapper svg{
+.quarter-selector-wrapper svg {
   opacity: 1 !important;
 }
-
 .quarter-input:hover {
-    border-color: #94a3b8;
+  border-color: #94a3b8;
 }
-
 .quarter-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-
 .quarter-popup {
-    display: none;
-    position: absolute;
-    z-index: 1000;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: var(--space-4);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    min-width: 200px;
-    margin-top: var(--space-4);
-    animation: popupFadeIn 0.15s ease;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    box-sizing: border-box;
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: var(--space-4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+  margin-top: var(--space-4);
+  animation: popupFadeIn 0.15s ease;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
-
 @keyframes popupFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-
 .quarter-popup.show {
-    display: block;
+  display: block;
 }
-
 .quarter-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-6);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
 }
-
 .quarter-btn {
-    padding: var(--space-4) var(--space-4);
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
-    color: #1e293b;
-    border: none;
-    transition: background-color 0.15s ease, color 0.15s ease;
+  padding: var(--space-4) var(--space-4);
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1e293b;
+  border: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
-
 .quarter-btn:hover {
-    background-color: var(--green-main) !important;
-    color: var(--white) !important;
-    transform: scale(1.05);
+  background-color: var(--green-main) !important;
+  color: var(--white) !important;
+  transform: scale(1.05);
 }
-
 .quarter-btn:active {
-    transform: scale(0.95);
+  transform: scale(0.95);
 }
-
 .quarter-btn.selected {
-    border: 1px solid var(--green-main);
-    background: var(--green-back-gradient);
+  border: 1px solid var(--green-main);
+  background: var(--green-back-gradient);
 }
-
 .quarter-btn.quarter-btn-disabled {
-    cursor: not-allowed;
-    opacity: 0.35;
-    background: #f3f4f6;
-    pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.35;
+  background: #f3f4f6;
+  pointer-events: none;
 }
-
-/* ============================================
-   DANGER ZONE — такой же лёгкий, обрамлённый в
-   рамку карточки, как остальные блоки профиля
-   (.dates-card/.session-glass-card), просто с
-   красным акцентом вместо тёмно-красного "ящика".
-   ============================================ */
 .danger-zone {
   position: relative;
   overflow: hidden;
-}
-
-.danger-zone-icon {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: #fee2e2;
-  color: #dc2626;
-}
-.danger-zone-icon svg {
-  width: 20px;
-  height: 20px;
-  color: currentColor;
-}
-.danger-zone-title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-.danger-zone-heading {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #b91c1c;
-}
-.danger-zone-title .name {
-  color: #dc2626;
-  font-weight: 600;
-  font-size: 14px;
-}
-.danger-zone-description {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-subtitle, #6b7480);
 }
 .danger-zone-actions {
   margin-top: var(--space-16);
   padding-top: var(--space-16);
   border-top: 1px dashed #f3d0d0;
 }
-
 .confirm-delete-area label {
   display: flex;
   align-items: center;
@@ -5020,8 +3842,6 @@ input::placeholder {
   color: #00798f;
   font-weight: 600;
 }
-/* Сам адрес — моноширинная "плашка", чтобы было видно, что вводить
-   нужно ровно его, символ в символ. Выделяется целиком по клику. */
 .confirm-delete-email {
   padding: var(--space-2) var(--space-8);
   border-radius: 6px;
@@ -5034,7 +3854,6 @@ input::placeholder {
   user-select: all;
   word-break: break-all;
 }
-
 .confirm-delete-row {
   display: flex;
   align-items: stretch;
@@ -5069,8 +3888,6 @@ input::placeholder {
   border-color: #fca5a5;
   background-color: #fef2f2;
 }
-/* Зелёная галочка в поле — появляется, когда адрес совпал (profile.js
-   ставит .input-valid на сам input). */
 .confirm-delete-check {
   position: absolute;
   right: 12px;
@@ -5101,10 +3918,6 @@ input::placeholder {
   font-size: 12px;
   color: var(--text-subtitle, #7f8c8d);
 }
-
-/* Кнопка удаления — в одном стиле с .no-submit-button.blue/.main-btn-primary:
-   мягкий градиент, цветная тень, подъём при наведении, кольцо фокуса;
-   неактивная (пока адрес не совпал) — спокойная плоская, не "битая". */
 .danger-zone-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -5156,7 +3969,6 @@ input::placeholder {
   transform: none;
   cursor: not-allowed;
 }
-
 @media (max-width: 600px) {
   .danger-zone {
     padding: var(--space-16);
@@ -5168,71 +3980,25 @@ input::placeholder {
     width: 100%;
   }
 }
-
-.danger-icon svg {
-  width: 24px;
-  height: 24px;
-  color: #dc2626;
-}
-.danger-warning {
-  background-color: #fef2f2;
-  border-left: 3px solid #dc2626;
-  padding: var(--space-16);
-  border-radius: 8px;
-  margin-bottom: var(--space-20);
-}
-.danger-warning p {
-  margin: 0 0 var(--space-8) 0;
-  font-size: 14px;
-  color: #1e293b;
-}
-.danger-warning-text {
-  font-weight: 600;
-  margin-top: var(--space-8) !important;
-}
-.danger-list {
-  margin: var(--space-8) 0 0 var(--space-20);
-  padding: 0;
-  color: #dc2626;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* ============================================
-   GLASS SURFACE — shared liquid-glass background
-   treatment (frosted panel + green blurred blobs).
-   Reserved for standalone/singular blocks (a card
-   that appears once on the page) — never apply to
-   repeated list items: backdrop-filter is expensive
-   to paint on scroll, and dozens of instances (e.g.
-   plan rows in a table) would visibly cost FPS.
-   ============================================ */
 .glass-surface {
   position: relative;
   isolation: isolate;
   overflow: hidden;
 }
-
-/* ============================================
-   SESSIONS — liquid glass card
-   ============================================ */
 .session-glass-card {
   padding: var(--space-20) 0;
   margin: var(--space-16) 0 var(--space-8);
 }
-
 .glass-surface--warning::before {
   background:
     radial-gradient(circle at 15% 20%, rgba(253, 126, 20, 0.4), transparent 55%),
     radial-gradient(circle at 85% 85%, rgba(255, 193, 7, 0.25), transparent 55%);
 }
-
 .glass-surface--danger::before {
   background:
     radial-gradient(circle at 15% 20%, rgba(220, 53, 69, 0.4), transparent 55%),
     radial-gradient(circle at 85% 85%, rgba(220, 53, 69, 0.22), transparent 55%);
 }
-
 .session-card-top {
   display: flex;
   align-items: center;
@@ -5240,7 +4006,6 @@ input::placeholder {
   gap: var(--space-12);
   margin-bottom: var(--space-16);
 }
-
 .session-card-status {
   display: flex;
   align-items: center;
@@ -5250,7 +4015,6 @@ input::placeholder {
   font-weight: 600;
   color: var(--faq-text-primary, #1a1a2e);
 }
-
 .session-status-dot {
   width: 9px;
   height: 9px;
@@ -5259,14 +4023,15 @@ input::placeholder {
   box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.18);
   animation: sessionPulse 2s ease-in-out infinite;
 }
-
 @keyframes sessionPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
-
-/* Тот же "таблеточный" стиль, что у .status-plan (статус плана) —
-   цветная заливка + рамка + текст, без заливки на всю ширину. */
 .session-role-badge {
   display: inline-flex;
   align-items: center;
@@ -5287,29 +4052,24 @@ input::placeholder {
   gap: var(--space-12);
   margin-bottom: var(--space-20);
 }
-
 .session-info-item {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
-
 .session-info-label {
   font-size: 12px;
   color: var(--faq-text-muted, #636e72);
 }
-
 .session-info-value {
   font-size: 14px;
   font-weight: 600;
   color: var(--faq-text-primary, #1a1a2e);
 }
-
 .session-timer {
   padding-top: var(--space-16);
   border-top: 1px solid rgba(255, 255, 255, 0.5);
 }
-
 .session-timer-header {
   display: flex;
   align-items: baseline;
@@ -5318,14 +4078,12 @@ input::placeholder {
   color: var(--faq-text-muted, #636e72);
   margin-bottom: var(--space-8);
 }
-
 .session-timer-value {
   font-size: 20px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--faq-text-primary, #1a1a2e);
 }
-
 .session-timer-track {
   width: 100%;
   height: 6px;
@@ -5333,7 +4091,6 @@ input::placeholder {
   background: rgba(255, 255, 255, 0.5);
   overflow: hidden;
 }
-
 .session-timer-fill {
   height: 100%;
   width: 100%;
@@ -5341,30 +4098,16 @@ input::placeholder {
   background: linear-gradient(90deg, var(--green-main), var(--green-light));
   transition: width 1s linear, background 0.4s ease;
 }
-
-.session-glass-card--warning .session-timer-fill {
-  background: linear-gradient(90deg, #fd7e14, #ffc107);
-}
-
-.session-glass-card--danger .session-timer-fill {
-  background: linear-gradient(90deg, #dc3545, #e35d6a);
-}
-
 .session-timer-hint {
   margin: var(--space-8) 0 0;
   font-size: 12px;
   color: var(--faq-text-muted, #636e72);
 }
-
 @media (max-width: 480px) {
   .session-card-top {
     flex-wrap: wrap;
   }
 }
-
-/* ============================================
-   DATES
-   ============================================ */
 .dates-card {
   margin: var(--space-12) 0;
 }
@@ -5450,24 +4193,11 @@ input::placeholder {
   font-size: 13px;
   font-style: italic;
 }
-.date-status {
-  display: flex;
-  align-items: center;
-}
-
-/* ============================================
-   ORG CARD — карточка просмотра данных об организации на /profile
-   и /plan/actions/<token> (см. macros/components.html ::
-   organization_view_card). Градиентная полоса-акцент + иконка-бейдж
-   + код-чипы ОКПО/УНП с копированием в буфер по клику (см.
-   initOrgCardCopyButtons в base.js).
-   ============================================ */
 .org-card {
   position: relative;
   overflow: hidden;
   z-index: 0;
 }
-
 .org-card-header {
   display: flex;
   align-items: flex-start;
@@ -5476,25 +4206,6 @@ input::placeholder {
   margin-bottom: var(--space-10);
   z-index: 0;
 }
-
-.org-card-icon {
-  flex-shrink: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--green-main), var(--green-light));
-  box-shadow: 0 6px 16px rgba(0, 121, 143, 0.25);
-}
-
-.org-card-icon svg {
-  width: 25px;
-  height: 25px;
-  color: var(--white) !important;
-}
-
 .org-card-heading {
   flex: 1;
   z-index: 0;
@@ -5503,50 +4214,11 @@ input::placeholder {
   flex-direction: column;
   gap: var(--space-4);
 }
-
-.org-card-eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--green-main);
-}
-
-.org-card-name {
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--black);
-  word-break: break-word;
-}
-
-.org-card-region {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  align-self: flex-start;
-  padding: var(--space-8) var(--space-12);
-  border-radius: 20px;
-  background: rgba(0, 121, 143, 0.08);
-  border: 1px solid rgba(0, 121, 143, 0.18);
-  font-size: 12.5px;
-  color: var(--green-main);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.org-card-region svg {
-  width: 14px;
-  height: 14px;
-  color: var(--green-light) !important;
-}
-
 .org-card-codes {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-10);
 }
-
 .org-code-chip {
   display: flex;
   align-items: center;
@@ -5557,16 +4229,13 @@ input::placeholder {
   border: 1px solid rgba(0, 121, 143, 0.16);
   transition: border-color 0.2s ease;
 }
-
 .org-code-chip:hover {
   border-color: var(--green-light);
 }
-
-.org-code-chip svg{
+.org-code-chip svg {
   width: 16px;
   height: 16px;
 }
-
 .org-code-label {
   font-size: 10.5px;
   font-weight: 700;
@@ -5574,14 +4243,12 @@ input::placeholder {
   text-transform: uppercase;
   color: var(--text-subtitle);
 }
-
 .org-code-value {
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--black);
 }
-
 .org-code-copy {
   display: flex;
   align-items: center;
@@ -5595,40 +4262,32 @@ input::placeholder {
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
-
 .org-code-copy:hover {
   background: rgba(0, 121, 143, 0.12);
   color: var(--green-main);
 }
-
 .org-copy-icon {
   display: flex;
   width: 15px;
   height: 15px;
 }
-
 .org-copy-icon svg {
   width: 100%;
   height: 100%;
 }
-
 .org-copy-done {
   display: none;
   color: #16a34a !important;
 }
-
 .org-code-copy.copied {
   color: #16a34a;
 }
-
 .org-code-copy.copied .org-copy-icon:not(.org-copy-done) {
   display: none;
 }
-
 .org-code-copy.copied .org-copy-done {
   display: flex;
 }
-
 @media (max-width: 480px) {
   .org-card-codes {
     flex-direction: column;
@@ -5638,10 +4297,6 @@ input::placeholder {
     grid-template-columns: 1fr;
   }
 }
-
-/* ============================================
-   EXPORT
-   ============================================ */
 .export-choose-area {
   display: flex;
   gap: var(--space-24);
@@ -5674,10 +4329,6 @@ input::placeholder {
   background-color: var(--green-hover);
   box-sizing: border-box;
 }
-/* .export-choose.active svg {
-  color: var(--green-light);
-  stroke: var(--green-light);
-} */
 .export-choose.active .export-choose-text-title {
   color: var(--green-light);
 }
@@ -5718,7 +4369,6 @@ input::placeholder {
   transition: all 0.3s ease;
   font-weight: 500;
 }
-
 .check-box-area {
   display: flex;
   gap: var(--space-16);
@@ -5729,7 +4379,6 @@ input::placeholder {
   color: var(--black);
   font-weight: 500;
 }
-
 .select-all-btn,
 .clear-all-btn {
   display: flex;
@@ -5749,7 +4398,6 @@ input::placeholder {
   background: var(--button-grey-hover);
   transform: translateY(-1px);
 }
-
 .select-all-btn svg,
 .clear-all-btn svg {
   width: 16px;
@@ -5760,9 +4408,7 @@ input::placeholder {
   padding: 0;
   top: 0;
   right: 0;
-
 }
-
 input[type="checkbox"] {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -5796,18 +4442,10 @@ input[type="checkbox"]:checked::before {
 input[type="checkbox"]:focus {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
 }
-
-.choose-plan-area {
-  display: flex;
-  gap: var(--space-16);
-  flex-direction: column;
-  padding: var(--space-16) 0;
-}
 .button-area {
   width: 100%;
   text-align: end;
 }
-
 .required-legend {
   padding: var(--space-10) var(--space-12);
   background: var(--white);
@@ -5821,11 +4459,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-8);
   align-items: center;
   width: fit-content;
-}
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-6);
 }
 .required-legend svg {
   fill: red;
@@ -5844,10 +4477,6 @@ input[type="checkbox"]:focus {
     font-size: 11px;
   }
 }
-
-/* ============================================
-   STATS
-   ============================================ */
 .stats-container {
   position: relative;
   padding-bottom: var(--space-32);
@@ -5888,21 +4517,15 @@ input[type="checkbox"]:focus {
   width: 100%;
   transition: all 0.2s ease;
 }
-
-/* Все плитки — одной высоты: ряд растягивает их на общую высоту, рамка
-   плитки заполняет столбец до точки. У «Все» точки нет — вместо неё
-   невидимая заглушка того же размера (.status-dot-spacer). */
 .stats-track > .stat-and-dot > .stat {
   flex: 1 1 auto;
 }
 .status-dot-spacer {
   flex-shrink: 0;
-  /* = .status-dot: 16px + рамка 3px с каждой стороны */
   width: 22px;
   height: 22px;
   visibility: hidden;
 }
-
 .stat-and-dot[data-value] {
   cursor: pointer;
 }
@@ -5914,14 +4537,10 @@ input[type="checkbox"]:focus {
   border: 2px solid var(--green-main);
   background-color: var(--green-hover);
 }
-
-/* «На рассмотрении» чужих планов у гибридной организации — тот же цвет,
-   что и у «На рассмотрении»/«На согласовании». */
 .stat-number-review {
   color: var(--color-sented);
   text-shadow: 0 0 17px rgba(0, 0, 0, 0.5);
 }
-
 .status-dot {
   width: 16px;
   height: 16px;
@@ -5936,7 +4555,6 @@ input[type="checkbox"]:focus {
   background: var(--color-sented);
   transform: scale(1.1);
 }
-
 .progress-line-container {
   position: absolute;
   bottom: 20px;
@@ -5961,12 +4579,10 @@ input[type="checkbox"]:focus {
   transition: width 0.3s ease;
   z-index: 2;
 }
-
 .word-numb {
   font-size: 14px;
   text-align: center;
 }
-
 .stat-number,
 .stat-number-redac,
 .stat-number-control,
@@ -5999,7 +4615,6 @@ input[type="checkbox"]:focus {
 .stat-number-sub {
   color: var(--color-submited);
 }
-
 .filters-area {
   overflow: visible !important;
   position: relative;
@@ -6018,35 +4633,21 @@ input[type="checkbox"]:focus {
 .filters-area .app-input {
   min-width: 100px;
 }
-
 @media (max-width: 768px) {
   .filters-area {
     flex-wrap: nowrap;
     max-width: 100%;
-    /* base rule below sets `overflow: visible !important`; without
-       matching !important here that stays in force and the row just
-       overflows the page instead of scrolling within itself. */
     overflow-x: auto !important;
     overflow-y: hidden !important;
     padding-bottom: var(--space-4);
   }
-
   .filters-area .input-with-icon,
   .filters-area .custom-dropdown {
     flex-shrink: 0;
   }
-
   .filters-area .app-input {
     width: 160px;
   }
-
-  /* Тот же приём, что и для .filters-area выше: строка статов не
-     переносится и не сжимается до нечитаемого размера — вместо этого
-     листается по горизонтали свайпом/скроллом. overflow: hidden здесь
-     обрезает .progress-line-container, который plan-status.js растягивает
-     на всю прокручиваемую ширину трека (чтобы полоса-заливка и точки
-     статусов оставались друг под другом при скролле — см. комментарий
-     в syncProgressLineToTrack()). */
   .stats-container {
     padding-bottom: 0;
     overflow: hidden;
@@ -6071,7 +4672,6 @@ input[type="checkbox"]:focus {
     white-space: nowrap;
   }
 }
-
 .custom-dropdown {
   position: relative;
   display: inline-block;
@@ -6105,7 +4705,6 @@ input[type="checkbox"]:focus {
 .dropdown-arrow:hover {
   transform: scale(1.3);
 }
-
 .dropdown-menu-filter {
   position: absolute;
   top: calc(100% + 4px);
@@ -6135,12 +4734,6 @@ input[type="checkbox"]:focus {
 .custom-dropdown.active .dropdown-arrow {
   transform: rotate(180deg);
 }
-
-/* Дропдаун отчет/оценка/прогноз в шапке таблицы показателей (plan.js ::
-   initEditableHeaders). Меню рендерится в document.body с position:fixed,
-   чтобы не обрезаться скроллящимся .table-container — поэтому оно не
-   вложено в .custom-dropdown и не получает видимость через обычный
-   ancestor-комбинатор, а показывается напрямую. */
 .header-label-toggle.active .dropdown-arrow {
   transform: rotate(180deg);
 }
@@ -6150,7 +4743,6 @@ input[type="checkbox"]:focus {
   visibility: visible;
   transform: none;
 }
-
 .dropdown-item {
   padding: var(--space-8) var(--space-16);
   cursor: pointer;
@@ -6170,10 +4762,6 @@ input[type="checkbox"]:focus {
   border-bottom-left-radius: 7px;
   border-bottom-right-radius: 7px;
 }
-
-/* ============================================
-   PLANS
-   ============================================ */
 .plans-area {
   width: 100%;
   display: flex;
@@ -6181,7 +4769,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-10);
   padding: var(--space-16) 0;
 }
-
 .plan-cont {
   padding: var(--space-16);
   gap: var(--space-20);
@@ -6206,7 +4793,6 @@ input[type="checkbox"]:focus {
   background: linear-gradient(135deg, #e3fbf3 0%, #7ee9c6 100%);
 }
 .plan-cont-signing {
-  /* Плавный переход между .plan-cont-control (тил) и .plan-cont-sent (синий) */
   background: linear-gradient(135deg, #e9f8f9 0%, #9de1e2 100%);
 }
 .plan-cont-sent {
@@ -6224,16 +4810,15 @@ input[type="checkbox"]:focus {
 .plan-cont-sub {
   background: linear-gradient(135deg, #f1fff2 0%, #aff0b8 100%);
 }
-
-/* Переливание градиентом при наведении — частота зависит от того,
-   насколько план близок к финальному этапу (Утверждён, .plan-cont-sub):
-   чем ближе к завершению цепочки (В редакции -> Контроль -> Отправлен ->
-   Согласован -> Утверждён), тем быстрее "переливается" градиент. */
 @keyframes planGradientShimmer {
-  0%, 100% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
 }
-
 .plan-cont-redac:hover,
 .plan-cont-control:hover,
 .plan-cont-signing:hover,
@@ -6247,16 +4832,30 @@ input[type="checkbox"]:focus {
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
-
-.plan-cont-redac:hover { animation-duration: 6s; }    /* В редакции — дальше всего от финала */
-.plan-cont-control:hover { animation-duration: 4.6s; } /* Контроль пройден */
-.plan-cont-signing:hover { animation-duration: 4s; }   /* На подписании — внутренний цикл */
-.plan-cont-sent:hover { animation-duration: 3.4s; }    /* Отправлен / на согласовании */
-.plan-cont-transit:hover { animation-duration: 5.2s; } /* Ожидание очереди — ещё не дошёл до вас */
-.plan-cont-sogl:hover { animation-duration: 2.4s; }    /* Согласован */
-.plan-cont-sub:hover { animation-duration: 1.3s; }     /* Утверждён — финальный этап */
-.plan-cont-eror:hover { animation-duration: 4.6s; }    /* Есть ошибки — вне основной цепочки */
-
+.plan-cont-redac:hover {
+  animation-duration: 6s;
+}
+.plan-cont-control:hover {
+  animation-duration: 4.6s;
+}
+.plan-cont-signing:hover {
+  animation-duration: 4s;
+}
+.plan-cont-sent:hover {
+  animation-duration: 3.4s;
+}
+.plan-cont-transit:hover {
+  animation-duration: 5.2s;
+}
+.plan-cont-sogl:hover {
+  animation-duration: 2.4s;
+}
+.plan-cont-sub:hover {
+  animation-duration: 1.3s;
+}
+.plan-cont-eror:hover {
+  animation-duration: 4.6s;
+}
 @media (prefers-reduced-motion: reduce) {
   .plan-cont-redac:hover,
   .plan-cont-control:hover,
@@ -6269,7 +4868,6 @@ input[type="checkbox"]:focus {
     animation: none;
   }
 }
-
 .plan-cont-column {
   display: flex;
   flex-direction: column;
@@ -6299,7 +4897,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-4);
   min-width: 0;
 }
-
 .plan-org-name,
 .plan-org-param {
   font-size: 14px;
@@ -6324,11 +4921,6 @@ input[type="checkbox"]:focus {
   height: 16px;
   color: black;
 }
-
-/* Бейджи организации/УНП красятся в тот же цвет, что и status-plan —
-   привязка идёт не к своему собственному классу, а к статус-модификатору,
-   который уже навешен на .plan-cont (см. plans_list_items), так что
-   раскраска остаётся в одном месте и не может разойтись со status-plan. */
 .plan-cont-redac .plan-org-name,
 .plan-cont-redac .plan-org-param {
   background: rgba(59, 72, 246, 0.1);
@@ -6395,11 +4987,6 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   color: var(--black);
 }
-.structure-plan {
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .status-plan {
   display: inline-flex;
   align-items: center;
@@ -6421,9 +5008,6 @@ input[type="checkbox"]:focus {
   border: 1px solid rgba(72, 59, 246, 0.2) !important;
 }
 .status-historical {
-  /* Нейтральный серый — архивная версия плана (см. Plan.is_historical),
-     сознательно не красный/не зелёный: это не текущая оценка статуса,
-     а просто "вы смотрите в прошлое", перекрывает все остальные ветки. */
   background: var(--background-grey-opa, rgba(148, 163, 184, 0.15)) !important;
   color: var(--text-subtitle, #64748b) !important;
   border: 1px solid rgba(100, 116, 139, 0.25) !important;
@@ -6449,9 +5033,6 @@ input[type="checkbox"]:focus {
   border: 1px solid rgba(255, 169, 64, 0.35) !important;
 }
 .status-signing {
-  /* Промежуточный оттенок между .status-control (тёмный тил) и .status-sent
-     (синий) — "На подписании" читается как плавный шаг между ними, а не
-     отдельный скачок цвета (поэтому не фиолетовый, как "В редакции"). */
   background: rgba(53, 166, 208, 0.15) !important;
   color: #0c4a6e !important;
   border: 1px solid rgba(53, 166, 208, 0.35) !important;
@@ -6466,7 +5047,6 @@ input[type="checkbox"]:focus {
   color: #641313 !important;
   border: 1px solid rgba(134, 39, 39, 0.4) !important;
 }
-
 .plan-cont-column-footer {
   display: flex;
   gap: var(--space-24);
@@ -6479,14 +5059,10 @@ input[type="checkbox"]:focus {
   gap: var(--space-10);
   align-items: center;
 }
-.plan-cont-column-footer-element.grey {
-  color: rgb(247, 182, 182) !important;
-}
 .plan-cont-column-footer-element svg {
   width: 16px;
   height: 16px;
 }
-
 .plan-back-header {
   backdrop-filter: blur(10px);
   padding: var(--space-4);
@@ -6501,15 +5077,10 @@ input[type="checkbox"]:focus {
   align-items: center;
   box-sizing: border-box;
 }
-
 .plan-back-header button {
   margin: 0;
 }
-
 .plan-header-bar-wrap {
-  /* Копия .header-cont-for-back (та осталась как есть — используется и
-     вне планов) — перекастомизированная под страницы плана версия, см.
-     component.plan_header_bar в macros/components.html. */
   position: fixed;
   display: flex;
   flex-direction: column;
@@ -6517,22 +5088,11 @@ input[type="checkbox"]:focus {
   height: auto;
   width: 100%;
   top: 72px;
-  /* .header-cont (навигация плана, component.plan_navigation_header)
-     тоже fixed с z-index: 90 и рендерится ПОСЛЕ этого блока в разметке
-     (см. plan_tasks.html и др.) — при РАВНОМ z-index более поздний по
-     DOM элемент выигрывает прорисовку целиком как стековый контекст, и
-     z-index: 100 у вложенного .signer-picker-menu тут не спасает: он
-     сравнивается только с соседями ВНУТРИ этой обёртки, а не с
-     .header-cont снаружи. Нужно, чтобы выше был именно сам
-     .plan-header-bar-wrap. */
   z-index: 96;
   max-width: var(--content-max-width);
   text-align: center;
 }
-
 .plan-header-bar {
-  /* Копия .plan-back-header, без .plan-info/.plan-text (их место занял
-     .plan-year-chip — см. ниже). */
   backdrop-filter: blur(10px);
   padding: var(--space-4);
   width: fit-content;
@@ -6548,7 +5108,6 @@ input[type="checkbox"]:focus {
 .plan-header-bar button {
   margin: 0;
 }
-
 .plan-year-chip {
   display: inline-flex;
   align-items: center;
@@ -6567,28 +5126,13 @@ input[type="checkbox"]:focus {
   width: 16px;
   height: 16px;
 }
-
 .plan-version-switcher.signer-picker {
-  /* .header-cont-for-back / .plan-header-bar-wrap — оба position: fixed
-     (сама задаёт containing block) — свитчер позиционируется
-     относительно НЕЁ, поверх .plan-back-header/.plan-header-bar, а не
-     внутри их flex-строки (там и так тесно на узких экранах, плюс сама
-     строка — width: fit-content, так что свитчер внутри сдвигал бы её
-     границу вместе с собой). Две склеенные со своим классы (а не просто
-     .plan-version-switcher) — иначе это правило того же веса, что и
-     базовое ".signer-picker { position: relative }" ниже по файлу, и
-     порядок в каскаде решает в пользу последнего объявления, а не
-     нужного здесь. */
   position: absolute;
   top: 50%;
   right: 20px;
   transform: translateY(-50%);
   z-index: 95;
 }
-/* .signer-picker/.signer-picker-toggle/.signer-picker-menu по умолчанию
-   рассчитаны на полноширинное поле формы в модалке (выбор подписанта,
-   plan_send.html/plan_actions.html) — здесь тот же компонент, но
-   компактный, в шапке плана рядом со статус-бейджем. */
 .plan-version-switcher.signer-picker {
   width: auto;
 }
@@ -6603,9 +5147,6 @@ input[type="checkbox"]:focus {
   width: max-content;
   min-width: 200px;
 }
-/* Минималистичные пункты — одна строка (без второй строки-подписи
-   "Редактируется"/"Архив", она и так ясна из текста "Текущая версия"/
-   "Версия от …"), без разделителей между пунктами. */
 .plan-version-switcher-item {
   padding: var(--space-8) var(--space-12);
   font-size: 13px;
@@ -6621,32 +5162,6 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   background: transparent;
 }
-
-/* ============================================
-   APPROVAL SLIDER
-   ============================================ */
-#approval-slider-container {
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: var(--space-10) 0;
-  margin: 0 -10px;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  cursor: grab;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  mask-image: linear-gradient(to right, var(--transparent), var(--black) 8%, var(--black) 92%, var(--transparent));
-  -webkit-mask-image: linear-gradient(to right, var(--transparent), var(--black) 8%, var(--black) 92%, var(--transparent));
-  mask-composite: add;
-  -webkit-mask-composite: add;
-}
-#approval-slider-container::-webkit-scrollbar {
-  display: none;
-}
-#approval-slider-container:active {
-  cursor: grabbing;
-}
-
 .enplans-approval-slider {
   padding: var(--space-24);
   position: relative;
@@ -6668,7 +5183,6 @@ input[type="checkbox"]:focus {
   background: rgb(243, 243, 243);
   z-index: 1;
 }
-
 .enplans-approval-step {
   flex: 1;
   text-align: center;
@@ -6751,13 +5265,11 @@ input[type="checkbox"]:focus {
   word-wrap: break-word;
   word-break: break-word;
   display: -webkit-box;
-  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 500px;
   line-height: 1.3;
-  /* max-height: 32px; */
 }
 .enplans-approval-step-time {
   font-size: 11px;
@@ -6793,7 +5305,6 @@ input[type="checkbox"]:focus {
   background: #c82333;
   box-shadow: 0 2px 8px rgba(220, 53, 69, 0.35);
 }
-
 @keyframes enplans-approval-pulse {
   0% {
     transform: scale(1);
@@ -6808,7 +5319,6 @@ input[type="checkbox"]:focus {
     box-shadow: 0 0 0 0 rgba(0, 121, 143, 0);
   }
 }
-
 .enplans-approval-progress-container {
   width: 100%;
   height: 6px;
@@ -6830,7 +5340,6 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   color: var(--text-subtitle2);
 }
-
 @media (max-width: 768px) {
   .enplans-approval-slider {
     padding: var(--space-16);
@@ -6857,10 +5366,6 @@ input[type="checkbox"]:focus {
     top: 24px;
   }
 }
-
-/* ============================================
-   APPROVAL TABLE (путь согласования плана)
-   ============================================ */
 .approval-table-wrap {
   border: 1px solid var(--telegram-gray, #E5E5E5);
   border-radius: 12px;
@@ -6909,8 +5414,6 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   color: var(--black);
 }
-/* Разделительная строка "Разработчик плана: ФИО, тел., email" —
-   во всю ширину таблицы, по центру, как в исходном макете. */
 .approval-dev-row td {
   padding: var(--space-10) var(--space-12);
   text-align: center;
@@ -6922,8 +5425,6 @@ input[type="checkbox"]:focus {
   border-bottom: 1px solid var(--border-color);
   border-right: none;
 }
-/* Боковая линия слева от первой ячейки — показывает, на каком этапе
-   сейчас находится план (цвет меняется по статусу строки). */
 .approval-row td:first-child {
   border-left: 4px solid var(--border-color, #E5E5E5);
 }
@@ -6984,15 +5485,6 @@ input[type="checkbox"]:focus {
 .approval-admin-btn-cancel:hover {
   background: #fdecea;
 }
-
-/* ============================================
-   SIGNATURES PAGE (вкладка «Подписи»)
-   Таблица пути согласования на всю ширину контейнера — границы только
-   снизу у строк (без вертикальных разделителей колонок), цветные
-   статус-чипы с иконками. Цвета — фирменная бирюза приложения
-   (--green-main/--green-light) + семантические статусные цвета, уже
-   используемые в .status-plan.
-   ============================================ */
 .track-wrap {
   --tr-text-dim: var(--text-subtitle, #7f8c8d);
   --tr-border: var(--border-color);
@@ -7004,12 +5496,6 @@ input[type="checkbox"]:focus {
   --tr-rejected-back: rgba(192, 57, 43, 0.1);
   width: 100%;
 }
-
-/* Строка-разделитель "Внутри организации-разработчика"/"Внешние
-   организации" ВНУТРИ одной таблицы "Подписи" (track-row-section) —
-   раньше были заголовками двух отдельных карточек/таблиц, теперь обе
-   группы строк живут в одной таблице на цикл отправки, разделитель
-   просто визуально отмечает переход между ними. */
 .track-row-section td {
   padding: var(--space-12) var(--space-12) var(--space-6);
   border-bottom: none;
@@ -7056,40 +5542,10 @@ input[type="checkbox"]:focus {
   border: 2px solid var(--tr-border);
   color: var(--tr-text-dim);
 }
-
-.track-developer-note {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-10);
-  padding: var(--space-12) var(--space-16);
-  margin-bottom: var(--space-16);
-  border-radius: 10px;
-  background: var(--tr-active-back);
-  border: 1px solid var(--tr-active);
-  color: var(--text-title, #1f2937);
-  font-size: 14px;
-  line-height: 1.5;
-}
-.track-developer-note svg {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  margin-top: var(--space-2);
-  color: var(--tr-active);
-}
-
 .track-table-scroll {
   width: 100%;
   overflow-x: auto;
 }
-/* Повторная отправка (после отмены/возврата) добавляет ещё одну таблицу
-   цикла ниже — отделяем её от предыдущей, иначе выглядит как одна
-   непрерывная таблица без разрыва между циклами. */
-.track-table-scroll-cycle {
-  /* margin-top: 28px; */
-}
-/* «Подписи»: все попытки — одна таблица с одной шапкой, каждая попытка —
-   свой <tbody class="track-cycle">; между попытками — разделитель. */
 .track-table tbody.track-cycle + tbody.track-cycle {
   border-top: 2px solid var(--border-color, #d9d9d9);
 }
@@ -7113,23 +5569,13 @@ input[type="checkbox"]:focus {
   padding: var(--space-16) var(--space-12);
   border-bottom: 1px solid var(--tr-border);
   color: var(--black);
-  /* vertical-align: top; */
 }
 .track-row:last-child td {
   border-bottom: none;
 }
-/* Последняя ВИДИМАЯ строка попытки: за свёрнутым этапом идут скрытые
-   подэтапы (hidden), поэтому :last-child до неё не доходит. */
 .track-row:not(:has(~ .track-row:not([hidden]))) td {
   border-bottom: none;
 }
-/* display: flex раньше стоял прямо на <td class="track-row-type"> —
-   у ячейки таблицы это ломает border-collapse: браузер перестаёт
-   считать её нормальной table-cell ячейкой для расчёта границ соседних
-   строк, из-за чего разделительные линии между строками отрисовывались
-   не по прямой, а с изломом ("кривое пересечение строк"). Flex нужен
-   только для центрирования иконки с текстом — выносим его на
-   внутренний div, а сама <td> остаётся обычной ячейкой. */
 .track-row-type {
   font-weight: 600;
 }
@@ -7172,11 +5618,9 @@ input[type="checkbox"]:focus {
   color: var(--tr-active);
   font-weight: 500;
 }
-
-/* Мигание иконки текущего (активного) этапа — "На рассмотрении" прямо
-   сейчас, в отличие от пройденных/ожидающих очереди этапов. */
 @keyframes trackRowActivePulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -7196,9 +5640,6 @@ input[type="checkbox"]:focus {
 .track-row-pending .track-row-icon {
   color: var(--tr-text-dim);
 }
-/* Этап из отменённого/брошенного цикла отправки — не "отклонён"
-   проверяющим (это --tr-rejected, красный), а просто не успел пройти,
-   потому что сама отправка была отменена. Приглушённо-серый, не красный. */
 .track-row-abandoned td {
   color: var(--tr-text-dim);
   opacity: 0.7;
@@ -7208,7 +5649,6 @@ input[type="checkbox"]:focus {
   border-color: var(--tr-border);
   color: var(--tr-text-dim);
 }
-
 .track-chip {
   display: inline-flex;
   align-items: center;
@@ -7236,10 +5676,6 @@ input[type="checkbox"]:focus {
   background: #F1F1F1;
   color: var(--tr-text-dim);
 }
-
-/* «Подписи»: этап = организация пути. Основная строка этапа — итоговый
-   шаг (подпись руководителя / решение организации); внутренние действия
-   до него (подэтапы) свёрнуты и раскрываются кнопкой со счётчиком. */
 .track-stage-toggle {
   display: inline-flex;
   align-items: center;
@@ -7290,19 +5726,13 @@ input[type="checkbox"]:focus {
   content: "";
   position: absolute;
   left: 12px;
-  top: -8px; /* = padding-top ячейки подэтапа */
+  top: -8px;
   bottom: 50%;
   width: 14px;
   border-left: 1px solid var(--tr-border);
   border-bottom: 1px solid var(--tr-border);
   border-bottom-left-radius: 6px;
 }
-.track-substep-status {
-  color: var(--black);
-}
-
-/* Разделительная строка "Разработчик плана: ФИО, тел., email" —
-   во всю ширину таблицы, по центру, курсивом. */
 .track-row-dev td {
   padding: var(--space-10) var(--space-12);
   text-align: center;
@@ -7312,15 +5742,10 @@ input[type="checkbox"]:focus {
   background-color: #F8F9FA;
   border-bottom: 1px solid var(--tr-border);
 }
-
 .track-admin-form {
   display: inline-block;
   margin-left: var(--space-8);
 }
-
-/* ============================================
-   PLAN ACTIONS (вкладка «Действия с планом»)
-   ============================================ */
 .plan-actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -7328,9 +5753,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-16);
   margin-top: var(--space-8);
 }
-/* Вторая сетка "Действий с планом" — те, что меняют его статус (контроль,
-   отправка, подпись, отмена, возврат) — с новой строки, визуально
-   отделена от первой (информационные/печать/редактирование). */
 .plan-actions-grid-status {
   margin-top: 28px;
 }
@@ -7387,7 +5809,6 @@ input[type="checkbox"]:focus {
   border-color: #c0392b;
   box-shadow: 0 4px 14px rgba(192, 57, 43, 0.12);
 }
-
 .plan-action-tile-info {
   cursor: default;
   border-style: dashed;
@@ -7401,20 +5822,9 @@ input[type="checkbox"]:focus {
 .plan-action-tile-info svg {
   color: var(--green-main, #00798f);
 }
-
-/* ============================================
-   CHAT FOOTER (поле ввода сообщения на вкладке «Действия с планом») —
-   прячется, пока у проверяющего есть неразрешённое сообщение с
-   замечаниями (см. applyHasRemarks в plan_actions.html); сама карточка —
-   это уже существующий .bottom_tickets_arrea.
-   ============================================ */
 .chat-footer.has-remarks #sent_mesPlanForm {
   display: none;
 }
-
-/* ============================================
-   TICKETS / MESSAGES
-   ============================================ */
 .tickets-container {
   border: 1px solid var(--telegram-gray);
   border-radius: 12px;
@@ -7426,14 +5836,12 @@ input[type="checkbox"]:focus {
   flex-direction: column;
   overflow: hidden;
 }
-
 .tickets-header {
   position: sticky;
   top: 0;
   background-color: #F8F9FA;
   padding: var(--space-12) var(--space-16) 0 var(--space-16);
 }
-
 .tickets-title {
   display: block;
   text-align: center;
@@ -7470,8 +5878,6 @@ input[type="checkbox"]:focus {
   color: var(--text-subtitle2);
   font-size: 14px;
 }
-/* Панель "Есть ошибки"/"Согласовать" — закреплена внизу того же
-   контейнера с чатом, не прокручивается вместе с сообщениями. */
 .tickets-actions-bar {
   flex: 0 0 auto;
   display: flex;
@@ -7525,7 +5931,6 @@ input[type="checkbox"]:focus {
   background: #e9ebed;
   transform: translateY(-1px);
 }
-
 .tickets-message {
   display: flex;
   max-width: 80%;
@@ -7638,7 +6043,6 @@ input[type="checkbox"]:focus {
 .btn-sender-edit:active {
   transform: scale(0.95);
 }
-
 .message-bubble {
   padding: var(--space-12) var(--space-16);
   border-radius: 18px;
@@ -7675,7 +6079,6 @@ input[type="checkbox"]:focus {
 .bubble-status svg {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
 }
-
 .message-date {
   font-size: 11px;
   color: var(--telegram-text-light);
@@ -7691,13 +6094,6 @@ input[type="checkbox"]:focus {
   position: relative;
   z-index: 2;
 }
-.message-group {
-  margin-bottom: var(--space-8);
-}
-.message-group:first-child .message-date {
-  margin-top: 0;
-}
-
 .tickets-message:hover .message-bubble {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 }
@@ -7707,7 +6103,6 @@ input[type="checkbox"]:focus {
 .tickets-message-right:hover .message-bubble {
   background-color: #E0F2FE;
 }
-
 .no-info-container {
   display: flex;
   flex-direction: column;
@@ -7732,36 +6127,23 @@ input[type="checkbox"]:focus {
 .no-info-conteiner td {
   font-weight: 700;
 }
-
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-8);
 }
-
-.empty-state.stats-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-8);
-  min-height: 200px;
-}
-
 .empty-state svg {
   width: 50px;
   height: 50px;
   color: var(--green-light);
 }
-
 .empty-state h1 {
   font-size: 17px;
   font-weight: 500;
   color: #374151;
   margin-top: var(--space-8);
 }
-
 .empty-state p {
   max-width: 350px;
   font-size: 12px !important;
@@ -7774,7 +6156,6 @@ input[type="checkbox"]:focus {
   margin: 0;
   opacity: 0.7;
 }
-
 .ticket-info-panel {
   position: fixed;
   top: 50%;
@@ -7878,14 +6259,11 @@ input[type="checkbox"]:focus {
   left: 0;
   right: 0;
   bottom: 0;
-
   z-index: 999;
 }
-
 .no-results-row {
   text-align: center;
 }
-
 .no-results-row td {
   font-style: italic;
   text-align: center !important;
@@ -7894,11 +6272,6 @@ input[type="checkbox"]:focus {
   padding: 2ch 0 !important;
   vertical-align: middle;
 }
-
-/* .empty-state внутри строки "ничего не найдено" в поиске по таблице
-   (DirectionsTable.createNoInfoRow) — тот же общий вид пустого
-   состояния, что у уведомлений/списка планов, а не курсив мелким
-   текстом из правила выше. */
 .no-results-row:has(.table-empty-state) td {
   font-style: normal !important;
   padding: 0 !important;
@@ -7910,7 +6283,6 @@ input[type="checkbox"]:focus {
   width: 40px;
   height: 40px;
 }
-
 .bottom_tickets_arrea {
   display: flex;
   flex-direction: row;
@@ -7924,7 +6296,6 @@ input[type="checkbox"]:focus {
   background: var(--blur1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  /* box-shadow: 0 8px 22px 0 rgba(0, 0, 0, 0.1); */
   transition: transform 0.3s ease, opacity 0.3s ease;
   padding: var(--space-4) var(--space-4) var(--space-4) var(--space-20);
 }
@@ -7948,9 +6319,6 @@ input[type="checkbox"]:focus {
   background: var(--transparent);
   box-shadow: none;
 }
-/* required="" + пустое поле изначально — браузеры (особенно Firefox)
-   обводят такие поля красным через :invalid в UA-стилях сами, даже без
-   попытки отправки. Явно убираем. */
 .sent-textarea:invalid,
 .sent-textarea:focus:invalid {
   box-shadow: none;
@@ -8103,93 +6471,11 @@ input[type="checkbox"]:focus {
   color: #d32f2f;
   font-weight: 600;
 }
-
-.answer-highlight {
-  background: var(--green-light-back);
-  padding: var(--space-16) var(--space-24);
-  border-radius: 12px;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  margin: var(--space-24) 0;
-  position: relative;
-  border-left: 3px solid var(--black);
-}
-.highlight-icon {
-  position: absolute;
-  top: -12px;
-  left: -10px;
-  background: var(--black);
-  color: var(--white);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-.answer-highlight p {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-}
-.answer-highlight p strong {
-  font-weight: 600;
-}
-
-/* ============================================
-   REFERENCE BOOKS (SPRAVOCHNIKI)
-   ============================================ */
-.telegram-type-selector {
-  margin-bottom: var(--space-24);
-  background: #f5f6f8;
-  border-radius: 12px;
-  padding: var(--space-4);
-  display: inline-flex;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-.spravoch-btn {
-  padding: var(--space-10) var(--space-20);
-  border: none;
-  background: var(--transparent);
-  color: #5d6c7e;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  min-width: 120px;
-  text-align: center;
-}
-.spravoch-btn:hover {
-  background: rgba(108, 171, 255, 0.1);
-  color: var(--green-main-dark);
-}
-.spravoch-btn.active {
-  background: var(--white);
-  color: var(--green-light);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  font-weight: 600;
-}
-.spravoch-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40%;
-  height: 3px;
-  background: var(--green-light);
-  border-radius: 2px;
-}
 .spravochniki_area {
   max-height: 400px;
   width: 100%;
   overflow-x: auto;
 }
-
 .organizations-table-container {
   width: 100%;
   box-sizing: border-box;
@@ -8255,34 +6541,9 @@ input[type="checkbox"]:focus {
 .organizations-table td:last-child {
   padding-right: var(--space-20);
 }
-.organizations-table .organization-name {
-  font-weight: 500;
-  color: #212121;
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.organizations-table .organization-okpo {
-  color: #757575;
-  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-  font-size: 13px;
-  min-width: 100px;
-}
-.organizations-table .no-data-row td {
-  text-align: center;
-  padding: var(--space-48) var(--space-16);
-  color: #9e9e9e;
-  font-style: italic;
-}
-.organizations-table .no-data-row:hover {
-  background: var(--transparent);
-  cursor: default;
-}
 .organizations-table tbody tr.selected {
   background-color: #e3f2fd !important;
 }
-
 @media (max-width: 768px) {
   .organizations-table-container {
     max-height: 300px;
@@ -8291,11 +6552,7 @@ input[type="checkbox"]:focus {
   .organizations-table td {
     padding: var(--space-12);
   }
-  .organizations-table .organization-name {
-    max-width: 200px;
-  }
 }
-
 .pagination-area {
   display: flex;
   justify-content: center;
@@ -8368,16 +6625,6 @@ input[type="checkbox"]:focus {
 .pagination-btn:hover:not(:disabled) .pagination-icon {
   transform: scale(1.1);
 }
-.no-data {
-  text-align: center;
-  padding: var(--space-40) !important;
-  color: #94a3b8;
-  font-style: italic;
-}
-
-/* ============================================
-   PLAN MENU
-   ============================================ */
 .plan-menu {
   display: flex;
   gap: var(--space-16);
@@ -8411,7 +6658,6 @@ input[type="checkbox"]:focus {
   padding-top: var(--space-8);
   border-top: 1px solid #eff2f5;
 }
-
 .menu-conteiner .element {
   display: inline-flex;
   flex-direction: column;
@@ -8479,21 +6725,18 @@ input[type="checkbox"]:focus {
   pointer-events: none;
   filter: grayscale(0.1);
 }
-
 .menu-conteiner .element svg,
 .menu-conteiner .element img {
   width: 33px;
   height: 33px;
   transition: opacity 0.2s;
 }
-
 .menu-conteiner .element:hover img {
   opacity: 1;
 }
 .menu-conteiner .element.add img {
   opacity: 0.8;
 }
-
 .menu-conteiner form,
 .menu-conteiner button.element {
   margin: 0;
@@ -8511,7 +6754,6 @@ input[type="checkbox"]:focus {
 .menu-conteiner a.element {
   text-decoration: none;
 }
-
 .toggle-status {
   font-size: 10px;
   font-weight: 600;
@@ -8541,7 +6783,6 @@ input[type="checkbox"]:focus {
 .menu-conteiner .element:not(.active) .toggle-status.status-on {
   display: none;
 }
-
 .element-text {
   font-weight: 600;
   font-size: 13px;
@@ -8549,14 +6790,12 @@ input[type="checkbox"]:focus {
   min-width: 80px;
   text-align: center;
 }
-
 @media (max-width: 768px) {
   .menu-conteiner .element {
     padding: var(--space-6) var(--space-12);
     font-size: 12px;
   }
 }
-
 @keyframes pulse-to-click {
   0% {
     box-shadow: 0 0 0 0 rgba(0, 121, 143, 0.4);
@@ -8571,10 +6810,6 @@ input[type="checkbox"]:focus {
     transform: scale(1);
   }
 }
-
-/* ============================================
-   TABLES
-   ============================================ */
 .table-container {
   width: 100%;
   border-radius: 16px;
@@ -8584,13 +6819,7 @@ input[type="checkbox"]:focus {
   scroll-behavior: smooth;
   overflow-y: auto;
   overflow-x: auto;
-  /* scrollbar-width: none; */
 }
-
-/* .table-container::-webkit-scrollbar {
-  display: none;
-} */
-
 .main-table {
   width: 100%;
   border-collapse: separate;
@@ -8599,27 +6828,22 @@ input[type="checkbox"]:focus {
   background: var(--white);
   border-radius: 0;
 }
-
 .main-table thead {
   border-top: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 10;
 }
-
 .main-table tbody tr:last-child td {
   border-bottom: none;
 }
-
 .main-table tbody tr:hover {
   background-color: rgb(245, 245, 245);
   cursor: pointer;
 }
-
 .main-table tbody tr.group-header:hover {
   background-color: rgb(235, 235, 235);
 }
-
 .main-table td {
   padding: var(--space-10) var(--space-16);
   border-bottom: 1px solid var(--border-color-th);
@@ -8628,7 +6852,6 @@ input[type="checkbox"]:focus {
   font-size: 13px;
   text-align: right;
 }
-
 .main-table td:first-child {
   padding-left: var(--space-20);
   border-left: none;
@@ -8638,18 +6861,6 @@ input[type="checkbox"]:focus {
   padding-right: var(--space-20);
   border-right: none;
 }
-.main-table td.stat-valid {
-  background-color: rgba(107, 203, 119, 0.2) !important;
-  position: relative;
-}
-.main-table td.stat-invalid {
-  background-color: rgba(255, 107, 107, 0.2) !important;
-  position: relative;
-}
-.main-table td.stat-no-data {
-  background-color: rgba(255, 217, 61, 0.15) !important;
-  position: relative;
-}
 .main-table input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -8657,12 +6868,10 @@ input[type="checkbox"]:focus {
   margin: 0;
   vertical-align: middle;
 }
-
 .main-table tbody tr {
   animation: fadeInRow 0.3s ease forwards;
   opacity: 0;
 }
-
 @keyframes fadeInRow {
   from {
     opacity: 0;
@@ -8673,7 +6882,6 @@ input[type="checkbox"]:focus {
     transform: translateY(0);
   }
 }
-
 .main-table-titels th {
   padding: var(--space-12) var(--space-12);
   text-align: center;
@@ -8725,9 +6933,6 @@ input[type="checkbox"]:focus {
   opacity: 1;
   color: #0284c7;
 }
-.main-table-titels th.sort-asc a svg {
-  transform: rotate(0deg);
-}
 .main-table-titels th.sort-desc a svg {
   transform: rotate(180deg);
 }
@@ -8743,14 +6948,12 @@ input[type="checkbox"]:focus {
   z-index: 1;
   background: var(--transparent);
 }
-
 .active-row {
   background-color: var(--active-row-color) !important;
 }
 .org-picker-list--radio .active-row {
   background-color: var(--active-row-color-apr) !important;
 }
-
 .vertical-text {
   writing-mode: sideways-lr;
   text-align: center;
@@ -8783,28 +6986,22 @@ input[type="checkbox"]:focus {
   overflow: visible;
   z-index: 2;
 }
-
 .group-header {
   cursor: pointer;
 }
-
 .group-header td {
   padding: var(--space-12) var(--space-16);
   font-weight: 600;
   color: #333;
   background-color: var(--th-background);
   text-align: left;
-  /* border-top: 1px solid var(--border-color) !important;
-  border-bottom: 1px solid var(--border-color) !important; */
 }
-
 .group-header-indicator td {
   padding: var(--space-12) var(--space-16);
   font-weight: 600;
   color: #333;
   text-align: right;
 }
-
 .group-header-content {
   display: flex;
   align-items: center;
@@ -8818,23 +7015,9 @@ input[type="checkbox"]:focus {
 .group-header.active .group-header-content svg {
   transform: rotate(180deg);
 }
-
-/* .total-row {
-  border-bottom: 1px solid var(--border-color) !important;
-  border-top: 1px solid var(--border-color) !important;
-}
-
-.main-table.rows{
-  border-bottom: 1px solid var(--border-color) !important;
-  border-top: 1px solid var(--border-color) !important;
-
-} */
-
 .total-row td {
-
   font-weight: 600;
 }
-
 .edit-header-icon {
   cursor: pointer;
   opacity: 0.3;
@@ -8851,65 +7034,6 @@ input[type="checkbox"]:focus {
   height: 14px;
   stroke: #666;
 }
-
-.header-edit-input {
-  width: 100px;
-  padding: var(--space-4) var(--space-8);
-  border: 1px solid var(--green-light);
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: inherit;
-  text-align: center;
-  background: var(--white);
-}
-.header-edit-input:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 155, 182, 0.2);
-}
-
-.stat-icon {
-  font-size: 16px;
-  margin-left: var(--space-4);
-  cursor: help;
-}
-
-/* ============================================
-   TYPE BUTTONS
-   ============================================ */
-.type-buttons {
-  display: flex;
-  gap: var(--space-10);
-  margin-bottom: var(--space-20);
-  overflow-x: auto;
-  padding-bottom: var(--space-10);
-}
-.type-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  background-color: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-.type-button:hover {
-  background-color: #eee;
-}
-.type-button.active {
-  background: var(--black);
-  color: var(--white);
-}
-
-/* ============================================
-   MODALS
-   ============================================ */
 .modal {
   opacity: 0;
   visibility: hidden;
@@ -8925,18 +7049,15 @@ input[type="checkbox"]:focus {
   justify-content: center;
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
-
 .modal.active {
   opacity: 1;
   visibility: visible;
 }
-
 .modal.active-delay {
   opacity: 1;
   visibility: visible;
   animation: modalFadeIn 0.7s ease forwards;
 }
-
 @keyframes modalFadeIn {
   0% {
     opacity: 0;
@@ -8951,14 +7072,10 @@ input[type="checkbox"]:focus {
     visibility: visible;
   }
 }
-
 .modal-content {
   z-index: 999;
   isolation: isolate;
   overflow: hidden;
-  /* background: var(--glass-surface-bg); */
-  /* backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%); */
   background-color: white;
   border-radius: var(--card-radius);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
@@ -8971,32 +7088,24 @@ input[type="checkbox"]:focus {
   transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
   border: 1px solid var(--glass-surface-border);
 }
-
 .modal-content::before {
   content: '';
   position: absolute;
   inset: -60%;
   z-index: -1;
-  /* background:
-    radial-gradient(circle at 15% 15%, var(--glass-tint-1), transparent 55%),
-    radial-gradient(circle at 85% 90%, var(--glass-tint-2), transparent 55%); */
   filter: blur(40px);
 }
-
 .modal.active .modal-content {
   opacity: 1;
   transform: scale(1);
 }
-
 .modal.active-delay .modal-content {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
-
 .modal:not(.active) .modal-content {
   transition: all 0.3s cubic-bezier(0.6, -0.28, 0.74, 0.05);
 }
-
 .modal-header {
   display: flex;
   text-align: center;
@@ -9007,17 +7116,10 @@ input[type="checkbox"]:focus {
   font-weight: 500;
   color: var(--black);
 }
-
 .modal-header h1 {
   font-size: 15.75px;
   font-weight: 500;
 }
-
-.modal-header-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .modal-header .close {
   background: rgba(32, 32, 32, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -9034,15 +7136,11 @@ input[type="checkbox"]:focus {
   z-index: 1;
   fill: var(--white);
 }
-
 .modal-header .close:hover {
   background: rgba(255, 0, 0, 0.8);
   border-color: var(--border-color);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
-
-/* Переключатель расположения полей формы (1 столбец / 2 столбца)
-   в модалках добавления/редактирования мероприятия — см. plan_events.html */
 .layout-toggle-btn {
   position: absolute;
   top: 20px;
@@ -9061,41 +7159,36 @@ input[type="checkbox"]:focus {
   transition: 0.2s all ease-out;
   z-index: 1;
 }
-
 .layout-toggle-btn:hover {
   border-color: var(--green-light);
   color: var(--green-light);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
-
 .layout-toggle-btn svg {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
-
-.layout-toggle-btn .icon-one-col { display: none; }
-
-.modal-content.single-column .layout-toggle-btn .icon-two-col { display: none; }
-.modal-content.single-column .layout-toggle-btn .icon-one-col { display: block; }
-
-/* скрыт на шагах формы без пар полей в 2 столбца (переключается в plan.js) */
-.layout-toggle-btn.is-hidden { display: none; }
-
+.layout-toggle-btn .icon-one-col {
+  display: none;
+}
+.modal-content.single-column .layout-toggle-btn .icon-two-col {
+  display: none;
+}
+.modal-content.single-column .layout-toggle-btn .icon-one-col {
+  display: block;
+}
+.layout-toggle-btn.is-hidden {
+  display: none;
+}
 .modal-content.single-column .row-app-group {
   flex-direction: column;
   gap: 0;
 }
-
-/* ============================================
-   YEAR PICKER — кастомная панель выбора года
-   (создание/редактирование плана, см. macros/components.html)
-   ============================================ */
 .year-picker {
   position: relative;
   width: 100%;
 }
-
 .year-picker-trigger {
   display: flex;
   align-items: center;
@@ -9106,18 +7199,15 @@ input[type="checkbox"]:focus {
   font-family: inherit;
   cursor: pointer;
 }
-
 .year-picker-trigger:focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: var(--white);
 }
-
 .year-picker.open .year-picker-trigger {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
   background-color: var(--white);
 }
-
 .year-picker-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -9135,11 +7225,9 @@ input[type="checkbox"]:focus {
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
 }
-
 .year-picker.open .year-picker-panel {
   display: grid;
 }
-
 .year-picker-option {
   display: flex;
   flex-direction: column;
@@ -9155,22 +7243,18 @@ input[type="checkbox"]:focus {
   text-align: center;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-
 .year-picker-option:hover:not(.disabled) {
   background-color: var(--background-grey);
 }
-
 .year-picker-option.selected {
   background-color: var(--green-main);
   color: var(--white);
 }
-
 .year-picker-option.disabled {
   color: var(--color-readonly);
   cursor: not-allowed;
   background-color: var(--background-grey-opa);
 }
-
 .year-picker-option-tag {
   font-size: 9px;
   font-weight: 600;
@@ -9178,64 +7262,34 @@ input[type="checkbox"]:focus {
   letter-spacing: 0.03em;
   opacity: 0.75;
 }
-
 @media (max-width: 480px) {
   .year-picker-panel {
     grid-template-columns: repeat(3, 1fr);
   }
 }
-
 .modal-subtext {
   font-size: 14px;
   color: var(--text-subtitle2);
 }
-
 .modal-subtext .first-child {
   margin-bottom: var(--space-10);
 }
-
 .modal-body {
   max-height: 90vh;
 }
-
 .modal-body hr {
   margin: var(--space-16) 0 !important;
   border: none;
   height: 1px;
   background: linear-gradient(90deg, var(--transparent), #e5e7eb 20%, #e5e7eb 80%, var(--transparent));
 }
-
 .modal-step[style*="display: none"] {
   display: none !important;
 }
-
-.step-description p,
-.empty-message{
+.step-description p {
   font-size: 13px;
   margin-bottom: var(--space-10);
 }
-.selected-org-list .empty-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-6);
-  width: 100%;
-  padding: var(--space-16) var(--space-10);
-  margin-bottom: 0;
-  color: var(--text-subtitle, #6b7480);
-}
-.selected-org-list .empty-message svg {
-  width: 26px;
-  height: 26px;
-  opacity: 0.45;
-}
-.step-description p.step-note {
-  font-size: 12px;
-  color: var(--text-subtitle, #6b7480);
-  margin-top: -4px;
-}
-
 .plan-send-warning {
   display: flex;
   align-items: flex-start;
@@ -9260,8 +7314,6 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   margin-bottom: var(--space-2);
 }
-/* «Некому рассмотреть план» на «Действиях с планом» (руководитель без
-   исполнителя/руководителя подразделения) — ссылка в профиль */
 .plan-actions-staff-warning p {
   margin: 0;
 }
@@ -9277,11 +7329,6 @@ input[type="checkbox"]:focus {
   outline: 2px solid var(--green-main);
   outline-offset: 2px;
 }
-
-/* Выбор руководителя-подписанта (plan_send.html, шаг 4) — свой
-   контейнер вместо <select>, чтобы пункт можно было оформить в два
-   ряда (ФИО + должность/роль), как в списке согласующих организаций
-   на предыдущих шагах того же визарда. */
 .signer-picker {
   position: relative;
 }
@@ -9335,7 +7382,6 @@ input[type="checkbox"]:focus {
 .signer-picker.active .signer-picker-toggle svg {
   transform: rotate(180deg);
 }
-
 .signer-picker-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -9358,7 +7404,6 @@ input[type="checkbox"]:focus {
   visibility: visible;
   transform: translateY(0);
 }
-
 .signer-picker-item {
   display: flex;
   flex-direction: column;
@@ -9383,14 +7428,12 @@ input[type="checkbox"]:focus {
   font-size: 12.5px;
   color: var(--text-subtitle, #7f8c8d);
 }
-
 #period-step {
   display: none;
 }
 #period-step[style*="display: block"] {
   display: block !important;
 }
-
 .modal-buttons-area {
   width: 100%;
   display: flex;
@@ -9399,7 +7442,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-8);
   margin-top: var(--space-20);
 }
-
 .close-btn svg {
   width: 23px;
   height: 23px;
@@ -9415,15 +7457,12 @@ input[type="checkbox"]:focus {
 .close-btn svg:active {
   background: rgba(128, 128, 128, 0.5);
 }
-
-/* ---------- Отправка плана на рассмотрение (страница) ---------- */
 .plan-send-stepper {
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: var(--space-6);
   margin: 0 0 var(--space-20);
-
 }
 .plan-send-step-dot {
   display: flex;
@@ -9474,10 +7513,6 @@ input[type="checkbox"]:focus {
   margin-top: var(--space-16);
   max-width: 60px;
 }
-
-/* ---------- Путь согласования: выбор слева, маршрут справа ----------
-   Всё под .plan-send-page — org-picker/stepper используются ещё на
-   регистрации и других страницах, их общий вид здесь не меняем. */
 .plan-send-page .ps-head {
   display: flex;
   align-items: center;
@@ -9485,17 +7520,9 @@ input[type="checkbox"]:focus {
   gap: var(--space-16);
   flex-wrap: wrap;
 }
-/* Вкладки, подсказка и поиск — отдельными строками слева, а список
-   организаций и правая панель (маршрут + кто подпишет) — в одной строке
-   сетки, поэтому у них общий верх и общая высота. Для этого обёртки
-   (.ps-main, #step1, видимая .ps-picker) растворяются в сетке
-   (display: contents), их дети становятся ячейками. */
 .ps-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  /* 1 вкладки, 2 подсказка, 3 поиск — по содержимому; 4 список — 1fr:
-     если панель справа выше левой колонки, растёт только список, а не
-     строки вкладок/поиска */
   grid-template-rows: auto auto auto 1fr;
   column-gap: var(--space-20);
   align-items: stretch;
@@ -9517,11 +7544,8 @@ input[type="checkbox"]:focus {
 }
 .ps-layout .ps-route {
   grid-column: 2;
-  grid-row: 1 / -1;     /* от верха вкладок до низа списка */
+  grid-row: 1 / -1;
 }
-/* список — по высоте содержимого, но не выше --ps-list-max (дальше
-   прокрутка); не растягивается на высоту строки сетки, чтобы при паре
-   найденных организаций под ними не было пустой рамки */
 .ps-layout .org-picker {
   --ps-list-max: 440px;
   display: flex;
@@ -9532,13 +7556,9 @@ input[type="checkbox"]:focus {
 .ps-layout .ps-picker-tools {
   margin-bottom: var(--space-10);
 }
-/* Названия в списке — заглавными: большинство организаций в базе уже
-   записаны так (как в ЕГР), остальные приводим к тому же виду, чтобы
-   список не был вперемешку. Данные не меняются — только отображение. */
 .ps-layout .org-picker-name {
   text-transform: uppercase;
 }
-/* Вкладки «Утверждающая / Согласующие» — на всю ширину, поровну. */
 .ps-tabs {
   display: flex;
   width: 100%;
@@ -9604,7 +7624,6 @@ input[type="checkbox"]:focus {
   font-weight: 400;
   color: var(--text-subtitle, #6b7480);
 }
-/* поиск и сортировка — одной строкой над списком */
 .ps-picker-tools {
   display: flex;
   align-items: center;
@@ -9615,8 +7634,6 @@ input[type="checkbox"]:focus {
   flex: 1 1 260px;
   min-width: 0;
 }
-/* «Сортировка» — .custom-dropdown (как фильтры в списке планов); пункты
-   здесь кнопки (доступны с клавиатуры), сбрасываем им вид кнопки. */
 .ps-sort {
   flex-shrink: 0;
   z-index: 5;
@@ -9630,8 +7647,6 @@ input[type="checkbox"]:focus {
 .ps-sort:not(.has-value) .selected-option {
   color: var(--text-subtitle, #6b7480);
 }
-/* Открытое меню base.js ставит в position: fixed — проценты тогда
-   считаются от окна, поэтому ширина по содержимому, не уже кнопки. */
 .ps-sort .dropdown-menu-filter {
   width: max-content;
   min-width: 170px;
@@ -9662,7 +7677,6 @@ input[type="checkbox"]:focus {
   outline: 2px solid var(--green-main);
   outline-offset: 2px;
 }
-/* маршрут прошлого раза */
 .ps-prefill {
   display: flex;
   align-items: center;
@@ -9705,36 +7719,18 @@ input[type="checkbox"]:focus {
   line-height: 1.45;
   color: var(--text-subtitle, #6b7480);
 }
-/* Нейтральный список организаций: белый, с обычной рамкой — без
-   бирюзовых градиентов и подписи капсом. */
 .ps-layout .org-picker,
 .ps-layout .org-picker:has(.org-picker-list--radio) {
   border-color: var(--border-color);
   border-radius: var(--panel-radius);
   box-shadow: none;
 }
-.ps-layout .org-picker-toolbar,
-.ps-layout .org-picker:has(.org-picker-list--radio) .org-picker-toolbar {
-  background: var(--white);
-  border-bottom-color: var(--border-color);
-  flex-wrap: wrap;
-}
-.ps-layout .org-picker-toolbar-label {
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 12px;
-  font-weight: 500;
-}
 .ps-layout .org-picker-list {
   flex: 0 1 auto;
   height: auto;
   max-height: var(--ps-list-max);
 }
-
-/* Панель маршрута — светлый оттенок фирменного зелёного (--green-main),
-   чтобы её сразу замечали; разделители и вложенные плашки — тем же тоном. */
 .ps-layout {
-  /* зелёный оттенок панели маршрута и вкладок — один на обоих */
   --ps-tint-bg: color-mix(in srgb, var(--green-main) 7%, var(--white));
   --ps-tint-line: color-mix(in srgb, var(--green-main) 28%, var(--white));
 }
@@ -9766,7 +7762,6 @@ input[type="checkbox"]:focus {
   font-weight: 600;
   color: var(--black);
 }
-/* пояснение под «Маршрут плана» — как под «Кто подпишет» */
 .ps-route-title:has(+ .ps-route-intro) {
   margin-bottom: var(--space-4);
 }
@@ -9785,7 +7780,6 @@ input[type="checkbox"]:focus {
   gap: var(--space-10);
   padding-bottom: var(--space-16);
 }
-/* соединительная линия между этапами */
 .ps-route-item:not(:last-child)::before {
   content: "";
   position: absolute;
@@ -9892,8 +7886,6 @@ input[type="checkbox"]:focus {
   outline: 2px solid var(--green-main);
   outline-offset: 2px;
 }
-/* «Кто подпишет» — второй раздел панели, сразу после маршрута; форма
-   тянется до низа панели, кнопка отправки — в самом низу. */
 .ps-sign {
   display: flex;
   flex-direction: column;
@@ -9917,7 +7909,7 @@ input[type="checkbox"]:focus {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  margin-top: auto;     /* к низу панели, которая тянется до высоты списка */
+  margin-top: auto;
   padding-top: var(--space-16);
 }
 .ps-route-footer .main-btn {
@@ -9948,7 +7940,6 @@ input[type="checkbox"]:focus {
     --ps-list-max: 340px;
   }
 }
-
 .certificate-status {
   display: none;
   align-items: center;
@@ -9977,8 +7968,6 @@ input[type="checkbox"]:focus {
   margin-right: var(--space-6);
   border-width: 2px;
 }
-
-/* ---------- Выбор организаций (карточки вместо таблицы) ---------- */
 .org-picker {
   margin-top: var(--space-10);
   border-radius: var(--panel-radius);
@@ -9990,58 +7979,6 @@ input[type="checkbox"]:focus {
 .org-picker:has(.org-picker-list--radio) {
   border-color: rgba(0, 103, 72, 0.14);
 }
-.org-picker-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-10) var(--space-12);
-  background: linear-gradient(135deg, #f5fcfd 0%, #eaf8fb 100%);
-  border-bottom: 1px solid rgba(0, 121, 143, 0.14);
-}
-.org-picker:has(.org-picker-list--radio) .org-picker-toolbar {
-  background: linear-gradient(135deg, #f5fdf9 0%, #eafbf1 100%);
-  border-bottom-color: rgba(0, 103, 72, 0.14);
-}
-.org-picker-toolbar-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-subtitle, #6b7480);
-  margin-right: var(--space-2);
-}
-.org-picker-sort-btn {
-  border: 1px solid var(--border-color);
-  background: var(--white);
-  color: var(--text-subtitle2);
-  font-size: 12px;
-  font-weight: 500;
-  padding: var(--space-4) var(--space-12);
-  border-radius: 100px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-4);
-  transition: all 0.2s ease;
-}
-.org-picker-sort-btn:hover {
-  border-color: var(--green-main);
-  color: var(--green-main-dark);
-}
-.org-picker-sort-btn.org-picker-sort-btn--active {
-  background: var(--green-main);
-  border-color: var(--green-main);
-  color: var(--white);
-}
-.org-picker-sort-btn.org-picker-sort-btn--active::after {
-  content: '↑';
-  display: inline-block;
-  transition: transform 0.2s ease;
-}
-.org-picker-sort-btn.org-picker-sort-btn--active.org-picker-sort-btn--desc::after {
-  transform: rotate(180deg);
-}
-
 .org-picker-list {
   height: 300px;
   overflow-y: auto;
@@ -10061,7 +7998,6 @@ input[type="checkbox"]:focus {
 .org-picker-list::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
-
 .org-picker-row {
   position: relative;
   display: flex;
@@ -10139,7 +8075,6 @@ input[type="checkbox"]:focus {
   background: var(--color-control, var(--green-main));
   border-color: var(--color-control, var(--green-main));
 }
-
 .org-picker-info {
   display: flex;
   flex-direction: column;
@@ -10169,7 +8104,6 @@ input[type="checkbox"]:focus {
   margin-left: var(--space-8);
   color: var(--border-color);
 }
-
 .org-picker-loading-row {
   display: flex;
   align-items: center;
@@ -10178,7 +8112,6 @@ input[type="checkbox"]:focus {
   font-size: 12.5px;
   color: var(--text-subtitle2);
 }
-
 .org-picker-empty-row {
   display: flex;
   flex-direction: column;
@@ -10195,7 +8128,6 @@ input[type="checkbox"]:focus {
   height: 28px;
   opacity: 0.5;
 }
-
 .progress-modal-bar-container {
   width: 100%;
   height: 6px;
@@ -10210,9 +8142,6 @@ input[type="checkbox"]:focus {
   border-radius: 3px;
   transition: width 0.3s ease;
 }
-
-/* .table-container,
-.main-table, */
 .modal-table-conteiner {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -10225,9 +8154,6 @@ input[type="checkbox"]:focus {
   overflow-x: auto;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
-
-
-
 .modal-table-conteiner::-webkit-scrollbar {
   width: 6px;
 }
@@ -10242,7 +8168,6 @@ input[type="checkbox"]:focus {
 .modal-table-conteiner::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
-
 .modal-table-main {
   width: 100%;
   border-spacing: 0;
@@ -10322,14 +8247,10 @@ input[type="checkbox"]:focus {
 .modal-table-main tr.selected {
   background: var(--active-row-color);
 }
-.modal-table-main .modal-tbody {
-  height: 400px;
-}
 .modal-table-main tbody tr.active-row .coordinator-checkbox,
 .modal-table-main tbody tr.active-row .approver-checkbox {
   accent-color: #3b82f6;
 }
-
 .loading-spinner {
   display: inline-block;
   width: 20px;
@@ -10341,7 +8262,6 @@ input[type="checkbox"]:focus {
   margin-right: var(--space-8);
   vertical-align: middle;
 }
-
 .error-message-small {
   color: red;
   font-weight: 500;
@@ -10349,22 +8269,18 @@ input[type="checkbox"]:focus {
   margin-top: var(--space-4);
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
 }
-
 button[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .submit-button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 #modal-title {
   font-weight: 600;
   font-size: 17px !important;
 }
-
 .export-progress-modal {
   position: fixed;
   top: 0;
@@ -10406,332 +8322,235 @@ button[disabled] {
   margin: 0;
   text-align: center;
 }
-
-
 .info-modal-content {
-    border-radius: 20px;
-    background-color: rgb(255, 255, 255);
-    border: 1px solid rgb(255, 255, 255);
-    width: fit-content;
-    height: fit-content;
-    min-width: 400px;
-    max-width: 1100px;
-    max-height: 80vh;
-    position: relative;
-    margin: 0 var(--space-10);
-    opacity: 0;
-    transform: scale(0.8) translateY(20px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    margin: 0;
+  border-radius: 20px;
+  background-color: rgb(255, 255, 255);
+  border: 1px solid rgb(255, 255, 255);
+  width: fit-content;
+  height: fit-content;
+  min-width: 400px;
+  max-width: 1100px;
+  max-height: 80vh;
+  position: relative;
+  margin: 0 var(--space-10);
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  margin: 0;
 }
-
 .modal.active .info-modal-content {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
-
 .modal-slides-container {
-    position: relative;
-    width: 100%;
+  position: relative;
+  width: 100%;
 }
-
 .slide-layout {
-    display: flex;
-    gap: var(--space-20);
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    box-sizing: border-box;
+  display: flex;
+  gap: var(--space-20);
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
-
 .slide-info {
-    flex: 1 1 50%;
-    max-width: 50%;
-    padding-left: var(--space-40);
+  flex: 1 1 50%;
+  max-width: 50%;
+  padding-left: var(--space-40);
 }
-
 .slide-counter {
-    position: absolute;
-    top: 30px;
-    left: 30px;
-    font-size: 1.1rem;
-    color: #000000;
-    margin: 0;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    opacity: 0.9;
-    z-index: 2;
-    background-color: rgba(0, 0, 0, 0.1);
-    padding: var(--space-10);
-    border-radius: 10px;
-    
-}   
-
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  font-size: 1.1rem;
+  color: #000000;
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.9;
+  z-index: 2;
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: var(--space-10);
+  border-radius: 10px;
+}
 .instruction-link {
-    color: var(--blue-txt-link);
-    text-decoration: none; 
-    font-weight: 600;
-    transition: all 0.2s ease;
-    border-bottom: 1px solid transparent; 
-    cursor: pointer;
+  color: var(--blue-txt-link);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
 }
-
 .instruction-link:hover {
-    color: #0056b3;
-    border-bottom-color: currentColor; 
-    text-decoration: none;
+  color: #0056b3;
+  border-bottom-color: currentColor;
+  text-decoration: none;
 }
-
 .instruction-link:active {
-    color: #004085;
-    transform: translateY(1px);
+  color: #004085;
+  transform: translateY(1px);
 }
-
 .slide-info h3 {
-    color: #000000;
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin: 0 0 var(--space-16) 0;
-    letter-spacing: -0.3px;
+  color: #000000;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0 0 var(--space-16) 0;
+  letter-spacing: -0.3px;
 }
-
 .slide-info p {
-    color: #757575;
-    line-height: 1.6;
-    margin-bottom: var(--space-20);
-    font-size: 1rem;
+  color: #757575;
+  line-height: 1.6;
+  margin-bottom: var(--space-20);
+  font-size: 1rem;
 }
-
-.slide-info ul, 
+.slide-info ul,
 .slide-info ol {
-    color: #2d3748;
-    line-height: 1.8;
-    padding-left: 0;
-    margin-bottom: var(--space-24);
-    list-style: none;
+  color: #2d3748;
+  line-height: 1.8;
+  padding-left: 0;
+  margin-bottom: var(--space-24);
+  list-style: none;
 }
-
 .slide-info ul li {
-    margin-bottom: var(--space-4);
-    padding-left: 28px;
-    position: relative;
+  margin-bottom: var(--space-4);
+  padding-left: 28px;
+  position: relative;
 }
-
 .slide-info ul li::before {
-    content: "●";
-    color: #4299e1;
-    font-size: 18px;
-    position: absolute;
-    left: 0;
-    top: -2px;
+  content: "●";
+  color: #4299e1;
+  font-size: 18px;
+  position: absolute;
+  left: 0;
+  top: -2px;
 }
-
 .slide-info ol {
-    counter-reset: item;
+  counter-reset: item;
 }
-
 .slide-info ol li {
-    counter-increment: item;
-    margin-bottom: var(--space-4);
-    padding-left: 28px;
-    position: relative;
+  counter-increment: item;
+  margin-bottom: var(--space-4);
+  padding-left: 28px;
+  position: relative;
 }
-
 .slide-image {
-    flex: 1 1 50%;
-    max-width: 50%;
-    display: flex;
-    justify-content: right;
-    align-items: center;    
-    margin: var(--space-10);
-    margin-left: none;
-    background: rgb(243, 243, 243);
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
+  flex: 1 1 50%;
+  max-width: 50%;
+  display: flex;
+  justify-content: right;
+  align-items: center;
+  margin: var(--space-10);
+  margin-left: none;
+  background: rgb(243, 243, 243);
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
 }
-
 .image-placeholder {
-    width: 100% !important;
-    max-width: 800px;
-    height: auto;
-    aspect-ratio: 1/1;
-
-    padding: var(--space-10);
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    overflow: hidden;
+  width: 100% !important;
+  max-width: 800px;
+  height: auto;
+  aspect-ratio: 1/1;
+  padding: var(--space-10);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
-
-
 .image-placeholder img {
-    width: 100%;
-    height: auto;
-    transform: scale(1.6);
-    transform-origin: left;
-    object-fit: cover;
-    box-sizing: border-box;
-    border-radius: 12px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-
+  width: 100%;
+  height: auto;
+  transform: scale(1.6);
+  transform-origin: left;
+  object-fit: cover;
+  box-sizing: border-box;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
-
-.video-play-button {
-    position: absolute;
-    width: 70px;
-    height: 70px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-    border: none;
-    z-index: 2;
-}
-
-.video-play-button:hover {
-    transform: scale(1.1);
-    background: #ffffff;
-}
-
-.video-play-button svg {
-    width: 30px;
-    height: 30px;
-}
-
-.video-play-button svg path {
-    fill: #333;
-}
-
-
 .slides-navigation-vertical {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
-
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
 }
-
 .slide-prev-vertical,
 .slide-next-vertical {
-    pointer-events: auto;
-    background: rgba(32, 32, 32, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 100px;
-    width: 48px;
-    height: 48px;
-    font-size: 1.5rem;
-    margin: 0 -24px;
-    cursor: pointer;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  background: rgba(32, 32, 32, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+  margin: 0 -24px;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-
 .slide-prev-vertical svg,
-.slide-next-vertical svg{
-    width: 24px;
-    height: 24px;
-
+.slide-next-vertical svg {
+  width: 24px;
+  height: 24px;
 }
-
 .slide-prev-vertical:hover,
 .slide-next-vertical:hover {
-    background: var(--green-back-gradient);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  background: var(--green-back-gradient);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
-
 .slide-prev-vertical:active,
 .slide-next-vertical:active {
-    transform: scale(0.95);
+  transform: scale(0.95);
 }
-
 @keyframes slideFadeInfoModal {
-    from {
-        opacity: 0;
-        transform: translateX(40px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
-
 .modal-slide {
-    display: none;
-    animation: slideFadeInfoModal 0.4s ease;
+  display: none;
+  animation: slideFadeInfoModal 0.4s ease;
 }
-
 .modal-slide.active {
-    display: block;
+  display: block;
 }
-
-.info-modal-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.info-modal-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
-}
-
-.info-modal-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-}
-
-.info-modal-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.modal_table .but_tr td:first-child {
-    text-align: left;
-}
-
-.modal_table .but_tr td:last-child {
-    text-align: right;
-}
-
 .close {
-    background: rgba(32, 32, 32, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 100px;
-    width: 22px;
-    height: 22px;
-    padding: var(--space-8);
-    position: absolute;
-    color: white;
-    top: 20px;
-    right: 20px;    
-    cursor: pointer;
-    transition: 0.3s all ease-out;
-    z-index: 1;
-    fill: white;
+  background: rgba(32, 32, 32, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  width: 22px;
+  height: 22px;
+  padding: var(--space-8);
+  position: absolute;
+  color: white;
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+  transition: 0.3s all ease-out;
+  z-index: 1;
+  fill: white;
 }
-
 .close:hover {
-    background: rgba(255, 0, 0, 0.8);
-    border-color: var(--border-color);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 0, 0, 0.8);
+  border-color: var(--border-color);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
-
-/* ============================================
-   WHITE PANEL / DROPDOWN
-   ============================================ */
 .white-panel {
   display: none;
   position: absolute;
@@ -10842,179 +8661,19 @@ button[disabled] {
 .white-panel button:last-child:disabled:hover svg {
   color: #94a3b8;
 }
-
 .btn-disabled {
   opacity: 0.5 !important;
-
   cursor: not-allowed !important;
 }
 .disabled {
   pointer-events: none;
 }
-
 #resend-code-btn {
   transition: all 0.3s ease;
 }
 #resend-code-btn:not(.disabled):hover {
   text-decoration: underline;
 }
-
-/* ============================================
-   SELECTED ORGANIZATIONS
-   ============================================ */
-.selected-organizations {
-  position: relative;
-  margin: var(--space-16) 0;
-  padding: var(--panel-pad);
-  background: linear-gradient(135deg, #f5fcfd 0%, #eaf8fb 100%);
-  border: 1px solid rgba(0, 121, 143, 0.12);
-  border-radius: var(--panel-radius);
-  transition: all 0.3s ease;
-}
-
-.selected-organizations.approver {
-  background: linear-gradient(135deg, #f5fdf9 0%, #eafbf1 100%);
-  border-color: rgba(0, 103, 72, 0.12);
-}
-.selected-organizations.approver::before {
-  background: var(--color-control, var(--green-main));
-}
-.selected-organizations h4 {
-  margin: 0 0 var(--space-10) 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-.selected-organizations h4 svg {
-  width: 16px;
-  height: 16px;
-}
-/* .selected-organizations h4::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(to right, #e2e8f0, var(--transparent));
-} */
-
-.selected-organizations-hint {
-  font-size: 11.5px;
-  color: var(--text-subtitle, #6b7480);
-  margin: -4px 0 var(--space-8);
-}
-
-.selected-org-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  min-height: 36px;
-}
-.selected-org-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
-  padding: var(--space-8) var(--space-10);
-  background: rgba(255, 255, 255, 0.65);
-  border-radius: 10px;
-  transition: background-color 0.15s ease, transform 0.15s ease;
-  animation: tagAppear 0.25s ease-out;
-}
-.selected-org-row:hover {
-  background: rgba(255, 255, 255, 0.95);
-}
-.selected-org-order {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--green-main);
-  color: var(--white);
-  font-size: 11px;
-  font-weight: 700;
-}
-.selected-org-order--check svg {
-  width: 12px;
-  height: 12px;
-}
-.selected-org-row--approver .selected-org-order {
-  background: var(--color-control, var(--green-main));
-}
-.selected-org-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--black);
-  line-height: 1.35;
-  word-break: break-word;
-}
-.selected-org-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.selected-org-remove svg {
-  width: 12px;
-  height: 12px;
-  color: #64748b;
-  transition: color 0.2s ease;
-}
-.selected-org-remove:hover {
-  background: rgba(220, 38, 38, 0.15);
-  transform: scale(1.08);
-}
-.selected-org-remove:hover svg {
-  color: #dc2626;
-}
-
-.selected-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  background: var(--green-element-gradient);
-  color: var(--color-green-text-main);
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: auto;
-}
-.selected-count.approver-count {
-  background: var(--green-element-gradient-apr);
-  color: var(--color-control);
-}
-
-@keyframes tagAppear {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ============================================
-   DROP CERTIFICATE
-   ============================================ */
 .drop-certificate-container {
   margin: var(--space-20) 0;
   width: 100%;
@@ -11078,232 +8737,6 @@ button[disabled] {
   opacity: 0;
   visibility: hidden;
 }
-
-/* ============================================
-   ПРОВЕРКА ЭЦП — прототип (шаг 4 отправки плана)
-   Чисто визуальный макет будущего функционала: выбор способа подписания
-   (аппаратный ключ — демо-анимация, сертификат — демо-проверка), без
-   реальной серверной валидации. См. EcpMockModal (static/js/ecp-mock-modal.js)
-   и macros/components.html :: ecp_mock_modal().
-   ============================================ */
-.ecp-check-prompt {
-  display: flex;
-  align-items: center;
-  gap: var(--space-32);
-  padding: 28px;
-  border-radius: 18px;
-  border: 1px solid var(--border-color);
-  background: linear-gradient(135deg, var(--blur2) 0%, rgba(0, 121, 143, 0.07) 100%);
-}
-.ecp-check-prompt-visual {
-  flex-shrink: 0;
-  width: 400px;
-  height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ecp-key-hero {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ecp-key-hero::before {
-  content: '';
-  position: absolute;
-  width: 68%;
-  height: 68%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 121, 143, 0.28) 0%, transparent 72%);
-  animation: ecpKeyHeroGlow 2.6s ease-in-out infinite;
-  transition: opacity 0.4s ease;
-}
-.ecp-key-hero.is-open::before {
-  opacity: 0;
-  animation: none;
-}
-/* Ключ собран из обычных div'ов (а не SVG) именно для того, чтобы у
-   каждого прямоугольника (стержень, зубцы) можно было задавать border-radius
-   как у любого HTML-блока — включая разный радиус по каждому углу (SVG rect
-   умеет только один rx/ry сразу на все 4 угла). Координаты — те же, что
-   были в SVG viewBox 0 0 200 200: 200×200-блок масштабируется transform:
-   scale(1.1) до тех же ~220px (55% от ecp-check-prompt-visual: 400px). */
-.ecp-key-hero-shape {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  transform: scale(1.1);
-  transform-origin: center center;
-  color: var(--green-light);
-  filter: drop-shadow(0 10px 18px rgba(0, 121, 143, 0.28));
-  animation: ecpKeyHeroFloat 3.2s ease-in-out infinite;
-}
-.ecp-key-hero-ring {
-  position: absolute;
-  left: 20.5px;
-  top: 58.5px;
-  width: 83px;
-  height: 83px;
-  box-sizing: border-box;
-  border: 11px solid currentColor;
-  border-radius: 50%;
-}
-.ecp-key-hero-shaft {
-  position: absolute;
-  left: 94px;
-  top: 91px;
-  width: 82px;
-  height: 18px;
-  background: currentColor;
-  border-radius: 0 0 0 5px;
-}
-.ecp-key-hero-tooth {
-  position: absolute;
-  width: 13px;
-  background: currentColor;
-}
-.ecp-key-hero-tooth-1 {
-  left: 142px;
-  top: 109px;
-  height: 24px;
-  border-radius: 0 0 3px 3px;
-}
-.ecp-key-hero-tooth-2 {
-  left: 163px;
-  top: 109px;
-  height: 32px;
-  /* top-left top-right bottom-right bottom-left — верх скруглён, низ прямой */
-  border-radius:  0 0 3px 3px;
-}
-@keyframes ecpKeyHeroFloat {
-  0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50% { transform: translateY(-18px) rotate(4deg); }
-}
-@keyframes ecpKeyHeroGlow {
-  0%, 100% { opacity: 0.45; transform: scale(0.88); }
-  50% { opacity: 1; transform: scale(1.08); }
-}
-
-/* Успешная проверка ЭЦП — без двери: ключ просто перестаёт парить,
-   опускается и слегка покачивается, "приземляясь" (ecpKeyDrop), а кнопка
-   рядом плавно гаснет — см. EcpMockModal.onSuccess в plan_send.js
-   (навешивает is-open на #ecpKeyHero и is-done на кнопку). */
-.ecp-key-hero.is-open .ecp-key-hero-shape {
-  animation: ecpKeyDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-@keyframes ecpKeyDrop {
-  0% { transform: translateY(0) rotate(-4deg); }
-  60% { transform: translateY(46px) rotate(-10deg); }
-  80% { transform: translateY(36px) rotate(5deg); }
-  100% { transform: translateY(42px) rotate(-3deg); }
-}
-.ecp-check-prompt-btn.is-done {
-  opacity: 0;
-  transform: scale(0.85);
-  pointer-events: none;
-  animation: none;
-}
-
-.ecp-check-prompt-action {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-8);
-}
-.ecp-check-prompt-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-title);
-  margin: 0;
-  transition: color 0.3s ease;
-}
-.ecp-check-prompt-text {
-  color: var(--text-subtitle2);
-  font-size: 14px;
-  margin: 0 0 var(--space-10);
-}
-/* Финальный кадр сцены (дверь уже открыта и застыла) — карточка не
-   подменяется отдельным блоком "готово", просто текст рядом меняется и
-   получает лёгкий зелёный акцент + галочку перед заголовком. */
-.ecp-check-prompt.is-verified {
-  border-color: rgba(34, 197, 94, 0.35);
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(0, 121, 143, 0.06) 100%);
-}
-.ecp-check-prompt.is-verified .ecp-check-prompt-title {
-  color: #16a34a;
-}
-.ecp-check-prompt.is-verified .ecp-check-prompt-title::before {
-  content: '';
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #16a34a;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 60% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 60% no-repeat;
-}
-.ecp-check-prompt-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-10);
-  padding: var(--space-16) var(--space-32);
-  border: none;
-  border-radius: 100px;
-  color: var(--white);
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  background: linear-gradient(135deg, white 0%, #06b6d4 50%, #005f70 100%);
-  background-size: 220% 100%;
-  background-position: 0% 50%;
-  box-shadow: 0 8px 20px rgba(0, 95, 112, 0.35);
-  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.3s ease-in-out;
-  animation: ecpCheckBtnGradient 4s ease infinite, ecpCheckBtnPulse 1.8s ease-in-out infinite;
-}
-.ecp-check-prompt-btn svg {
-  width: 19px;
-  height: 19px;
-  flex-shrink: 0;
-}
-.ecp-check-prompt-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 24px rgba(0, 95, 112, 0.45);
-  animation: ecpCheckBtnGradient 4s ease infinite;
-}
-.ecp-check-prompt-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-@keyframes ecpCheckBtnGradient {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-@keyframes ecpCheckBtnPulse {
-  0%, 100% { box-shadow: 0 8px 20px rgba(0, 95, 112, 0.35), 0 0 0 0 rgba(6, 182, 212, 0.5); }
-  50% { box-shadow: 0 8px 20px rgba(0, 95, 112, 0.35), 0 0 0 10px rgba(6, 182, 212, 0); }
-}
-
-@media (max-width: 680px) {
-  .ecp-check-prompt {
-    flex-direction: column;
-    text-align: center;
-  }
-  .ecp-check-prompt-visual {
-    width: 220px;
-    height: 220px;
-  }
-  .ecp-check-prompt-action {
-    align-items: center;
-  }
-}
-
 .ecp-modal-content {
   overflow: visible;
 }
@@ -11325,7 +8758,6 @@ button[disabled] {
   font-size: 14px;
   margin: 0;
 }
-
 .ecp-method-list {
   display: flex;
   flex-direction: column;
@@ -11398,8 +8830,6 @@ button[disabled] {
   background: rgba(59, 202, 246, 0.12);
   color: #1e4349;
 }
-
-/* Анимация вставки ключа ЭЦП — чисто декоративная демонстрация. */
 .ecp-key-animation {
   position: relative;
   width: 160px;
@@ -11447,8 +8877,13 @@ button[disabled] {
   animation: ecpKeyBlink 1s ease-in-out 1.1s infinite;
 }
 @keyframes ecpKeyBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 .ecp-key-status {
   min-height: 20px;
@@ -11456,10 +8891,6 @@ button[disabled] {
   color: var(--text-subtitle2);
   margin: 0;
 }
-
-/* Кадр ошибки проверки сертификата — та же анимация ключа, но застывшая:
-   подсветка красная вместо зелёной, поверх — крестик. Не прячется сама,
-   пока пользователь не нажмёт "Попробовать ещё раз" (см. ecp-mock-modal.js). */
 .ecp-key-animation.is-error .ecp-key-stick-light {
   background: #ef4444;
   box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.6);
@@ -11491,13 +8922,6 @@ button[disabled] {
   opacity: 1;
   transform: scale(1);
 }
-
-/* Шаг 4 регистрации (param.html) — отдельная от ecp_mock_modal иллюстрация:
-   "ID-карточка" со строками данных, бегущей сканирующей полосой и печатью
-   подтверждения, которая зажигается каждый проход — метафора проверки
-   личности, а не подписания документа (та уже занята ecp-key-animation
-   внутри самой модалки). Кнопка проверки стоит сбоку от карточки, внутри
-   общего блока .ecp-step-illustration. */
 .ecp-step-illustration {
   display: flex;
   align-items: center;
@@ -11510,7 +8934,6 @@ button[disabled] {
   border: 1px solid var(--border-color-tin);
   margin-bottom: var(--space-20);
 }
-
 .ecp-verify-card {
   position: relative;
   width: 220px;
@@ -11556,11 +8979,18 @@ button[disabled] {
   border-radius: 4px;
   background: var(--background-grey);
 }
-.ecp-verify-card-line-lg { width: 80%; }
-.ecp-verify-card-line-sm { width: 50%; }
-.ecp-verify-card-line-full { width: 100%; }
-.ecp-verify-card-line-mid { width: 65%; }
-
+.ecp-verify-card-line-lg {
+  width: 80%;
+}
+.ecp-verify-card-line-sm {
+  width: 50%;
+}
+.ecp-verify-card-line-full {
+  width: 100%;
+}
+.ecp-verify-card-line-mid {
+  width: 65%;
+}
 .ecp-verify-scan {
   position: absolute;
   left: 0;
@@ -11571,11 +9001,16 @@ button[disabled] {
   pointer-events: none;
 }
 @keyframes ecpVerifyScanSweep {
-  0% { transform: translateY(-40px); }
-  55% { transform: translateY(150px); }
-  100% { transform: translateY(150px); }
+  0% {
+    transform: translateY(-40px);
+  }
+  55% {
+    transform: translateY(150px);
+  }
+  100% {
+    transform: translateY(150px);
+  }
 }
-
 .ecp-verify-seal {
   position: absolute;
   top: 12px;
@@ -11598,13 +9033,27 @@ button[disabled] {
   height: 15px;
 }
 @keyframes ecpVerifySealPop {
-  0%, 52% { opacity: 0; transform: scale(0.5); }
-  62% { opacity: 1; transform: scale(1.15); }
-  72% { transform: scale(1); }
-  92% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.5); }
+  0%,
+  52% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  72% {
+    transform: scale(1);
+  }
+  92% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
 }
-
 .ecp-illustration-cta {
   display: inline-flex;
   align-items: center;
@@ -11652,7 +9101,6 @@ button[disabled] {
     padding: 28px var(--space-20);
   }
 }
-
 .ecp-cert-privacy-note {
   display: flex;
   align-items: center;
@@ -11671,7 +9119,6 @@ button[disabled] {
   height: 16px;
   color: var(--green-light);
 }
-
 .ecp-success-icon {
   width: 52px;
   height: 52px;
@@ -11691,14 +9138,9 @@ button[disabled] {
   color: var(--text-title);
   margin: 0;
 }
-
 .ecp-modal-back {
   margin-top: var(--space-16);
 }
-
-/* ============================================
-   FILE UPLOAD
-   ============================================ */
 .file-upload-section {
   margin: 1.5rem 0;
   width: 100%;
@@ -11766,7 +9208,6 @@ button[disabled] {
 .drop-area.error::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ef4444'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' /%3E%3C/svg%3E");
 }
-
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2);
@@ -11778,7 +9219,6 @@ button[disabled] {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }
-
 #file-upload-label {
   margin: 0;
   font-size: 1rem;
@@ -11804,7 +9244,6 @@ button[disabled] {
   color: #1d4ed8;
   transform: scale(0.98);
 }
-
 .error-message {
   color: #dc2626;
   font-size: 0.875rem;
@@ -11822,7 +9261,6 @@ button[disabled] {
   content: '⚠';
   font-size: 1rem;
 }
-
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -11833,7 +9271,6 @@ button[disabled] {
     transform: translateY(0);
   }
 }
-
 .file-format-hint {
   font-size: 0.75rem;
   color: #6b7280;
@@ -11843,10 +9280,6 @@ button[disabled] {
   border-radius: 6px;
   border: 1px solid #e5e7eb;
 }
-
-/* ============================================
-   USER INFO SECTION
-   ============================================ */
 .user-info-section {
   background-color: var(--white);
   border-radius: 8px;
@@ -11869,82 +9302,28 @@ button[disabled] {
   color: #6c757d;
   transition: transform 0.3s ease;
 }
-.section-content {
-  padding: var(--space-20) var(--space-10);
-  transition: all 0.3s ease;
-}
-.collapsed .section-content {
-  display: none;
-}
 .collapsed .toggle-icon {
   transform: rotate(0deg);
 }
 .toggle-icon {
   transform: rotate(180deg);
 }
-
-/* ============================================
-   CONTROL PLAN STATS
-   ============================================ */
 .stat-cell {
   position: relative;
   transition: background-color 0.3s ease;
 }
-
 .stat-cell.match .stat-indicator {
   background-color: #4caf50;
   box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
 }
-
 .stat-cell.mismatch {
   cursor: pointer;
   background-color: rgba(220, 53, 69, 0.15);
   font-weight: 600;
 }
-
-/* Red text only while the "Индикаторы" toggle is on (background visibly
-   red too, per .stat-indicators-on below) — with indicators off, a
-   mismatch is still clickable/logged, but the number itself reads as
-   plain black text instead of drawing attention on its own. */
 #indicatorsTable.stat-indicators-on .stat-cell.mismatch {
   color: #dc3545;
 }
-
-/* .stat-cell.mismatch .stat-indicator { */
-  /* 
-  background-color: #f44336;
-  box-shadow: 0 0 10px rgba(244, 67, 54, 0.4);
-  animation: stat-pulse 1.5s ease-in-out infinite; 
-  border-right: none; text-align: center; background-color: rgba(220, 53, 69, 0.15); */
-/* } */
-
-/* .stat-indicator {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid var(--white);
-  transition: all 0.3s ease;
-  z-index: 1;
-}
-
-@keyframes stat-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-} */
-
 .stat-tooltip {
   display: none;
   position: fixed;
@@ -11961,7 +9340,6 @@ button[disabled] {
   border: 1px solid #f0f0f0;
   animation: tooltip-fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
 .stat-tooltip .tooltip-indicator-name {
   font-weight: 600;
   font-size: 13px;
@@ -11969,7 +9347,6 @@ button[disabled] {
   margin-bottom: var(--space-6);
   line-height: 1.3;
 }
-
 .stat-tooltip .tooltip-title {
   font-weight: 600;
   font-size: 11px;
@@ -11978,7 +9355,6 @@ button[disabled] {
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-
 .stat-tooltip .tooltip-value {
   font-size: 25px;
   font-weight: 700;
@@ -11986,7 +9362,6 @@ button[disabled] {
   margin: var(--space-6) 0 var(--space-8) 0;
   line-height: 1.2;
 }
-
 .stat-tooltip .tooltip-divider {
   width: 32px;
   height: 2px;
@@ -11994,31 +9369,15 @@ button[disabled] {
   margin: var(--space-10) auto;
   border-radius: 2px;
 }
-
 .stat-tooltip .tooltip-details {
   font-size: 11px;
   color: #999;
   line-height: 1.6;
 }
-
 .stat-tooltip .tooltip-details span {
   display: inline-block;
   margin: 0 var(--space-4);
 }
-
-.stat-tooltip .tooltip-plan {
-  font-size: 12px;
-  color: #bbb;
-  margin-top: var(--space-6);
-  padding-top: var(--space-8);
-  border-top: 1px dashed #eee;
-}
-
-.stat-tooltip .tooltip-plan strong {
-  color: #666;
-  font-weight: 600;
-}
-
 @keyframes tooltip-fade-in {
   0% {
     opacity: 0;
@@ -12029,7 +9388,6 @@ button[disabled] {
     transform: translateY(0) scale(1);
   }
 }
-
 .stat-log-popup {
   position: fixed;
   bottom: 100px;
@@ -12045,15 +9403,12 @@ button[disabled] {
   display: none;
   animation: stat-log-slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
 .stat-log-popup.visible {
   display: block;
 }
-
 .stat-log-popup.hidden {
   animation: stat-log-slide-out 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-
 .stat-log-header {
   display: flex;
   justify-content: space-between;
@@ -12062,13 +9417,11 @@ button[disabled] {
   padding-bottom: var(--space-8);
   border-bottom: 1px solid #eee;
 }
-
 .stat-log-title {
   font-weight: 600;
   font-size: 14px;
   color: #333;
 }
-
 .stat-log-clear-btn {
   background: none;
   border: none;
@@ -12078,11 +9431,9 @@ button[disabled] {
   padding: 0 var(--space-8);
   transition: color 0.2s ease;
 }
-
 .stat-log-clear-btn:hover {
   color: #333;
 }
-
 .stat-log-textarea {
   width: 100%;
   height: 250px;
@@ -12096,29 +9447,23 @@ button[disabled] {
   outline: none;
   line-height: 1.6;
 }
-
 .stat-log-textarea:focus {
   outline: none;
 }
-
 .stat-log-textarea::-webkit-scrollbar {
   width: 6px;
 }
-
 .stat-log-textarea::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
-
 .stat-log-textarea::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 3px;
 }
-
 .stat-log-textarea::-webkit-scrollbar-thumb:hover {
   background: #aaa;
 }
-
 @keyframes stat-log-slide-in {
   0% {
     opacity: 0;
@@ -12139,7 +9484,6 @@ button[disabled] {
     transform: translateY(20px) scale(0.96);
   }
 }
-
 .menu-conteiner .stat-log-menu .element.active {
   background: #e3f2fd;
   border-color: #1976d2;
@@ -12150,10 +9494,6 @@ button[disabled] {
 .menu-conteiner .stat-log-menu .element.active svg {
   stroke: #1976d2;
 }
-
-/* ============================================
-   COEFFICIENT
-   ============================================ */
 .value-coeff {
   display: flex;
   align-items: center;
@@ -12195,10 +9535,6 @@ button[disabled] {
 .coeff-input-display.editable:focus {
   background: var(--white);
 }
-
-/* ============================================
-   RADIO ORG
-   ============================================ */
 .radio-org-container {
   width: 100% !important;
   box-sizing: border-box;
@@ -12300,7 +9636,6 @@ button[disabled] {
   word-break: break-word;
   hyphens: auto;
 }
-
 @keyframes magicPop {
   0% {
     transform: translateX(-50%) scale(0);
@@ -12315,10 +9650,6 @@ button[disabled] {
     opacity: 1;
   }
 }
-
-/* ============================================
-   INSTRUCTION LINK
-   ============================================ */
 .instruction-link {
   color: var(--color-green-text-main);
   text-decoration: none;
@@ -12332,58 +9663,11 @@ button[disabled] {
   border-bottom-color: currentColor;
   text-decoration: none;
 }
-
-/* ============================================
-   SEARCH / DROPDOWN
-   ============================================ */
-.search-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--white);
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-.search-list {
-  padding: var(--space-4) 0;
-}
-.search-item {
-  padding: var(--space-10) var(--space-16);
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-}
-.search-item:hover {
-  background-color: #f5f5f5;
-}
-.search-item.selected {
-  background-color: #e3f2fd !important;
-}
-.search-item .item-name {
-  font-weight: 500;
-  margin-bottom: var(--space-4);
-}
-.search-item .item-details {
-  font-size: 12px;
-  color: #666;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-10);
-}
-.search-item .item-details span {
-  display: inline-block;
-}
-.search-loading,
-.search-more {
+.search-loading {
   padding: var(--space-10);
   text-align: center;
   border-top: 1px solid #f0f0f0;
 }
-
 .load-more-btn {
   display: inline-flex;
   align-items: center;
@@ -12425,7 +9709,6 @@ button[disabled] {
   font-size: 14px;
   font-weight: 500;
 }
-
 .loading-spinner {
   display: inline-block;
   width: 30px;
@@ -12446,7 +9729,6 @@ button[disabled] {
   width: 16px;
   height: 16px;
 }
-
 @keyframes spinermain {
   0% {
     transform: rotate(0deg);
@@ -12455,17 +9737,10 @@ button[disabled] {
     transform: rotate(360deg);
   }
 }
-
 .loading-container {
   position: relative;
   min-height: 100px;
 }
-
-#load-more-container {
-  text-align: center;
-  margin-top: var(--space-10);
-}
-
 @media (max-width: 768px) {
   .load-more-btn {
     padding: var(--space-6) var(--space-12);
@@ -12476,8 +9751,6 @@ button[disabled] {
     height: 14px;
   }
 }
-
-.no-results,
 .error {
   padding: var(--space-16);
   text-align: center;
@@ -12485,29 +9758,17 @@ button[disabled] {
   color: #666;
   font-weight: 500;
 }
-
-.entity-block {
-  transition: all 0.3s ease;
-}
 .search-container {
   position: relative;
 }
 .required-star {
   color: red;
 }
-
-/* ============================================
-   MAIN
-   ============================================ */
 main {
   flex: 1;
   width: 100%;
   min-height: 100vh;
 }
-
-/* ============================================
-   COOKIE BANNER
-   ============================================ */
 .cookie-banner {
   position: fixed;
   bottom: 30px;
@@ -12521,13 +9782,11 @@ main {
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   animation: cookieBannerSlideUp 0.5s forwards;
 }
-
 .cookie-banner.show {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
-
 .cookie-banner-content {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(10px);
@@ -12541,11 +9800,9 @@ main {
   gap: var(--space-20);
   flex-wrap: wrap;
 }
-
 .cookie-banner:hover .cookie-banner-content {
   box-shadow: var(--glow);
 }
-
 .cookie-banner-icon {
   flex-shrink: 0;
   width: 40px;
@@ -12558,16 +9815,13 @@ main {
   color: #22c55e;
   transition: transform 0.3s ease;
 }
-
 .cookie-banner:hover .cookie-banner-icon {
   transform: rotate(10deg);
 }
-
 .cookie-banner-text {
   flex: 1;
   min-width: 250px;
 }
-
 .cookie-banner-text p {
   margin: 0;
   font-size: 14px;
@@ -12575,7 +9829,6 @@ main {
   color: var(--text);
   font-weight: 500;
 }
-
 .cookie-banner-text a {
   color: var(--primary);
   text-decoration: underline;
@@ -12583,12 +9836,10 @@ main {
   transition: all 0.2s ease;
   position: relative;
 }
-
 .cookie-banner-text a:hover {
   color: var(--primary-dark);
   text-decoration: none;
 }
-
 .cookie-banner-text a::after {
   content: '';
   position: absolute;
@@ -12601,19 +9852,16 @@ main {
   transform-origin: right;
   transition: transform 0.3s ease;
 }
-
 .cookie-banner-text a:hover::after {
   transform: scaleX(1);
   transform-origin: left;
 }
-
 .cookie-banner-buttons {
   display: flex;
   gap: var(--space-12);
   flex-shrink: 0;
   align-items: center;
 }
-
 .cookie-banner-buttons .submit-button {
   padding: var(--space-8) var(--space-24);
   font-size: 13px;
@@ -12623,7 +9871,6 @@ main {
   position: relative;
   overflow: hidden;
 }
-
 .cookie-banner-buttons .submit-button::before {
   content: '';
   position: absolute;
@@ -12636,11 +9883,9 @@ main {
   transition: all 0.6s ease;
   opacity: 0;
 }
-
 .cookie-banner-buttons .submit-button:hover::before {
   animation: shine 1.5s ease-in-out;
 }
-
 .cookie-banner-buttons .no-submit-button {
   padding: var(--space-8) var(--space-24);
   font-size: 13px;
@@ -12650,17 +9895,14 @@ main {
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
-
 .cookie-banner-buttons .no-submit-button:hover {
   background: var(--button-grey-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
-
 .cookie-banner-buttons .no-submit-button:active {
   transform: translateY(0);
 }
-
 @keyframes cookieBannerSlideUp {
   to {
     opacity: 1;
@@ -12668,7 +9910,6 @@ main {
     transform: translateX(-50%) translateY(0);
   }
 }
-
 @media (max-width: 768px) {
   .cookie-banner {
     bottom: 16px;
@@ -12714,10 +9955,6 @@ main {
     font-size: 12px;
   }
 }
-
-/* ============================================
-   BLUR / GRID / HERO
-   ============================================ */
 .blurred-background {
   position: absolute;
   top: 0;
@@ -12730,7 +9967,6 @@ main {
   opacity: 1;
   transition: opacity 3s ease-in-out;
 }
-
 @keyframes gradient-animation {
   0% {
     background: linear-gradient(615deg, var(--color1), var(--color2), var(--green-main));
@@ -12745,7 +9981,6 @@ main {
     opacity: 1;
   }
 }
-
 .bg-grid {
   position: fixed;
   top: 0;
@@ -12760,12 +9995,15 @@ main {
   z-index: -2;
   animation: bg-glow-drift 22s ease-in-out infinite;
 }
-
 @keyframes bg-glow-drift {
-  0%, 100% { background-position: 0 0, 0 0, 0 0; }
-  50% { background-position: 2% 2%, -2% 1%, 1% -2%; }
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  50% {
+    background-position: 2% 2%, -2% 1%, 1% -2%;
+  }
 }
-
 .modern-container {
   max-width: var(--content-max-width);
   margin: 0 auto;
@@ -12773,7 +10011,6 @@ main {
   width: calc(100% - 40px);
   margin-top: 80px;
 }
-
 .modern-hero {
   display: flex;
   flex-direction: column;
@@ -12781,7 +10018,6 @@ main {
   margin-bottom: 60px;
   animation: fadeInUp 0.8s ease-out;
 }
-
 .hero-glass {
   background: var(--glass);
   backdrop-filter: blur(20px);
@@ -12793,7 +10029,6 @@ main {
   overflow: hidden;
   width: calc(100% - 162px);
 }
-
 .hero-glass::before {
   content: '';
   position: absolute;
@@ -12803,15 +10038,16 @@ main {
   height: 200%;
   background: radial-gradient(circle, var(--primary) 0%, var(--transparent) 70%);
   opacity: 0.1;
-  /* animation: rotate 20s linear infinite; */
   z-index: -1;
 }
-
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
-
 .hero-gradient-text {
   font-size: 2.1rem;
   font-weight: 600;
@@ -12825,7 +10061,6 @@ main {
   width: 100%;
   box-sizing: border-box;
 }
-
 .hero-subtext {
   font-size: 2.1rem;
   font-weight: 600;
@@ -12883,35 +10118,14 @@ main {
   color: rgb(87, 87, 87);
   font-weight: 600;
 }
-
 .features-grid {
   margin-bottom: 100px;
-}
-.section-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 60px;
-  text-align: center;
-  background: linear-gradient(135deg, var(--text) 0%, var(--text-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: var(--transparent);
-  background-clip: text;
 }
 .features-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-32);
 }
-
-.about-section-subtext {
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  max-width: 720px;
-  margin: 0 auto var(--space-40);
-  text-align: center;
-  line-height: 1.5;
-}
-
 .about-feature-card {
   background: var(--blur1);
   backdrop-filter: blur(2px);
@@ -12963,7 +10177,6 @@ main {
   color: var(--text-secondary);
   line-height: 1.5;
 }
-
 .contact-glass {
   border-radius: 24px;
   width: 100%;
@@ -13031,7 +10244,6 @@ main {
   font-size: 1.125rem;
   font-weight: 600;
 }
-
 .news-card-large {
   display: flex;
   flex-direction: row;
@@ -13123,7 +10335,6 @@ main {
   mask-image: linear-gradient(90deg, var(--transparent) 0%, var(--transparent) 10%, var(--black) 50%, var(--black) 100%);
   -webkit-mask-image: linear-gradient(90deg, var(--transparent) 0%, var(--transparent) 10%, var(--black) 50%, var(--black) 100%);
 }
-
 .main-btn {
   display: inline-flex;
   align-items: center;
@@ -13145,13 +10356,6 @@ main {
   flex-shrink: 0;
   display: block;
 }
-/* Основная кнопка приложения — фирменный бирюзовый (--green-main), в том
-   же духе, что и .no-submit-button.blue: мягкий вертикальный градиент
-   вместо диагонального серо-бирюзового со сдвигом фона, цветная тень
-   вместо серого свечения, подъём при наведении, нажатие при клике,
-   кольцо фокуса с клавиатуры и спокойное неактивное состояние (export/
-   plan_send/complete_profile/ЭЦП изначально disabled). Цвета — через
-   локальные переменные, тёмная тема переопределяет их в theme.css. */
 .main-btn-primary {
   --mbp-top: #14a4ba;
   --mbp-bottom: #00798f;
@@ -13230,16 +10434,6 @@ main {
 .main-btn.is-checking .btn-text {
   display: none;
 }
-
-.main-btn-delete {
-  background: var(--delete-color);
-  color: var(--white) !important;
-  border: none;
-}
-.main-btn-delete:hover {
-  background: var(--delete-color-hover);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-}
 .main-btn-outline {
   background: var(--transparent);
   color: var(--text);
@@ -13251,7 +10445,6 @@ main {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
 }
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -13262,7 +10455,6 @@ main {
     transform: translateY(0);
   }
 }
-
 @media (max-width: 1024px) {
   .hero-glass {
     padding: 60px var(--space-40);
@@ -13324,23 +10516,16 @@ main {
   }
 }
 @media (max-width: 480px) {
-  .hero-gradient-text{
+  .hero-gradient-text {
     font-size: 1.8rem;
   }
   .hero-subtext {
     font-size: 1.8rem;
   }
-  .section-title {
-    font-size: 2rem;
-  }
   .features-container {
     grid-template-columns: 1fr;
   }
 }
-
-/* ============================================
-   RESPONSIVE OVERRIDES
-   ============================================ */
 @media (max-width: 768px) {
   body {
     background-color: var(--white);
@@ -13350,7 +10535,6 @@ main {
     gap: 0;
     margin: 0 !important;
   }
-  /* на мобильном поля и так всегда в один столбец — переключатель не нужен */
   .layout-toggle-btn {
     display: none;
   }
@@ -13418,10 +10602,6 @@ main {
   .button-area {
     width: auto;
   }
-  /* Карточка плана — на мобильном все 3 колонки (заголовок+показатели,
-     даты, кнопки) складываются одна под другой на всю ширину, а не
-     втискиваются в ряд. Показатели и даты больше не прячутся через
-     display:none — просто переносятся компактной строкой. */
   .plan-cont {
     flex-direction: column;
     gap: var(--space-12);
@@ -13462,9 +10642,6 @@ main {
   .buttons-row {
     justify-content: flex-end;
   }
-  .message-input-container {
-    padding: var(--space-10) var(--space-12);
-  }
   .plan-back-header {
     margin-left: var(--space-4);
     margin-right: var(--space-4);
@@ -13479,21 +10656,12 @@ main {
   .notif-body {
     max-height: 60vh;
   }
-  .faq-container {
-    width: calc(95% - 62px);
-  }
   .auth-container {
     width: calc(100% - 30px);
     padding: var(--space-16);
   }
   .tickets-message {
     max-width: 70%;
-  }
-  .fot_cont_text {
-    padding-left: var(--space-32);
-  }
-  .fot_cont_img {
-    padding-right: var(--space-32);
   }
   .element-text {
     font-size: 10px;
@@ -13510,9 +10678,6 @@ main {
   }
   .section-header {
     padding: var(--space-8) var(--space-16);
-  }
-  .section-title {
-    font-size: 15px;
   }
   .row-app-group {
     gap: var(--space-12);
@@ -13549,7 +10714,6 @@ main {
     font-size: 11px;
   }
 }
-
 @media (max-width: 640px) {
   .drop-area {
     padding: 2rem 1rem;
@@ -13568,7 +10732,6 @@ main {
     padding: var(--space-24) var(--space-16);
   }
 }
-
 @media (max-width: 480px) {
   .personal-acc-conteiner .header-content-left {
     flex-direction: column;
@@ -13621,11 +10784,6 @@ main {
   .btn-text {
     font-size: 13px;
   }
-
-
-  /* Status-count strip: see the shared horizontal-scroll treatment for
-     .stats-track under the 768px breakpoint above — here just a bit
-     more compact for narrow phones. */
   .stat-and-dot {
     flex: 0 0 auto;
   }
@@ -13642,14 +10800,7 @@ main {
   .word-numb {
     font-size: 13px;
   }
-
-  /* .header-content/.header-content-left are flex items with no
-     min-width, so their default `min-width: auto` refuses to shrink
-     below the filters row's natural (nowrap) content size — even
-     though the filters row itself scrolls, the wrapper around it was
-     still forcing the whole page wider. Stack instead of shrinking. */
   .header-content {
-
     gap: var(--space-12);
   }
   .header-content-left {
@@ -13665,25 +10816,20 @@ main {
     flex-wrap: wrap;
   }
 }
-
-
 @media (max-width: 1080px) {
   .personal-acc-conteiner {
     margin-top: 75px;
     padding: var(--card-pad-mobile);
   }
-
-  .personal-plan-conteiner{
+  .personal-plan-conteiner {
     margin-top: 110px;
     padding: 0 var(--space-4);
     padding-bottom: 50px;
   }
-
-  .personal-acc-conteiner.planed{
+  .personal-acc-conteiner.planed {
     margin-top: 140px;
     margin-bottom: 100px;
   }
-
   .vertical-text {
     max-height: 100px;
   }
@@ -13712,15 +10858,6 @@ main {
     flex-direction: column;
     align-items: start;
   }
-
-  /* Единый мобильный вид нав-бара — и для общей навигации сайта
-     (/plans, /export, /profile), и для вкладок внутри плана. Плавающий
-     "островок" с отступами от краёв экрана (как нижняя панель в iOS), а
-     не прилипшая во всю ширину полоса. Имя активного раздела
-     показывается одной подписью на чёрном фоне над островком (тот же
-     стиль тултипа, что и на десктопе). На десктопе они всё ещё
-     различаются (см. .header-cont / .header-cont.planed{ top: ... } и
-     @media min-width: 1081px выше) — только на мобильном одинаковые. */
   .header-cont {
     top: auto !important;
     bottom: max(16px, env(safe-area-inset-bottom)) !important;
@@ -13753,22 +10890,11 @@ main {
     box-shadow: none;
     background: transparent;
   }
-  .header-cont .nav-item.active .nav-icon {
-    filter: none;
-    color: var(--green-light);
-  }
-  .header-cont .nav-item.disabled-tab .nav-icon {
-    filter: grayscale(1);
-  }
   .header-cont .nav-item:not(.disabled-tab):active {
     opacity: 0.7;
   }
   .header-cont .nav-icon-wrapper {
     margin: 0;
-  }
-  .header-cont .nav-icon {
-    width: 24px;
-    height: 24px;
   }
   .header-cont .nav-text,
   .header-cont .nav-text-mobile {
@@ -13792,22 +10918,12 @@ main {
     pointer-events: none;
   }
 }
-
 @media (max-width: 320px) {
-  .nav-icon {
-    width: 20px;
-    height: 20px;
-  }
   .nav-text-mobile {
     font-size: 9px;
   }
 }
-
 @media (min-width: 481px) and (max-width: 768px) {
-  .nav-icon {
-    width: 24px;
-    height: 24px;
-  }
   .nav-text-mobile {
     font-size: 11px;
   }
@@ -13828,7 +10944,6 @@ main {
     gap: var(--space-8);
   }
 }
-/* website/static/css/base.css :: .teo-field (dropzone/file-card), .teo-cell-icon, .teo-viewer-drawer */
 .teo-file-input {
   position: absolute;
   width: 1px;
@@ -13836,11 +10951,9 @@ main {
   opacity: 0;
   overflow: hidden;
 }
-
 .teo-field {
   display: flex;
 }
-
 .teo-dropzone {
   display: flex;
   align-items: center;
@@ -13888,7 +11001,6 @@ main {
   letter-spacing: 0.04em;
   color: var(--text-secondary, #6c757d);
 }
-
 .teo-file-card {
   display: flex;
   align-items: center;
@@ -13969,7 +11081,6 @@ a.teo-file-card-name:hover {
   background-color: rgba(220, 38, 38, 0.12);
   color: #dc2626;
 }
-
 .teo-cell {
   text-align: center;
 }
@@ -14009,7 +11120,6 @@ a.teo-file-card-name:hover {
   background-color: rgba(34, 197, 94, 0.12);
   color: var(--green-dark, var(--green));
 }
-
 .teo-viewer-drawer {
   position: fixed;
   inset: 0;
@@ -14173,7 +11283,6 @@ a.teo-file-card-name:hover {
     display: none !important;
   }
 }
-
 @media (max-width: 360px) {
   .submit-button {
     padding: var(--space-8);
