@@ -221,7 +221,7 @@ def apply_to_organization(org, data):
     _set('full_name', 'Полное наименование', data.get('full_name'))
     _set('short_name', 'Сокращённое наименование', data.get('short_name'))
     _set('legal_address', 'Юридический адрес', data.get('legal_address'))
-    _set('egr_status', 'Состояние в ЕГР', data.get('status'))
+    _set('egr_status', 'Статус', data.get('status'))
     org.egr_status_kind = data.get('status_kind') or 'unknown'
 
     if data.get('region_number'):
