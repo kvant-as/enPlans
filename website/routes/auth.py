@@ -136,7 +136,7 @@ def login():
                     flash("Необходимо заполнить обязательные параметры", "error")
                     # Сотрудник, приглашённый руководителем (у него уже есть
                     # organization_id), идёт на лёгкий complete_profile —
-                    # не нужно повторно выбирать роль в системе и
+                    # не нужно повторно выбирать Профиль организации и
                     # организацию, см. ту же развилку в user_with_all_params().
                     target = 'auth.complete_profile' if user.organization_id else 'auth.param'
                     return set_session_cookie(redirect(url_for(target)), token)

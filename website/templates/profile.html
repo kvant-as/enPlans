@@ -169,7 +169,7 @@
             </div>
             <div class="date-content">
               <div class="date-info">
-                <span class="date-label">{{ _('Роль в системе') if current_user.is_admin else _('Роль в организации') }}</span>
+                <span class="date-label">{{ _('Профиль организации') if current_user.is_admin else _('Роль в организации') }}</span>
                 <span class="date-day">
                   {% if current_user.is_admin %}{{ _('Администратор') }}{% else %}{{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации'), 'org_head_deputy': _('Заместитель руководителя организации')}.get(current_user.org_role, current_user.org_role) }}{% endif %}
                 </span>

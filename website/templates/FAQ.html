@@ -49,36 +49,11 @@
               <a href="#what-is" class="question-link-modern">
                 Что такое EnPlans?
               </a>
+              <a href="#before-register" class="question-link-modern">
+                Что нужно знать перед регистрацией?
+              </a>
               <a href="#getting-started" class="question-link-modern">
-                Как начать работу?
-              </a>
-            </div>
-          </div>
-
-          <div class="category-modern">
-            <div class="category-header-modern">
-              <h3>Аккаунт</h3>
-            </div>
-            <div class="questions-list-modern">
-              <a href="#change-email" class="question-link-modern">
-                Изменение электронного адреса
-              </a>
-              <a href="#change-password" class="question-link-modern">
-                Изменение пароля
-              </a>
-            </div>
-          </div>
-
-          <div class="category-modern">
-            <div class="category-header-modern">
-              <h3>Организация</h3>
-            </div>
-            <div class="questions-list-modern">
-              <a href="#org-roles" class="question-link-modern">
-                Роли сотрудников
-              </a>
-              <a href="#org-egr" class="question-link-modern">
-                Обновление данных организации
+                Как зарегистрироваться?
               </a>
             </div>
           </div>
@@ -104,7 +79,7 @@
                 Экспорт плана
               </a>
               <a href="#plans" class="question-link-modern">
-                Виды планов
+                Статусы планов
               </a>
             </div>
           </div>
@@ -137,6 +112,23 @@
             </div>
           </div>
 
+          <div class="category-modern">
+            <div class="category-header-modern">
+              <h3>Учетная запись и данные организации</h3>
+            </div>
+            <div class="questions-list-modern">
+              <a href="#change-email" class="question-link-modern">
+                Изменение электронного адреса
+              </a>
+              <a href="#change-password" class="question-link-modern">
+                Изменение пароля
+              </a>
+              <a href="#org-egr" class="question-link-modern">
+                Обновление данных организации
+              </a>
+            </div>
+          </div>
+
         </nav>
       </aside>
 
@@ -156,51 +148,34 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                <strong>EnPlans</strong> — это автоматизированный комплекс для создания, анализа и представления для согласования планов мероприятий по энергосбережению организаций.
+                <strong>EnPlans</strong> — это автоматизированный комплекс формирования, согласования и утверждения планов мероприятий по энергосбережению организаций.
               </p>
-            </div>
-            <div class="features-grid">
-              <div class="feature-card">
-                <div class="feature-icon">{{ icons.icon_stats() }}</div>
-                <h4>Анализ данных</h4>
-                <p>
-                  Автоматический анализ потребления топливно-энергетических ресурсов
-                </p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon">{{ icons.icon_plans() }}</div>
-                <h4>Расчет эффективности</h4>
-                <p>
-                  Точный расчет экономических показателей и сроков окупаемости
-                </p>
-              </div>
-              <div class="feature-card">
-                <div class="feature-icon">{{ icons.icon_confirm() }}</div>
-                <h4>Согласование планов</h4>
-                <p>Согласование планов мероприятий по энергосбережению</p>
-              </div>
             </div>
             <h3>Для кого предназначена система?</h3>
             <div class="answer-text">
-              <div class="features-grid">
-                <div class="feature-card">
-                  <h4>Организаций-разработчиков</h4>
-                  <p>заполнение и управление энергосберегающими планами</p>
+              <div class="audience-grid">
+                <div class="audience-card audience-card--dev">
+                  <div class="audience-head">
+                    <span class="audience-icon">{{ icons.icon_edit() }}</span>
+                    <span class="audience-role">Организации-разработчики</span>
+                  </div>
+                  <h4 class="audience-title">Юридических лиц с годовым суммарным использованием ТЭР 1500 т у.т. и более</h4>
+                  <p class="audience-goal">для формирования и направления в установленном порядке планов мероприятий по энергосбережению</p>
                 </div>
-                <div class="feature-card">
-                  <h4>Согласовывающих организаций</h4>
-                  <p>анализ планов и принятие решения</p>
-                </div>
-                <div class="feature-card">
-                  <h4>Утверждающих организаций</h4>
-                  <p>анализ планов и утверждение решения</p>
+                <div class="audience-card audience-card--review">
+                  <div class="audience-head">
+                    <span class="audience-icon">{{ review_icon() }}</span>
+                    <span class="audience-role">Согласующие и утверждающие организации</span>
+                  </div>
+                  <h4 class="audience-title">Юридических лиц (организаций и государственных органов), согласующих и утверждающих планы мероприятий</h4>
+                  <p class="audience-goal">для рассмотрения, согласования и утверждения планов мероприятий по энергосбережению</p>
                 </div>
               </div>
             </div>
 
             <div class="answer-navigation">
               <div></div>
-              <a href="#getting-started" class="nav-btn next">
+              <a href="#before-register" class="nav-btn next">
                 <span>Следующий вопрос</span>
                 {{ icons.next_icon() }}
               </a>
@@ -208,9 +183,124 @@
           </div>
         </article>
 
+      <article class="answer-active-modern" id="before-register">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Что нужно знать перед регистрацией?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <h3>1. Кто регистрирует организацию</h3>
+          <div class="answer-text">
+            <p>Регистрацию организации в системе осуществляет <strong>руководитель организации</strong>.</p>
+          </div>
+
+          <h3>2. Типы профилей организаций в системе</h3>
+          <div class="role-flow">
+            <div class="role-flow-card role-flow-card--dev">
+              <span class="role-flow-icon">{{ icons.icon_edit() }}</span>
+              <h5 class="role-flow-title">Организация-разработчик</h5>
+              <p class="role-flow-text">Создает (формирует) планы мероприятий по энергосбережению и направляет их на согласование и утверждение</p>
+            </div>
+            <span class="role-flow-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+            <div class="role-flow-card role-flow-card--coord">
+              <span class="role-flow-icon">{{ review_icon() }}</span>
+              <h5 class="role-flow-title">Согласующая организация</h5>
+              <p class="role-flow-text">Рассматривает поступившие планы мероприятий и согласовывает их либо возвращает на доработку с замечаниями</p>
+            </div>
+            <span class="role-flow-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </span>
+            <div class="role-flow-card role-flow-card--approve">
+              <span class="role-flow-icon">{{ icons.approved_icon() }}</span>
+              <h5 class="role-flow-title">Утверждающая организация</h5>
+              <p class="role-flow-text">Завершает маршрут рассмотрения и утверждает планы мероприятий</p>
+            </div>
+          </div>
+          <div class="callout callout--neutral">
+            <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+            <div class="callout-body">
+              <p><strong>Примечание:</strong> в случае если организация одновременно является и организацией-разработчиком, и утверждающей организацией, при регистрации необходимо выбирать профиль <strong>«Организация-разработчик»</strong>.</p>
+            </div>
+          </div>
+
+          <h3>3. Роли сотрудников организации</h3>
+          <div class="org-roles">
+            <div class="org-role-card org-role-card--oh">
+              <div class="org-role-head">
+                <span class="org-role-icon">{{ icons.icon_org() }}</span>
+                <div>
+                  <h4 class="org-role-title">Руководитель организации</h4>
+                </div>
+              </div>
+              <ul class="org-role-list">
+                <li>Подписывает ЭЦП планы мероприятий и решения, подготовленные сотрудниками, либо возвращает их на внутреннюю доработку</li>
+                <li>Утверждает планы мероприятий</li>
+                <li>Добавляет и удаляет сотрудников, назначает им роли и обновляет сведения об организации из ЕГР</li>
+              </ul>
+            </div>
+            <div class="org-role-card org-role-card--dp">
+              <div class="org-role-head">
+                <span class="org-role-icon">{{ icons.icon_sign() }}</span>
+                <div>
+                  <h4 class="org-role-title">Заместитель руководителя</h4>
+                </div>
+              </div>
+              <ul class="org-role-list">
+                <li>Подписывает ЭЦП планы мероприятий и решения, подготовленные сотрудниками, либо возвращает их на внутреннюю доработку</li>
+                <li>Утверждает планы мероприятий</li>
+              </ul>
+            </div>
+            <div class="org-role-card org-role-card--dh">
+              <div class="org-role-head">
+                <span class="org-role-icon">{{ icons.icon_profile() }}</span>
+                <div>
+                  <h4 class="org-role-title">Руководитель структурного подразделения</h4>
+                </div>
+              </div>
+              <ul class="org-role-list">
+                <li>Выполняет все функции исполнителя (создает или проверяет планы, готовит проекты решений)</li>
+                <li>Может подписывать ЭЦП планы мероприятий, подготовленные исполнителями, либо направлять их на подпись руководителю организации</li>
+              </ul>
+            </div>
+            <div class="org-role-card org-role-card--ex">
+              <div class="org-role-head">
+                <span class="org-role-icon">{{ icons.icon_edit() }}</span>
+                <div>
+                  <h4 class="org-role-title">Исполнитель</h4>
+                </div>
+              </div>
+              <ul class="org-role-list">
+                <li>В организациях-разработчиках создает (формирует) планы мероприятий, проводит автоматический контроль введенных данных, выбирает маршрут для согласования и утверждения планов, направляет их на подпись руководителю структурного подразделения либо руководителю организации</li>
+                <li>В согласующих и утверждающих организациях проверяет поступившие планы и готовит проекты решений, направляет их на подпись руководителю структурного подразделения либо руководителю организации</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно!</p>
+              <p>В профиле одной организации можно зарегистрировать не более 7 сотрудников (по одному руководителю организации и его заместителю, а также несколько исполнителей и руководителей структурных подразделений). У каждого сотрудника может быть только одна роль.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#what-is" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#getting-started" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
       <article class="answer-active-modern" id="getting-started">
         <div class="answer-header-modern">
-          <h1 class="answer-title-modern">Как начать работу с системой?</h1>
+          <h1 class="answer-title-modern">Как зарегистрироваться?</h1>
         </div>
         <div class="answer-body-modern">
           <div class="answer-text">
@@ -254,7 +344,7 @@
               <div class="step-content">
                 <h4>Ввод персональных данных</h4>
                 <p>
-                  Заполните личные данные: ФИО, номер телефона (можно добавить несколько) и должность, затем нажмите <strong>«Далее»</strong>.
+                  Регистрацию организации в системе осуществляет руководитель организации. Заполните личные данные: ФИО, номер телефона (можно добавить несколько) и должность, затем нажмите <strong>«Далее»</strong>.
                 </p>
                 <div class="faq-image-wrapper ogr">
                   <img src="/static/img/faq/register-step3.png" alt="персональные данные" class="faq-image">
@@ -265,7 +355,7 @@
             <div class="step-item">
               <div class="step-number">4</div>
               <div class="step-content">
-                <h4>Выбор роли в системе</h4>
+                <h4>Выбор профиля организации в системе</h4>
                 <p>
                   Выберите, кем является ваша организация в системе:
                 </p>
@@ -290,6 +380,12 @@
                     <span class="role-flow-icon">{{ icons.approved_icon() }}</span>
                     <h5 class="role-flow-title">Утверждающая организация</h5>
                     <p class="role-flow-text">Последняя в маршруте — утверждает план</p>
+                  </div>
+                </div>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p><strong>Примечание:</strong> в случае если организация одновременно является и организацией-разработчиком, и утверждающей организацией, при регистрации необходимо выбирать профиль <strong>«Организация-разработчик»</strong>.</p>
                   </div>
                 </div>
                 <div class="faq-image-wrapper ogr">
@@ -332,17 +428,22 @@
               <div class="step-content">
                 <h4>Добавление сотрудников</h4>
                 <p>
-                  Руководитель организации добавляет сотрудников в профиле организации кнопкой <strong>«Добавить сотрудника»</strong>: указывает email и роль —
-                  исполнитель, руководитель структурного подразделения или заместитель руководителя организации.
-                  Сотрудник получает письмо со ссылкой (действует 1 час), задает пароль и при первом входе заполняет ФИО, телефон и должность — проходить проверку ЭЦП ему не нужно.
+                  Руководитель организации добавляет сотрудников в профиле организации кнопкой <strong>«Добавить сотрудника»</strong>: указывает email и назначает роль
+                  (исполнитель, руководитель структурного подразделения или заместитель руководителя организации).
+                </p>
+                <p>
+                  На указанный адрес электронной почты сотруднику приходит письмо со ссылкой для регистрации (действует 1 час).
+                  При первом входе сотрудник задает пароль и заполняет личные данные: ФИО, телефон и должность (проходить проверку ЭЦП не нужно).
                 </p>
                 <div class="faq-image-wrapper ogr">
-                  <img src="/static/img/faq/register-step7.jpg" alt="Добавление сотрудников" class="faq-image">
+                  <img src="/static/img/faq/register-step7.png" alt="Добавление сотрудников" class="faq-image">
                 </div>
-                <div class="callout callout--neutral">
-                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                <div class="callout callout--warning">
+                  <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
                   <div class="callout-body">
-                    <p>Без исполнителя или руководителя структурного подразделения план нельзя создать, отправить на подпись или рассмотреть: руководитель организации только подписывает решения, которые подготовили сотрудники.</p>
+                    <p class="callout-title">Важно</p>
+                    <p>После регистрации руководитель организации обязательно должен добавить в систему хотя бы одного сотрудника (исполнителя или руководителя структурного подразделения).
+                      Руководитель организации в системе только подписывает готовые документы ЭЦП — создавать, заполнять и проверять планы могут только добавленные им сотрудники.</p>
                   </div>
                 </div>
               </div>
@@ -366,7 +467,7 @@
               </label>
               <label class="checklist-item">
                 <input type="checkbox" />
-                <span>Выбрана роль в системе</span>
+                <span>Выбран профиль организации в системе</span>
               </label>
               <label class="checklist-item">
                 <input type="checkbox" />
@@ -388,348 +489,7 @@
           </div>
 
           <div class="answer-navigation">
-            <a href="#what-is" class="nav-btn prev">
-              {{ icons.back_icon() }}
-              <span>Предыдущий вопрос</span>
-            </a>
-            <a href="#change-email" class="nav-btn next">
-              <span>Следующий вопрос</span>
-              {{ icons.next_icon() }}
-            </a>
-          </div>
-        </div>
-      </article>
-
-      <article class="answer-active-modern" id="change-email">
-        <div class="answer-header-modern">
-          <h1 class="answer-title-modern">Как сменить электронный адрес?</h1>
-        </div>
-        <div class="answer-body-modern">
-          <div class="answer-text">
-            <p>
-              Электронный адрес используется для входа в систему, поэтому его смена подтверждается кодом, который приходит на новый адрес.
-            </p>
-          </div>
-
-          <div class="steps-container">
-            <div class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <h4>Откройте настройки профиля</h4>
-                <p>
-                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить эл. адрес»</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <h4>Укажите новый адрес и текущий пароль</h4>
-                <p>
-                  Введите новый email и текущий пароль для подтверждения личности, затем нажмите <strong>«Отправить код»</strong>.
-                </p>
-                <div class="callout callout--neutral">
-                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
-                  <div class="callout-body">
-                    <p>Код подтверждения будет отправлен на <strong>новый</strong> адрес и действителен <strong>10 минут</strong>.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-number">3</div>
-              <div class="step-content">
-                <h4>Введите код подтверждения</h4>
-                <p>
-                  Откройте письмо на новом адресе, скопируйте код из него и введите на странице подтверждения, затем нажмите <strong>«Подтвердить»</strong>.
-                </p>
-                <p>
-                  Если письмо не пришло, воспользуйтесь ссылкой <strong>«Отправить код повторно»</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="callout callout--warning">
-            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
-            <div class="callout-body">
-              <p class="callout-title">Важно</p>
-              <p>После подтверждения кода вход в систему нужно будет выполнять по новому email — старый адрес перестанет действовать.</p>
-            </div>
-          </div>
-
-          <div class="answer-navigation">
-            <a href="#getting-started" class="nav-btn prev">
-              {{ icons.back_icon() }}
-              <span>Предыдущий вопрос</span>
-            </a>
-            <a href="#change-password" class="nav-btn next">
-              <span>Следующий вопрос</span>
-              {{ icons.next_icon() }}
-            </a>
-          </div>
-        </div>
-      </article>
-
-      <article class="answer-active-modern" id="change-password">
-        <div class="answer-header-modern">
-          <h1 class="answer-title-modern">Как изменить пароль?</h1>
-        </div>
-        <div class="answer-body-modern">
-          <div class="answer-text">
-            <p>
-              Изменение пароля происходит через ссылку, отправленную на вашу почту — так же, как и восстановление забытого пароля.
-            </p>
-          </div>
-
-          <div class="steps-container">
-            <div class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <h4>Откройте настройки профиля</h4>
-                <p>
-                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить пароль»</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <h4>Запросите ссылку для смены пароля</h4>
-                <p>
-                  Укажите email, привязанный к аккаунту, и нажмите <strong>«Запросить изменение пароля»</strong>. На почту придёт письмо со ссылкой для сброса пароля.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-number">3</div>
-              <div class="step-content">
-                <h4>Задайте новый пароль</h4>
-                <p>
-                  Перейдите по ссылке из письма, введите новый пароль и повторите его для подтверждения, затем нажмите кнопку сохранения.
-                </p>
-                <div class="callout callout--neutral">
-                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
-                  <div class="callout-body">
-                    <p>После успешной смены пароля вы будете перенаправлены на страницу входа — войдите с новым паролем.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="callout callout--warning">
-            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
-            <div class="callout-body">
-              <p class="callout-title">Важно</p>
-              <p>Ссылка для сброса пароля действительна <strong>1 час</strong>. Если она устарела, запросите новую на странице <strong>«Забыли пароль?»</strong>.</p>
-            </div>
-          </div>
-
-          <div class="answer-navigation">
-            <a href="#change-email" class="nav-btn prev">
-              {{ icons.back_icon() }}
-              <span>Предыдущий вопрос</span>
-            </a>
-            <a href="#org-roles" class="nav-btn next">
-              <span>Следующий вопрос</span>
-              {{ icons.next_icon() }}
-            </a>
-          </div>
-        </div>
-      </article>
-
-<article class="answer-active-modern" id="org-roles">
-        <div class="answer-header-modern">
-          <h1 class="answer-title-modern">Роли сотрудников организации</h1>
-        </div>
-        <div class="answer-body-modern">
-          <div class="answer-text">
-            <p>
-              У каждого сотрудника организации одна роль — от нее зависит, какие кнопки ему доступны.
-              Руководителем организации становится тот, кто зарегистрировал организацию с проверкой ЭЦП.
-              Остальных сотрудников он добавляет в профиле организации кнопкой <strong>«Добавить сотрудника»</strong>.
-            </p>
-          </div>
-
-          <div class="org-roles">
-                <div class="org-role-card org-role-card--ex">
-                  <div class="org-role-head">
-                    <span class="org-role-icon">{{ icons.icon_edit() }}</span>
-                    <div>
-                      <h4 class="org-role-title">Исполнитель</h4>
-                      <p class="org-role-note">Готовит план и решения, не подписывает</p>
-                    </div>
-                  </div>
-                  <ul class="org-role-list">
-                    <li>Создает план, заполняет титульный лист и таблицы, проходит контроль</li>
-                    <li>Выбирает маршрут и направляет план на подпись руководителю</li>
-                    <li>В согласующей организации проверяет поступившие планы и готовит решение: «Согласовать» или «Не согласовать» с текстом ошибки и файлом</li>
-                    <li>В утверждающей организации проверяет план и направляет решение «Утвердить» на подпись</li>
-                    <li>Подписывать ЭЦП не может</li>
-                  </ul>
-                </div>
-                <div class="org-role-card org-role-card--dh">
-                  <div class="org-role-head">
-                    <span class="org-role-icon">{{ icons.icon_profile() }}</span>
-                    <div>
-                      <h4 class="org-role-title">Руководитель структурного подразделения</h4>
-                      <p class="org-role-note">Готовит и подписывает</p>
-                    </div>
-                  </div>
-                  <ul class="org-role-list">
-                    <li>Может все, что исполнитель</li>
-                    <li>Подписывает ЭЦП план, направленный ему, и отправляет по маршруту — или передает руководителю организации либо возвращает на внутреннюю доработку</li>
-                    <li>В согласующей организации подписывает решение, подготовленное другим сотрудником, передает его руководителю организации или возвращает на повторное рассмотрение. Свое решение не подписывает</li>
-                    <li>В утверждающей организации только передает решение руководителю организации</li>
-                    <li>В течение 5 минут после подписи может отменить отправку плана</li>
-                  </ul>
-                </div>
-                <div class="org-role-card org-role-card--oh">
-                  <div class="org-role-head">
-                    <span class="org-role-icon">{{ icons.icon_org() }}</span>
-                    <div>
-                      <h4 class="org-role-title">Руководитель организации</h4>
-                      <p class="org-role-note">Подписывает и управляет организацией</p>
-                    </div>
-                  </div>
-                  <ul class="org-role-list">
-                    <li>Подписывает ЭЦП планы и решения, которые ему направили сотрудники, или возвращает их с пояснением</li>
-                    <li>Не создает планы и не выносит решение первым — сначала план должен рассмотреть исполнитель или руководитель подразделения</li>
-                    <li>Утверждает план кнопкой «Одобрить», если план создан его же утверждающей организацией</li>
-                    <li>Приглашает и удаляет сотрудников, назначает им роли</li>
-                    <li>Обновляет данные организации из ЕГР</li>
-                  </ul>
-                </div>
-                <div class="org-role-card org-role-card--dp">
-                  <div class="org-role-head">
-                    <span class="org-role-icon">{{ icons.icon_sign() }}</span>
-                    <div>
-                      <h4 class="org-role-title">Заместитель руководителя организации</h4>
-                      <p class="org-role-note">Подписывает вместо руководителя</p>
-                    </div>
-                  </div>
-                  <ul class="org-role-list">
-                    <li>Подписывает и утверждает планы и решения так же, как руководитель организации</li>
-                    <li>Не управляет сотрудниками и не обновляет данные организации из ЕГР</li>
-                  </ul>
-                </div>
-          </div>
-
-          <div class="callout callout--neutral">
-            <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
-            <div class="callout-body">
-              <p>В организации может быть до 7 сотрудников. Руководитель организации и его заместитель — по одному, исполнителей и руководителей подразделений может быть несколько.</p>
-              <p>Отдельно от ролей у каждого плана есть <strong>ответственные исполнители</strong> (до двух человек) — их ФИО и контакты видны на вкладке «Подписи». Создатель плана добавляется автоматически, второго можно добавить на вкладке «Действия».</p>
-            </div>
-          </div>
-
-          <div class="answer-navigation">
-            <a href="#change-password" class="nav-btn prev">
-              {{ icons.back_icon() }}
-              <span>Предыдущий вопрос</span>
-            </a>
-            <a href="#org-egr" class="nav-btn next">
-              <span>Следующий вопрос</span>
-              {{ icons.next_icon() }}
-            </a>
-          </div>
-        </div>
-      </article>
-
-      <article class="answer-active-modern" id="org-egr">
-        <div class="answer-header-modern">
-          <h1 class="answer-title-modern">Как обновить данные организации?</h1>
-        </div>
-        <div class="answer-body-modern">
-          <div class="answer-text">
-            <p>
-              Данные организации загружаются из Единого государственного регистра юридических лиц и индивидуальных предпринимателей (ЕГР) по УНП организации.
-              Вручную их редактировать не нужно — достаточно запросить актуальные сведения из ЕГР.
-            </p>
-          </div>
-
-          <div class="steps-container">
-            <div class="step-item">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <h4>Откройте карточку организации</h4>
-                <p>
-                  В профиле перейдите на вкладку <strong>«Организация»</strong>, нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> справа и выберите <strong>«Обновить данные организации»</strong>.
-                </p>
-                <p>
-                  Кнопка доступна руководителю организации. У остальных сотрудников она неактивна, а если у организации не указан УНП — неактивна у всех.
-                </p>
-              </div>
-            </div>
-
-            <div class="step-item">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <h4>Дождитесь ответа ЕГР</h4>
-                <p>
-                  Система отправляет запрос в ЕГР и сохраняет полученные данные. Появится сообщение со списком изменившихся полей
-                  или <strong>«Данные совпадают с ЕГР — изменений нет»</strong>. Под карточкой организации отображается дата и время последней сверки — <strong>«Сверено с ЕГР»</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <h3>Какие данные берутся из ЕГР</h3>
-          <div class="feature-card table-card">
-            <table class="example-table egr-table">
-              <thead>
-                <tr>
-                  <th>Поле</th>
-                  <th>Что загружается</th>
-                </tr>
-              </thead>
-              <tbody>
-                  <tr>
-                    <td>Полное наименование</td>
-                    <td>Наименование юридического лица</td>
-                  </tr>
-                  <tr>
-                    <td>Сокращенное наименование</td>
-                    <td>Краткое наименование</td>
-                  </tr>
-                  <tr>
-                    <td>Юридический адрес</td>
-                    <td>Индекс, область, район, населенный пункт, улица, дом, корпус, помещение</td>
-                  </tr>
-                  <tr>
-                    <td>Регион</td>
-                    <td>Определяется по коду СОАТО населенного пункта из юридического адреса</td>
-                  </tr>
-                  <tr>
-                    <td>Статус</td>
-                    <td>Действующая, в процессе ликвидации, ликвидирована или банкротство</td>
-                  </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="answer-text egr-note">
-            <p>
-              УНП, ОКПО и роль организации в системе (разработчик, согласующая, утверждающая) из ЕГР не меняются — при ошибке в них обратитесь к администратору.
-              ФИО руководителя ЕГР не передает. Если поле в ЕГР пустое, в карточке остается прежнее значение.
-            </p>
-          </div>
-
-          <div class="callout callout--warning">
-            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
-            <div class="callout-body">
-              <p class="callout-title">Важно</p>
-              <p>Перед отправкой плана по маршруту («Подписать и отправить») система сама сверяет организацию с ЕГР. Если ЕГР не отвечает, план остается на подписи — отправку можно повторить позже.</p>
-              <p>Если по данным ЕГР организация в процессе ликвидации, ликвидирована или признана банкротом, ее сотрудникам доступен только просмотр, а отправка планов невозможна.</p>
-            </div>
-          </div>
-
-          <div class="answer-navigation">
-            <a href="#org-roles" class="nav-btn prev">
+            <a href="#before-register" class="nav-btn prev">
               {{ icons.back_icon() }}
               <span>Предыдущий вопрос</span>
             </a>
@@ -740,6 +500,10 @@
           </div>
         </div>
       </article>
+
+
+
+
 
         <article class="answer-active-modern" id="create-plan">
           <div class="answer-header-modern">
@@ -829,7 +593,7 @@
             </div>
 
             <div class="answer-navigation">
-              <a href="#org-egr" class="nav-btn prev">
+              <a href="#getting-started" class="nav-btn prev">
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
@@ -1315,7 +1079,7 @@
         <article class="answer-active-modern" id="plans">
           <div class="answer-header-modern">
             <h1 class="answer-title-modern">
-              Виды и статусы планов энергоэффективности
+              Статусы планов
             </h1>
           </div>
           <div class="answer-body-modern">
@@ -1615,7 +1379,7 @@
                     <td>95</td>
                     <td>109,3</td>
                     <td class="text-danger">↓ -5,7</td>
-                    <td><span class="badge-local">Местный</span></td>
+                    <td><span class="badge-local">Неместный</span></td>
                   </tr>
                   <tr>
                     <td>Газ природный попутный</td>
@@ -1625,7 +1389,7 @@
                     <td>120</td>
                     <td>138,0</td>
                     <td class="text-success">↑ +23,0</td>
-                    <td><span class="badge-local">Местный</span></td>
+                    <td><span class="badge-local">Неместный</span></td>
                   </tr>
                   <tr>
                     <td>Дрова</td>
@@ -1634,8 +1398,8 @@
                     <td>11,4</td>
                     <td>80</td>
                     <td>18,2</td>
-                    <td class="text-danger">↑ +6,8</td>
-                    <td><span class="badge-local">Неместный</span></td>
+                    <td class="text-success">↑ +6,8</td>
+                    <td><span class="badge-local">Местный</span></td>
                   </tr>
                   <tr>
                     <td>Дрова</td>
@@ -1644,8 +1408,8 @@
                     <td>11,4</td>
                     <td>30</td>
                     <td>6,8</td>
-                    <td class="text-success">↓ -4,6</td>
-                    <td><span class="badge-local">Неместный</span></td>
+                    <td class="text-danger">↓ -4,6</td>
+                    <td><span class="badge-local">Местный</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -1882,19 +1646,11 @@
                     </p>
                   </div>
 
-                  <div class="callout callout--warning">
-                    <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+                  <div class="callout">
+                    <span class="icon-badge">{{ info_icon() }}</span>
                     <div class="callout-body">
-                      <p class="callout-title">Важное ограничение</p>
-                      <p>
-                        <strong>Ожидаемый экономический эффект от внедрения мероприятия в текущем году</strong>
-                        <span class="text-danger">не может превышать</span>
-                        <strong>Условно-годовой экономический эффект, т у.т.</strong>
-                      </p>
-                      <div class="formula formula--constraint">Эффект в текущем году ≤ Условно-годовой эффект (т у.т.)</div>
-                      <p class="feature-description">
-                        При превышении система отобразит предупреждение и не позволит сохранить мероприятие.
-                      </p>
+                      <p class="callout-title">Исключение</p>
+                      <p>Для мероприятий с кодом направления <strong>1013</strong> («Замена неэкономичных котлов и печей с низким коэффициентом полезного действия на более эффективные») данное значение автоматическому расчету не подлежит и заполняется пользователем вручную на основании ТЭО.</p>
                     </div>
                   </div>
                 </div>
@@ -1921,6 +1677,13 @@
                     <span class="icon-badge">{{ info_icon() }}</span>
                     <div class="callout-body">
                       <p>Данные <strong>«Объем финансирования в текущем году»</strong> и <strong>«Срок окупаемости»</strong> рассчитываются автоматически.</p>
+                    </div>
+                  </div>
+                  <div class="callout">
+                    <span class="icon-badge">{{ info_icon() }}</span>
+                    <div class="callout-body">
+                      <p class="callout-title">Исключение</p>
+                      <p>Для мероприятий с кодом направления <strong>1013</strong> («Замена неэкономичных котлов и печей с низким коэффициентом полезного действия на более эффективные») <strong>«Срок окупаемости»</strong> автоматическому расчету не подлежит и заполняется пользователем вручную на основании ТЭО.</p>
                     </div>
                   </div>
                   <div class="callout">
@@ -1999,13 +1762,6 @@
               <p>
                 В этом разделе отражаются мероприятия, направленные на увеличение использования местных ТЭР.
               </p>
-              <div class="callout">
-                <span class="icon-badge">{{ sparkle_icon() }}</span>
-                <div class="callout-body">
-                  <p class="callout-title">Отличие раздела 3</p>
-                  <p>Поле <strong>«Ожидаемое увеличение использования местных ТЭР в текущем году, т у.т.»</strong> пользователь заполняет <strong>самостоятельно</strong>, без ограничений по сравнению с условно-годовым эффектом.</p>
-                </div>
-              </div>
             </div>
 
             <div class="steps-container">
@@ -2550,7 +2306,7 @@
           <div class="answer-body-modern">
             <div class="answer-text">
               <p>
-                Проверка электронной цифровой подписи (ЭЦП) подтверждает, кто совершает действие. Она нужна в трех случаях: на последнем шаге <strong>регистрации</strong> (см. <a href="#getting-started" class="faq-inline-link">«Как начать работу с системой?»</a>), когда руководитель <strong>подписывает план</strong> перед отправкой по маршруту (см. <a href="#plan-control-send" class="faq-inline-link">«Контроль и отправка плана»</a>) и когда руководитель согласующей или утверждающей организации <strong>подписывает решение</strong> по плану (см. <a href="#audit-data" class="faq-inline-link">«Согласование планов»</a>). Во всех случаях открывается одно и то же окно проверки. Если у вас еще нет файла сертификата — см. <a href="#ecp-obtain" class="faq-inline-link">«Как получить сертификат ЭЦП?»</a>.
+                Проверка электронной цифровой подписи (ЭЦП) подтверждает, кто совершает действие. Она нужна в трех случаях: на последнем шаге <strong>регистрации</strong> (см. <a href="#getting-started" class="faq-inline-link">«Как зарегистрироваться?»</a>), когда руководитель <strong>подписывает план</strong> перед отправкой по маршруту (см. <a href="#plan-control-send" class="faq-inline-link">«Контроль и отправка плана»</a>) и когда руководитель согласующей или утверждающей организации <strong>подписывает решение</strong> по плану (см. <a href="#audit-data" class="faq-inline-link">«Согласование планов»</a>). Во всех случаях открывается одно и то же окно проверки. Если у вас еще нет файла сертификата — см. <a href="#ecp-obtain" class="faq-inline-link">«Как получить сертификат ЭЦП?»</a>.
               </p>
             </div>
 
@@ -2610,10 +2366,253 @@
                 {{ icons.back_icon() }}
                 <span>Предыдущий вопрос</span>
               </a>
-              <div></div>
+              <a href="#change-email" class="nav-btn next">
+                <span>Следующий вопрос</span>
+                {{ icons.next_icon() }}
+              </a>
             </div>
           </div>
         </article>
+
+      <article class="answer-active-modern" id="change-email">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как сменить электронный адрес?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Электронный адрес используется для входа в систему, поэтому его смена подтверждается кодом, который приходит на новый адрес.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте настройки профиля</h4>
+                <p>
+                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить эл. адрес»</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Укажите новый адрес и текущий пароль</h4>
+                <p>
+                  Введите новый email и текущий пароль для подтверждения личности, затем нажмите <strong>«Отправить код»</strong>.
+                </p>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p>Код подтверждения будет отправлен на <strong>новый</strong> адрес и действителен <strong>10 минут</strong>.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Введите код подтверждения</h4>
+                <p>
+                  Откройте письмо на новом адресе, скопируйте код из него и введите на странице подтверждения, затем нажмите <strong>«Подтвердить»</strong>.
+                </p>
+                <p>
+                  Если письмо не пришло, воспользуйтесь ссылкой <strong>«Отправить код повторно»</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>После подтверждения кода вход в систему нужно будет выполнять по новому email — старый адрес перестанет действовать.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#ecp-check" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#change-password" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <article class="answer-active-modern" id="change-password">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как изменить пароль?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Изменение пароля происходит через ссылку, отправленную на вашу почту — так же, как и восстановление забытого пароля.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте настройки профиля</h4>
+                <p>
+                  На странице профиля нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> в правом верхнем углу и выберите <strong>«Изменить пароль»</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Запросите ссылку для смены пароля</h4>
+                <p>
+                  Укажите email, привязанный к аккаунту, и нажмите <strong>«Запросить изменение пароля»</strong>. На почту придёт письмо со ссылкой для сброса пароля.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Задайте новый пароль</h4>
+                <p>
+                  Перейдите по ссылке из письма, введите новый пароль и повторите его для подтверждения, затем нажмите кнопку сохранения.
+                </p>
+                <div class="callout callout--neutral">
+                  <span class="icon-badge icon-badge--neutral">{{ info_icon() }}</span>
+                  <div class="callout-body">
+                    <p>После успешной смены пароля вы будете перенаправлены на страницу входа — войдите с новым паролем.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>Ссылка для сброса пароля действительна <strong>1 час</strong>. Если она устарела, запросите новую на странице <strong>«Забыли пароль?»</strong>.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#change-email" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <a href="#org-egr" class="nav-btn next">
+              <span>Следующий вопрос</span>
+              {{ icons.next_icon() }}
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <article class="answer-active-modern" id="org-egr">
+        <div class="answer-header-modern">
+          <h1 class="answer-title-modern">Как обновить данные организации?</h1>
+        </div>
+        <div class="answer-body-modern">
+          <div class="answer-text">
+            <p>
+              Данные организации загружаются из Единого государственного регистра юридических лиц и индивидуальных предпринимателей (ЕГР) по УНП организации.
+              Вручную их редактировать не нужно — достаточно запросить актуальные сведения из ЕГР.
+            </p>
+          </div>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Откройте карточку организации</h4>
+                <p>
+                  В профиле перейдите на вкладку <strong>«Организация»</strong>, нажмите на значок <span class="inline-icon">{{ icons.icon_dots() }}</span> справа и выберите <strong>«Обновить данные организации»</strong>.
+                </p>
+                <p>
+                  Кнопка доступна руководителю организации. У остальных сотрудников она неактивна, а если у организации не указан УНП — неактивна у всех.
+                </p>
+              </div>
+            </div>
+
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Дождитесь ответа ЕГР</h4>
+                <p>
+                  Система отправляет запрос в ЕГР и сохраняет полученные данные. Появится сообщение со списком изменившихся полей
+                  или <strong>«Данные совпадают с ЕГР — изменений нет»</strong>. Под карточкой организации отображается дата и время последней сверки — <strong>«Сверено с ЕГР»</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <h3>Какие данные берутся из ЕГР</h3>
+          <div class="feature-card table-card">
+            <table class="example-table egr-table">
+              <thead>
+                <tr>
+                  <th>Поле</th>
+                  <th>Что загружается</th>
+                </tr>
+              </thead>
+              <tbody>
+                  <tr>
+                    <td>Полное наименование</td>
+                    <td>Наименование юридического лица</td>
+                  </tr>
+                  <tr>
+                    <td>Сокращенное наименование</td>
+                    <td>Краткое наименование</td>
+                  </tr>
+                  <tr>
+                    <td>Юридический адрес</td>
+                    <td>Индекс, область, район, населенный пункт, улица, дом, корпус, помещение</td>
+                  </tr>
+                  <tr>
+                    <td>Регион</td>
+                    <td>Определяется по коду СОАТО населенного пункта из юридического адреса</td>
+                  </tr>
+                  <tr>
+                    <td>Статус</td>
+                    <td>Действующая, в процессе ликвидации, ликвидирована или банкротство</td>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="answer-text egr-note">
+            <p>
+              УНП, ОКПО и роль организации в системе (разработчик, согласующая, утверждающая) из ЕГР не меняются — при ошибке в них обратитесь к администратору.
+              ФИО руководителя ЕГР не передает. Если поле в ЕГР пустое, в карточке остается прежнее значение.
+            </p>
+          </div>
+
+          <div class="callout callout--warning">
+            <span class="icon-badge icon-badge--warning">{{ icons.error_icon() }}</span>
+            <div class="callout-body">
+              <p class="callout-title">Важно</p>
+              <p>Перед отправкой плана по маршруту («Подписать и отправить») система сама сверяет организацию с ЕГР. Если ЕГР не отвечает, план остается на подписи — отправку можно повторить позже.</p>
+              <p>Если по данным ЕГР организация в процессе ликвидации, ликвидирована или признана банкротом, ее сотрудникам доступен только просмотр, а отправка планов невозможна.</p>
+            </div>
+          </div>
+
+          <div class="answer-navigation">
+            <a href="#change-password" class="nav-btn prev">
+              {{ icons.back_icon() }}
+              <span>Предыдущий вопрос</span>
+            </a>
+            <div></div>
+          </div>
+        </div>
+      </article>
 
       </div>
     </div>
