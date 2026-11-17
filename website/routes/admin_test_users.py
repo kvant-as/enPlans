@@ -6,7 +6,9 @@
   - Беларуськалий — разработчик (и утверждающая для своих планов);
   - Минское областное управление по надзору — согласующая (региональное);
   - Лидское пиво — утверждающая.
-Пароль у всех — TEST_USERS_PASSWORD. Существующие аккаунты не
+Руководитель организации — ответственный за кабинет и единственный с
+почтой (prefix.org_head@test.local); остальные входят по логину
+prefix.role. Пароль у всех — TEST_USERS_PASSWORD. Существующие аккаунты не
 пересоздаются (их id остаются — на них могут ссылаться тестовые планы),
 обновляются только ФИО, должность, телефон, организация, роль и пароль.
 """
@@ -39,7 +41,7 @@ ROLE_LABELS = {
     'org_head': 'Руководитель организации',
 }
 
-# (префикс email, роль, фамилия, имя, отчество, должность, телефон)
+# (префикс логина, роль, фамилия, имя, отчество, должность, телефон)
 TEST_USERS = [
     ('belarus_kali', 'executor', 'Ковалёва', 'Ольга', 'Николаевна', 'Инженер по энергосбережению', '+375291000001'),
     ('belarus_kali', 'dept_head', 'Лапицкий', 'Андрей', 'Викторович', 'Главный энергетик', '+375291000002'),
@@ -81,30 +83,48 @@ def _find_org(key):
     ).first()
 
 
+def _login(prefix, role):
+    return f'{prefix}.{role}'
+
+
 def _email(prefix, role):
-    return f'{prefix}.{role}@test.local'
+    return f'{prefix}.{role}@test.local' if role == 'org_head' else None
 
 
-def _find_user(email):
-    return User.query.filter(
-        func.lower(User.email) == email.lower(),
+def _find_user(prefix, role):
+    legacy_email = f'{prefix}.{role}@test.local'
+    user = User.query.filter(
+        db.or_(func.lower(User.login) == _login(prefix, role),
+               func.lower(User.email) == legacy_email),
         User.application_id == get_current_application_id(),
     ).first()
+    if user:
+        return user
+    org = _find_org(prefix)
+    spec = next(u for u in TEST_USERS if u[0] == prefix and u[1] == role)
+    if not org:
+        return None
+    return User.query.filter(
+        User.organization_id == org.id,
+        User.application_id == get_current_application_id(),
+        User.last_name == spec[2],
+        User.first_name == spec[3],
+    ).order_by(User.id).first()
 
 
 def _rows():
     orgs = {key: _find_org(key) for key in TEST_ORGS}
     rows = []
     for prefix, role, last, first, patr, post, phone in TEST_USERS:
-        email = _email(prefix, role)
         rows.append({
-            'email': email,
+            'login': _login(prefix, role),
+            'email': _email(prefix, role),
             'org_label': TEST_ORGS[prefix]['label'],
             'org': orgs[prefix],
             'role_label': ROLE_LABELS[role],
             'fio': f'{last} {first} {patr}',
             'post': post,
-            'user': _find_user(email),
+            'user': _find_user(prefix, role),
         })
     return rows, orgs
 
@@ -128,10 +148,9 @@ def create():
     app_id = get_current_application_id()
     created = updated = 0
     for prefix, role, last, first, patr, post, phone in TEST_USERS:
-        email = _email(prefix, role)
-        user = _find_user(email)
+        user = _find_user(prefix, role)
         if user is None:
-            user = User(email=email, application_id=app_id)
+            user = User(application_id=app_id)
             db.session.add(user)
             created += 1
         else:
@@ -141,6 +160,11 @@ def create():
         user.telephone = phone
         user.organization_id = orgs[prefix].id
         user.org_role = role
+        user.login = _login(prefix, role)
+        user.email = _email(prefix, role)
+        user.is_cabinet_owner = role == 'org_head'
+        user.is_active = True
+        user.deactivated_at = None
         user.password = generate_password_hash(TEST_USERS_PASSWORD)
         user.is_verified = True
         user.reset_password_token = None

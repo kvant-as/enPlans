@@ -1,0 +1,358 @@
+{% import 'macros/svg_icons.html' as icons %}
+{% set role_labels = {
+  'org_head': _('Руководитель организации'),
+  'org_head_deputy': _('Заместитель руководителя организации'),
+  'dept_head': _('Руководитель структурного подразделения'),
+  'executor': _('Исполнитель'),
+} %}
+{% set active_count = cabinet_members | selectattr('is_active') | list | length %}
+{% set employees_max = 7 %}
+{% set dept_usage = {} %}
+{% for m in cabinet_members %}{% if m.department_id %}{% set _ignore = dept_usage.update({m.department_id: dept_usage.get(m.department_id, 0) + 1}) %}{% endif %}{% endfor %}
+
+<div class="profile-tab-panel" data-tab-panel="cabinet">
+  <div class="employees-header">
+    <div class="employees-header-text">
+      <a class="name" style="padding-bottom: 0">{{ _('Сотрудники') }}</a>
+    </div>
+    <button type="button" class="main-btn main-btn-primary cabinet-add-btn" data-cabinet-create {% if active_count >= employees_max %}disabled title="{{ _('Все места заняты: деактивируйте одного из сотрудников') }}"{% endif %}>
+      {{ icons.icon_add() }}
+      <span class="btn-text">{{ _('Добавить сотрудника') }}</span>
+    </button>
+  </div>
+  <p class="cabinet-intro">{{ _('Учётные записи сотрудников создаёте вы. Логин и пароль передайте сотруднику сами: писем система не отправляет. Почта у организации одна — ваша.') }}</p>
+
+  <div class="cabinet-toolbar">
+    <div class="cabinet-filters">
+      <div class="custom-dropdown cabinet-filter" data-cabinet-filter="role">
+        <button type="button" class="dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
+          <span class="selected-option" data-placeholder="{{ _('Роль') }}">{{ _('Роль') }}</span>
+          {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter" role="listbox">
+          <div class="dropdown-item is-selected" data-value="">{{ _('Все роли') }}</div>
+          {% for key, label in role_labels.items() %}
+          <div class="dropdown-item" data-value="{{ key }}">{{ label }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="custom-dropdown cabinet-filter" data-cabinet-filter="status">
+        <button type="button" class="dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
+          <span class="selected-option" data-placeholder="{{ _('Статус') }}">{{ _('Статус') }}</span>
+          {{ icons.dropdown_arrow() }}
+        </button>
+        <div class="dropdown-menu-filter" role="listbox">
+          <div class="dropdown-item is-selected" data-value="">{{ _('Все') }}</div>
+          <div class="dropdown-item" data-value="active">{{ _('Активна') }}</div>
+          <div class="dropdown-item" data-value="inactive">{{ _('Деактивирована') }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="employees-capacity cabinet-capacity" title="{{ _('Активных учётных записей') }}">
+      <div class="employees-capacity-bar">
+        <span style="width: {{ (active_count / employees_max * 100)|round(0, 'floor')|int }}%"></span>
+      </div>
+      <span class="employees-capacity-label">{{ active_count }} {{ _('из') }} {{ employees_max }} {{ _('активных') }}</span>
+    </div>
+  </div>
+
+  <div class="cabinet-table-wrap">
+    <table class="cabinet-table">
+      <thead>
+        <tr>
+          <th>{{ _('ФИО') }}</th>
+          <th>{{ _('Логин') }}</th>
+          <th>{{ _('Роль') }}</th>
+          <th>{{ _('Подразделение') }}</th>
+          <th>{{ _('Статус') }}</th>
+          <th>{{ _('Создана') }}</th>
+          <th class="cabinet-col-actions"><span class="visually-hidden">{{ _('Действия') }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in cabinet_members %}
+        <tr class="cabinet-row{% if not m.is_active %} is-inactive{% endif %}" data-id="{{ m.id }}" data-role="{{ m.org_role }}" data-status="{{ 'active' if m.is_active else 'inactive' }}">
+          <td class="cabinet-cell-name" data-label="{{ _('ФИО') }}">
+            <span class="cabinet-name">{{ m.full_name or '—' }}</span>
+            {% if m.post %}<span class="cabinet-post">{{ m.post }}</span>{% endif %}
+            {% if m.id == current_user.id or m.is_cabinet_owner %}
+            <span class="cabinet-badges">
+              {% if m.id == current_user.id %}<span class="employee-badge employee-badge-self">{{ _('Вы') }}</span>{% endif %}
+              {% if m.is_cabinet_owner %}<span class="employee-badge cabinet-badge-owner">{{ _('Ответственный за кабинет') }}</span>{% endif %}
+            </span>
+            {% endif %}
+          </td>
+          <td data-label="{{ _('Логин') }}"><span class="cabinet-login">{{ m.login or '—' }}</span></td>
+          <td data-label="{{ _('Роль') }}">{{ role_labels.get(m.org_role, '—') }}</td>
+          <td data-label="{{ _('Подразделение') }}">{{ m.department.name if m.department else '—' }}</td>
+          <td data-label="{{ _('Статус') }}">
+            <span class="cabinet-status {{ 'is-active' if m.is_active else 'is-inactive' }}">{{ _('Активна') if m.is_active else _('Деактивирована') }}</span>
+          </td>
+          <td data-label="{{ _('Создана') }}" class="cabinet-date">{{ m.begin_time.strftime('%d.%m.%Y') if m.begin_time else '—' }}</td>
+          <td class="cabinet-col-actions">
+            <div class="dropdown-menu-container">
+              <button type="button" class="svg-btn dots-btn" data-cabinet-menu aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('Действия с учётной записью') }}">
+                {{ icons.icon_dots() }}
+              </button>
+              <div class="dropdown-menu cabinet-menu" role="menu">
+                <div class="nav-menu-list">
+                  <button type="button" class="nav-menu-item" data-cabinet-action="edit">
+                    {{ icons.icon_edit() }}<span>{{ _('Редактировать') }}</span>
+                  </button>
+                  <button type="button" class="nav-menu-item" data-cabinet-action="password">
+                    {{ icons.icon_password() }}<span>{{ _('Сбросить пароль') }}</span>
+                  </button>
+                  {% if m.is_active %}
+                    {% if m.is_cabinet_owner %}
+                    <button type="button" class="nav-menu-item" data-cabinet-action="owner-off">
+                      {{ icons.icon_settings() }}<span>{{ _('Снять права ответственного') }}</span>
+                    </button>
+                    {% else %}
+                    <button type="button" class="nav-menu-item" data-cabinet-action="owner-on">
+                      {{ icons.icon_settings() }}<span>{{ _('Назначить ответственным') }}</span>
+                    </button>
+                    {% endif %}
+                    {% if m.id != current_user.id %}
+                    <hr>
+                    <button type="button" class="nav-menu-item red" data-cabinet-action="deactivate">
+                      {{ icons.icon_cancel() }}<span>{{ _('Деактивировать') }}</span>
+                    </button>
+                    {% endif %}
+                  {% else %}
+                  <hr>
+                  <button type="button" class="nav-menu-item green" data-cabinet-action="activate">
+                    {{ icons.icon_check() }}<span>{{ _('Активировать') }}</span>
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr class="cabinet-empty" hidden>
+          <td colspan="7">{{ _('Нет сотрудников с такими параметрами') }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr/>
+  <div class="employees-header">
+    <div class="employees-header-text">
+      <h1 class="name">{{ _('Структурные подразделения') }}</h1>
+    </div>
+  </div>
+  <p class="cabinet-intro">{{ _('Справочник вашей организации. Подразделение выбирается в карточке сотрудника.') }}</p>
+
+  <ul class="cabinet-departments" id="cabinetDepartments">
+    {% for d in cabinet_departments %}
+    <li class="cabinet-department" data-id="{{ d.id }}">
+      <span class="cabinet-department-icon">{{ icons.icon_department() }}</span>
+      <span class="cabinet-department-name">{{ d.name }}</span>
+      <span class="cabinet-department-count">{{ dept_usage.get(d.id, 0) }} {{ _('сотр.') }}</span>
+      <button type="button" class="svg-btn cabinet-icon-btn" data-department-rename title="{{ _('Переименовать') }}" aria-label="{{ _('Переименовать') }}">{{ icons.icon_edit() }}</button>
+      <button type="button" class="svg-btn cabinet-icon-btn is-danger" data-department-delete title="{{ _('Удалить') }}" aria-label="{{ _('Удалить') }}" {% if dept_usage.get(d.id) %}disabled title="{{ _('В подразделении есть сотрудники') }}"{% endif %}>{{ icons.icon_delete() }}</button>
+    </li>
+    {% else %}
+    <li class="cabinet-departments-empty">{{ _('Подразделений пока нет') }}</li>
+    {% endfor %}
+  </ul>
+  <form class="cabinet-department-add" id="cabinetDepartmentAdd" autocomplete="off">
+    <div class="input-with-icon">
+      {{ icons.icon_department() }}
+      <input type="text" name="name" class="app-input" maxlength="255" placeholder="{{ _('Например, Отдел главного энергетика') }}" aria-label="{{ _('Название подразделения') }}" required />
+    </div>
+    <button type="submit" class="main-btn main-btn-primary" disabled>
+      {{ icons.icon_add() }}<span class="btn-text">{{ _('Добавить') }}</span>
+    </button>
+  </form>
+</div>
+
+<div id="cabinetEmployeeModal" class="modal">
+  <div class="modal-content cabinet-modal">
+    <div class="modal-header">
+      <a id="cabinetEmployeeTitle">{{ _('Новый сотрудник') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="cabinetEmployeeForm" novalidate autocomplete="off">
+      <div class="cabinet-form-grid">
+        <div class="app-group">
+          <label for="cabLastName">{{ _('Фамилия') }} <span class="required-star">*</span></label>
+          <div class="input-with-icon">{{ icons.icon_profile() }}<input id="cabLastName" name="last_name" class="app-input" maxlength="100" placeholder="{{ _('Введите фамилию') }}" required /></div>
+        </div>
+        <div class="app-group">
+          <label for="cabFirstName">{{ _('Имя') }} <span class="required-star">*</span></label>
+          <div class="input-with-icon">{{ icons.icon_profile() }}<input id="cabFirstName" name="first_name" class="app-input" maxlength="100" placeholder="{{ _('Введите имя') }}" required /></div>
+        </div>
+        <div class="app-group">
+          <label for="cabPatronymic">{{ _('Отчество') }}</label>
+          <div class="input-with-icon">{{ icons.icon_profile() }}<input id="cabPatronymic" name="patronymic_name" class="app-input" placeholder="{{ _('Введите отчество') }}" maxlength="100" /></div>
+        </div>
+        <div class="app-group">
+          <label for="cabPost">{{ _('Должность') }} <span class="required-star">*</span></label>
+          <div class="input-with-icon">{{ icons.icon_profile() }}<input id="cabPost" name="post" class="app-input" maxlength="255" placeholder="{{ _('Введите должность') }}" required /></div>
+        </div>
+      </div>
+
+      <div class="app-group">
+        <label>{{ _('Телефон') }} <span class="required-star">*</span></label>
+        <div class="phone-group-list" id="cabPhoneList" data-existing-phones=""></div>
+        <button type="button" class="phone-row-add" id="cabPhoneAdd">
+          {{ icons.icon_plus() }}
+          <span>{{ _('Добавить номер телефона') }}</span>
+        </button>
+        <div class="phone-hint">{{ _('Номер должен содержать 12 цифр вместе с кодом (+375). Можно указать не более 2 номеров') }}</div>
+        <input type="hidden" name="telephone" id="cabPhone" />
+      </div>
+
+      <div class="cabinet-form-grid">
+        <div class="app-group">
+          <label id="cabRoleLabel">{{ _('Роль') }} <span class="required-star">*</span></label>
+          <div class="signer-picker cabinet-picker" id="cabRolePicker" data-placeholder="{{ _('Выберите роль') }}">
+            <button type="button" class="signer-picker-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="cabRoleLabel">
+              <span class="signer-picker-value">{{ _('Выберите роль') }}</span>
+              {{ icons.dropdown_arrow() }}
+            </button>
+            <div class="signer-picker-menu" role="listbox">
+              {% for key, label in role_labels.items() %}
+              <div class="signer-picker-item" role="option" tabindex="-1" data-value="{{ key }}" data-name="{{ label }}">
+                <span class="signer-picker-item-name">{{ label }}</span>
+                <span class="signer-picker-item-role" data-role-taken hidden></span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <input type="hidden" name="org_role" id="cabRole" />
+        </div>
+        <div class="app-group">
+          <label id="cabDepartmentLabel">{{ _('Подразделение') }}</label>
+          <div class="signer-picker cabinet-picker" id="cabDepartmentPicker" data-placeholder="{{ _('Не указано') }}">
+            <button type="button" class="signer-picker-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="cabDepartmentLabel">
+              <span class="signer-picker-value">{{ _('Не указано') }}</span>
+              {{ icons.dropdown_arrow() }}
+            </button>
+            <div class="signer-picker-menu" role="listbox">
+              <div class="signer-picker-item" role="option" tabindex="-1" data-value="" data-name="{{ _('Не указано') }}">
+                <span class="signer-picker-item-name">{{ _('Не указано') }}</span>
+              </div>
+              {% for d in cabinet_departments %}
+              <div class="signer-picker-item" role="option" tabindex="-1" data-value="{{ d.id }}" data-name="{{ d.name }}">
+                <span class="signer-picker-item-name">{{ d.name }}</span>
+                <span class="signer-picker-item-role">{{ dept_usage.get(d.id, 0) }} {{ _('сотр.') }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <input type="hidden" name="department_id" id="cabDepartment" />
+          {% if not cabinet_departments %}
+          <span class="cabinet-field-hint">{{ _('Справочник подразделений пока пуст: добавьте их внизу вкладки «Сотрудники»') }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="app-group">
+        <label for="cabLogin">{{ _('Логин') }} <span class="required-star">*</span></label>
+        <div class="input-with-icon">{{ icons.icon_login() }}<input id="cabLogin" name="login" class="app-input" maxlength="64" autocapitalize="none" spellcheck="false" placeholder="i.ivanov" /></div>
+        <span class="cabinet-field-hint" id="cabLoginHint">{{ _('Подставится по имени и фамилии, можно изменить') }}</span>
+      </div>
+
+      <div class="app-group" data-password-block>
+        <label>{{ _('Пароль') }}</label>
+        <div class="cabinet-segment" role="radiogroup">
+          <label><input type="radio" name="password_mode" value="generate" checked /><span>{{ _('Сгенерировать') }}</span></label>
+          <label><input type="radio" name="password_mode" value="manual" /><span>{{ _('Задать вручную') }}</span></label>
+        </div>
+        <div class="input-with-icon cabinet-password-input" hidden>{{ icons.icon_password() }}<input type="text" name="password" class="app-input" minlength="8" maxlength="64" autocomplete="new-password" placeholder="{{ _('Не короче 8 символов') }}" /></div>
+      </div>
+
+      <p class="cabinet-form-error" role="alert" hidden></p>
+
+      <div class="button-auth-area">
+        <button type="submit" class="main-btn main-btn-primary" id="cabinetEmployeeSubmit">
+          <span class="btn-spinner" aria-hidden="true"></span>
+          {{ icons.icon_confirm() }}
+          <span class="btn-text">{{ _('Создать учётную запись') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-cabinet-close><span class="btn-text">{{ _('Отмена') }}</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="cabinetPasswordModal" class="modal">
+  <div class="modal-content cabinet-modal cabinet-modal-narrow">
+    <div class="modal-header">
+      <a>{{ _('Сброс пароля') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <form id="cabinetPasswordForm" novalidate autocomplete="off">
+      <p class="cabinet-intro" id="cabinetPasswordWho"></p>
+      <div class="app-group">
+        <div class="cabinet-segment" role="radiogroup">
+          <label><input type="radio" name="password_mode" value="generate" checked /><span>{{ _('Сгенерировать') }}</span></label>
+          <label><input type="radio" name="password_mode" value="manual" /><span>{{ _('Задать вручную') }}</span></label>
+        </div>
+        <div class="input-with-icon cabinet-password-input" hidden>{{ icons.icon_password() }}<input type="text" name="password" class="app-input" minlength="8" maxlength="64" autocomplete="new-password" placeholder="{{ _('Не короче 8 символов') }}" /></div>
+      </div>
+      <p class="cabinet-form-error" role="alert" hidden></p>
+      <div class="button-auth-area">
+        <button type="submit" class="main-btn main-btn-primary">
+          <span class="btn-spinner" aria-hidden="true"></span>
+          {{ icons.icon_password() }}
+          <span class="btn-text">{{ _('Сбросить пароль') }}</span>
+        </button>
+        <button type="button" class="svg-btn" data-cabinet-close><span class="btn-text">{{ _('Отмена') }}</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="cabinetCredentialsModal" class="modal">
+  <div class="modal-content cabinet-modal cabinet-modal-narrow">
+    <div class="modal-header">
+      <a id="cabinetCredentialsTitle">{{ _('Данные для входа') }}</a>
+      {{ icons.icon_close() }}
+    </div>
+    <p class="cabinet-intro" id="cabinetCredentialsWho"></p>
+    <div class="cabinet-credentials">
+      <div class="cabinet-credential">
+        <span class="cabinet-credential-label">{{ _('Логин') }}</span>
+        <code class="cabinet-credential-value" id="cabinetCredLogin"></code>
+        <button type="button" class="svg-btn cabinet-icon-btn" data-copy-target="cabinetCredLogin" aria-label="{{ _('Копировать логин') }}">{{ icons.icon_coppy() }}</button>
+      </div>
+      <div class="cabinet-credential">
+        <span class="cabinet-credential-label">{{ _('Пароль') }}</span>
+        <code class="cabinet-credential-value" id="cabinetCredPassword"></code>
+        <button type="button" class="svg-btn cabinet-icon-btn" data-copy-target="cabinetCredPassword" aria-label="{{ _('Копировать пароль') }}">{{ icons.icon_coppy() }}</button>
+      </div>
+    </div>
+    <div class="invite-modal-note">
+      {{ icons.icon_info() }}
+      <span>{{ _('Пароль показывается один раз. Передайте данные сотруднику сами. Если пароль потеряется, сбросьте его заново.') }}</span>
+    </div>
+    <div class="button-auth-area">
+      <button type="button" class="main-btn main-btn-primary" data-copy-both>
+        {{ icons.icon_coppy() }}<span class="btn-text">{{ _('Скопировать логин и пароль') }}</span>
+      </button>
+      <button type="button" class="svg-btn" data-cabinet-close><span class="btn-text">{{ _('Готово') }}</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="cabinetConfirmModal" class="modal">
+  <div class="modal-content cabinet-modal cabinet-modal-narrow">
+    <div class="modal-header">
+      <a id="cabinetConfirmTitle"></a>
+      {{ icons.icon_close() }}
+    </div>
+    <p class="cabinet-intro" id="cabinetConfirmText"></p>
+    <div class="modal-buttons-area">
+      <button type="button" class="no-submit-button" data-cabinet-close><span class="btn-text">{{ _('Отмена') }}</span></button>
+      <button type="button" class="no-submit-button" id="cabinetConfirmYes"><span class="btn-text"></span></button>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="cabinetData">{{ cabinet_data | tojson }}</script>
+<script src="{{ url_for('static', filename='js/cabinet.js') }}?v=2" defer></script>

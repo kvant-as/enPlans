@@ -1373,3 +1373,68 @@ html[data-theme] .fixed-header {
 :root[data-theme="dark"] .app-numeric-input-integer:focus:not(.readonly):not(.disabled) {
   background-color: #1b2027;
 }
+:root[data-theme="dark"] .cabinet-table-wrap,
+:root[data-theme="dark"] .cabinet-department,
+:root[data-theme="dark"] .cabinet-row {
+  background: #1b2027;
+  border-color: #2b313b;
+}
+:root[data-theme="dark"] .cabinet-table thead th {
+  background: #1a1e24;
+  border-color: #2b313b;
+}
+:root[data-theme="dark"] .cabinet-table td {
+  color: #eef1f5;
+  border-color: #2b313b;
+}
+:root[data-theme="dark"] .cabinet-row:hover td {
+  background: rgba(28, 171, 196, 0.06);
+}
+:root[data-theme="dark"] .cabinet-row.is-inactive td:not(.cabinet-col-actions) {
+  color: #9aa3af;
+}
+:root[data-theme="dark"] .cabinet-badge-owner {
+  color: #7fdcec;
+  background: rgba(28, 171, 196, 0.15);
+}
+:root[data-theme="dark"] .cabinet-status.is-active,
+:root[data-theme="dark"] .cabinet-field-hint.is-ok {
+  color: #4fc6dc;
+}
+:root[data-theme="dark"] .cabinet-icon-btn:hover:not(:disabled),
+:root[data-theme="dark"] .cabinet-icon-btn.copied {
+  color: #7fdcec;
+  background: rgba(28, 171, 196, 0.12);
+}
+:root[data-theme="dark"] .cabinet-icon-btn.is-danger:hover:not(:disabled) {
+  color: #f97066;
+  background: rgba(249, 112, 102, 0.12);
+}
+:root[data-theme="dark"] .cabinet-segment {
+  background: #1a1e24;
+  border-color: #2b313b;
+}
+:root[data-theme="dark"] .cabinet-segment input:checked + span {
+  background: #2b313b;
+  color: #7fdcec;
+}
+:root[data-theme="dark"] .cabinet-credential {
+  background: rgba(28, 171, 196, 0.08);
+  border-color: rgba(28, 171, 196, 0.25);
+}
+:root[data-theme="dark"] .cabinet-credential-value {
+  color: #7fdcec;
+}
+:root[data-theme="dark"] .cabinet-form-error {
+  background: rgba(249, 112, 102, 0.12);
+  color: #fda29b;
+}
+:root[data-theme="dark"] .cabinet-filter.has-value .dropdown-toggle {
+  background: rgba(28, 171, 196, 0.1);
+  color: #7fdcec;
+}
+@media (max-width: 760px) {
+  :root[data-theme="dark"] .cabinet-table-wrap {
+    background: none;
+  }
+}

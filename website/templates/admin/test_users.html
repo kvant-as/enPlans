@@ -10,7 +10,8 @@
   <p class="cm-muted test-users-intro">
     Девять аккаунтов для проверки маршрута согласования: исполнитель, руководитель структурного подразделения и руководитель
     организации — в организации-разработчике, согласующей и утверждающей. Уже существующие аккаунты не пересоздаются:
-    у них обновятся ФИО, должность, телефон, организация, роль и пароль. Пароль у всех — <b>{{ password }}</b>.
+    у них обновятся ФИО, должность, телефон, организация, роль, логин и пароль. Почта и права ответственного за кабинет —
+только у руководителя организации, остальные входят по логину. Пароль у всех — <b>{{ password }}</b>.
   </p>
 
   {% if missing_orgs %}
@@ -30,7 +31,8 @@
           <span class="cm-row-title">{{ row.fio }}</span>
           {% if row.user %}<span class="cm-badge">есть</span>{% else %}<span class="cm-badge test-users-new">будет создан</span>{% endif %}
           <span class="cm-row-cells">
-            <span class="cm-cell"><i>Email:</i> {{ row.email }}</span>
+            <span class="cm-cell"><i>Логин:</i> {{ row.login }}</span>
+            {% if row.email %}<span class="cm-cell"><i>Email:</i> {{ row.email }}</span>{% endif %}
             <span class="cm-cell"><i>Организация:</i> {{ row.org_label }}{% if not row.org %} — не найдена{% endif %}</span>
             <span class="cm-cell"><i>Роль:</i> {{ row.role_label }}</span>
             <span class="cm-cell"><i>Должность:</i> {{ row.post }}</span>

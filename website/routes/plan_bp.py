@@ -135,6 +135,7 @@ def _plan_executor_candidates(plan):
     return User.query.filter(
         User.organization_id == plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['executor', 'dept_head']),
         ~User.id.in_(already_ids) if already_ids else True
     ).order_by(User.org_role.desc()).all()
@@ -149,7 +150,7 @@ def _snapshot_executor(entry, user):
     full_name = ' '.join(filter(None, [user.last_name, user.first_name, user.patronymic_name]))
     entry.developer_name = full_name or None
     entry.developer_phone = user.telephone
-    entry.developer_email = user.email
+    entry.developer_email = user.contact_email
 
 
 @plan_bp.route('/add-executor/<token>', methods=['POST'])
@@ -177,6 +178,7 @@ def add_plan_executor(token):
         User.id == user_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['executor', 'dept_head'])
     ).first() if user_id else None
 
@@ -408,6 +410,7 @@ def submit_for_signature(token):
         User.id == signer_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['dept_head', 'org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 
@@ -580,6 +583,7 @@ def forward_internal_signature(token):
         User.id == target_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(candidate_roles),
     ).first() if target_id else None
     if not target:
@@ -873,6 +877,7 @@ def step_submit_for_signature(token):
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(allowed_roles)
     ).first() if signer_id else None
 
@@ -1146,6 +1151,7 @@ def step_forward_signature(token):
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 

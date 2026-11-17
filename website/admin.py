@@ -40,6 +40,8 @@ def _user_on_save(obj, creating):
     readonly), значение всегда берётся отсюда, а не из формы."""
     if creating:
         obj.application_id = get_current_application_id()
+    obj.email = (obj.email or '').strip() or None
+    obj.login = (obj.login or '').strip().lower() or None
 
     # "Руководитель организации"/"Заместитель руководителя" — максимум один
     # сотрудник на организацию на каждую роль (та же проверка, что и в
@@ -52,17 +54,19 @@ def _user_on_save(obj, creating):
                 User.organization_id == obj.organization_id,
                 User.application_id == obj.application_id,
                 User.org_role == obj.org_role,
+                User.is_active.is_(True),
                 User.id != obj.id,
             ).first()
             if conflict:
                 raise ValueError(
-                    f'Роль "{obj.org_role}" уже занята сотрудником {conflict.email} в этой организации'
+                    f'Роль "{obj.org_role}" уже занята сотрудником {conflict.full_name or conflict.login} в этой организации'
                 )
 
         if creating:
             employees_count = User.query.filter(
                 User.organization_id == obj.organization_id,
                 User.application_id == obj.application_id,
+                User.is_active.is_(True),
             ).count()
             if employees_count >= 7:
                 raise ValueError('В организации не может быть больше 7 сотрудников')
@@ -105,13 +109,16 @@ def _support_chat_rows():
 
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
-    list_display=["id", "email", "organization", "org_role", "begin_time"],
+    list_display=["id", "login", "email", "organization", "org_role", "begin_time"],
     list_badges=["is_admin", "has_auditor_access", "has_approver_access", "is_reader", "is_verified"],
-    search=["email", "last_name", "first_name", "telephone"],
+    search=["login", "email", "last_name", "first_name", "telephone"],
     scope_query=_scope_to_this_app,
     on_save=_user_on_save,
     fields=[
-        F("email", "Email", type="email", required=True),
+        F("login", "Логин"),
+        F("email", "Email", type="email"),
+        F("is_active", "Учётная запись активна", type="bool"),
+        F("is_cabinet_owner", "Ответственный за кабинет", type="bool"),
         F("last_name", "Фамилия"), F("first_name", "Имя"), F("patronymic_name", "Отчество"),
         F("telephone", "Телефон"), F("post", "Должность"),
         F("is_admin", "Администратор", type="bool"),
