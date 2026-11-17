@@ -543,7 +543,7 @@
 <div id="stepSignerModal" class="modal">
   <div class="modal-content" style="width: 520px; max-width: 90vw; min-height: 480px">
     <div class="modal-header">
-      <a id="modal-title">{{ _('Выберите руководителя для подписания решения') }}</a>
+      <a id="modal-title">{% if step_can_self_sign %}{{ _('Кто подписывает решение') }}{% else %}{{ _('Выберите руководителя для подписания решения') }}{% endif %}</a>
       {{ icons.icon_close() }}
     </div>
     <form id="stepSignerForm" action="{{ url_for('plan_bp.step_submit_for_signature', token=plan.token) }}" method="POST">
@@ -552,11 +552,17 @@
       <div class="app-group">
         <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
         <div class="signer-picker" id="stepSignerPicker">
-          <button type="button" class="signer-picker-toggle" id="stepSignerPickerToggle" {% if not step_signer_candidates %}disabled{% endif %}>
+          <button type="button" class="signer-picker-toggle" id="stepSignerPickerToggle" {% if not step_signer_candidates and not step_can_self_sign %}disabled{% endif %}>
             <span class="signer-picker-value" id="stepSignerPickerValue">{{ _('Выберите руководителя') }}</span>
             {{ icons.dropdown_arrow() }}
           </button>
           <div class="signer-picker-menu" id="stepSignerPickerMenu">
+            {% if step_can_self_sign %}
+            <div class="signer-picker-item" data-id="{{ current_user.id }}" data-name="{{ _('Подписать самому') }}">
+              <span class="signer-picker-item-name">{{ _('Подписать самому') }}</span>
+              <span class="signer-picker-item-role">{{ _('Затем подпись ЭЦП или передача руководителю организации') }}</span>
+            </div>
+            {% endif %}
             {% for candidate in step_signer_candidates %}
             <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
               <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
@@ -567,7 +573,7 @@
         </div>
         <input type="hidden" name="signer_user_id" id="stepSignerValue" value="" />
       </div>
-      {% if not step_signer_candidates %}
+      {% if not step_signer_candidates and not step_can_self_sign %}
       <div class="plan-send-warning">
         {{ icons.error_icon() }}
         <div>
@@ -832,11 +838,17 @@
       <div class="app-group">
         <label>{{ _('Руководитель для подписания') }} <span class="required-star">*</span></label>
         <div class="signer-picker" id="stepRejectSignerPicker">
-          <button type="button" class="signer-picker-toggle" id="stepRejectSignerPickerToggle" {% if not step_signer_candidates %}disabled{% endif %}>
+          <button type="button" class="signer-picker-toggle" id="stepRejectSignerPickerToggle" {% if not step_signer_candidates and not step_can_self_sign %}disabled{% endif %}>
             <span class="signer-picker-value" id="stepRejectSignerPickerValue">{{ _('Выберите руководителя') }}</span>
             {{ icons.dropdown_arrow() }}
           </button>
           <div class="signer-picker-menu" id="stepRejectSignerPickerMenu">
+            {% if step_can_self_sign %}
+            <div class="signer-picker-item" data-id="{{ current_user.id }}" data-name="{{ _('Подписать самому') }}">
+              <span class="signer-picker-item-name">{{ _('Подписать самому') }}</span>
+              <span class="signer-picker-item-role">{{ _('Затем подпись ЭЦП или передача руководителю организации') }}</span>
+            </div>
+            {% endif %}
             {% for candidate in step_signer_candidates %}
             <div class="signer-picker-item" data-id="{{ candidate.id }}" data-name="{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}">
               <span class="signer-picker-item-name">{{ candidate.last_name }} {{ candidate.first_name }} {{ candidate.patronymic_name or '' }}</span>
@@ -847,7 +859,7 @@
         </div>
         <input type="hidden" name="signer_user_id" id="stepRejectSignerValue" value="" />
       </div>
-      {% if not step_signer_candidates %}
+      {% if not step_signer_candidates and not step_can_self_sign %}
       <div class="plan-send-warning">
         {{ icons.error_icon() }}
         <div>
