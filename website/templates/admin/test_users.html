@@ -1,55 +1,45 @@
-{% extends "cm_admin/base.html" %}
-{% block title %}{{ site.brand }} · Тестовые пользователи{% endblock %}
+{% extends "eres_admin/base.html" %}
+{% block title %}Тестовые пользователи — {{ site.brand }}{% endblock %}
+{% block crumbs %}<a class="ea-crumbs" href="{{ url_for('eres_admin.list_view', key='user') }}">{{ icon('chevron', 'ea-icon ea-crumbs-back') }}Пользователи</a>{% endblock %}
+{% block page_title %}Тестовые пользователи{% endblock %}
+{% block page_actions %}
+  <form method="post" data-confirm="Создать или обновить девять тестовых учётных записей?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+    <button type="submit" class="ea-btn ea-btn--primary" {{ 'disabled' if missing_orgs }}>{{ icon('users') }}<span>Создать или обновить</span></button>
+  </form>
+{% endblock %}
 
 {% block content %}
-  <div class="cm-section-head">
-    <h1 class="cm-h1">Тестовые пользователи</h1>
-    <a class="cm-link" href="{{ url_for('cm_admin.list_view', key='user') }}">← к пользователям</a>
+  <div class="ea-alert ea-alert--info">
+    Девять учётных записей для проверки маршрута согласования: исполнитель, руководитель структурного подразделения и
+    руководитель организации — в организации-разработчике, согласующей и утверждающей. Существующие записи не пересоздаются:
+    у них обновятся ФИО, должность, телефон, организация, роль, логин и пароль. Почта и права ответственного за кабинет есть
+    только у руководителя организации, остальные входят по логину. Пароль у всех — <b>{{ password }}</b>.
   </div>
-
-  <p class="cm-muted test-users-intro">
-    Девять аккаунтов для проверки маршрута согласования: исполнитель, руководитель структурного подразделения и руководитель
-    организации — в организации-разработчике, согласующей и утверждающей. Уже существующие аккаунты не пересоздаются:
-    у них обновятся ФИО, должность, телефон, организация, роль, логин и пароль. Почта и права ответственного за кабинет —
-только у руководителя организации, остальные входят по логину. Пароль у всех — <b>{{ password }}</b>.
-  </p>
 
   {% if missing_orgs %}
-  <div class="cm-flash cm-flash--error">Не найдены организации: {{ missing_orgs|join(', ') }}. Сначала добавьте их.</div>
+    <div class="ea-alert ea-alert--error">Не найдены организации: {{ missing_orgs|join(', ') }}. Сначала добавьте их.</div>
   {% endif %}
 
-  <form method="post" class="test-users-form"
-        onsubmit="return confirm('Создать или обновить тестовых пользователей?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
-    <button type="submit" class="cm-btn" {{ 'disabled' if missing_orgs }}>Создать / обновить тестовых пользователей</button>
-  </form>
-
-  <div class="cm-rows">
-    {% for row in rows %}
-      <div class="cm-row">
-        <div class="cm-row-main">
-          <span class="cm-row-title">{{ row.fio }}</span>
-          {% if row.user %}<span class="cm-badge">есть</span>{% else %}<span class="cm-badge test-users-new">будет создан</span>{% endif %}
-          <span class="cm-row-cells">
-            <span class="cm-cell"><i>Логин:</i> {{ row.login }}</span>
-            {% if row.email %}<span class="cm-cell"><i>Email:</i> {{ row.email }}</span>{% endif %}
-            <span class="cm-cell"><i>Организация:</i> {{ row.org_label }}{% if not row.org %} — не найдена{% endif %}</span>
-            <span class="cm-cell"><i>Роль:</i> {{ row.role_label }}</span>
-            <span class="cm-cell"><i>Должность:</i> {{ row.post }}</span>
-          </span>
-        </div>
-        {% if row.user %}
-        <div class="cm-row-actions">
-          <a class="cm-link" href="{{ url_for('cm_admin.edit_view', key='user', pk=row.user.id) }}">Открыть</a>
-        </div>
-        {% endif %}
-      </div>
-    {% endfor %}
-  </div>
-
-  <style>
-    .test-users-intro { max-width: 760px; line-height: 1.5; }
-    .test-users-form { margin: 16px 0 20px; }
-    .test-users-new { opacity: 0.75; }
-  </style>
+  <section class="ea-card ea-card--flush">
+    <div class="ea-table-wrap">
+      <table class="ea-table">
+        <thead><tr><th>ФИО</th><th>Логин</th><th>Организация</th><th>Роль</th><th>Состояние</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            <tr {% if row.user %}data-ea-href="{{ url_for('eres_admin.edit_view', key='user', pk=row.user.id) }}"{% endif %}>
+              <td class="ea-col-main">
+                {% if row.user %}<a href="{{ url_for('eres_admin.edit_view', key='user', pk=row.user.id) }}">{{ row.fio }}</a>{% else %}{{ row.fio }}{% endif %}
+                <span class="ea-sub">{{ row.post }}</span>
+              </td>
+              <td data-label="Логин"><span>{{ row.login }}{% if row.email %}<span class="ea-sub">{{ row.email }}</span>{% endif %}</span></td>
+              <td data-label="Организация"><span>{{ row.org_label }}{% if not row.org %}<span class="ea-sub">не найдена</span>{% endif %}</span></td>
+              <td data-label="Роль">{{ row.role_label }}</td>
+              <td data-label="Состояние">{% if row.user %}<span class="ea-badge">есть</span>{% else %}<span class="ea-action-tag ea-action-tag--create">будет создана</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 {% endblock %}

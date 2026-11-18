@@ -1,26 +1,27 @@
-"""EnPlans admin — model registry for the shared engine (common_models.admin)."""
+"""EnPlans admin — описание моделей для движка eres-admin."""
 
 from werkzeug.security import generate_password_hash
 
-from common_models.admin import AdminSite, Field as F
+from eres_admin import AdminSite, Field as F
 from common_models import (
-    count_online, get_current_application_id,
-    User, Application, UserAppActivity, Organization, Region, Ministry, News,
+    db, current_utc_time, count_online, get_current_application_id,
+    User, Application, UserAppActivity, UserAppDailyActivity, Organization, Region, Ministry, News,
     Plan, PlanApprovalPath, PlanColumnConfig, PlanTicket,
     Unit, Direction, Event, Indicator, IndicatorUsage,
-    Notification, StatPlan, StatPlanValue, Chat, ChatMessage,
+    Notification, StatPlan, StatPlanValue, Chat, ChatMessage, Role, user_roles,
 )
 
 site = AdminSite(
     brand="EnPlans",
-    accent="#00798f",
-    accent_2="#009bb6",
+    db=db,
+    code="enplans",
     site_endpoint="views.begin_page",
     login_endpoint="auth.login",
     logout_endpoint="auth.logout",
+    now=current_utc_time,
 )
 
-site.link("Обращения «Другое»", "admin_support.list_view", group="Вспомогательные")
+site.link("Обращения «Другое»", "admin_support.list_view", group="Вспомогательные", icon="message")
 
 
 def _scope_to_this_app(query):
@@ -89,11 +90,18 @@ def _news_on_save(obj, creating):
     """Публикация новости на сайте EnPlans определяется полем published_at
     (см. /api/news). Держим его в синхроне с галочкой «Опубликовано»."""
     from common_models import current_utc_time
+    if creating:
+        obj.application_id = get_current_application_id()
     if getattr(obj, "is_published", False):
         if not obj.published_at:
             obj.published_at = current_utc_time()
     else:
         obj.published_at = None
+
+
+def _news_scope_to_this_app(query):
+    """Новость принадлежит одному приложению — админка видит только свои."""
+    return query.filter(News.application_id == get_current_application_id())
 
 
 def _support_chat_rows():
@@ -110,7 +118,8 @@ def _support_chat_rows():
 site.register(
     User, name="Пользователи", group="Основные", stat_label="Пользователей",
     list_display=["id", "login", "email", "organization", "org_role", "begin_time"],
-    list_badges=["is_admin", "has_auditor_access", "has_approver_access", "is_reader", "is_verified"],
+    list_badges=["is_admin", ("has_auditor_access", "Проверяющая организация"),
+                 ("has_approver_access", "Утверждающая организация"), "is_reader", "is_verified"],
     search=["login", "email", "last_name", "first_name", "telephone"],
     scope_query=_scope_to_this_app,
     on_save=_user_on_save,
@@ -161,9 +170,9 @@ site.register(
 )
 
 # Добавление организации по УНП с подстановкой из ЕГР (routes/admin_org.py)
-site.link("Добавить организацию по УНП", "admin_org.by_unp", group="Основные")
+site.link("Добавить организацию по УНП", "admin_org.by_unp", group="Основные", icon="building")
 # Тестовые пользователи маршрута согласования (routes/admin_test_users.py)
-site.link("Тестовые пользователи", "admin_test_users.index", group="Вспомогательные")
+site.link("Тестовые пользователи", "admin_test_users.index", group="Вспомогательные", icon="users")
 
 site.register(
     Region, name="Регионы", group="Основные",
@@ -189,8 +198,9 @@ site.register(
 site.register(
     News, name="Новости", group="Основные", stat_label="Новостей",
     list_display=["id", "title", "created_time", "views_count"],
-    list_badges=["is_published", "is_enplans", "is_erespondentn"],
+    list_badges=["is_published"],
     search=["title", "text"],
+    scope_query=_news_scope_to_this_app,
     on_save=_news_on_save,
     fields=[
         F("title", "Заголовок", required=True),
@@ -199,8 +209,8 @@ site.register(
           upload_to="static/img/news", accept="image/*"),
         F("is_published", "Опубликовано", type="bool", default=True,
           help="Снимите галочку, чтобы скрыть новость с сайта"),
-        F("is_enplans", "Показывать в EnPlans", type="bool", default=True),
-        F("is_erespondentn", "Показывать в ErespondentN", type="bool"),
+        F("application_id", "Приложение", readonly=True, display=_user_application_display,
+          help="Новость создаётся только для текущего приложения (EnPlans) — не редактируется."),
         F("views_count", "Просмотры", type="int"),
     ],
 )
@@ -447,10 +457,106 @@ site.register(
 
 # --------------------------------------------------------------------------- #
 
+
+def _uploads_root():
+    from flask import current_app
+    return current_app.config["ATTACHMENTS_UPLOAD_FOLDER"]
+
+
+def _describe_uploads(folder, names):
+    """К какой записи привязан файл: ТЭО — к мероприятию плана, вложения
+    замечаний — к тикету плана. Имена на диске — uuid, поэтому показываем
+    и исходное имя файла."""
+    from flask import url_for
+    top = folder.split("/", 1)[0] if folder else ""
+    out = {}
+    if top == "teo" and folder == "teo":
+        for ev in Event.query.filter(Event.teo_filename.in_(names)).all():
+            out[ev.teo_filename] = {
+                "label": ev.teo_original_name,
+                "title": f"ТЭО мероприятия №{ev.id}, план №{ev.id_plan}",
+                "url": url_for("eres_admin.edit_view", key="event", pk=ev.id),
+                "in_use": True,
+            }
+    elif top == "tickets" and folder == "tickets":
+        for t in PlanTicket.query.filter(PlanTicket.attachment_filename.in_(names)).all():
+            out[t.attachment_filename] = {
+                "label": t.attachment_original_name,
+                "title": f"Замечание №{t.id}, план №{t.plan_id}",
+                "url": url_for("eres_admin.edit_view", key="plan-ticket", pk=t.id),
+                "in_use": True,
+            }
+    return out
+
+
+site.files("uploads", root=_uploads_root, name="Файлы (uploads)", group="Служебные",
+           describe=_describe_uploads, max_upload_mb=100)
+
+ORG_ROLE_LABELS = {
+    "org_head": "Руководитель организации",
+    "org_head_deputy": "Заместитель руководителя",
+    "dept_head": "Руководитель подразделения",
+    "executor": "Исполнитель",
+}
+
+
+def _plan_status_rows():
+    """Планы по текущему состоянию — так же, как статусы на сайте."""
+    counts = {"Утверждены": 0, "Есть ошибки": 0, "На согласовании": 0, "Контроль пройден": 0, "В редакции": 0}
+    rows = db.session.query(Plan.is_approved, Plan.is_error, Plan.is_sent, Plan.is_control).all()
+    for approved, error, sent, control in rows:
+        if approved:
+            counts["Утверждены"] += 1
+        elif error:
+            counts["Есть ошибки"] += 1
+        elif sent:
+            counts["На согласовании"] += 1
+        elif control:
+            counts["Контроль пройден"] += 1
+        else:
+            counts["В редакции"] += 1
+    return list(counts.items())
+
+
+def _user_role_rows():
+    rows = (
+        db.session.query(Role.code, db.func.count(User.id))
+        .join(user_roles, user_roles.c.role_id == Role.id)
+        .join(User, User.id == user_roles.c.user_id)
+        .filter(Role.is_org_role.is_(True), User.application_id == get_current_application_id())
+        .group_by(Role.code)
+        .all()
+    )
+    found = dict(rows)
+    return [(label, found.get(code, 0)) for code, label in ORG_ROLE_LABELS.items()]
+
+
+def _daily_activity_scope(query):
+    return query.filter(UserAppDailyActivity.app == "enplans")
+
+
+site.register(
+    UserAppDailyActivity, name="Активность по дням", group="Служебные", key="user-app-daily-activity",
+    readonly=True, order_by="-day", per_page=50,
+    list_display=["day", "user", ("ticks", "Минут в приложении"), "first_at", "last_at"],
+    scope_query=_daily_activity_scope,
+)
+
 site.dashboard(
     greeting_attr="first_name",
     stats=["news", "plan", "user", "organization"],
     online_count=lambda: count_online("enplans"),
+    charts=[
+        {"title": "Активные пользователи", "model": UserAppDailyActivity, "date_attr": "day",
+         "distinct": "user_id", "scope": _daily_activity_scope},
+        {"title": "Новые пользователи", "model": User, "date_attr": "begin_time", "scope": _scope_to_this_app},
+        {"title": "Созданные планы", "model": Plan, "date_attr": "begin_time"},
+        {"title": "Отправленные планы", "model": Plan, "date_attr": "sent_time"},
+    ],
+    breakdowns=[
+        {"title": "Планы по статусам", "rows": _plan_status_rows, "icon": "clipboard"},
+        {"title": "Пользователи по ролям", "rows": _user_role_rows, "icon": "users"},
+    ],
     panels=[
         {
             "title": "Обращения «Другое»",
@@ -476,49 +582,6 @@ site.dashboard(
             "confirm": "Загрузить архив со статистикой? Имена файлов внутри должны "
                        "соответствовать формату «окпо_..._год_...xlsx».",
         },
-        # {
-        #     "label": "Создать тестовых проверяющих",
-        #     "endpoint": "db_bp.create_test_auditors_route",
-        #     "method": "post",
-        #     "confirm": "Удалить все ранее созданные тестовые аккаунты проверяющих и "
-        #                "создать заново — по одному на каждое региональное управление "
-        #                "(пароль у всех: 12345678)?",
-        # },
-        # {
-        #     "label": "Создать тестовых согласующих/утверждающих",
-        #     "endpoint": "db_bp.create_test_approvers_route",
-        #     "method": "post",
-        #     "confirm": "Удалить ранее созданные тестовые аккаунты согласующей/"
-        #                "утверждающей организации и создать заново — по одной на "
-        #                "организацию с УНП 200100489 (согласовывающая) и "
-        #                "УНП 500022116 (утверждающая). Пароль у обеих: 12345678?",
-        # },
-        {
-            "label": "Добавить остальные организации",
-            "endpoint": "db_bp.fill_remaining_organizations_route",
-            "method": "post",
-            "confirm": "Добавить из справочников (regulars/coordinators/approvers.xlsx) "
-                       "организации без ОКПО? У них не будет привязки к региону. "
-                       "Повторный запуск только обновит их роли, дублей не создаст.",
-        },
-        {
-            "label": "Сбросить роли организаций вне справочников",
-            "endpoint": "db_bp.reset_unlisted_organizations_roles_route",
-            "method": "post",
-            "confirm": "Снять «Разработчик/Согласующая/Утверждающая» со всех организаций, "
-                       "которых нет ни в одном из трёх справочников (по ОКПО, а для "
-                       "организаций без ОКПО — по УНП)? Региональное управление не затронет.",
-        },
-        # {
-        #     "label": "Синхронизировать направления энергосбережения",
-        #     "endpoint": "db_bp.sync_directions_route",
-        #     "method": "post",
-        #     "confirm": "Полностью привести справочник «Направления» к официальному "
-        #                "перечню (приложение 1 к Указаниям по форме 4-энергосбережение)? "
-        #                "Недостающие коды будут добавлены, расхождения в названии/единице "
-        #                "измерения — исправлены, а коды, которых нет в перечне, — удалены "
-        #                "(или помечены неактуальными, если уже используются в мероприятиях).",
-        # },
     ],
 )
 

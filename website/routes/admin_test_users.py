@@ -62,7 +62,7 @@ def _guard():
 
 
 def _site_ctx():
-    site = current_app.extensions.get('cm_admin')
+    site = current_app.extensions.get('eres_admin')
     return site.nav_context() if site else {}
 
 

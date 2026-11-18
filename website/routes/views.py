@@ -668,7 +668,7 @@ def news():
 
 @views.route('/news/<int:id>', methods=['GET'])
 def news_post(id):
-    post = News.query.get(id)
+    post = News.query.filter_by(id=id, application_id=get_current_application_id()).first()
     if not post:
         abort(404)
     
@@ -1113,6 +1113,7 @@ def begin_page():
     user_growth = enplans_users.filter(UserAppActivity.first_seen >= month_ago).count()
 
     latest_news = News.query.filter(
+        News.application_id == get_current_application_id(),
         News.published_at <= current_utc_time(),
         News.published_at.isnot(None)
     ).order_by(News.published_at.desc()).first()
