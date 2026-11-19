@@ -70,6 +70,7 @@ def plan_actions(token):
     # непройденный этап последнего цикла — иначе лишний запрос.
     step_signer_candidates = []
     step_org_head_candidates = []
+    step_can_self_sign = False
     current_path = audit_ctx.get('current_path')
     if current_path:
         # Утверждающий этап (step_type='approver', ТЗ п.5 Вариант Б):
@@ -80,6 +81,7 @@ def plan_actions(token):
         # ограничение внутри step_submit_for_signature/step_internal_sign.
         step_signer_candidates = get_signer_candidates(current_path.organization_id, exclude_user_id=current_user.id)
         step_org_head_candidates = [c for c in step_signer_candidates if c.is_org_manager]
+        step_can_self_sign = _dept_head_can_self_sign(current_path, current_user)
 
     from website.utils.plans import get_last_internal_return_ticket
     last_internal_return_ticket = get_last_internal_return_ticket(current_plan)
@@ -115,6 +117,7 @@ def plan_actions(token):
         'plan_actions.html', plan=current_plan,
         step_signer_candidates=step_signer_candidates,
         step_org_head_candidates=step_org_head_candidates,
+        step_can_self_sign=step_can_self_sign,
         last_internal_return_ticket=last_internal_return_ticket,
         plan_executor_candidates=plan_executor_candidates,
         plan_forward_candidates=plan_forward_candidates,
@@ -126,6 +129,14 @@ def plan_actions(token):
 PLAN_EXECUTORS_MAX = 2
 
 
+def _dept_head_can_self_sign(current_path, user):
+    """Руководитель структурного подразделения согласующей организации (и
+    регионального управления), сам вынесший решение по этапу, может и
+    подписать его ЭЦП сам, и направить руководителю организации. На этапе
+    утверждения (ТЗ п.5) он только направляет — там подписи нет."""
+    return bool(current_path and current_path.step_type != 'approver' and user.org_role == 'dept_head')
+
+
 def _plan_executor_candidates(plan):
     """Сотрудники организации плана, которых ещё можно добавить в список
     «Ответственных исполнителей» — org_role in (executor, dept_head), не
@@ -135,6 +146,7 @@ def _plan_executor_candidates(plan):
     return User.query.filter(
         User.organization_id == plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['executor', 'dept_head']),
         ~User.id.in_(already_ids) if already_ids else True
     ).order_by(User.org_role.desc()).all()
@@ -149,7 +161,7 @@ def _snapshot_executor(entry, user):
     full_name = ' '.join(filter(None, [user.last_name, user.first_name, user.patronymic_name]))
     entry.developer_name = full_name or None
     entry.developer_phone = user.telephone
-    entry.developer_email = user.email
+    entry.developer_email = user.contact_email
 
 
 @plan_bp.route('/add-executor/<token>', methods=['POST'])
@@ -177,6 +189,7 @@ def add_plan_executor(token):
         User.id == user_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['executor', 'dept_head'])
     ).first() if user_id else None
 
@@ -408,6 +421,7 @@ def submit_for_signature(token):
         User.id == signer_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['dept_head', 'org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 
@@ -580,6 +594,7 @@ def forward_internal_signature(token):
         User.id == target_id,
         User.organization_id == current_plan.org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(candidate_roles),
     ).first() if target_id else None
     if not target:
@@ -873,6 +888,7 @@ def step_submit_for_signature(token):
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(allowed_roles)
     ).first() if signer_id else None
 
@@ -880,7 +896,8 @@ def step_submit_for_signature(token):
         flash('Выберите руководителя для подписания решения', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
-    if signer.id == current_user.id:
+    self_sign = signer.id == current_user.id
+    if self_sign and not _dept_head_can_self_sign(current_path, current_user):
         flash('Нельзя направить решение на подпись самому себе', 'error')
         return redirect(url_for('plan_bp.plan_actions', token=token))
 
@@ -917,6 +934,10 @@ def step_submit_for_signature(token):
     )
 
     db.session.commit()
+
+    if self_sign:
+        flash('Решение подготовлено: подпишите его ЭЦП или отправьте руководителю организации', 'success')
+        return redirect(url_for('plan_bp.plan_actions', token=token))
 
     db.session.add(Notification(
         user_id=signer.id,
@@ -1146,6 +1167,7 @@ def step_forward_signature(token):
         User.id == signer_id,
         User.organization_id == current_path.organization_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(['org_head', 'org_head_deputy'])
     ).first() if signer_id else None
 

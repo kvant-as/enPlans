@@ -36,6 +36,12 @@
         {{ icons.icon_org() }}
         <span>{{ _('Организация') }}</span>
       </button>
+      {% if cabinet_data %}
+      <button type="button" class="profile-tab" data-tab="cabinet" role="tab" aria-selected="false">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>{{ _('Сотрудники') }}</span>
+      </button>
+      {% endif %}
       {% if current_user.is_admin %}
       <button type="button" class="profile-tab" data-tab="admins" role="tab" aria-selected="false">
         {{ icons.icon_settings() }}
@@ -69,65 +75,54 @@
                       {{ icons.icon_edit() }}
                       <span>{{ _('Редактировать профиль') }}</span>
                   </button>
+                  {% if current_user.email %}
                   <button class="nav-menu-item" onclick="window.location.href='/change-email'">
                       {{ icons.icon_email() }}
                       <span>{{ _('Изменить эл. адрес') }}</span>
                   </button>
+                  {% endif %}
                 </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="row-app-group">
-        <div class="app-group">
-          <label>{{ _('Фамилия') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input
-              type="text"
-              value="{{current_user.last_name}}"
-              placeholder="{{ _('Фамилия пользователя') }}"
-              class="app-input"
-            />
-          </div>
-        </div>
-        <div class="app-group">
-          <label>{{ _('Имя') }}</label>
-          <div class="input-with-icon">
-            {{ icons.icon_profile() }}
-            <input
-              type="text"
-              value="{{current_user.first_name}}"
-              class="app-input"
-              placeholder="{{ _('Имя пользователя') }}"
-            />
-          </div>
-        </div>
-      </div>
       <div class="app-group">
-        <label>{{ _('Отчество') }}</label>
+        <label>{{ _('ФИО') }}</label>
         <div class="input-with-icon">
           {{ icons.icon_profile() }}
           <input
             type="text"
-            value="{{current_user.patronymic_name}}"
-            placeholder="{{ _('Отчество пользователя') }}"
+            value="{{current_user.last_name}} {{current_user.first_name}} {{current_user.patronymic_name}}"
+            placeholder="{{ _('Фамилия пользователя') }}"
             class="app-input"
           />
         </div>
       </div>
+      <div class="row-app-group">
+        <div class="app-group">
+          <label>{{ _('Логин') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_profile() }}
+            <input type="text" value="{{ current_user.login or '' }}" placeholder="—" class="app-input" />
+          </div>
+        </div>
+        <div class="app-group">
+          <label>{{ _('Email') if current_user.email else _('Почта организации') }}</label>
+          <div class="input-with-icon">
+            {{ icons.icon_email() }}
+            <input type="text" value="{{ current_user.contact_email or '' }}" placeholder="—" class="app-input" />
+          </div>
+        </div>
+      </div>
+      {% if current_user.department %}
       <div class="app-group">
-        <label>{{ _('Email') }}</label>
+        <label>{{ _('Структурное подразделение') }}</label>
         <div class="input-with-icon">
-          {{ icons.icon_email() }}
-          <input
-            type="text"
-            value="{{current_user.email}}"
-            placeholder="{{ _('Email пользователя') }}"
-            class="app-input"
-          />
+          {{ icons.icon_department() }}
+          <input type="text" value="{{ current_user.department.name }}" class="app-input" />
         </div>
       </div>
+      {% endif %}
       {{ component.phone_display_group(current_user.telephone, label=_('Телефон'), placeholder=_('Номер телефона пользователя')) }}
       <div class="app-group">
         <label>{{ _('Должность') }}</label>
@@ -169,7 +164,7 @@
             </div>
             <div class="date-content">
               <div class="date-info">
-                <span class="date-label">{{ _('Роль в системе') if current_user.is_admin else _('Роль в организации') }}</span>
+                <span class="date-label">{{ _('Профиль организации') if current_user.is_admin else _('Роль в организации') }}</span>
                 <span class="date-day">
                   {% if current_user.is_admin %}{{ _('Администратор') }}{% else %}{{ {'executor': _('Исполнитель'), 'dept_head': _('Руководитель структурного подразделения'), 'org_head': _('Руководитель организации'), 'org_head_deputy': _('Заместитель руководителя организации')}.get(current_user.org_role, current_user.org_role) }}{% endif %}
                 </span>
@@ -259,7 +254,6 @@
       {# Приглашать/удалять сотрудников может только сам (оригинальный)
          руководитель организации — не заместитель (у него те же права
          везде в приложении, кроме управления составом организации). #}
-      {% set can_manage_employees = current_user.org_role == 'org_head' %}
       {#  Описание роли зависит от того, кем организация выступает в маршруте
           плана (ТЗ п.3-5): разработчик (is_regular), согласующая
           (is_coordinator / региональное управление is_region_management),
@@ -288,7 +282,7 @@
         },
         'coordinator': {
           'executor':        _('Проверяет поступивший план и выносит вердикт — «Согласовать» или «Не согласовать» с замечаниями — и направляет решение руководителю'),
-          'dept_head':       _('Соглашается с вердиктом исполнителя и подписывает его ЭЦП, передаёт руководителю организации или возвращает исполнителю с пояснением'),
+          'dept_head':       _('Рассматривает план сам или получает решение исполнителя; подписывает решение ЭЦП, передаёт руководителю организации или возвращает исполнителю с пояснением'),
           'org_head':        _('Выносит финальное решение: подписывает вердикт исполнителя ЭЦП или возвращает его исполнителю с пояснением'),
           'org_head_deputy': _('Права при согласовании планов пока не определены'),
         },
@@ -333,13 +327,11 @@
       {% set flat_employees = all_employees | selectattr('org_role', 'in', ['dept_head', 'executor']) | list %}
 
       {% set employees_max = 7 %}
-      {% set can_invite = can_manage_employees and employees_count < employees_max %}
-      {% set deputy_vacant = not employees_by_role.get('org_head_deputy') %}
 
-      {# Карточка сотрудника — одна разметка для всех ролей. Пока сотрудник
-         не прошёл регистрацию по ссылке из письма (нет ФИО) — вместо имени
-         email и бейдж «Ожидает регистрации». #}
-      {% macro employee_card(employee, meta, removable) %}
+      {# Карточка сотрудника — одна разметка для всех ролей. Сотрудник,
+         приглашённый по старой ссылке из письма и не заполнивший ФИО, —
+         с бейджем «Ожидает регистрации». #}
+      {% macro employee_card(employee, meta) %}
       {% set registered = employee.last_name or employee.first_name or employee.patronymic_name %}
       <div class="plan-executor-card role-card{% if employee.id == current_user.id %} plan-executor-card-self{% endif %}{% if not registered %} plan-executor-card-pending{% endif %}"
            data-role-card tabindex="0" role="button" aria-expanded="false"
@@ -350,18 +342,13 @@
             {% if registered %}
               {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic_name }}
             {% else %}
-              {{ employee.email }}
+              {{ employee.login or employee.email }}
             {% endif %}
             {% if employee.id == current_user.id %}<span class="employee-badge employee-badge-self">{{ _('Вы') }}</span>{% endif %}
             {% if not registered %}<span class="employee-badge employee-badge-pending">{{ _('Ожидает регистрации') }}</span>{% endif %}
           </span>
-          <span class="plan-executor-card-meta">{{ meta.label }}{% if registered and employee.email %} · {{ employee.email }}{% endif %}</span>
+          <span class="plan-executor-card-meta">{{ meta.label }}{% if employee.department %} · {{ employee.department.name }}{% endif %}</span>
         </div>
-        {% if removable %}
-        <button type="button" class="plan-executor-card-remove" title="{{ _('Удалить из организации') }}"
-                data-remove-employee-id="{{ employee.id }}"
-                data-remove-employee-name="{{ (employee.last_name ~ ' ' ~ employee.first_name) if registered else employee.email }}">&times;</button>
-        {% endif %}
         {{ card_chevron() }}
         {{ role_details(employee.org_role) }}
       </div>
@@ -376,15 +363,7 @@
 
       <div class="org-roles-note">
         <p>
-          {% if can_manage_employees %}
-            {% if employees_count >= employees_max %}
-              {{ _('Все места заняты. Чтобы пригласить нового сотрудника, удалите одного из текущих.') }}
-            {% else %}
-              {{ _('Руководитель организации и его заместитель — по одному. Руководителей структурных подразделений и исполнителей — сколько нужно, в пределах общего лимита.') }}
-            {% endif %}
-          {% else %}
-            {{ _('Кто за какую роль отвечает в вашей организации. Приглашать и удалять сотрудников может только руководитель организации.') }}
-          {% endif %}
+            {% if cabinet_data %}{{ _('Кто за какую роль отвечает в вашей организации. Учётными записями вы управляете на вкладке «Сотрудники».') }}{% else %}{{ _('Кто за какую роль отвечает в вашей организации. Учётные записи сотрудников создаёт ответственный за кабинет.') }}{% endif %}
         </p>
       </div>
       <div class="employees-capacity" title="{{ _('Занято мест в организации') }}">
@@ -398,7 +377,7 @@
         {% set meta = role_meta[role_key] %}
         {% set occupant = employees_by_role.get(role_key) %}
         {% if occupant %}
-        {{ employee_card(occupant, meta, role_key != 'org_head' and occupant.id != current_user.id and can_manage_employees) }}
+        {{ employee_card(occupant, meta) }}
         {% else %}
         <div class="plan-executor-card plan-executor-card-vacant role-card"
              data-role-card tabindex="0" role="button" aria-expanded="false"
@@ -408,14 +387,7 @@
             <span class="plan-executor-card-name">{{ meta.label }}</span>
             <span class="plan-executor-card-meta">{{ _('Место свободно') }}</span>
           </div>
-          {% if can_invite %}
-          <button type="button" class="plan-executor-card-invite-btn" data-open-invite-modal data-invite-role="{{ role_key }}">
-            {{ icons.icon_add() }}
-            <span>{{ _('Пригласить') }}</span>
-          </button>
-          {% else %}
           <span class="plan-executor-card-vacant-label">{{ _('Вакантно') }}</span>
-          {% endif %}
           {{ card_chevron() }}
           {{ role_details(role_key) }}
         </div>
@@ -423,78 +395,11 @@
         {% endfor %}
 
         {% for employee in flat_employees %}
-        {{ employee_card(employee, role_meta[employee.org_role], employee.id != current_user.id and can_manage_employees) }}
+        {{ employee_card(employee, role_meta[employee.org_role]) }}
         {% endfor %}
       </div>
-      {% if can_invite %}
-      <button type="button" class="main-btn main-btn-primary employees-invite-btn" data-open-invite-modal>
-        {{ icons.icon_add() }}
-        <span class="btn-text">{{ _('Пригласить сотрудника') }}</span>
-      </button>
-      {% endif %}
-      {% if can_invite %}
-      {#  «Пригласить сотрудника» — одна модалка вместо раскрывающихся форм
-          под карточками: email + роль карточками с описанием прав. Шлёт те
-          же поля (email, org_role), что и раньше — views.invite_employee. #}
-      <div id="inviteEmployeeModal" class="modal">
-        <div class="modal-content invite-modal">
-          <div class="modal-header">
-            <a id="modal-title">{{ _('Пригласить сотрудника') }}</a>
-            {{ icons.icon_close() }}
-          </div>
-          <form action="{{ url_for('views.invite_employee') }}" method="POST" id="inviteEmployeeForm" novalidate>
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-
-            <div class="app-group">
-              <label for="inviteEmail">{{ _('Email сотрудника') }} <span class="required-star">*</span></label>
-              <div class="input-with-icon">
-                {{ icons.icon_email() }}
-                <input type="email" name="email" id="inviteEmail" class="app-input" placeholder="name@company.by" autocomplete="off" required />
-              </div>
-              <span class="invite-field-error" id="inviteEmailError">{{ _('Введите корректный email') }}</span>
-            </div>
-
-            <div class="app-group">
-              <label>{{ _('Роль') }} <span class="required-star">*</span></label>
-              <div class="invite-role-options" role="radiogroup">
-                {% set invite_roles = ['dept_head', 'executor'] + (['org_head_deputy'] if deputy_vacant else []) %}
-                {% for role_key in invite_roles %}
-                <label class="invite-role-option">
-                  <input type="radio" name="org_role" value="{{ role_key }}" {% if loop.first %}checked{% endif %} />
-                  <span class="invite-role-option-check" aria-hidden="true">{{ icons.icon_check() }}</span>
-                  <span class="invite-role-option-body">
-                    <span class="invite-role-option-title">{{ role_meta[role_key].label }}</span>
-                    {{ role_hints(role_key, 'invite-role-option-hint') }}
-                  </span>
-                </label>
-                {% endfor %}
-              </div>
-            </div>
-
-            <div class="invite-modal-note">
-              {{ icons.icon_info() }}
-              <span>{{ _('На email придёт ссылка для входа — сотрудник задаст пароль и заполнит ФИО и телефон сам. Ссылка действует 1 час.') }}</span>
-            </div>
-
-            <div class="button-auth-area">
-              <button type="submit" class="main-btn main-btn-primary" id="inviteEmployeeSubmit" disabled>
-                <span class="btn-spinner" aria-hidden="true"></span>
-                {{ icons.icon_send() }}
-                <span class="btn-text">{{ _('Отправить приглашение') }}</span>
-              </button>
-              <button type="button" class="svg-btn" data-close-invite-modal>
-                <span class="btn-text">{{ _('Отмена') }}</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-      {% endif %}
-
       <script>
         // Раскрытие карточки сотрудника — блок «Что может эта роль».
-        // Клики по кнопкам внутри карточки («Пригласить», «×») не
-        // раскрывают её — у них своё действие.
         (function () {
           function toggle(card) {
             var open = !card.classList.contains('is-open');
@@ -519,126 +424,6 @@
           });
         })();
 
-        (function () {
-          var modal = document.getElementById('inviteEmployeeModal');
-          if (!modal) return;
-          var form = document.getElementById('inviteEmployeeForm');
-          var email = document.getElementById('inviteEmail');
-          var emailError = document.getElementById('inviteEmailError');
-          var submit = document.getElementById('inviteEmployeeSubmit');
-          var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-          function isValid() { return EMAIL_RE.test(email.value.trim()); }
-          function update() { submit.disabled = !isValid(); }
-
-          function open(role) {
-            form.reset();
-            var radio = role && form.querySelector('input[name="org_role"][value="' + role + '"]');
-            if (radio) radio.checked = true;
-            emailError.classList.remove('visible');
-            email.classList.remove('is-invalid');
-            submit.classList.remove('is-checking');
-            update();
-            modal.classList.add('active');
-            setTimeout(function () { email.focus(); }, 50);
-          }
-          function close() { modal.classList.remove('active'); }
-
-          document.querySelectorAll('[data-open-invite-modal]').forEach(function (btn) {
-            btn.addEventListener('click', function () { open(btn.dataset.inviteRole); });
-          });
-          modal.querySelector('.modal-header .close').addEventListener('click', close);
-          modal.querySelector('[data-close-invite-modal]').addEventListener('click', close);
-          document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && modal.classList.contains('active')) close();
-          });
-
-          email.addEventListener('input', function () {
-            update();
-            if (isValid()) {
-              emailError.classList.remove('visible');
-              email.classList.remove('is-invalid');
-            }
-          });
-          // Ошибку показываем не на каждый символ, а когда поле покинули
-          // с непустым неправильным значением.
-          email.addEventListener('blur', function () {
-            var bad = email.value.trim() && !isValid();
-            emailError.classList.toggle('visible', !!bad);
-            email.classList.toggle('is-invalid', !!bad);
-          });
-
-          form.addEventListener('submit', function (e) {
-            if (!isValid()) {
-              e.preventDefault();
-              emailError.classList.add('visible');
-              email.classList.add('is-invalid');
-              return;
-            }
-            submit.classList.add('is-checking');
-            submit.disabled = true;
-          });
-        })();
-        (function () {
-          // Удаление сотрудника — AJAX, через общий #confirmModal (см.
-          // base.html). Он уже используется формой удаления аккаунта
-          // (profile.js/deleteProfileBtn) — чтобы случайный клик "Да" тут
-          // не отправил ту форму заодно, явно сбрасываем modal._currentForm.
-          var modal = document.getElementById('confirmModal');
-          var yesBtn = document.getElementById('confirmYes');
-          var noBtn = document.getElementById('confirmNo');
-          var textEl = document.getElementById('modal-text');
-          var textSecondEl = document.getElementById('modal-text-second');
-          if (!modal || !yesBtn || !noBtn) return;
-
-          var pendingRemoveId = null;
-          var csrfToken = "{{ csrf_token() }}";
-
-          document.querySelectorAll('[data-remove-employee-id]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-              pendingRemoveId = btn.dataset.removeEmployeeId;
-              modal._currentForm = null;
-              modal._removeEmployeeMode = true;
-              if (textEl) textEl.textContent = "{{ _('Удалить сотрудника') }} " + (btn.dataset.removeEmployeeName || '').trim() + " {{ _('из организации?') }}";
-              if (textSecondEl) textSecondEl.textContent = "{{ _('Доступно только если у него нет данных в системе (планов, подписей, сообщений).') }}";
-              modal.classList.add('active');
-            });
-          });
-
-          yesBtn.addEventListener('click', function () {
-            if (!modal._removeEmployeeMode || !pendingRemoveId) return;
-            var id = pendingRemoveId;
-            pendingRemoveId = null;
-            modal._removeEmployeeMode = false;
-            modal.classList.remove('active');
-
-            fetch('/remove-employee/' + id, {
-              method: 'POST',
-              headers: {
-                'X-CSRFToken': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-              },
-            })
-              .then(function (r) {
-                return r.json().then(function (data) { return { ok: r.ok, data: data }; });
-              })
-              .then(function (res) {
-                if (res.ok && res.data.success) {
-                  window.location.reload();
-                } else {
-                  alert((res.data && res.data.error) || "{{ _('Не удалось удалить сотрудника') }}");
-                }
-              })
-              .catch(function () {
-                alert("{{ _('Ошибка сети') }}");
-              });
-          });
-
-          noBtn.addEventListener('click', function () {
-            modal._removeEmployeeMode = false;
-            pendingRemoveId = null;
-          });
-        })();
       </script>
       {% endif %}
 
@@ -665,6 +450,10 @@
         </div>
       </div>
     </div>
+
+    {% if cabinet_data %}
+    {% include 'profile_cabinet.html' %}
+    {% endif %}
 
     {% if current_user.is_admin %}
     <div class="profile-tab-panel" data-tab-panel="admins">
@@ -948,6 +737,7 @@
         <div class="header-content-left">
           <a class="name" style="padding-bottom: 0">{{ _('Пароль') }}</a>
         </div>
+        {% if current_user.email %}
         <div class="header-content-right">
           <div class="dropdown-menu-container">
             <button type="button" class="svg-btn dots-btn" id="dots-profile-password" data-tooltip="Действия с паролем">
@@ -964,7 +754,9 @@
             </div>
           </div>
         </div>
+        {% endif %}
       </div>
+      {% if current_user.email %}
       <p class="session-timer-hint" style="margin: -8px 0 20px;">{{ _('Изменение пароля происходит по ссылке, отправленной на вашу почту.') }}</p>
 
       <hr/>
@@ -1011,6 +803,9 @@
               </form>
           </div>
       </div>
+      {% else %}
+      <p class="session-timer-hint" style="margin: -8px 0 20px;">{{ _('Пароль выдаёт и сбрасывает ответственный за кабинет вашей организации. Если вы забыли пароль, обратитесь к нему.') }}</p>
+      {% endif %}
 
       <hr/>
       <h1 class="name">{{ _('Прочая информация') }}</h1>

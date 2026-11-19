@@ -1148,6 +1148,8 @@ progress_width = (completed_steps / total_steps * 100) if total_steps > 0 else 0
             {% set ns.decision = 'approved' %}
           {% elif step.log_action == 'signed' %}
             {% set step2_label, step2_state = _('Подписание'), ('rejected' if (ns.decision == 'error' or path.rejected_at) else 'done') %}
+          {% elif step.forwarded_to_user_id and step.forwarded_to_user_id == step.signed_by_user_id %}
+            {% set step2_label, step2_state = _('Решение подготовлено'), ('rejected' if ns.decision == 'error' else 'done') %}
           {% else %}
             {% set step2_label, step2_state = _('Направление на подпись'), ('rejected' if ns.decision == 'error' else 'done') %}
           {% endif %}

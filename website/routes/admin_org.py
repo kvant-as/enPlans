@@ -30,7 +30,7 @@ def _guard():
 
 
 def _site_ctx():
-    site = current_app.extensions.get('cm_admin')
+    site = current_app.extensions.get('eres_admin')
     return site.nav_context() if site else {}
 
 
@@ -75,7 +75,7 @@ def by_unp():
         existing = _existing(unp)
         if existing:
             flash(f'Организация с УНП {unp} уже есть в базе', 'error')
-            return redirect(url_for('cm_admin.edit_view', key='organization', pk=existing.id))
+            return redirect(url_for('eres_admin.edit_view', key='organization', pk=existing.id))
 
         full_name = (request.form.get('full_name') or '').strip()
         okpo = (request.form.get('okpo') or '').strip() or None
@@ -106,6 +106,6 @@ def by_unp():
         db.session.commit()
         current_app.logger.info(f'Admin {current_user.id} added organization {org.id} by UNP {unp} from EGR')
         flash(f'Организация «{org.full_name}» добавлена', 'success')
-        return redirect(url_for('cm_admin.edit_view', key='organization', pk=org.id))
+        return redirect(url_for('eres_admin.edit_view', key='organization', pk=org.id))
 
     return render_template('admin/org_by_unp.html', **ctx, **_site_ctx())

@@ -833,7 +833,7 @@ def fill_news(db):
             is_published=is_published,
             published_at=published_at,
             views_count=views_count,
-            is_enplans=True
+            application_id=get_current_application_id(),
         )
         db.session.add(news)
     db.session.commit()

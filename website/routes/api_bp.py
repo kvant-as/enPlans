@@ -7,7 +7,7 @@ from sqlalchemy.orm import contains_eager, joinedload
 from website.routes.auth import user_with_all_params, login_or_registration_required
 from website.routes.views import owner_only
 from website.sessions import session_required, set_session_cookie, build_session_info
-from common_models import current_utc_time
+from common_models import current_utc_time, get_current_application_id
 from website.utils.plans import get_filtered_plans
 
 from ..models import Direction, Indicator, IndicatorUsage, News, Notification, Organization, Region, Event, StatPlan, StatPlanValue, User
@@ -103,7 +103,8 @@ def api_news():
     sort_by = request.args.get('sort', 'date')
     
     current_time = current_utc_time()
-    query = News.query.filter(News.is_enplans == True)
+    app_id = get_current_application_id()
+    query = News.query.filter(News.application_id == app_id)
     
     if filter_type == 'published':
         query = query.filter(News.published_at <= current_time, News.published_at.isnot(None))
@@ -130,13 +131,13 @@ def api_news():
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page,
-        'total_views': db.session.query(db.func.sum(News.views_count)).filter(News.is_enplans == True).scalar() or 0
+        'total_views': db.session.query(db.func.sum(News.views_count)).filter(News.application_id == app_id).scalar() or 0
     })
 
 @api_bp.route('/news/<int:id>', methods=['GET'])
 def api_news_post(id):
     current_time = current_utc_time()
-    post = News.query.get(id)
+    post = News.query.filter_by(id=id, application_id=get_current_application_id()).first()
     if not post:
         return jsonify({'success': False, 'error': 'Новость не найдена'}), 404
     

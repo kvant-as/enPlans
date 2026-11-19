@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "src/eres_admin/templates/eres_admin/base.html"
+        ],
+        "createdAt": "2026-11-18T06:48:15.093Z",
+        "reason": "Claude triage: base.html is the admin shell; its compact sidebar sizes (11/13/14.5px) were requested by the user (minimal panel, smaller font); page title 21px vs body 14px is already 1.5x"
+      }
+    ]
+  }
+}

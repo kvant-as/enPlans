@@ -26,13 +26,18 @@
 
     <form class="auth-form" action="/login" method="POST" data-require-valid>
       <div class="form-group">
-        <label for="email">{{ _('Email') }}</label>
+        <label for="login">{{ _('Логин или email') }}</label>
         <input
-          type="email"
-          name="email"
+          type="text"
+          id="login"
+          name="login"
           value=""
-          placeholder="Введите email"
+          placeholder="{{ _('Например, i.ivanov') }}"
           class="auth-input"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          maxlength="255"
           required
         />
       </div>
@@ -44,7 +49,8 @@
             type="password"
             id="password"
             name="password"
-            maxlength="10"
+            maxlength="64"
+            autocomplete="current-password"
             placeholder="{{ _('Введите пароль') }}"
             class="auth-input"
             required

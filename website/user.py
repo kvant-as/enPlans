@@ -78,6 +78,21 @@ def parse_and_validate_phones(raw_telephone):
 
     return '; '.join(validated), None
 
+def login_taken(login, exclude_user_id=None):
+    query = User.query.filter(
+        func.lower(User.login) == (login or '').lower(),
+        User.application_id == get_current_application_id(),
+    )
+    if exclude_user_id:
+        query = query.filter(User.id != exclude_user_id)
+    return db.session.query(query.exists()).scalar()
+
+
+def suggest_login(first_name, last_name, exclude_user_id=None):
+    from common_models.logins import generate_login
+    return generate_login(first_name, last_name, lambda c: login_taken(c, exclude_user_id))
+
+
 def gener_password():
     length=5
     characters = string.digits
@@ -278,6 +293,14 @@ def add_param(first_name, last_name, patronymic_name, telephone, organization_id
     # отправку формы лишь в onSuccess ЭЦП-модалки), поэтому сохранение
     # данных = подтверждение личности: аккаунт сразу верифицированный.
     user.is_verified = True
+
+    # Зарегистрировавшийся с ЭЦП руководитель — ответственный за кабинет:
+    # он создаёт учётные записи сотрудников. Логин — на случай входа не
+    # по почте.
+    if user.org_role == 'org_head':
+        user.is_cabinet_owner = True
+    if not user.login:
+        user.login = suggest_login(user.first_name, user.last_name, user.id)
 
     try:
         if pending:

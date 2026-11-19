@@ -114,18 +114,22 @@ def user_with_all_params():
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
+        identifier = (request.form.get('login') or request.form.get('email') or '').strip()
         password = request.form.get('password')
 
-        if email and password:
-            # Аккаунт привязан к конкретному приложению — тот же email может
-            # быть отдельно зарегистрирован и в erespondentN, и в enPlans,
-            # поэтому логин ищет строго "свой" аккаунт в этом приложении.
+        if identifier and password:
+            # Вход по логину (сотрудники, созданные ответственным за кабинет)
+            # или по email (учётная запись организации). Аккаунт привязан к
+            # приложению — ищем только «свой».
+            column = User.email if '@' in identifier else User.login
             user = User.query.filter(
-                func.lower(User.email) == func.lower(email),
+                func.lower(column) == identifier.lower(),
                 User.application_id == get_current_application_id()
             ).first()
             if user and user.password and check_password_hash(user.password, password):
+                if user.is_active is False:
+                    flash('Учётная запись деактивирована. Обратитесь к ответственному за кабинет вашей организации', 'error')
+                    return render_template('login.html', current_user=current_user)
                 login_user(user)
                 token = create_session_token(user)
                 if (
@@ -136,14 +140,14 @@ def login():
                     flash("Необходимо заполнить обязательные параметры", "error")
                     # Сотрудник, приглашённый руководителем (у него уже есть
                     # organization_id), идёт на лёгкий complete_profile —
-                    # не нужно повторно выбирать роль в системе и
+                    # не нужно повторно выбирать Профиль организации и
                     # организацию, см. ту же развилку в user_with_all_params().
                     target = 'auth.complete_profile' if user.organization_id else 'auth.param'
                     return set_session_cookie(redirect(url_for(target)), token)
                 flash('Авторизация прошла успешно', 'success')
                 return set_session_cookie(redirect(url_for('views.profile')), token)
             else:
-                flash('Неправильный email или пароль', 'error')
+                flash('Неправильный логин или пароль', 'error')
         else:
             flash('Введите данные для авторизации', 'error')
         return render_template(
@@ -312,7 +316,11 @@ def logout():
 def delete_account():
     user = current_user
     confirm_email = request.form.get('confirm_email')
-    
+
+    if not user.email:
+        flash('Учётную запись сотрудника деактивирует ответственный за кабинет', 'error')
+        return redirect(url_for('views.profile'))
+
     if not confirm_email or confirm_email != user.email:
         flash('Неверный email для подтверждения', 'error')
         return redirect(url_for('views.profile'))
@@ -362,7 +370,7 @@ def forgot_password():
             User.application_id == get_current_application_id()
         ).first()
 
-        if user:
+        if user and user.is_active is not False:
             serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
             token = serializer.dumps(email, salt='password-reset-salt')
 
@@ -374,7 +382,7 @@ def forgot_password():
             
             send_email(reset_url, email, 'reset_link')
      
-        flash('Если email зарегистрирован, на него будет отправлена ссылка для сброса пароля', 'success')
+        flash('Если email зарегистрирован, на него будет отправлена ссылка для сброса пароля. Сотрудникам пароль сбрасывает ответственный за кабинет', 'success')
         return redirect(url_for('auth.forgot_password'))
     
 @auth.route('/reset-password/<token>', methods=['GET', 'POST'])
@@ -432,6 +440,12 @@ def reset_password(token):
 @auth.route('/change-email', methods=['GET', 'POST'])
 @login_required
 def change_email():
+    # У организации одна почта — та, что указана при регистрации с ЭЦП.
+    # Сотрудники, созданные ответственным за кабинет, почту не указывают.
+    if not current_user.email:
+        flash('Почта есть только у учётной записи организации', 'error')
+        return redirect(url_for('views.profile'))
+
     if request.method == 'GET':
         return render_template('edit_email.html')
     

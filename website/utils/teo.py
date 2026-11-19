@@ -175,7 +175,7 @@ def register_teo_cleanup_listeners():
     удаление мероприятия, удаление всего плана (каскад Plan.events,
     cascade="all, delete-orphan" — ORM удаляет каждый Event по отдельности,
     так что этот mapper-хук отрабатывает и тут), или удаление через
-    админ-панель (cm_admin тоже делает db.session.delete(obj)). Централизует
+    админ-панель (eres-admin тоже делает db.session.delete(obj)). Централизует
     очистку файлов в одном месте вместо дублирования в каждом роуте.
 
     Mapper-события SQLAlchemy глобальны (не привязаны к конкретному Flask
