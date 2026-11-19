@@ -1371,7 +1371,7 @@ def export_xlsx_single(plan: Plan):
         ws = wb.create_sheet("Часть 1")
         columns = [("A", 5.43), ("B", 58), ("C", 14), ("D", 10),
                 ("E", 10), ("F", 10), ("G", 18.29)]
-        
+
         for col, width in columns:
             ws.column_dimensions[col].width = width
 
@@ -1386,12 +1386,12 @@ def export_xlsx_single(plan: Plan):
                 ws.row_dimensions[row].height = 34
             else:
                 ws.row_dimensions[row].height = 15
-        
+
         thin_border = Border(
             left=Side(style="thin"), right=Side(style="thin"),
             top=Side(style="thin"), bottom=Side(style="thin")
         )
-        
+
         ws.merge_cells("A1:G1")
         ws["A1"].value = "Часть 1. Показатели использования топливно-энергетических ресурсов"
         ws["A1"].font = bold_font_13
@@ -1403,23 +1403,23 @@ def export_xlsx_single(plan: Plan):
 
         configs = sorted(plan.column_configs, key=lambda x: x.year)
         headers = [
-            "№ п/п", 
-            "Основные показатели использования ТЭР", 
-            "Единица измерения", 
-            f"{plan.year - 2} г. {configs[0].label}", 
-            f"{plan.year - 1} г. {configs[1].label}", 
-            f"{plan.year} г. {configs[2].label}", 
+            "№ п/п",
+            "Основные показатели использования ТЭР",
+            "Единица измерения",
+            f"{plan.year - 2} г. {configs[0].label}",
+            f"{plan.year - 1} г. {configs[1].label}",
+            f"{plan.year} г. {configs[2].label}",
             "Изменение ТЭР прогнозного года к предыдущему (увеличение +, уменьшение -), т у.т."
         ]
-        
+
         ws.append(headers)
-        
+
         for col in range(1, len(headers) + 1):
             cell = ws.cell(row=3, column=col)
             cell.font = bold_font_11
             cell.alignment = center
             cell.border = thin_border
-        
+
         def format_value(value, group):
             if value is None or value == '':
                 return ''
@@ -1434,24 +1434,24 @@ def export_xlsx_single(plan: Plan):
             except (InvalidOperation, ValueError, TypeError):
                 return value
 
+            # Округление как в таблице «Показатели» на странице плана
+            # (indicator-calc.js, formatValue): группа 5 — два знака после
+            # запятой, остальные — один.
             if group == 5:
-                return float(dec.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP))
-            elif group in [6, 7, 8]:
                 return float(dec.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
-            else:
-                return int(dec.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
-        
+            return float(dec.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP))
+
         previous_group = None
         row_index = 3
 
-        for usage in sorted(plan.indicators_usage, 
+        for usage in sorted(plan.indicators_usage,
             key=lambda u: (
                 (0, u.indicator.Group) if u.indicator.Group is not None else (1, float('-inf')),
                 (0, u.indicator.RowN) if u.indicator.RowN is not None else (1, float('-inf'))
             )
         ):
             group = usage.indicator.Group
-            
+
             if group != previous_group:
                 if group is not None:
                     try:
@@ -1466,7 +1466,7 @@ def export_xlsx_single(plan: Plan):
                     group_value = ""
             else:
                 group_value = ""
-            
+
             previous_group = group
 
             # QYearBeforePrev/Prev/Current в БД всегда хранятся в т у.т.
@@ -1497,10 +1497,10 @@ def export_xlsx_single(plan: Plan):
                 # предыдущих трёх, явно подписана как "т у.т." в заголовке,
                 # поэтому остаётся в хранимых (не переведённых) величинах.
                 difference = format_value((usage.QYearCurrent or 0) - (usage.QYearPrev or 0), group)
-            
+
             row = [
                 group_value,
-                (usage.indicator.name if usage.indicator.name else "-") + 
+                (usage.indicator.name if usage.indicator.name else "-") +
                 (f" ({usage.note})" if usage.note else ""),
                 usage.indicator.unit.name,
                 QYearBeforePrev,
@@ -1509,23 +1509,23 @@ def export_xlsx_single(plan: Plan):
                 difference,
             ]
             ws.append(row)
-            
+
             row_index += 1
-            
+
             if group_value in [5, 8]:
                 ws.row_dimensions[row_index].height = 34
-            
+
             for col in range(1, len(row) + 1):
                 cell = ws.cell(row=row_index, column=col)
-                
+
                 if group_value != "":
                     cell.font = bold_font_11
                 else:
                     cell.font = regular_font_11
-                
+
                 cell.alignment = center if col != 2 else left
                 cell.border = thin_border
-                
+
                 if col == 1:
                     if group_value != "":
                         if isinstance(group_value, (int, float)):
@@ -1545,16 +1545,14 @@ def export_xlsx_single(plan: Plan):
                     value = row[col-1]
                     if value != 'x' and value != '':
                         if group == 5:
-                            cell.number_format = '0.0'
-                        elif group in [6, 7, 8]:
                             cell.number_format = '0.00'
                         else:
-                            cell.number_format = '0'
+                            cell.number_format = '0.0'
                     else:
                         cell.number_format = '@'
                 else:
                     cell.number_format = '@'
-        
+
         def org_small_signatures_indicators_xlsx(ws, start_row, plan):
             okpo = plan.organization.okpo if plan.organization else None
             org_name = get_org_name_by_okpo(okpo)

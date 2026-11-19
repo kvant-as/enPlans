@@ -1,25 +1,25 @@
-{% extends "cm_admin/base.html" %}
-{% block title %}{{ site.brand }} · Обращения «Другое»{% endblock %}
+{% extends "eres_admin/base.html" %}
+{% block title %}Обращения «Другое» — {{ site.brand }}{% endblock %}
+{% block crumbs %}<span class="ea-crumbs">Вспомогательные</span>{% endblock %}
+{% block page_title %}Обращения «Другое»{% endblock %}
+{% block page_actions %}<span class="ea-total">Всего: {{ rows|length }}</span>{% endblock %}
 
 {% block content %}
-  <div class="cm-section-head">
-    <h1 class="cm-h1">Обращения «Другое»</h1>
-    <a class="cm-link" href="{{ url_for('cm_admin.dashboard') }}">← к панели</a>
-  </div>
-
-  <div class="cm-rows">
-    {% for row in rows %}
-      <a class="cm-row" href="{{ row.url }}">
-        <div class="cm-row-block">
-          <span class="cm-row-title">{{ row.title }}</span>
-          {% if row.subtitle %}<span class="cm-row-sub">{{ row.subtitle }}</span>{% endif %}
-        </div>
-        {% if row.meta %}<span class="cm-row-meta">{{ row.meta }}</span>{% endif %}
-      </a>
+  <section class="ea-card">
+    {% if rows %}
+      <div class="ea-list">
+        {% for row in rows %}
+          <a class="ea-list-row" href="{{ row.url }}">
+            <span class="ea-list-main">
+              <span class="ea-list-title">{{ row.title }}</span>
+              {% if row.subtitle %}<span class="ea-list-sub">{{ row.subtitle }}</span>{% endif %}
+            </span>
+            {% if row.meta %}<span class="ea-list-meta">{{ row.meta }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      </div>
     {% else %}
-      <div class="cm-empty">Обращений пока нет</div>
-    {% endfor %}
-  </div>
-
-  <p class="cm-muted">Всего обращений: {{ rows|length }}</p>
+      <div class="ea-empty">{{ icon('message') }}<p>Обращений пока нет. Они появятся, когда пользователь выберет в помощнике тему «Другое».</p></div>
+    {% endif %}
+  </section>
 {% endblock %}

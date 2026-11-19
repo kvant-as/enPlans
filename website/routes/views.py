@@ -194,7 +194,21 @@ def profile():
             User.application_id == get_current_application_id(),
             User.id != current_user.id,
             User.org_role.isnot(None),
+            User.is_active.is_(True),
         ).order_by(User.begin_time.desc()).all()
+
+    cabinet_members = []
+    cabinet_departments = []
+    cabinet_data = None
+    if current_user.is_cabinet_owner and current_user.organization_id and not current_user.is_admin:
+        from .cabinet_bp import org_departments, org_members, serialize
+        cabinet_members = org_members()
+        cabinet_departments = org_departments()
+        cabinet_data = {
+            'members': [serialize(u) for u in cabinet_members],
+            'departments': [{'id': d.id, 'name': d.name} for d in cabinet_departments],
+            'me': current_user.id,
+        }
 
     response = make_response(render_template('profile.html',
                         can_change_modal=can_change_modal,
@@ -203,101 +217,12 @@ def profile():
                         change_orgUser_modal = True,
                         session_info = session_info,
                         org_employees = org_employees,
+                        cabinet_members = cabinet_members,
+                        cabinet_departments = cabinet_departments,
+                        cabinet_data = cabinet_data,
                         admins = admins
                            ))
     return set_session_cookie(response, token)
-
-ORG_ROLE_LABELS = {
-    'executor': 'Исполнитель',
-    'dept_head': 'Руководитель структурного подразделения',
-    'org_head': 'Руководитель организации',
-    'org_head_deputy': 'Заместитель руководителя организации',
-}
-
-ORG_EMPLOYEES_MAX = 7
-# По одному на организацию — остальные роли (dept_head/executor) без лимита
-# по количеству, в пределах общего ORG_EMPLOYEES_MAX.
-ORG_SINGLE_SLOT_ROLES = ('org_head', 'org_head_deputy')
-
-@views.route('/invite-employee', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def invite_employee():
-    # Приглашать/удалять сотрудников может только сам (оригинальный)
-    # руководитель организации — не заместитель, у него те же права везде
-    # в приложении (is_org_manager), кроме управления составом организации.
-    if current_user.org_role != 'org_head':
-        flash('Приглашать сотрудников может только руководитель организации', 'error')
-        return redirect(url_for('views.profile'))
-
-    email = (request.form.get('email') or '').strip()
-    org_role = request.form.get('org_role')
-
-    if not email:
-        flash('Укажите email сотрудника', 'error')
-        return redirect(url_for('views.profile'))
-
-    if org_role not in ORG_ROLE_LABELS:
-        flash('Выберите роль сотрудника', 'error')
-        return redirect(url_for('views.profile'))
-
-    # "Руководитель организации" и "Заместитель руководителя" — максимум один
-    # сотрудник на организацию на каждую роль (в т.ч. сам руководитель:
-    # регистрирующий аккаунт её уже занимает, см. add_param). dept_head/
-    # executor — без ограничения по количеству, в пределах общего лимита.
-    if org_role in ORG_SINGLE_SLOT_ROLES:
-        role_taken = User.query.filter(
-            User.organization_id == current_user.organization_id,
-            User.application_id == get_current_application_id(),
-            User.org_role == org_role
-        ).first()
-        if role_taken:
-            flash(f'Роль «{ORG_ROLE_LABELS[org_role]}» уже занята сотрудником {role_taken.email}', 'error')
-            return redirect(url_for('views.profile'))
-
-    employees_count = User.query.filter(
-        User.organization_id == current_user.organization_id,
-        User.application_id == get_current_application_id(),
-        User.org_role.isnot(None),
-    ).count()
-    if employees_count >= ORG_EMPLOYEES_MAX:
-        flash(f'В организации не может быть больше {ORG_EMPLOYEES_MAX} сотрудников', 'error')
-        return redirect(url_for('views.profile'))
-
-    existing_user = User.query.filter(
-        func.lower(User.email) == func.lower(email),
-        User.application_id == get_current_application_id()
-    ).first()
-    if existing_user:
-        flash('Сотрудник с таким email уже зарегистрирован', 'error')
-        return redirect(url_for('views.profile'))
-
-    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    token = serializer.dumps(email, salt='password-reset-salt')
-
-    # ФИО/должность/телефон сотрудник вводит сам при первом входе (см.
-    # auth.complete_profile) — организатор задаёт только email и роль,
-    # организация уже привязана (organization_id), шаг её выбора пропускается.
-    employee = User(
-        email=email,
-        organization_id=current_user.organization_id,
-        org_role=org_role,
-        application_id=get_current_application_id(),
-        # Временный непригодный пароль — сотрудник обязательно задаст свой
-        # по ссылке из письма (тот же механизм, что и "забыли пароль").
-        password=generate_password_hash(uuid.uuid4().hex),
-        reset_password_token=token,
-        reset_password_expires=datetime.utcnow() + timedelta(hours=1),
-    )
-    db.session.add(employee)
-    db.session.commit()
-
-    invite_url = url_for('auth.reset_password', token=token, _external=True)
-    send_email(invite_url, email, 'employee_invite')
-
-    flash(f'Приглашение отправлено на {email}', 'success')
-    return redirect(url_for('views.profile'))
 
 def _employee_has_any_data(user_id):
     """Оставил ли сотрудник в системе хоть что-то (создал план, был
@@ -329,38 +254,6 @@ def _employee_has_any_data(user_id):
         return True
     return False
 
-
-@views.route('/remove-employee/<int:user_id>', methods=['POST'])
-@user_with_all_params()
-@login_required
-@session_required
-def remove_employee(user_id):
-    """Удаление сотрудника из организации — AJAX. Приглашать/удалять может
-    только сам (оригинальный) руководитель организации, не заместитель.
-    Настоящий DELETE разрешён только если сотрудник ничего не успел
-    сделать в системе (см. _employee_has_any_data) — иначе удаление
-    сломало бы ссылки на него в его же планах/тикетах/подписях."""
-    if current_user.org_role != 'org_head':
-        return jsonify({'success': False, 'error': 'Удалять сотрудников может только руководитель организации'}), 403
-
-    target = User.query.filter(
-        User.id == user_id,
-        User.organization_id == current_user.organization_id,
-        User.application_id == get_current_application_id(),
-    ).first()
-    if not target:
-        return jsonify({'success': False, 'error': 'Сотрудник не найден'}), 404
-
-    if target.id == current_user.id:
-        return jsonify({'success': False, 'error': 'Невозможно удалить самого себя'}), 400
-
-    if _employee_has_any_data(target.id):
-        return jsonify({'success': False, 'error': 'У сотрудника есть данные в системе (планы, подписи, сообщения) — удаление невозможно'}), 400
-
-    db.session.delete(target)
-    db.session.commit()
-
-    return jsonify({'success': True})
 
 @views.route('/invite-admin', methods=['POST'])
 @user_with_all_params()
@@ -775,7 +668,7 @@ def news():
 
 @views.route('/news/<int:id>', methods=['GET'])
 def news_post(id):
-    post = News.query.get(id)
+    post = News.query.filter_by(id=id, application_id=get_current_application_id()).first()
     if not post:
         abort(404)
     
@@ -893,7 +786,7 @@ def create_plan():
             added_at=current_utc_time(),
             developer_name=developer_name or None,
             developer_phone=current_user.telephone,
-            developer_email=current_user.email,
+            developer_email=current_user.contact_email,
         ))
         db.session.commit()
 
@@ -1220,6 +1113,7 @@ def begin_page():
     user_growth = enplans_users.filter(UserAppActivity.first_seen >= month_ago).count()
 
     latest_news = News.query.filter(
+        News.application_id == get_current_application_id(),
         News.published_at <= current_utc_time(),
         News.published_at.isnot(None)
     ).order_by(News.published_at.desc()).first()

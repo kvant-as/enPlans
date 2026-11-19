@@ -183,6 +183,8 @@ def create_app():
     app.register_blueprint(admin_org_bp, url_prefix='/admin/org-by-unp')
     from .routes.admin_test_users import admin_test_users_bp
     app.register_blueprint(admin_test_users_bp, url_prefix='/admin/test-users')
+    from .routes.cabinet_bp import cabinet_bp
+    app.register_blueprint(cabinet_bp, url_prefix='/cabinet')
 
     common_templates = str(files('common_models') / 'templates')
 
@@ -234,7 +236,10 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         from .models import User
-        return User.query.get(int(user_id))
+        user = User.query.get(int(user_id))
+        if user is not None and user.is_active is False:
+            return None
+        return user
     
     @app.errorhandler(404)
     def page_not_found(e):

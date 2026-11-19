@@ -1503,6 +1503,7 @@ def org_head_block_reason(plan, current_path, user):
     staff = User.query.filter(
         User.organization_id == current_path.organization_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(STAFF_REVIEW_ROLES),
         User.is_verified == True,
         User.id != user.id,
@@ -1983,6 +1984,7 @@ def get_signer_candidates(org_id, exclude_user_id=None):
     query = User.query.filter(
         User.organization_id == org_id,
         User.application_id == get_current_application_id(),
+        User.is_active.is_(True),
         User.org_role.in_(roles)
     )
     if exclude_user_id:
