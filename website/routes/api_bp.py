@@ -17,6 +17,38 @@ api_bp = Blueprint('api_bp', __name__, url_prefix='/api/')
 
 logger = logging.getLogger(__name__)
 
+
+@api_bp.route('/admin/unread-count', methods=['GET'])
+def admin_unread_count():
+    """Число непрочитанных обращений «Другое» к администратору — для
+    виджета на телефоне (Scriptable). Доступ по токену ADMIN_WIDGET_TOKEN
+    (заголовок Authorization: Bearer ...), без сессии; наружу отдаются только
+    числа. Сообщение пользователя становится прочитанным, когда
+    администратор открывает переписку (routes/admin_support.py)."""
+    from common_models import Chat, ChatMessage, widget_token_status
+    from .chat_bp import SUPPORT_CHAT_TYPE
+    status = widget_token_status()
+    if status is None:
+        return jsonify({'error': 'not found'}), 404
+    if not status:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    unread = (
+        db.session.query(ChatMessage.id, ChatMessage.chat_id)
+        .join(Chat, Chat.id == ChatMessage.chat_id)
+        .filter(Chat.chat_type == SUPPORT_CHAT_TYPE, ChatMessage.is_user == True,
+                ChatMessage.is_read == False)
+        .all()
+    )
+    response = jsonify({
+        'app': 'enplans',
+        'unread': len(unread),
+        'threads': len({chat_id for _, chat_id in unread}),
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @api_bp.route('/plans', methods=['GET'])
 @login_required
 def api_get_plans():

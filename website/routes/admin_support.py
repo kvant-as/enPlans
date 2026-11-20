@@ -49,10 +49,15 @@ def _row(chat):
     preview = (last.content or "") if last else ""
     if len(preview) > 90:
         preview = preview[:89].rstrip() + "…"
+    unread = ChatMessage.query.filter_by(chat_id=chat.id, is_user=True, is_read=False).count()
+    meta = f"{unread} новых" if unread else (
+        chat.updated_at.strftime("%d.%m %H:%M") if chat.updated_at else ""
+    )
     return {
         "title": _author_name(chat.created_by) if chat.created_by else f"Чат №{chat.id}",
         "subtitle": preview,
-        "meta": chat.updated_at.strftime("%d.%m %H:%M") if chat.updated_at else "",
+        "meta": meta,
+        "unread": unread,
         "url": url_for("admin_support.thread", chat_id=chat.id),
     }
 
@@ -131,6 +136,14 @@ def thread(chat_id):
         return redirect(url_for('admin_support.thread', chat_id=chat.id))
 
     messages = ChatMessage.query.filter_by(chat_id=chat.id).order_by(ChatMessage.created_at.asc()).all()
+
+    # Администратор открыл переписку — сообщения пользователя прочитаны
+    # (счётчик для виджета: /api/admin/unread-count).
+    unread = [m for m in messages if m.is_user and not m.is_read]
+    if unread:
+        for m in unread:
+            m.is_read = True
+        db.session.commit()
 
     from ..admin import site  # noqa: E402  (ленивый импорт — не тянуть admin.py на старте)
     return render_template(

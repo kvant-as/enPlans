@@ -6,6 +6,11 @@ const ChatModule = (function () {
     dif: "Другое",
   };
 
+  // Временно отключённые разделы виртуального помощника — доступно только
+  // «Другое». Чтобы включить раздел, уберите его отсюда и класс is-disabled
+  // у кнопки в base.html (.chat-type-selection).
+  const DISABLED_CHAT_TYPES = new Set(["no-org", "compl-plan", "org-edit"]);
+
   // Бот-сценарии (например, "Изменить данные организации") подмешивают в
   // конец своего сообщения служебный маркер с вариантами быстрого ответа —
   // вырезаем его перед показом текста и рисуем вместо него кнопки-чипы.
@@ -243,6 +248,7 @@ const ChatModule = (function () {
   }
 
   async function _handleChatTypeSelection(type) {
+    if (DISABLED_CHAT_TYPES.has(type)) return;
     _state.currentChatType = type;
     _state.selectedTypeText = CHAT_TYPE_TEXTS[type] || "тему";
 
@@ -722,6 +728,13 @@ return {
         const toggleBtn = document.querySelector(".chat-toggle");
         if (toggleBtn) toggleBtn.style.display = "flex";
       }
+    },
+
+    // Открыть помощника (ссылка «Онлайн-консультант» в контактах) — в
+    // отличие от toggleChat не закрывает его, если он уже открыт.
+    open: function () {
+      const container = document.getElementById("chatContainer");
+      if (container && !container.classList.contains("active")) this.toggleChat();
     },
 
     selectChatType: _handleChatTypeSelection,

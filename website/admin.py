@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash
 from eres_admin import AdminSite, Field as F
 from common_models import (
     db, current_utc_time, count_online, get_current_application_id,
+    org_accounts_cell, org_egr_state_display, org_egr_refresh,
     User, Application, UserAppActivity, UserAppDailyActivity, Organization, Region, Ministry, News,
     Plan, PlanApprovalPath, PlanColumnConfig, PlanTicket,
     Unit, Direction, Event, Indicator, IndicatorUsage,
@@ -41,6 +42,10 @@ def _user_on_save(obj, creating):
     readonly), значение всегда берётся отсюда, а не из формы."""
     if creating:
         obj.application_id = get_current_application_id()
+        # Без пароля в аккаунт нельзя войти — при создании он обязателен
+        # (поле пароля в форме skip_if_blank: пустое значение не меняет пароль).
+        if not obj.password:
+            raise ValueError('Задайте пароль: без него пользователь не сможет войти')
     obj.email = (obj.email or '').strip() or None
     obj.login = (obj.login or '').strip().lower() or None
 
@@ -77,13 +82,6 @@ def _user_application_display(obj):
     return obj.application.name if obj.application else "—"
 
 
-def _org_account_emails(org):
-    """Email аккаунтов, привязанных к организации — только из ЭТОГО
-    приложения (у организации вполне может быть отдельный аккаунт и в
-    erespondentN, его сюда не подмешиваем)."""
-    app_id = get_current_application_id()
-    emails = [u.email for u in org.users if u.application_id == app_id and u.email]
-    return ", ".join(emails) if emails else "—"
 
 
 def _news_on_save(obj, creating):
@@ -126,7 +124,7 @@ site.register(
     fields=[
         F("login", "Логин"),
         F("email", "Email", type="email"),
-        F("is_active", "Учётная запись активна", type="bool"),
+        F("is_active", "Учётная запись активна", type="bool", default=True),
         F("is_cabinet_owner", "Ответственный за кабинет", type="bool"),
         F("last_name", "Фамилия"), F("first_name", "Имя"), F("patronymic_name", "Отчество"),
         F("telephone", "Телефон"), F("post", "Должность"),
@@ -145,28 +143,40 @@ site.register(
         F("application_id", "Приложение", readonly=True, display=_user_application_display,
           help="Аккаунт создаётся только для текущего приложения (EnPlans) — не редактируется."),
         F("password", "Пароль", type="password", create_only=False, skip_if_blank=True,
-          transform=generate_password_hash, help="Оставьте пустым, чтобы не менять"),
+          transform=generate_password_hash,
+          help="Сохраняется в зашифрованном виде. При создании обязателен; при редактировании оставьте пустым, чтобы не менять."),
     ],
 )
 
 site.register(
     Organization, name="Организации", group="Основные", stat_label="Организаций",
-    list_display=["id", "full_name", "okpo", "region", "ministry", ("accounts", "Email аккаунта")],
+    list_display=["id", "full_name", "okpo", "region", "ministry", ("accounts", "Пользователи")],
     list_badges=["is_active", "is_regular", "is_coordinator", "is_approver", "is_region_management", "is_energy_department"],
-    list_format={"accounts": _org_account_emails},
-    search=["full_name", "okpo", "ynp"],
+    list_format={"accounts": org_accounts_cell},
+    search=["full_name", "short_name", "okpo", "ynp"],
     fields=[
-        F("full_name", "Полное название", required=True),
+        F("full_name", "Полное наименование", type="text", rows=2, required=True),
+        F("short_name", "Сокращённое наименование"),
         F("okpo", "ОКПО"), F("ynp", "УНП"),
+        F("legal_address", "Юридический адрес", type="text", rows=2),
         F("region_id", "Регион", type="fk", target=Region, target_label="name"),
         F("ministry_id", "Министерство", type="fk", target=Ministry, target_label="name"),
-        F("is_active", "Активна", type="bool"),
-        F("is_regular", "Обычная", type="bool"),
-        F("is_coordinator", "Координатор", type="bool"),
-        F("is_approver", "Утверждающая", type="bool"),
-        F("is_region_management", "Региональное управление", type="bool"),
-        F("is_energy_department", "Департамент по энергоэффективности", type="bool"),
+        F("is_active", "Активна", type="bool", section="Роль в системе"),
+        F("is_regular", "Обычная", type="bool", section="Роль в системе"),
+        F("is_coordinator", "Координатор", type="bool", section="Роль в системе"),
+        F("is_approver", "Утверждающая", type="bool", section="Роль в системе"),
+        F("is_region_management", "Региональное управление", type="bool", section="Роль в системе"),
+        F("is_energy_department", "Департамент по энергоэффективности", type="bool", section="Роль в системе"),
+        F("egr_status", "Статус в ЕГР", readonly=True, section="Данные ЕГР"),
+        F("egr_status_kind", "Состояние", readonly=True, display=org_egr_state_display, section="Данные ЕГР"),
+        F("egr_checked_at", "Последняя сверка с ЕГР", readonly=True, section="Данные ЕГР"),
+        F("created_at", "Добавлена в систему", readonly=True, section="Данные ЕГР"),
     ],
+    object_actions=[{
+        "name": "egr-refresh", "label": "Обновить из ЕГР", "icon": "refresh", "handler": org_egr_refresh,
+        "confirm": "Обновить наименования, юридический адрес, регион и статус организации по данным ЕГР?",
+        "help": "По УНП: полное и сокращённое наименование, юридический адрес, регион и статус.",
+    }],
 )
 
 # Добавление организации по УНП с подстановкой из ЕГР (routes/admin_org.py)

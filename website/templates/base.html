@@ -95,10 +95,10 @@
                             <div class="notif-body" id="notifList"></div>
                         </div>
                     </div>
-                    <button type="button" class="svg-btn tooltip-btn helper" onclick="ChatModule.toggleChat()">
+                    <!-- <button type="button" class="svg-btn tooltip-btn helper" onclick="ChatModule.toggleChat()">
                         {{ icons.icon_helper() }}
                         <span class="tooltip-text">{{ _('Консультант') }}</span>
-                    </button>
+                    </button> -->
                 {% endif %}
                 <button type="button" class="svg-btn tooltip-btn help" onclick="window.location.href='/FAQ'">
                     {{ icons.icon_help() }} 
@@ -405,17 +405,18 @@
                         </div>
                     </div>
                     <div class="chat-type-selection">
-                        <div class="chat-option" onclick="ChatModule.selectChatType('no-org')">
+                        {# Временно недоступны: доступно только «Другое» (см. DISABLED_CHAT_TYPES в chat.js) #}
+                        <div class="chat-option is-disabled" aria-disabled="true" title="Временно недоступно" onclick="ChatModule.selectChatType('no-org')">
                             <div class="chat-option-info">
                                 <div class="chat-option-title">Нет организации</div>
                             </div>
                         </div>
-                        <div class="chat-option" onclick="ChatModule.selectChatType('compl-plan')">
+                        <div class="chat-option is-disabled" aria-disabled="true" title="Временно недоступно" onclick="ChatModule.selectChatType('compl-plan')">
                             <div class="chat-option-info">
                                 <div class="chat-option-title">Заполнение плана</div>
                             </div>
                         </div>
-                        <div class="chat-option" onclick="ChatModule.selectChatType('org-edit')">
+                        <div class="chat-option is-disabled" aria-disabled="true" title="Временно недоступно" onclick="ChatModule.selectChatType('org-edit')">
                             <div class="chat-option-info">
                                 <div class="chat-option-title">Изменить данные организации</div>
                             </div>
@@ -471,6 +472,15 @@
                 </div>
             </div>
         </div>
+        {% if current_user.is_authenticated %}
+        {# Плавающая кнопка чата поддержки: открывает помощника и прячется,
+           пока он открыт (ChatModule.toggleChat показывает её снова). #}
+        <button type="button" class="chat-toggle" onclick="ChatModule.toggleChat()"
+                aria-label="Открыть чат поддержки" title="Чат поддержки">
+            {{ icons.icon_support() }}
+            <span class="chat-toggle-dot" aria-hidden="true"></span>
+        </button>
+        {% endif %}
     {% endif %}
 
     <div id="system-welcom-modal-profile" class="modal" style="display: none;">
@@ -630,6 +640,12 @@
                             {{ icons.icon_contacts() }}
                             <a href="tel:+375173270000">+375 (17) 338-50-51</a>
                         </div>
+                        {% if current_user.is_authenticated %}
+                        <div class="contact-item">
+                            {{ icons.icon_support() }}
+                            <a href="#" onclick="ChatModule.open(); return false;">Чат поддержки</a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
