@@ -10758,6 +10758,16 @@ main {
   border: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
+button.contact-method {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* .contact-icon--chat svg {
+  color: var(--green-main);
+} */
 .contact-icon svg {
   padding: var(--space-12);
   width: 27px;
