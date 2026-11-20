@@ -234,6 +234,7 @@
   body > .user-profile-panel,
   body > .user-profile-panel.show {
     transition: none;
+    border-radius: 0;
   }
 }
 
@@ -582,7 +583,7 @@
   }
 
   .chat-option {
-    min-height: 42px;
+    min-height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
